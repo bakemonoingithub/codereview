@@ -23,7 +23,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 // TODO: 后续从路由表 meta 生成菜单（提示词/模型/策略/项目/记录/报告）
-const menuItems = [{ path: '/home', title: '首页' }]
+const menuItems = [{ path: '/projects', title: '项目' }]
 </script>
 
 <style scoped lang="less">

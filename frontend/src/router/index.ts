@@ -11,13 +11,19 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/layouts/BasicLayout.vue'),
-    redirect: '/home',
+    redirect: '/projects',
     children: [
       {
-        path: 'home',
-        name: 'home',
-        component: () => import('@/views/HomeView.vue'),
-        meta: { title: '首页' }
+        path: 'projects',
+        name: 'projects',
+        component: () => import('@/views/ProjectList.vue'),
+        meta: { title: '项目' }
+      },
+      {
+        path: 'projects/:id',
+        name: 'project-detail',
+        component: () => import('@/views/ProjectDetail.vue'),
+        meta: { title: '项目详情', hideMenu: true }
       }
     ]
   }
