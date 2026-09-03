@@ -1,0 +1,44 @@
+<template>
+  <a-layout style="min-height: 100vh">
+    <a-layout-sider>
+      <div class="logo">智能代码分析</div>
+      <a-menu theme="dark" mode="inline" :selected-keys="[route.path]">
+        <a-menu-item v-for="item in menuItems" :key="item.path">
+          <router-link :to="item.path">{{ item.title }}</router-link>
+        </a-menu-item>
+      </a-menu>
+    </a-layout-sider>
+    <a-layout>
+      <a-layout-header class="header">智能代码分析工具</a-layout-header>
+      <a-layout-content class="content">
+        <router-view />
+      </a-layout-content>
+    </a-layout>
+  </a-layout>
+</template>
+
+<script setup lang="ts">
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+// TODO: 后续从路由表 meta 生成菜单（提示词/模型/策略/项目/记录/报告）
+const menuItems = [{ path: '/home', title: '首页' }]
+</script>
+
+<style scoped lang="less">
+.logo {
+  color: #fff;
+  padding: 16px;
+  text-align: center;
+  font-weight: bold;
+}
+.header {
+  background: #fff;
+  padding: 0 16px;
+  line-height: 64px;
+}
+.content {
+  margin: 16px;
+}
+</style>

@@ -10,6 +10,14 @@ backend/target/
 frontend/node_modules/
 frontend/dist/
 
+# 工具缓存（本机/沙箱产物，不入库）
+.pnpm-store/
+.corepack/
+.npm-cache/
+
+# 前端构建产物（部署一体时由 pnpm build 生成到后端 static）
+backend/src/main/resources/static/
+
 # OS
 .DS_Store
 Thumbs.db
