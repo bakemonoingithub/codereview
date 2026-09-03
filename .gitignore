@@ -1,0 +1,15 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# backend（backend/ 内另有更细的 .gitignore）
+backend/target/
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
