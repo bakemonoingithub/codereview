@@ -29,6 +29,12 @@ public class ReviewController {
         return Result.ok(reviewService.trigger(projectId, req));
     }
 
+    @PostMapping("/reviews/{id}/retry")
+    public Result<Void> retry(@PathVariable Long id) {
+        reviewService.retry(id);
+        return Result.ok();
+    }
+
     @GetMapping("/projects/{projectId}/reviews")
     public Result<Page<ReviewRecord>> list(@PathVariable Long projectId,
                                            @RequestParam(defaultValue = "1") long pageNum,
