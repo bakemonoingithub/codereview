@@ -24,6 +24,18 @@ const routes: RouteRecordRaw[] = [
         name: 'project-detail',
         component: () => import('@/views/ProjectDetail.vue'),
         meta: { title: '项目详情', hideMenu: true }
+      },
+      {
+        path: 'models',
+        name: 'models',
+        component: () => import('@/views/ModelConfigList.vue'),
+        meta: { title: '模型' }
+      },
+      {
+        path: 'strategies',
+        name: 'strategies',
+        component: () => import('@/views/StrategyList.vue'),
+        meta: { title: '策略' }
       }
     ]
   }
