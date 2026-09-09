@@ -13,6 +13,9 @@ public interface GitHostClient {
     /** 取某个文件的原始内容 */
     String rawFile(String token, String owner, String repo, String branch, String path);
 
+    /** 分支 HEAD 的 commit sha */
+    String headCommitSha(String token, String owner, String repo, String branch);
+
     /** 分支名列表 */
     List<String> branches(String token, String owner, String repo);
 }

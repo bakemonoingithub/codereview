@@ -60,6 +60,14 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
+    public String headCommitSha(String token, String owner, String repo, String branch) {
+        String url = API_BASE + "/repos/" + owner + "/" + repo + "/branches/"
+                + UriUtils.encodePathSegment(branch, StandardCharsets.UTF_8);
+        JsonNode root = getJson(url, token);
+        return root.path("commit").path("sha").asText();
+    }
+
+    @Override
     public List<String> branches(String token, String owner, String repo) {
         String url = API_BASE + "/repos/" + owner + "/" + repo + "/branches";
         JsonNode root = getJson(url, token);
