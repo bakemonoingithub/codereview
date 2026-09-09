@@ -66,10 +66,13 @@
             <p v-if="parsed.summary" class="summary">{{ parsed.summary }}</p>
             <a-collapse v-if="parsed.units?.length">
               <a-collapse-panel v-for="(u, i) in parsed.units" :key="i" :header="unitTitle(u)">
+                <template #extra>
+                  <span v-if="isRetrying(u)" class="retrying-badge">
+                    <span class="spinner"></span> 重审中
+                  </span>
+                </template>
                 <a-space style="margin-bottom: 8px">
-                  <a-tag :color="u.status === 'success' ? 'green' : 'red'">
-                    {{ u.status === 'success' ? '成功' : '失败' }}
-                  </a-tag>
+                  <a-tag :color="unitTagColor(u)">{{ unitTagText(u) }}</a-tag>
                   <span class="unit-meta">{{ u.unit.kind }} · 行 {{ u.unit.lines }}</span>
                 </a-space>
                 <div v-if="u.status === 'failed'" class="error-text">{{ u.error }}</div>
@@ -119,6 +122,7 @@ const strategyId = ref('')
 const strategyOptions = ref<{ value: string; label: string }[]>([])
 const triggering = ref(false)
 const retrying = ref(false)
+const retryInProgress = ref(false)
 const review = ref<ReviewRecord | null>(null)
 let pollTimer: number | undefined
 
@@ -206,6 +210,7 @@ async function onTrigger() {
   }
   triggering.value = true
   try {
+    retryInProgress.value = false
     const record = await triggerReview(projectId, { branch: branch.value, strategyId: strategyId.value, scope })
     review.value = record
     startPoll(record.id)
@@ -224,6 +229,7 @@ async function onRetry() {
     // 乐观置为执行中，成功单元结果继续保留展示，仅失败部分刷新
     review.value.status = 1
     review.value.progress = 0
+    retryInProgress.value = true
     message.success('已提交重审')
     startPoll(review.value.id)
   } catch (e: any) {
@@ -239,7 +245,10 @@ function startPoll(id: string) {
     try {
       const r = await getReview(id)
       review.value = r
-      if (r.status >= 2) window.clearInterval(pollTimer)
+      if (r.status >= 2) {
+        retryInProgress.value = false
+        window.clearInterval(pollTimer)
+      }
     } catch {
       window.clearInterval(pollTimer)
     }
@@ -258,6 +267,20 @@ const statusAlert = computed(() => {
 
 function unitTitle(u: any) {
   return `${u.path} · ${u.unit.name}`
+}
+
+function isRetrying(u: any) {
+  return retryInProgress.value && u.status === 'failed'
+}
+
+function unitTagColor(u: any) {
+  if (isRetrying(u)) return 'processing'
+  return u.status === 'success' ? 'green' : 'red'
+}
+
+function unitTagText(u: any) {
+  if (isRetrying(u)) return '重审中'
+  return u.status === 'success' ? '成功' : '失败'
 }
 
 onMounted(() => {
@@ -280,5 +303,25 @@ onMounted(() => {
 // 树子级缩进减半（默认 24px → 12px）
 :deep(.ant-tree-indent-unit) {
   width: 12px;
+}
+.retrying-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1677ff;
+  font-size: 12px;
+}
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #91caff;
+  border-top-color: #1677ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
