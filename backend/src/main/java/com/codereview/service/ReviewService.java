@@ -15,6 +15,7 @@ import com.codereview.mapper.ModelConfigMapper;
 import com.codereview.mapper.ProjectMapper;
 import com.codereview.mapper.ReviewRecordMapper;
 import com.codereview.mapper.ReviewStrategyMapper;
+import com.codereview.review.ReviewStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -92,6 +93,10 @@ public class ReviewService {
         if (r.getStatus() == null || r.getStatus() < 2) {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "审查未结束，无法重审");
         }
+        // 同步置为执行中，避免前端轮询竞态；成功单元结果仍保留在 result_json 中，仅失败部分重跑
+        r.setStatus(ReviewStatus.RUNNING);
+        r.setProgress(0);
+        reviewRecordMapper.updateById(r);
         reviewExecutor.retry(reviewId);
     }
 
