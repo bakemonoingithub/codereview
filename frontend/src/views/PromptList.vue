@@ -9,7 +9,12 @@
       <a-table-column title="名称" data-index="name" />
       <a-table-column title="描述" data-index="description" />
       <a-table-column title="标签" data-index="tags">
-        <template #default="{ text }">{{ tagText(text) }}</template>
+        <template #default="{ text }">
+          <template v-if="parseTags(text).length">
+            <a-tag v-for="t in parseTags(text)" :key="t">{{ t }}</a-tag>
+          </template>
+          <span v-else>—</span>
+        </template>
       </a-table-column>
       <a-table-column title="更新时间" data-index="updatedAt" />
       <a-table-column title="操作">
@@ -33,8 +38,14 @@
         <a-form-item label="描述">
           <a-input v-model:value="form.description" />
         </a-form-item>
-        <a-form-item label="标签（逗号分隔）">
-          <a-input v-model:value="form.tagsText" placeholder="java, 代码规范" />
+        <a-form-item label="标签">
+          <a-select
+            v-model:value="form.tags"
+            mode="tags"
+            :token-separators="[',', '，']"
+            :open="false"
+            placeholder="回车或逗号添加标签"
+          />
         </a-form-item>
         <a-form-item label="正文" required>
           <a-textarea v-model:value="form.content" :rows="8" />
@@ -71,7 +82,7 @@ const keyword = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
 const editingId = ref('')
-const form = ref({ name: '', description: '', tagsText: '', content: '', createNewVersion: true })
+const form = ref({ name: '', description: '', tags: [] as string[], content: '', createNewVersion: true })
 
 const versionOpen = ref(false)
 const versionPromptId = ref('')
@@ -80,11 +91,12 @@ const fromVersion = ref('')
 const toVersion = ref('')
 const diffLines = ref<any[]>([])
 
-function tagText(tags: string) {
+function parseTags(tags: string): string[] {
   try {
-    return (JSON.parse(tags || '[]') as string[]).join(', ')
+    const arr = JSON.parse(tags || '[]')
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : []
   } catch {
-    return tags || ''
+    return []
   }
 }
 
@@ -100,13 +112,13 @@ async function load() {
 
 function openCreate() {
   editingId.value = ''
-  form.value = { name: '', description: '', tagsText: '', content: '', createNewVersion: true }
+  form.value = { name: '', description: '', tags: [], content: '', createNewVersion: true }
   modalOpen.value = true
 }
 
 function openEdit(record: any) {
   editingId.value = record.id
-  form.value = { name: record.name, description: record.description || '', tagsText: tagText(record.tags), content: '', createNewVersion: true }
+  form.value = { name: record.name, description: record.description || '', tags: parseTags(record.tags), content: '', createNewVersion: true }
   getPrompt(record.id).then((d: any) => {
     form.value.content = d.currentContent || ''
   })
@@ -120,7 +132,7 @@ async function onSave() {
   }
   saving.value = true
   try {
-    const tags = form.value.tagsText.split(/[,，\s]+/).filter(Boolean)
+    const tags = Array.from(new Set(form.value.tags.map((t) => t.trim()).filter(Boolean)))
     if (editingId.value) {
       await updatePrompt(editingId.value, { name: form.value.name, description: form.value.description, tags })
       await updatePromptContent(editingId.value, { content: form.value.content, createNewVersion: form.value.createNewVersion })
