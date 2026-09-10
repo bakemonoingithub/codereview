@@ -140,7 +140,7 @@
           :data-source="records"
           row-key="id"
           :loading="recordsLoading"
-          :pagination="false"
+          :pagination="pagination"
           size="small"
         >
           <a-table-column title="时间" data-index="createdAt" width="170" />
@@ -148,7 +148,7 @@
           <a-table-column title="提交" data-index="commitSha" width="90">
             <template #default="{ text }">{{ text ? text.slice(0, 7) : '—' }}</template>
           </a-table-column>
-          <a-table-column title="策略" data-index="strategyId" width="110" />
+          <a-table-column title="策略" data-index="strategyName" width="150" ellipsis />
           <a-table-column title="状态" data-index="status" width="90">
             <template #default="{ text }">
               <a-tag :color="recordStatusColor(text)">{{ recordStatusText(text) }}</a-tag>
@@ -160,7 +160,7 @@
           <a-table-column title="操作" width="150">
             <template #default="{ record }">
               <a-space>
-                <a-button size="small" @click="viewRecord(record)">查看</a-button>
+                <a-button size="small" :loading="snapshotLoading" @click="viewRecord(record)">查看</a-button>
                 <a-button
                   size="small"
                   :disabled="record.status !== 3 && record.status !== 4"
@@ -208,7 +208,7 @@
       :record="recordSnapshot"
       :project-id="projectId"
       :marks="snapshotMarks"
-      :marks-loading="snapshotMarksLoading"
+      :marks-loading="snapshotLoading"
       :strategies="strategies"
     />
   </div>
@@ -236,11 +236,17 @@ import {
   listMarks,
   markIssue,
   type ReviewRecord,
+  type ReviewRecordRow,
   type IssueMark
 } from '@/api/review'
 import { listStrategies } from '@/api/strategy'
 import { summarize, type ChangedFile } from '@/utils/changedFiles'
 import { recordStatusColor, recordStatusText } from '@/utils/reviewResult'
+import {
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  pageAfterSizeChange
+} from '@/utils/records'
 import type { AccuracyStat } from '@/utils/accuracy'
 import ReportPanel from '@/components/ReportPanel.vue'
 import SplitPane from '@/components/SplitPane.vue'
@@ -315,17 +321,33 @@ const binaryCount = computed(() => {
 })
 
 // ---------------- 记录与准确率 ----------------
-const records = ref<any[]>([])
+const records = ref<ReviewRecordRow[]>([])
 const recordsLoading = ref(false)
+// 分页：页码/条数在**前端**持有，服务端只认 pageNum/pageSize（无状态）
+const recordsPageNum = ref(1)
+const recordsPageSize = ref<number>(DEFAULT_PAGE_SIZE)
+const recordsTotal = ref(0)
 const accuracy = ref<AccuracyStat[]>([])
 const accuracyLoading = ref(false)
+
+/** 表格自带分页器；翻页/改条数都走服务端（onChange → onRecordsPageChange），不在前端切数组 */
+const pagination = computed(() => ({
+  current: recordsPageNum.value,
+  pageSize: recordsPageSize.value,
+  total: recordsTotal.value,
+  showSizeChanger: true,
+  pageSizeOptions: PAGE_SIZE_OPTIONS.map(String),
+  showTotal: (total: number) => `共 ${total} 条`,
+  onChange: onRecordsPageChange
+}))
 
 // ---------------- 记录只读查看（全屏模态框） ----------------
 // 快照态与页签里的 review 完全隔离：查看历史记录不得覆盖正在进行的审查
 const recordViewerOpen = ref(false)
 const recordSnapshot = ref<ReviewRecord | null>(null)
 const snapshotMarks = ref<IssueMark[]>([])
-const snapshotMarksLoading = ref(false)
+/** 弹窗取数（完整记录 + 标记）期间置 loading */
+const snapshotLoading = ref(false)
 
 // =====================================================================
 // 分支
@@ -569,7 +591,7 @@ async function onRetry() {
   }
 }
 
-async function onRetryRecord(record: any) {
+async function onRetryRecord(record: ReviewRecordRow) {
   try {
     await retryReview(record.id)
     message.success('已提交重审')
@@ -588,7 +610,8 @@ function startPoll(id: string) {
       if (r.status >= 2) {
         window.clearInterval(pollTimer)
         await loadMarks(id)
-        await Promise.all([loadRecords(), loadAccuracy()])
+        // 新完成的审查一定排在最前，回到第 1 页才看得到
+        await Promise.all([reloadRecordsFromFirstPage(), loadAccuracy()])
       }
     } catch {
       window.clearInterval(pollTimer)
@@ -630,35 +653,72 @@ async function loadAccuracy() {
   }
 }
 
+/**
+ * 拉取当前页（服务端分页）。
+ *
+ * 准确率汇总刻意**不在这里**重拉：它是项目维度的聚合，翻页不会改变它，
+ * 每次翻页重拉纯属浪费，还会让汇总条闪一下 loading。
+ */
 async function loadRecords() {
   recordsLoading.value = true
   try {
-    const page = (await listReviews(projectId, { pageNum: 1, pageSize: 50 })) as any
+    const page = await listReviews(projectId, {
+      pageNum: recordsPageNum.value,
+      pageSize: recordsPageSize.value
+    })
     records.value = page?.records || []
+    recordsTotal.value = typeof page?.total === 'number' ? page.total : records.value.length
   } catch {
     records.value = []
+    recordsTotal.value = 0
   } finally {
     recordsLoading.value = false
   }
 }
 
+/** 跳页 / 改每页条数：两者都要重新问服务端要数据 */
+async function onRecordsPageChange(page: number, pageSize: number) {
+  if (pageSize !== recordsPageSize.value) {
+    // 改条数时按"当前第一条的序号"折算页码，别把用户粗暴打回第一页
+    recordsPageNum.value = pageAfterSizeChange(
+      { pageNum: recordsPageNum.value, pageSize: recordsPageSize.value, total: recordsTotal.value },
+      pageSize
+    )
+    recordsPageSize.value = pageSize
+  } else {
+    recordsPageNum.value = page
+  }
+  await loadRecords()
+}
+
+/** 触发/重审后回到第 1 页重拉：新记录与最新状态一定在首页，否则"提交了却看不到变化" */
+async function reloadRecordsFromFirstPage() {
+  recordsPageNum.value = 1
+  await loadRecords()
+}
+
 /**
  * 查看历史记录：开全屏只读弹窗，**不切页签**。
  *
- * 原实现是切到「代码审查」页签并把记录塞进 `review`，副作用是覆盖掉当前正在进行的审查结果；
- * 弹窗用独立的 `recordSnapshot`，关掉即恢复原状。重审/打标记仍走「代码审查」页签。
+ * 列表接口刻意不返回 `resultJson`（单条可达 MB 级），所以这里必须按 id 拉完整记录；
+ * 弹窗先开、内部转圈，避免点一下之后界面像卡住。取数失败则保持空结果，不弹错误打断浏览。
  */
-async function viewRecord(record: any) {
-  recordSnapshot.value = record as ReviewRecord
+async function viewRecord(record: ReviewRecordRow) {
+  recordSnapshot.value = null
   snapshotMarks.value = []
   recordViewerOpen.value = true
-  snapshotMarksLoading.value = true
+  snapshotLoading.value = true
   try {
-    snapshotMarks.value = await listMarks(record.id)
+    const [full, marks] = await Promise.all([
+      getReview(record.id),
+      listMarks(record.id).catch(() => [] as IssueMark[])
+    ])
+    recordSnapshot.value = full
+    snapshotMarks.value = marks
   } catch {
-    snapshotMarks.value = []
+    recordSnapshot.value = null
   } finally {
-    snapshotMarksLoading.value = false
+    snapshotLoading.value = false
   }
 }
 

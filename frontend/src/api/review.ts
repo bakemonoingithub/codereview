@@ -15,6 +15,31 @@ export interface ReviewRecord {
   createdAt: string
 }
 
+/**
+ * 审查记录**列表行**（对应后端 `ReviewRecordRow`）。
+ *
+ * 刻意**不继承** {@link ReviewRecord}：列表接口不返回 `resultJson` / `scopeJson`
+ * （前者单条可达 MB 级，后者只有详情用得上），而 `strategySnapshotJson` 内含模型明文
+ * apiKey、后端已彻底排除。用独立类型是为了让"想在列表行上读 resultJson"变成编译错误，
+ * 而不是运行时拿到 undefined 后静默渲染空白。
+ *
+ * 需要完整结果请用 {@link getReview} 按 id 取详情。
+ */
+export interface ReviewRecordRow {
+  id: string
+  projectId: string
+  strategyId?: string
+  /** 列表查询顺带 join 出来的策略名，策略已删时为空 */
+  strategyName?: string
+  branch: string
+  commitSha?: string
+  status: number
+  progress: number
+  startedAt?: string
+  finishedAt?: string
+  createdAt: string
+}
+
 export interface ReviewIssue {
   severity: string
   category?: string
@@ -36,6 +61,17 @@ export interface ReviewUnit {
 export interface ReviewResult {
   units: ReviewUnit[]
   summary?: string
+}
+
+/**
+ * 分页响应的最小形状（后端为 MyBatis-Plus `Page` 的序列化结果：
+ * `{records,total,current,size}`，另附 `pages` 等派生字段，前端不用）。
+ */
+export interface Page<T> {
+  records: T[]
+  total: number
+  current: number
+  size: number
 }
 
 export function triggerReview(
@@ -83,7 +119,7 @@ export function getReview(id: string) {
 }
 
 export function listReviews(projectId: string, params: { pageNum?: number; pageSize?: number } = {}) {
-  return request.get(`/projects/${projectId}/reviews`, { params }) as Promise<any>
+  return request.get(`/projects/${projectId}/reviews`, { params }) as Promise<Page<ReviewRecordRow>>
 }
 
 export function parseResult(json?: string): any {

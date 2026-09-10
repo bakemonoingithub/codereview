@@ -86,6 +86,15 @@ describe('ReviewResult 只读降级', () => {
     expect(wrapper.text()).toContain('尚未触发审查')
   })
 
+  it('只读态记录尚未到位时提示"正在载入"，而不是让人误以为这条记录是空的', () => {
+    const wrapper = mount(ReviewResult, {
+      props: { record: null, projectId: 'p1', readonly: true },
+      ...options
+    })
+    expect(wrapper.text()).toContain('正在载入审查记录')
+    expect(wrapper.text()).not.toContain('尚未触发审查')
+  })
+
   it('readonly 打开时根节点带 is-readonly', () => {
     const wrapper = mount(ReviewResult, {
       props: { record: makeRecord({ status: 3 }), projectId: 'p1', readonly: true },

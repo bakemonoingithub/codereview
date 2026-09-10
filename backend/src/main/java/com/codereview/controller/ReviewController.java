@@ -3,6 +3,7 @@ package com.codereview.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.Result;
 import com.codereview.dto.ReviewRecordResp;
+import com.codereview.dto.ReviewRecordRow;
 import com.codereview.dto.ReviewTriggerReq;
 import com.codereview.entity.ReviewRecord;
 import com.codereview.service.ReviewService;
@@ -36,9 +37,9 @@ public class ReviewController {
     }
 
     @GetMapping("/projects/{projectId}/reviews")
-    public Result<Page<ReviewRecord>> list(@PathVariable Long projectId,
-                                           @RequestParam(defaultValue = "1") long pageNum,
-                                           @RequestParam(defaultValue = "10") long pageSize) {
+    public Result<Page<ReviewRecordRow>> list(@PathVariable Long projectId,
+                                              @RequestParam(defaultValue = "1") long pageNum,
+                                              @RequestParam(defaultValue = "10") long pageSize) {
         return Result.ok(reviewService.list(projectId, pageNum, pageSize));
     }
 

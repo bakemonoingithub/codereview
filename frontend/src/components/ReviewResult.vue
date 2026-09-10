@@ -1,6 +1,6 @@
 <template>
   <div class="review-result" :class="{ 'is-readonly': readonly }">
-    <div v-if="!record" class="placeholder">尚未触发审查</div>
+    <div v-if="!record" class="placeholder">{{ placeholderText }}</div>
     <template v-else>
       <div v-if="running" class="mb8">
         <a-progress :percent="record.progress" status="active" />
@@ -132,6 +132,12 @@ const emit = defineEmits<{
   (e: 'retry'): void
   (e: 'mark', unitPath: string, issueIndex: number, markValue: number): void
 }>()
+
+/**
+ * 记录为空有两义：页签里"还没触发过"，与只读弹窗里"完整记录还在路上"。
+ * 后者若显示"尚未触发审查"，会让人以为这条记录是空的。
+ */
+const placeholderText = computed(() => (props.readonly ? '正在载入审查记录…' : '尚未触发审查'))
 
 const parsed = computed<any>(() => parseResultJson(props.record?.resultJson))
 const resultType = computed(() => inferResultType(parsed.value))

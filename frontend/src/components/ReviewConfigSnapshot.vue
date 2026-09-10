@@ -64,13 +64,8 @@
       </template>
 
       <template #right>
-        <a-spin :spinning="marksLoading">
-          <ReviewResult
-            :record="record"
-            :project-id="projectId"
-            :marks="marks"
-            readonly
-          />
+        <a-spin :spinning="marksLoading" tip="加载审查结果…">
+          <ReviewResult :record="record" :project-id="projectId" :marks="marks" readonly />
         </a-spin>
       </template>
     </SplitPane>

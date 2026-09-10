@@ -1,10 +1,13 @@
 package com.codereview.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
+import com.codereview.common.PageLimits;
 import com.codereview.common.ResultCode;
 import com.codereview.dto.ReviewRecordResp;
+import com.codereview.dto.ReviewRecordRow;
 import com.codereview.dto.ReviewTriggerReq;
 import com.codereview.entity.ModelConfig;
 import com.codereview.entity.Project;
@@ -28,6 +31,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -130,11 +136,51 @@ public class ReviewService {
                 r.getStartedAt(), r.getFinishedAt(), r.getCreatedAt());
     }
 
-    public Page<ReviewRecord> list(Long projectId, long pageNum, long pageSize) {
-        return reviewRecordMapper.selectPage(new Page<>(pageNum, pageSize),
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ReviewRecord>()
+    /**
+     * 审查记录列表（分页）。
+     *
+     * 三个刻意的选择：
+     * <ol>
+     *   <li><b>列投影</b>：只 select 列表真正用到的列，绝不带出 {@code result_json} /
+     *       {@code scope_json} / {@code strategy_snapshot_json}。前者单条可达 MB 级（内含每个单元的
+     *       LLM 原文），后者**内含模型明文 apiKey** —— 分页会让这个泄漏被反复触发。</li>
+     *   <li><b>pageSize 截断</b>：见 {@link PageLimits}，拦截器没有 maxLimit，不兜住就能被要求查十万行。</li>
+     *   <li><b>策略名批量补齐</b>：列表要显示策略名而记录只存 id，一次 {@code selectBatchIds} 补齐，
+     *       避免逐行查询（N+1）。</li>
+     * </ol>
+     */
+    public Page<ReviewRecordRow> list(Long projectId, long pageNum, long pageSize) {
+        Page<ReviewRecord> page = reviewRecordMapper.selectPage(
+                new Page<>(PageLimits.clampPageNum(pageNum), PageLimits.clampPageSize(pageSize)),
+                new LambdaQueryWrapper<ReviewRecord>()
+                        .select(ReviewRecord::getId, ReviewRecord::getProjectId, ReviewRecord::getStrategyId,
+                                ReviewRecord::getBranch, ReviewRecord::getCommitSha, ReviewRecord::getStatus,
+                                ReviewRecord::getProgress, ReviewRecord::getStartedAt, ReviewRecord::getFinishedAt,
+                                ReviewRecord::getCreatedAt)
                         .eq(ReviewRecord::getProjectId, projectId)
                         .orderByDesc(ReviewRecord::getCreatedAt));
+
+        Map<Long, String> strategyNames = loadStrategyNames(page.getRecords());
+        Page<ReviewRecordRow> rows = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        rows.setRecords(page.getRecords().stream()
+                .map(r -> new ReviewRecordRow(r.getId(), r.getProjectId(), r.getStrategyId(),
+                        strategyNames.get(r.getStrategyId()), r.getBranch(), r.getCommitSha(),
+                        r.getStatus(), r.getProgress(), r.getStartedAt(), r.getFinishedAt(), r.getCreatedAt()))
+                .toList());
+        return rows;
+    }
+
+    private Map<Long, String> loadStrategyNames(List<ReviewRecord> records) {
+        List<Long> ids = records.stream()
+                .map(ReviewRecord::getStrategyId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return strategyMapper.selectBatchIds(ids).stream()
+                .collect(Collectors.toMap(ReviewStrategy::getId, s -> s.getName() == null ? "" : s.getName()));
     }
 
     private ReviewRecord getOrThrow(Long reviewId) {
