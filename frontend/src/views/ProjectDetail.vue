@@ -160,7 +160,7 @@
           <a-table-column title="操作" width="150">
             <template #default="{ record }">
               <a-space>
-                <a-button size="small" :loading="snapshotLoading" @click="viewRecord(record)">查看</a-button>
+                <a-button size="small" @click="viewRecord(record)">查看</a-button>
                 <a-button
                   size="small"
                   :disabled="record.status !== 3 && record.status !== 4"
@@ -205,10 +205,8 @@
     <!-- 查看历史记录：全屏只读快照，不影响页签里正在进行的审查 -->
     <ReviewRecordViewer
       v-model:open="recordViewerOpen"
-      :record="recordSnapshot"
+      :record-id="recordViewerId"
       :project-id="projectId"
-      :marks="snapshotMarks"
-      :marks-loading="snapshotLoading"
       :strategies="strategies"
     />
   </div>
@@ -242,11 +240,7 @@ import {
 import { listStrategies } from '@/api/strategy'
 import { summarize, type ChangedFile } from '@/utils/changedFiles'
 import { recordStatusColor, recordStatusText } from '@/utils/reviewResult'
-import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-  pageAfterSizeChange
-} from '@/utils/records'
+import { useRecordPagination } from '@/utils/useRecordPagination'
 import type { AccuracyStat } from '@/utils/accuracy'
 import ReportPanel from '@/components/ReportPanel.vue'
 import SplitPane from '@/components/SplitPane.vue'
@@ -321,33 +315,14 @@ const binaryCount = computed(() => {
 })
 
 // ---------------- 记录与准确率 ----------------
-const records = ref<ReviewRecordRow[]>([])
-const recordsLoading = ref(false)
-// 分页：页码/条数在**前端**持有，服务端只认 pageNum/pageSize（无状态）
-const recordsPageNum = ref(1)
-const recordsPageSize = ref<number>(DEFAULT_PAGE_SIZE)
-const recordsTotal = ref(0)
+// 分页状态由 useRecordPagination 持有（与"报告-选择审查记录"共用同一套分页语义）
 const accuracy = ref<AccuracyStat[]>([])
 const accuracyLoading = ref(false)
 
-/** 表格自带分页器；翻页/改条数都走服务端（onChange → onRecordsPageChange），不在前端切数组 */
-const pagination = computed(() => ({
-  current: recordsPageNum.value,
-  pageSize: recordsPageSize.value,
-  total: recordsTotal.value,
-  showSizeChanger: true,
-  pageSizeOptions: PAGE_SIZE_OPTIONS.map(String),
-  showTotal: (total: number) => `共 ${total} 条`,
-  onChange: onRecordsPageChange
-}))
-
 // ---------------- 记录只读查看（全屏模态框） ----------------
-// 快照态与页签里的 review 完全隔离：查看历史记录不得覆盖正在进行的审查
+// 只持有"看哪一条"：完整记录与标记由弹窗自己按 id 拉，不污染页签里正在进行的审查
 const recordViewerOpen = ref(false)
-const recordSnapshot = ref<ReviewRecord | null>(null)
-const snapshotMarks = ref<IssueMark[]>([])
-/** 弹窗取数（完整记录 + 标记）期间置 loading */
-const snapshotLoading = ref(false)
+const recordViewerId = ref('')
 
 // =====================================================================
 // 分支
@@ -595,7 +570,8 @@ async function onRetryRecord(record: ReviewRecordRow) {
   try {
     await retryReview(record.id)
     message.success('已提交重审')
-    await loadRecords()
+    // 停在第 1 页是因为重审后这条记录会回到列表最前
+    await reloadRecordsFromFirstPage()
   } catch (e: any) {
     message.error(e?.message || '重审失败')
   }
@@ -659,71 +635,36 @@ async function loadAccuracy() {
  * 准确率汇总刻意**不在这里**重拉：它是项目维度的聚合，翻页不会改变它，
  * 每次翻页重拉纯属浪费，还会让汇总条闪一下 loading。
  */
-async function loadRecords() {
-  recordsLoading.value = true
+async function loadRecordsPage(params: { pageNum: number; pageSize: number }) {
   try {
-    const page = await listReviews(projectId, {
-      pageNum: recordsPageNum.value,
-      pageSize: recordsPageSize.value
-    })
-    records.value = page?.records || []
-    recordsTotal.value = typeof page?.total === 'number' ? page.total : records.value.length
+    // 原样返回：`records`/`total` 的兜底语义统一由 useRecordPagination 负责，
+    // 这里若把 total 写成 `?? 0`，就把"后端没给 total"这个信号提前抹掉了
+    return await listReviews(projectId, params)
   } catch {
-    records.value = []
-    recordsTotal.value = 0
-  } finally {
-    recordsLoading.value = false
+    return null
   }
 }
 
-/** 跳页 / 改每页条数：两者都要重新问服务端要数据 */
-async function onRecordsPageChange(page: number, pageSize: number) {
-  if (pageSize !== recordsPageSize.value) {
-    // 改条数时按"当前第一条的序号"折算页码，别把用户粗暴打回第一页
-    recordsPageNum.value = pageAfterSizeChange(
-      { pageNum: recordsPageNum.value, pageSize: recordsPageSize.value, total: recordsTotal.value },
-      pageSize
-    )
-    recordsPageSize.value = pageSize
-  } else {
-    recordsPageNum.value = page
-  }
-  await loadRecords()
-}
-
-/** 触发/重审后回到第 1 页重拉：新记录与最新状态一定在首页，否则"提交了却看不到变化" */
-async function reloadRecordsFromFirstPage() {
-  recordsPageNum.value = 1
-  await loadRecords()
-}
+const {
+  records,
+  loading: recordsLoading,
+  pagination,
+  reloadFromFirstPage: reloadRecordsFromFirstPage
+} = useRecordPagination<ReviewRecordRow>({ loader: loadRecordsPage })
 
 /**
  * 查看历史记录：开全屏只读弹窗，**不切页签**。
  *
- * 列表接口刻意不返回 `resultJson`（单条可达 MB 级），所以这里必须按 id 拉完整记录；
- * 弹窗先开、内部转圈，避免点一下之后界面像卡住。取数失败则保持空结果，不弹错误打断浏览。
+ * 只把 id 交给弹窗，由弹窗自己拉完整记录与标记 —— 列表接口刻意不返回 `resultJson`
+ * （单条可达 MB 级），取数逻辑放一处，免得每个调用方各写一遍。
  */
-async function viewRecord(record: ReviewRecordRow) {
-  recordSnapshot.value = null
-  snapshotMarks.value = []
+function viewRecord(record: ReviewRecordRow) {
+  recordViewerId.value = record.id
   recordViewerOpen.value = true
-  snapshotLoading.value = true
-  try {
-    const [full, marks] = await Promise.all([
-      getReview(record.id),
-      listMarks(record.id).catch(() => [] as IssueMark[])
-    ])
-    recordSnapshot.value = full
-    snapshotMarks.value = marks
-  } catch {
-    recordSnapshot.value = null
-  } finally {
-    snapshotLoading.value = false
-  }
 }
 
 onMounted(async () => {
-  await Promise.all([loadBranches(), loadStrategies(), loadRecords(), loadAccuracy()])
+  await Promise.all([loadBranches(), loadStrategies(), loadAccuracy()])
 })
 
 onUnmounted(() => {

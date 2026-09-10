@@ -136,6 +136,10 @@ public class ReviewService {
                 r.getStartedAt(), r.getFinishedAt(), r.getCreatedAt());
     }
 
+    public Page<ReviewRecordRow> list(Long projectId, long pageNum, long pageSize) {
+        return list(projectId, pageNum, pageSize, null);
+    }
+
     /**
      * 审查记录列表（分页）。
      *
@@ -148,17 +152,23 @@ public class ReviewService {
      *   <li><b>策略名批量补齐</b>：列表要显示策略名而记录只存 id，一次 {@code selectBatchIds} 补齐，
      *       避免逐行查询（N+1）。</li>
      * </ol>
+     *
+     * @param statusMin 可选状态下限（含）：只有 {@code status >= statusMin} 的记录会被返回。
+     *                  报告生成页只要已完成记录（2）—— 未完成记录还没有 resultJson，进了报告也没内容，
+     *                  却会占满整页甚至造成空页，且让 total 与"可选记录数"对不上。
      */
-    public Page<ReviewRecordRow> list(Long projectId, long pageNum, long pageSize) {
+    public Page<ReviewRecordRow> list(Long projectId, long pageNum, long pageSize, Integer statusMin) {
+        LambdaQueryWrapper<ReviewRecord> wrapper = new LambdaQueryWrapper<ReviewRecord>()
+                .select(ReviewRecord::getId, ReviewRecord::getProjectId, ReviewRecord::getStrategyId,
+                        ReviewRecord::getBranch, ReviewRecord::getCommitSha, ReviewRecord::getStatus,
+                        ReviewRecord::getProgress, ReviewRecord::getStartedAt, ReviewRecord::getFinishedAt,
+                        ReviewRecord::getCreatedAt)
+                .eq(ReviewRecord::getProjectId, projectId)
+                .ge(statusMin != null, ReviewRecord::getStatus, statusMin)
+                .orderByDesc(ReviewRecord::getCreatedAt);
+
         Page<ReviewRecord> page = reviewRecordMapper.selectPage(
-                new Page<>(PageLimits.clampPageNum(pageNum), PageLimits.clampPageSize(pageSize)),
-                new LambdaQueryWrapper<ReviewRecord>()
-                        .select(ReviewRecord::getId, ReviewRecord::getProjectId, ReviewRecord::getStrategyId,
-                                ReviewRecord::getBranch, ReviewRecord::getCommitSha, ReviewRecord::getStatus,
-                                ReviewRecord::getProgress, ReviewRecord::getStartedAt, ReviewRecord::getFinishedAt,
-                                ReviewRecord::getCreatedAt)
-                        .eq(ReviewRecord::getProjectId, projectId)
-                        .orderByDesc(ReviewRecord::getCreatedAt));
+                new Page<>(PageLimits.clampPageNum(pageNum), PageLimits.clampPageSize(pageSize)), wrapper);
 
         Map<Long, String> strategyNames = loadStrategyNames(page.getRecords());
         Page<ReviewRecordRow> rows = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());

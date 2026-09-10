@@ -11,11 +11,13 @@ import { defineComponent, h } from 'vue'
 /**
  * 保留 `disabled` 属性落到根元素，便于断言置灰。
  *
- * 两个坑：
- * 1. `disabled` 必须显式声明为 Boolean prop，否则 Vue 会按"未知属性"把 `false`
+ * 三个坑：
+ * 1. 插槽必须**调用**再交给 `h`（`h(tag, {}, slots.default)` 传的是函数本身，什么都不会渲染，
+ *    于是按钮文案在 DOM 里是空的，"按钮文案 + 置灰"类断言全部落空）；
+ * 2. `disabled` 必须显式声明为 Boolean prop，否则 Vue 会按"未知属性"把 `false`
  *    渲染成字符串 `disabled="false"`（看起来像置灰了，其实没有）；
- * 2. 声明成 prop 之后，Vue 的**属性继承不会自动把它应用到根元素**（继承只覆盖
- *    `$attrs` 里的东西），必须自己显式渲染，否则 `disabled` 在 DOM 里彻底消失。
+ * 3. 声明成 prop 之后，Vue 的**属性继承不会自动把它应用到根元素**，必须自己显式渲染，
+ *    否则 `disabled` 在 DOM 里彻底消失。
  */
 export const attrsStub = (tag: string) =>
   defineComponent({
@@ -27,15 +29,62 @@ export const attrsStub = (tag: string) =>
     },
     setup(props, { slots, attrs }) {
       return () =>
-        h(tag, { ...attrs, disabled: props.disabled || undefined }, slots.default ? slots.default() : [])
+        h(tag, { ...attrs, disabled: props.disabled || undefined }, [
+          slots.default ? slots.default() : []
+        ])
     }
   })
 
-/** 不关心内容、只需要占位的第三方组件 */
+/**
+ * 不关心内容、只需要占位的第三方组件。
+ *
+ * **必须把 prop 透传成插槽 props**：`a-table-column` 的 `#default="{ text }"` 就靠它取值，
+ * 不透传的话插槽一解构就抛 `Cannot destructure property 'text' of 'undefined'`，
+ * 或者更隐蔽地渲染成空字符串 —— 于是"状态列文案对不对"这类断言测的是空气。
+ */
 export const silentStub = (tag: string) =>
   defineComponent({
-    setup(_props, { slots }) {
-      return () => h(tag, {}, slots.default ? slots.default() : [])
+    setup(props, { slots }) {
+      return () => h(tag, {}, slots.default ? slots.default(props as any) : [])
+    }
+  })
+
+/**
+ * 复选框 stub：**内部必须真的放一个 `<input type="checkbox">`**。
+ *
+ * antd 的表格行选择渲染的是 `a-checkbox`，测试里要像用户那样勾选就只能靠设置这个
+ * input 的 `checked` 并派发 change；只渲染一个空标签的话，行选择相关的测试
+ * 会以"找不到 checkbox"失败 —— 测不到东西，却看不出是 stub 的锅。
+ */
+export const checkboxStub = () =>
+  defineComponent({
+    props: {
+      checked: { type: Boolean, default: false },
+      indeterminate: { type: Boolean, default: false },
+      disabled: { type: Boolean, default: false }
+    },
+    emits: ['change', 'update:checked'],
+    setup(props, { emit, slots }) {
+      return () =>
+        h('a-checkbox-stub', { disabled: props.disabled || undefined }, [
+          h('input', {
+            type: 'checkbox',
+            checked: props.checked,
+            disabled: props.disabled,
+            onChange: (event: Event) => {
+              const native = event as MouseEvent
+              const checked = (native.target as HTMLInputElement).checked
+              emit('update:checked', checked)
+              // 形状对齐 antd CheckboxChangeEvent：表格的行选择会读 nativeEvent.shiftKey
+              // 做区间选择，少了这个字段直接抛 TypeError
+              emit('change', {
+                target: { checked },
+                nativeEvent: { shiftKey: !!native.shiftKey }
+              })
+            }
+          }),
+          slots.default ? slots.default() : []
+        ])
     }
   })
 
@@ -43,7 +92,7 @@ export const antStubs = {
   'a-button': attrsStub('a-button-stub'),
   'a-select': attrsStub('a-select-stub'),
   'a-select-option': attrsStub('a-select-option-stub'),
-  'a-checkbox': attrsStub('a-checkbox-stub'),
+  'a-checkbox': checkboxStub(),
   'a-input': attrsStub('a-input-stub'),
   'a-input-password': attrsStub('a-input-password-stub'),
   'a-textarea': attrsStub('a-textarea-stub'),
@@ -65,3 +114,16 @@ export const antStubs = {
   'a-form': silentStub('a-form-stub'),
   'a-form-item': silentStub('a-form-item-stub')
 }
+
+/**
+ * 给每个 stub 补上**组件名**（`ATable`、`AButton`…）。
+ *
+ * 没有名字时 `findAllComponents({ name: 'ATable' })` 一律找不到 —— 测试会以
+ * "找不到组件 → 读 undefined 的 props"这种看不出根因的方式失败。
+ */
+export const namedAntStubs = Object.fromEntries(
+  Object.entries(antStubs).map(([key, component]) => {
+    const name = 'A' + key.slice(2).replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())
+    return [key, { ...component, name }]
+  })
+)

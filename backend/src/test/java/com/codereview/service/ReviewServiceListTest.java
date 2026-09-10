@@ -202,4 +202,29 @@ class ReviewServiceListTest {
         assertEquals(1, page.getRecords().size());
         assertNull(page.getRecords().get(0).strategyName());
     }
+
+    @Test
+    void listAppliesStatusFilterWhenStatusMinGiven() {
+        ArgumentCaptor<LambdaQueryWrapper<ReviewRecord>> captor = stubPage(List.of(), 0, 1, 20);
+        when(strategyMapper.selectBatchIds(any())).thenReturn(List.of());
+
+        // 报告生成页只要已完成记录；过滤必须下推到 SQL，否则 total 会把未完成的也算进去
+        service.list(9L, 1, 20, 2);
+
+        String sql = captor.getValue().getSqlSegment();
+        assertTrue(sql.contains("status"), "statusMin 应转成 status 条件: " + sql);
+        assertTrue(sql.contains(">="), "statusMin 是含下界: " + sql);
+    }
+
+    @Test
+    void listOmitsStatusFilterWhenStatusMinAbsent() {
+        ArgumentCaptor<LambdaQueryWrapper<ReviewRecord>> captor = stubPage(List.of(), 0, 1, 20);
+        when(strategyMapper.selectBatchIds(any())).thenReturn(List.of());
+
+        service.list(9L, 1, 20);
+
+        String sql = captor.getValue().getSqlSegment();
+        // 审查记录页签要看全部记录，不能被默认加上状态过滤
+        assertFalse(sql.contains("status"), "未指定 statusMin 时不应出现 status 条件: " + sql);
+    }
 }

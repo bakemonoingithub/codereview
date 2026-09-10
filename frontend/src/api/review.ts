@@ -118,7 +118,10 @@ export function getReview(id: string) {
   return request.get(`/reviews/${id}`) as Promise<ReviewRecord>
 }
 
-export function listReviews(projectId: string, params: { pageNum?: number; pageSize?: number } = {}) {
+export function listReviews(
+  projectId: string,
+  params: { pageNum?: number; pageSize?: number; statusMin?: number } = {}
+) {
   return request.get(`/projects/${projectId}/reviews`, { params }) as Promise<Page<ReviewRecordRow>>
 }
 
