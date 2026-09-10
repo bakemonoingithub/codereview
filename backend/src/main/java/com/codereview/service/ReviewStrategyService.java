@@ -12,12 +12,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
 
 /**
- * 审查策略（M2 最小：列表 + 新建；仅支持 llm-review 分析器，params={modelConfigId}）
+ * 审查策略（M3：列表 + 新建；支持 llm-review/coupling/design-pattern 三种分析器）
  */
 @Service
 public class ReviewStrategyService {
-
-    private static final int ANALYZER_LLM_REVIEW = 1;
 
     private final ReviewStrategyMapper strategyMapper;
     private final ModelConfigService modelConfigService;
@@ -32,12 +30,19 @@ public class ReviewStrategyService {
         if (req.name() == null || req.name().isBlank() || req.modelConfigId() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR);
         }
+        int analyzerType = req.analyzerType() == null ? 1 : req.analyzerType();
+        if (analyzerType < 1 || analyzerType > 3) {
+            throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
+        }
         ModelConfig model = modelConfigService.getOrThrow(req.modelConfigId());
         ObjectNode params = objectMapper.createObjectNode();
         params.put("modelConfigId", model.getId().toString());
+        if (analyzerType == 2 && req.threshold() != null) {
+            params.put("threshold", req.threshold());
+        }
         ReviewStrategy s = new ReviewStrategy();
         s.setName(req.name());
-        s.setAnalyzerType(ANALYZER_LLM_REVIEW);
+        s.setAnalyzerType(analyzerType);
         try {
             s.setParamsJson(objectMapper.writeValueAsString(params));
         } catch (Exception e) {

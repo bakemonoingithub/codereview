@@ -28,8 +28,6 @@ import java.util.List;
 @Service
 public class ReviewService {
 
-    private static final int ANALYZER_LLM_REVIEW = 1;
-
     private final ReviewRecordMapper reviewRecordMapper;
     private final ProjectMapper projectMapper;
     private final ReviewStrategyMapper strategyMapper;
@@ -64,7 +62,8 @@ public class ReviewService {
         if (strategy == null) {
             throw new BusinessException(ResultCode.STRATEGY_NOT_FOUND);
         }
-        if (strategy.getAnalyzerType() == null || strategy.getAnalyzerType() != ANALYZER_LLM_REVIEW) {
+        int analyzerType = strategy.getAnalyzerType() == null ? 0 : strategy.getAnalyzerType();
+        if (analyzerType < 1 || analyzerType > 3) {
             throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
         }
         ModelConfig model = resolveModelConfig(strategy);
@@ -157,6 +156,13 @@ public class ReviewService {
         m.put("baseUrl", model.getBaseUrl());
         m.put("apiKey", model.getToken());
         m.put("modelName", model.getModelName());
+        try {
+            JsonNode params = objectMapper.readTree(
+                    strategy.getParamsJson() == null || strategy.getParamsJson().isBlank() ? "{}" : strategy.getParamsJson());
+            root.set("params", params);
+        } catch (Exception e) {
+            throw new IllegalStateException("序列化策略快照失败", e);
+        }
         return root.toString();
     }
 }
