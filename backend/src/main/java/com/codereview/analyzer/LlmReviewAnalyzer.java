@@ -103,7 +103,7 @@ public class LlmReviewAnalyzer implements Analyzer {
         List<UnitTask> tasks = new ArrayList<>();
         for (String path : paths) {
             try {
-                String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(), ctx.ref().owner(), ctx.ref().repo(), ctx.branch(), path);
+                String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(), ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
                 for (ReviewUnit u : Chunker.chunk(path, code, props.getChunkMaxChars())) {
                     tasks.add(UnitTask.of(u));
                 }
@@ -143,7 +143,7 @@ public class LlmReviewAnalyzer implements Analyzer {
         for (String path : ctx.scope()) {
             try {
                 String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                        ctx.ref().owner(), ctx.ref().repo(), ctx.branch(), path);
+                        ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
                 merged.append("==== 文件: ").append(path).append(" ====\n");
                 merged.append(code).append("\n\n");
                 fetched++;

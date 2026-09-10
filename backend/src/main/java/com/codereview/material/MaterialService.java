@@ -21,11 +21,13 @@ public class MaterialService {
     }
 
     public Material prepare(String token, Integer credentialType, GitRepoRef ref, String branch, String commitSha, List<String> scope) {
+        // 优先按 commit sha 取内容：分支会移动，按分支取会与记录下来的提交不一致
+        String contentRef = (commitSha == null || commitSha.isBlank()) ? branch : commitSha;
         return cache.getOrCompute(MaterialCache.key(commitSha, scope), () -> {
             List<SourceFile> files = new ArrayList<>();
             for (String path : scope) {
                 try {
-                    files.add(new SourceFile(path, gitHostClient.rawFile(token, credentialType, ref.owner(), ref.repo(), branch, path)));
+                    files.add(new SourceFile(path, gitHostClient.rawFile(token, credentialType, ref.owner(), ref.repo(), contentRef, path)));
                 } catch (Exception ignored) {
                     // 单文件拉取失败跳过
                 }

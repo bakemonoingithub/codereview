@@ -61,6 +61,11 @@
             <artifactId>javaparser-core</artifactId>
             <version>3.28.2</version>
         </dependency>
+        <!-- Git 侧内存缓存：按 commit sha 缓存单提交详情与文件内容（sha 不可变，缓存天然正确） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

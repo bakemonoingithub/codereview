@@ -6,7 +6,10 @@ import com.codereview.common.ResultCode;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
 import com.codereview.entity.Project;
+import com.codereview.git.ChangedFile;
+import com.codereview.git.CommitDetail;
 import com.codereview.git.CommitInfo;
+import com.codereview.git.CommitPage;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitRepoRef;
 import com.codereview.git.GitTreeEntry;
@@ -75,6 +78,41 @@ public class ProjectService {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
         return gitHostClient.changedFiles(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), base, head);
+    }
+
+    /** 提交列表（分页）：返回 hasMore 供前端滚动加载。 */
+    public CommitPage commitPage(Long projectId, String branch, int page, int pageSize) {
+        Project p = getOrThrow(projectId);
+        GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
+        return gitHostClient.commitPage(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(),
+                branch, page, pageSize);
+    }
+
+    /**
+     * 单提交详情（列表视图）：剥离每文件 patch，避免大提交首屏传巨量内容；
+     * patch 由 {@link #filePatch} 按需单独获取（命中后端缓存，不会重复打远端）。
+     */
+    public CommitDetail commitDetail(Long projectId, String sha) {
+        return loadCommitDetail(projectId, sha).withoutPatches();
+    }
+
+    /** 指定文件在该提交中的 patch；无 patch（二进制 / 过大 / 未变更）时返回 null。 */
+    public String filePatch(Long projectId, String sha, String path) {
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        return loadCommitDetail(projectId, sha).files().stream()
+                .filter(f -> path.equals(f.path()))
+                .filter(ChangedFile::hasPatch)
+                .map(ChangedFile::patch)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private CommitDetail loadCommitDetail(Long projectId, String sha) {
+        Project p = getOrThrow(projectId);
+        GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
+        return gitHostClient.commitDetail(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), sha);
     }
 
     private Project getOrThrow(Long projectId) {

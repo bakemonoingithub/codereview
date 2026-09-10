@@ -50,3 +50,11 @@ review:
 # 项目未填令牌时自动使用；认证后限额 5000 次/小时，匿名仅 60 次/小时/IP
 github:
   token: ${GITHUB_TOKEN:}
+
+# Git 侧内存缓存（单实例；均有默认值，可省略）
+# 只缓存 commit sha 下的不可变内容——分支名会移动，按分支缓存会读到过期数据
+git:
+  cache:
+    commit-detail-max-size: 200   # 单提交详情缓存条数上限
+    raw-file-max-size: 500        # 文件内容缓存条数上限
+    expire-minutes: 30            # 写入后过期时间（分钟）

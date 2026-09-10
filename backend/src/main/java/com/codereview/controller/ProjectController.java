@@ -5,7 +5,9 @@ import com.codereview.common.Result;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
 import com.codereview.entity.Project;
+import com.codereview.git.CommitDetail;
 import com.codereview.git.CommitInfo;
+import com.codereview.git.CommitPage;
 import com.codereview.service.ProjectService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,5 +60,31 @@ public class ProjectController {
                                              @RequestParam String base,
                                              @RequestParam String head) {
         return Result.ok(projectService.changedFiles(id, base, head));
+    }
+
+    /** 提交列表（分页）：返回 {commits, hasMore}，供前端滚动加载。 */
+    @GetMapping("/{id}/commits/page")
+    public Result<CommitPage> commitsPage(@PathVariable Long id,
+                                          @RequestParam String branch,
+                                          @RequestParam(defaultValue = "1") int page,
+                                          @RequestParam(defaultValue = "50") int pageSize) {
+        return Result.ok(projectService.commitPage(id, branch, page, pageSize));
+    }
+
+    /**
+     * 单提交详情（列表视图，不含 patch）。
+     * sha 用正则约束为 7–40 位十六进制，避免与 {@code /commits/page} 的路径匹配产生歧义。
+     */
+    @GetMapping("/{id}/commits/{sha:[0-9a-fA-F]{7,40}}")
+    public Result<CommitDetail> commitDetail(@PathVariable Long id, @PathVariable String sha) {
+        return Result.ok(projectService.commitDetail(id, sha));
+    }
+
+    /** 单个变更文件在该提交中的 patch（按需获取，命中后端缓存）。无 patch 时 data 省略。 */
+    @GetMapping("/{id}/commits/{sha:[0-9a-fA-F]{7,40}}/patch")
+    public Result<String> filePatch(@PathVariable Long id,
+                                    @PathVariable String sha,
+                                    @RequestParam String path) {
+        return Result.ok(projectService.filePatch(id, sha, path));
     }
 }
