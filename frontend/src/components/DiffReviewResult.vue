@@ -61,6 +61,7 @@
                         size="small"
                         :type="markOf(unit.path, item.issueIndex) === MARK_FALSE_POSITIVE ? 'primary' : 'default'"
                         danger
+                        :disabled="readonly"
                         @click="$emit('mark', unit.path, item.issueIndex, MARK_FALSE_POSITIVE)"
                       >
                         误报
@@ -68,12 +69,13 @@
                       <a-button
                         size="small"
                         :type="markOf(unit.path, item.issueIndex) === MARK_ACCEPTED ? 'primary' : 'default'"
+                        :disabled="readonly"
                         @click="$emit('mark', unit.path, item.issueIndex, MARK_ACCEPTED)"
                       >
                         已采纳
                       </a-button>
                       <a-button
-                        v-if="markOf(unit.path, item.issueIndex)"
+                        v-if="markOf(unit.path, item.issueIndex) && !readonly"
                         size="small"
                         type="text"
                         @click="$emit('mark', unit.path, item.issueIndex, MARK_NONE)"
@@ -121,6 +123,8 @@ const props = defineProps<{
   recordId: string
   result: any
   marks: IssueMark[]
+  /** 只读（查看历史记录）：行内评论的"误报/已采纳/撤销"置灰，不写库 */
+  readonly?: boolean
 }>()
 
 defineEmits<{

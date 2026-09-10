@@ -120,93 +120,14 @@
           </template>
 
           <template #right>
-            <div v-if="!review" class="placeholder">尚未触发审查</div>
-            <template v-else>
-              <div v-if="review.status < 2" class="mb8">
-                <a-progress :percent="review.progress" status="active" />
-                <p class="summary">{{ review.status === 0 ? '排队中…' : '审查执行中…' }}</p>
-              </div>
-              <div class="result-head">
-                <a-alert
-                  v-if="review.status >= 2"
-                  :type="statusAlert.type"
-                  :message="statusAlert.text"
-                  show-icon
-                  class="flex1"
-                />
-                <a-button v-if="review.status === 3 || review.status === 4" :loading="retrying" @click="onRetry">
-                  重审失败单元
-                </a-button>
-              </div>
-              <p v-if="parsed.summary" class="summary">{{ parsed.summary }}</p>
-
-              <DiffReviewResult
-                v-if="resultType === 'diff-review'"
-                :project-id="projectId"
-                :commit-sha="review.commitSha || ''"
-                :record-id="review.id"
-                :result="parsed"
-                :marks="marks"
-                @mark="onMark"
-              />
-
-              <a-collapse v-else-if="resultType === 'llm-review' && parsed.units?.length">
-                <a-collapse-panel v-for="(u, i) in parsed.units" :key="i" :header="unitTitle(u)">
-                  <a-space style="margin-bottom: 8px">
-                    <a-tag :color="u.status === 'success' ? 'green' : 'red'">
-                      {{ u.status === 'success' ? '成功' : '失败' }}
-                    </a-tag>
-                    <span class="unit-meta">{{ u.unit.kind }} · 行 {{ u.unit.lines }}</span>
-                  </a-space>
-                  <div v-if="u.status === 'failed'" class="error-text">{{ u.error }}</div>
-                  <template v-else>
-                    <p v-if="u.summary" class="summary">{{ u.summary }}</p>
-                    <a-table
-                      v-if="u.issues?.length"
-                      :data-source="u.issues"
-                      row-key="title"
-                      size="small"
-                      :pagination="false"
-                    >
-                      <a-table-column title="级别" data-index="severity" width="80" />
-                      <a-table-column title="行" data-index="line" width="60" />
-                      <a-table-column title="文件" data-index="file" width="140">
-                        <template #default="{ text }">{{ text || u.path }}</template>
-                      </a-table-column>
-                      <a-table-column title="问题" data-index="title" />
-                      <a-table-column title="建议" data-index="suggestion" />
-                    </a-table>
-                    <RawResult v-else-if="u.raw" :text="u.raw" />
-                  </template>
-                </a-collapse-panel>
-              </a-collapse>
-
-              <CouplingResult v-else-if="resultType === 'coupling'" :result="parsed" />
-              <PatternResult v-else-if="resultType === 'design-pattern'" :result="parsed" />
-              <RawResult v-else-if="resultType === 'raw'" :text="parsed.raw" />
-
-              <div v-else-if="resultType === 'api-review'">
-                <a-space v-if="parsed.resultUrl" style="margin-bottom: 8px">
-                  <a-tag :color="parsed.triggered ? 'green' : 'red'">
-                    {{ parsed.triggered ? '已触发' : '触发失败' }}
-                  </a-tag>
-                  <a :href="parsed.resultUrl" target="_blank" rel="noopener">查看 SonarQube 结果</a>
-                </a-space>
-                <p v-if="parsed.triggerError" class="error-text">触发失败：{{ parsed.triggerError }}</p>
-                <a-table
-                  v-if="parsed.issues?.length"
-                  :data-source="parsed.issues"
-                  row-key="key"
-                  size="small"
-                  :pagination="false"
-                  style="margin-top: 8px"
-                >
-                  <a-table-column title="级别" data-index="severity" width="80" />
-                  <a-table-column title="行" data-index="line" width="60" />
-                  <a-table-column title="问题" data-index="message" />
-                </a-table>
-              </div>
-            </template>
+            <ReviewResult
+              :record="review"
+              :project-id="projectId"
+              :marks="marks"
+              :retrying="retrying"
+              @retry="onRetry"
+              @mark="onMark"
+            />
           </template>
         </SplitPane>
       </a-tab-pane>
@@ -280,6 +201,16 @@
         message="单元数超过上限 50，后端会直接拒绝；请减少勾选文件或分批审查"
       />
     </a-modal>
+
+    <!-- 查看历史记录：全屏只读快照，不影响页签里正在进行的审查 -->
+    <ReviewRecordViewer
+      v-model:open="recordViewerOpen"
+      :record="recordSnapshot"
+      :project-id="projectId"
+      :marks="snapshotMarks"
+      :marks-loading="snapshotMarksLoading"
+      :strategies="strategies"
+    />
   </div>
 </template>
 
@@ -309,15 +240,14 @@ import {
 } from '@/api/review'
 import { listStrategies } from '@/api/strategy'
 import { summarize, type ChangedFile } from '@/utils/changedFiles'
+import { recordStatusColor, recordStatusText } from '@/utils/reviewResult'
 import type { AccuracyStat } from '@/utils/accuracy'
-import CouplingResult from '@/components/CouplingResult.vue'
-import PatternResult from '@/components/PatternResult.vue'
-import RawResult from '@/components/RawResult.vue'
 import ReportPanel from '@/components/ReportPanel.vue'
 import SplitPane from '@/components/SplitPane.vue'
 import CommitTable from '@/components/CommitTable.vue'
 import ChangedFileTree from '@/components/ChangedFileTree.vue'
-import DiffReviewResult from '@/components/DiffReviewResult.vue'
+import ReviewResult from '@/components/ReviewResult.vue'
+import ReviewRecordViewer from '@/components/ReviewRecordViewer.vue'
 import AccuracyBar from '@/components/AccuracyBar.vue'
 
 const route = useRoute()
@@ -389,6 +319,13 @@ const records = ref<any[]>([])
 const recordsLoading = ref(false)
 const accuracy = ref<AccuracyStat[]>([])
 const accuracyLoading = ref(false)
+
+// ---------------- 记录只读查看（全屏模态框） ----------------
+// 快照态与页签里的 review 完全隔离：查看历史记录不得覆盖正在进行的审查
+const recordViewerOpen = ref(false)
+const recordSnapshot = ref<ReviewRecord | null>(null)
+const snapshotMarks = ref<IssueMark[]>([])
+const snapshotMarksLoading = ref(false)
 
 // =====================================================================
 // 分支
@@ -705,57 +642,24 @@ async function loadRecords() {
   }
 }
 
+/**
+ * 查看历史记录：开全屏只读弹窗，**不切页签**。
+ *
+ * 原实现是切到「代码审查」页签并把记录塞进 `review`，副作用是覆盖掉当前正在进行的审查结果；
+ * 弹窗用独立的 `recordSnapshot`，关掉即恢复原状。重审/打标记仍走「代码审查」页签。
+ */
 async function viewRecord(record: any) {
-  review.value = record as ReviewRecord
-  await loadMarks(record.id)
-  activeTab.value = 'review'
-}
-
-// =====================================================================
-// 结果渲染
-// =====================================================================
-
-const parsed = computed(() => {
-  if (!review.value?.resultJson) return {}
+  recordSnapshot.value = record as ReviewRecord
+  snapshotMarks.value = []
+  recordViewerOpen.value = true
+  snapshotMarksLoading.value = true
   try {
-    return JSON.parse(review.value.resultJson)
+    snapshotMarks.value = await listMarks(record.id)
   } catch {
-    return {}
+    snapshotMarks.value = []
+  } finally {
+    snapshotMarksLoading.value = false
   }
-})
-
-const resultType = computed(() => {
-  const r = parsed.value
-  if (Array.isArray(r.units)) {
-    // 带 commit 信息的即 diff-review（两者都复用 units 结构）
-    return r.commit ? 'diff-review' : 'llm-review'
-  }
-  if (Array.isArray(r.nodes) && Array.isArray(r.edges)) return 'coupling'
-  if (Array.isArray(r.patterns)) return 'design-pattern'
-  if (r.type === 'api-review') return 'api-review'
-  if (typeof r.raw === 'string' && r.raw) return 'raw'
-  if (r.error) return 'raw'
-  return 'none'
-})
-
-const statusAlert = computed(() => {
-  const s = review.value?.status
-  if (s === 2) return { type: 'success', text: '审查成功' }
-  if (s === 3) return { type: 'error', text: '审查失败' }
-  if (s === 4) return { type: 'warning', text: '部分成功（部分单元失败，可重审）' }
-  return { type: 'info', text: '' }
-})
-
-function unitTitle(u: any) {
-  return `${u.path} · ${u.unit.name}`
-}
-
-function recordStatusText(status: number) {
-  return ['排队', '执行中', '成功', '失败', '部分成功'][status] || '未知'
-}
-
-function recordStatusColor(status: number) {
-  return ['default', 'processing', 'green', 'red', 'orange'][status] || 'default'
 }
 
 onMounted(async () => {
@@ -787,31 +691,6 @@ onUnmounted(() => {
 .hint {
   color: #999;
   font-size: 12px;
-}
-.summary {
-  color: #666;
-}
-.unit-meta {
-  color: #999;
-}
-.error-text {
-  color: #cf1322;
-  white-space: pre-wrap;
-}
-.placeholder {
-  color: #999;
-}
-.result-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.flex1 {
-  flex: 1;
-}
-.mb8 {
-  margin-bottom: 8px;
 }
 .mt12 {
   margin-top: 12px;

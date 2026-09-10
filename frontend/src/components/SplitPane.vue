@@ -49,6 +49,7 @@ const props = withDefaults(
   defineProps<{
     leftTitle?: string
     rightTitle?: string
+    /** 不传则按 tab 内默认高度；弹窗里传 '100%' 撑满模态框 */
     height?: string
     storageKey?: string
   }>(),
