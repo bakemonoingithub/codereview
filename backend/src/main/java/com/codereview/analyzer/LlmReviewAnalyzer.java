@@ -32,6 +32,8 @@ public class LlmReviewAnalyzer implements Analyzer {
 
     private static final String SYSTEM_PROMPT =
             "你是资深代码审查助手，只输出合法 JSON，不要输出任何其他文字。";
+    private static final String SYSTEM_PROMPT_FREE =
+            "你是资深代码审查助手。";
     private static final String USER_TEMPLATE =
             "请审查下面的 Java 代码单元，找出问题（命名规范、代码缺陷、业务规则、设计问题），"
                     + "并以 JSON 返回，格式：{\"issues\":[{\"severity\":\"MAJOR|MINOR|INFO\","
@@ -168,10 +170,17 @@ public class LlmReviewAnalyzer implements Analyzer {
                 }
             }
             try {
+                boolean custom = ctx.customPrompt() != null && !ctx.customPrompt().isBlank();
+                String prompt = buildMergedPrompt(ctx, fetched, merged.toString());
+                if (custom) {
+                    String content = llmClient.chat(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(),
+                            SYSTEM_PROMPT_FREE, prompt);
+                    return mergedMarkdownOutcome(fetched, totalLines, content);
+                }
                 String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(),
-                        SYSTEM_PROMPT, buildMergedPrompt(ctx, fetched, merged.toString()));
+                        SYSTEM_PROMPT, prompt);
                 JsonNode result = objectMapper.readTree(content);
-                return mergedOutcome(fetched, totalLines, result);
+                return mergedOutcome(fetched, totalLines, result, content);
             } catch (Throwable e) {
                 last = e;
                 if (!RetryPolicy.isRetryable(e)) {
@@ -189,7 +198,7 @@ public class LlmReviewAnalyzer implements Analyzer {
         return String.format(MERGED_USER_TEMPLATE, fileCount, code);
     }
 
-    private AnalyzeOutcome mergedOutcome(int fileCount, int totalLines, JsonNode llmResult) {
+    private AnalyzeOutcome mergedOutcome(int fileCount, int totalLines, JsonNode llmResult, String raw) {
         ObjectNode unit = objectMapper.createObjectNode();
         unit.put("path", "多文件合并");
         ObjectNode meta = unit.putObject("unit");
@@ -197,8 +206,34 @@ public class LlmReviewAnalyzer implements Analyzer {
         meta.put("name", fileCount + " 个文件");
         meta.put("lines", "1-" + totalLines);
         unit.put("status", "success");
-        unit.set("issues", llmResult.path("issues"));
+        JsonNode issues = llmResult.path("issues");
+        if (issues.isMissingNode() || issues.isNull()) {
+            unit.putNull("issues");
+        } else {
+            unit.set("issues", issues);
+        }
         unit.put("summary", llmResult.path("summary").asText(""));
+        unit.put("raw", raw);
+
+        ArrayNode units = objectMapper.createArrayNode();
+        units.add(unit);
+        ObjectNode root = objectMapper.createObjectNode();
+        root.set("units", units);
+        root.put("summary", "审查完成：合并审查 " + fileCount + " 个文件");
+        return new AnalyzeOutcome(root, ReviewStatus.SUCCESS);
+    }
+
+    private AnalyzeOutcome mergedMarkdownOutcome(int fileCount, int totalLines, String raw) {
+        ObjectNode unit = objectMapper.createObjectNode();
+        unit.put("path", "多文件合并");
+        ObjectNode meta = unit.putObject("unit");
+        meta.put("kind", "merged");
+        meta.put("name", fileCount + " 个文件");
+        meta.put("lines", "1-" + totalLines);
+        unit.put("status", "success");
+        unit.putNull("issues");
+        unit.put("summary", "");
+        unit.put("raw", raw);
 
         ArrayNode units = objectMapper.createArrayNode();
         units.add(unit);
@@ -254,10 +289,17 @@ public class LlmReviewAnalyzer implements Analyzer {
                 }
             }
             try {
+                boolean custom = ctx.customPrompt() != null && !ctx.customPrompt().isBlank();
+                String prompt = buildUserPrompt(ctx, task);
+                if (custom) {
+                    String content = llmClient.chat(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(),
+                            SYSTEM_PROMPT_FREE, prompt);
+                    return markdownUnit(task, content);
+                }
                 String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(),
-                        SYSTEM_PROMPT, buildUserPrompt(ctx, task));
+                        SYSTEM_PROMPT, prompt);
                 JsonNode result = objectMapper.readTree(content);
-                return successUnit(task, result);
+                return successUnit(task, result, content);
             } catch (Throwable e) {
                 last = e;
                 if (!RetryPolicy.isRetryable(e)) {
@@ -308,11 +350,26 @@ public class LlmReviewAnalyzer implements Analyzer {
         return String.format(USER_TEMPLATE, header, task.code());
     }
 
-    private ObjectNode successUnit(UnitTask task, JsonNode llmResult) {
+    private ObjectNode successUnit(UnitTask task, JsonNode llmResult, String raw) {
         ObjectNode o = baseUnit(task);
         o.put("status", "success");
-        o.set("issues", llmResult.path("issues"));
+        JsonNode issues = llmResult.path("issues");
+        if (issues.isMissingNode() || issues.isNull()) {
+            o.putNull("issues");
+        } else {
+            o.set("issues", issues);
+        }
         o.put("summary", llmResult.path("summary").asText(""));
+        o.put("raw", raw);
+        return o;
+    }
+
+    private ObjectNode markdownUnit(UnitTask task, String raw) {
+        ObjectNode o = baseUnit(task);
+        o.put("status", "success");
+        o.putNull("issues");
+        o.put("summary", "");
+        o.put("raw", raw);
         return o;
     }
 

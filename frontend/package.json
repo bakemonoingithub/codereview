@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@types/dompurify": "^3.2.0",
     "ant-design-vue": "^4.2.0",
     "axios": "^1.7.0",
     "dayjs": "^1.11.10",
+    "dompurify": "^3.4.15",
     "echarts": "^6.1.0",
+    "marked": "^18.0.12",
     "pinia": "^2.1.7",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
