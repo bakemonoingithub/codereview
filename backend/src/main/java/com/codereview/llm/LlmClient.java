@@ -59,6 +59,34 @@ public class LlmClient {
         return chatJson(props.getBaseUrl(), props.getApiKey(), props.getModel(), systemPrompt, userPrompt);
     }
 
+    /** 非 JSON 模式的普通对话，返回内容字符串（用于报告等 Markdown 输出）。 */
+    public String chat(String baseUrl, String apiKey, String model, String systemPrompt, String userPrompt) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("模型未配置 token（apiKey）");
+        }
+        ObjectNode body = mapper.createObjectNode();
+        body.put("model", model);
+        body.put("temperature", 0);
+        ArrayNode messages = body.putArray("messages");
+        messages.addObject().put("role", "system").put("content", systemPrompt);
+        messages.addObject().put("role", "user").put("content", userPrompt);
+
+        String resp = restClient.post()
+                .uri(baseUrl + "/chat/completions")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(String.class);
+
+        try {
+            JsonNode root = mapper.readTree(resp);
+            return root.path("choices").get(0).path("message").path("content").asText();
+        } catch (Exception e) {
+            throw new IllegalStateException("LLM 响应解析失败: " + e.getMessage(), e);
+        }
+    }
+
     /** 连通性验证：发一个极简 chat/completions 请求，能返回 200 即视为连通（否则抛异常）。 */
     public void ping(String baseUrl, String apiKey, String model) {
         if (apiKey == null || apiKey.isBlank()) {
