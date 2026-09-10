@@ -56,28 +56,28 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="versionOpen" title="版本对比" :width="1100" :footer="null">
+    <a-modal
+      v-model:open="versionOpen"
+      title="版本对比"
+      :width="'90vw'"
+      wrap-class-name="prompt-diff-modal"
+      :footer="null"
+    >
       <a-space style="margin-bottom: 12px">
         <a-select v-model:value="fromVersion" style="width: 180px" :options="versionOptions" placeholder="旧版本" />
         <a-select v-model:value="toVersion" style="width: 180px" :options="versionOptions" placeholder="新版本" />
         <a-button type="primary" :disabled="!fromVersion || !toVersion" @click="loadDiff">对比</a-button>
       </a-space>
-      <div class="diff-header">
-        <div class="diff-col">旧版本 {{ versionLabel(fromVersion) }}</div>
-        <div class="diff-col">新版本 {{ versionLabel(toVersion) }}</div>
-      </div>
       <div class="diff-scroll">
-        <a-empty v-if="!diffRows.length" style="margin: 24px 0" description="暂无对比内容" />
-        <div v-for="(row, i) in diffRows" :key="i" class="diff-row">
-          <div :class="['diff-cell', row.type === 'remove' ? 'remove' : '']">
-            <span class="diff-ln">{{ row.left?.line ?? '' }}</span>
-            <span class="diff-txt">{{ row.left?.text ?? '' }}</span>
-          </div>
-          <div :class="['diff-cell', row.type === 'add' ? 'add' : '']">
-            <span class="diff-ln">{{ row.right?.line ?? '' }}</span>
-            <span class="diff-txt">{{ row.right?.text ?? '' }}</span>
-          </div>
-        </div>
+        <a-empty v-if="!diffLines.length" style="margin: 24px 0" description="暂无对比内容" />
+        <a-empty v-else-if="!hasAnyChange" style="margin: 24px 0" description="两版内容相同" />
+        <DiffViewer
+          v-else
+          :patch="patch"
+          :old-file-name="oldLabel"
+          :new-file-name="newLabel"
+          mode="split"
+        />
       </div>
     </a-modal>
   </div>
@@ -87,6 +87,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listPrompts, createPrompt, getPrompt, updatePrompt, updatePromptContent, deletePrompt, diffPrompt } from '@/api/prompt'
+import DiffViewer from '@/components/DiffViewer.vue'
+import { hasChanges, toUnifiedPatch, type PromptDiffRow } from '@/utils/promptDiff'
 
 const records = ref<any[]>([])
 const loading = ref(false)
@@ -101,17 +103,17 @@ const versionPromptId = ref('')
 const versionOptions = ref<{ value: string; label: string }[]>([])
 const fromVersion = ref('')
 const toVersion = ref('')
-const diffLines = ref<any[]>([])
+const diffLines = ref<PromptDiffRow[]>([])
 
-const diffRows = computed(() =>
-  diffLines.value.map((l: any) => {
-    if (l.type === 'same') {
-      return { left: { line: l.oldLine, text: l.text }, right: { line: l.newLine, text: l.text }, type: 'same' }
-    }
-    if (l.type === 'remove') {
-      return { left: { line: l.oldLine, text: l.text }, right: null, type: 'remove' }
-    }
-    return { left: null, right: { line: l.newLine, text: l.text }, type: 'add' }
+const oldLabel = computed(() => `旧版本 ${versionLabel(fromVersion.value)}`.trim())
+const newLabel = computed(() => `新版本 ${versionLabel(toVersion.value)}`.trim())
+const hasAnyChange = computed(() => hasChanges(diffLines.value))
+
+/** patch 头用标识符风格的名字；人类可读的展示名由 oldLabel/newLabel 交给组件当列头 */
+const patch = computed(() =>
+  toUnifiedPatch(diffLines.value, {
+    oldName: `prompt-${versionLabel(fromVersion.value) || 'old'}`,
+    newName: `prompt-${versionLabel(toVersion.value) || 'new'}`
   })
 )
 
@@ -211,60 +213,17 @@ onMounted(load)
 </script>
 
 <style scoped lang="less">
-.diff-header {
-  display: flex;
-  border: 1px solid #f0f0f0;
-  border-bottom: none;
-  background: #fafafa;
-  font-weight: 600;
-  padding: 8px 0;
-}
-.diff-col {
-  flex: 1;
-  padding: 0 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .diff-scroll {
-  max-height: 60vh;
+  max-height: 70vh;
   overflow: auto;
-  border: 1px solid #f0f0f0;
-  font-family: monospace;
-  font-size: 12px;
 }
-.diff-row {
-  display: flex;
-  min-height: 20px;
-}
-.diff-cell {
-  flex: 1;
-  display: flex;
-  white-space: pre-wrap;
-  padding: 1px 4px;
-  min-width: 0;
-}
-.diff-cell + .diff-cell {
-  border-left: 1px solid #f0f0f0;
-}
-.diff-cell.remove {
-  background: #ffebe6;
-}
-.diff-cell.add {
-  background: #e6ffed;
-}
-.diff-ln {
-  flex: none;
-  width: 48px;
-  min-width: 48px;
-  color: #999;
-  text-align: right;
-  padding-right: 8px;
-  user-select: none;
-}
-.diff-txt {
-  flex: 1;
-  white-space: pre-wrap;
-  word-break: break-all;
+</style>
+
+<!-- 弹窗被传送到 body，scoped 样式够不到，故用非 scoped 块给 90vw 加个上限 -->
+<style lang="less">
+.prompt-diff-modal {
+  .ant-modal {
+    max-width: 1400px;
+  }
 }
 </style>
