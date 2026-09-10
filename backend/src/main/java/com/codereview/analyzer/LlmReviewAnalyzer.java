@@ -183,11 +183,10 @@ public class LlmReviewAnalyzer implements Analyzer {
     }
 
     private String buildMergedPrompt(AnalysisContext ctx, int fileCount, String code) {
-        String prompt = String.format(MERGED_USER_TEMPLATE, fileCount, code);
         if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
-            prompt = prompt + "\n\n关注点规则：\n" + ctx.customPrompt();
+            return ctx.customPrompt() + "\n\n代码：\n" + code;
         }
-        return prompt;
+        return String.format(MERGED_USER_TEMPLATE, fileCount, code);
     }
 
     private AnalyzeOutcome mergedOutcome(int fileCount, int totalLines, JsonNode llmResult) {
@@ -301,13 +300,12 @@ public class LlmReviewAnalyzer implements Analyzer {
     }
 
     private String buildUserPrompt(AnalysisContext ctx, UnitTask task) {
+        if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
+            return ctx.customPrompt() + "\n\n代码：\n" + task.code();
+        }
         String header = String.format("{文件路径:%s, 类型:%s, 名称:%s, 行范围:%d-%d}",
                 task.path(), task.kind(), task.name(), task.startLine(), task.endLine());
-        String prompt = String.format(USER_TEMPLATE, header, task.code());
-        if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
-            prompt = prompt + "\n\n关注点规则：\n" + ctx.customPrompt();
-        }
-        return prompt;
+        return String.format(USER_TEMPLATE, header, task.code());
     }
 
     private ObjectNode successUnit(UnitTask task, JsonNode llmResult) {
