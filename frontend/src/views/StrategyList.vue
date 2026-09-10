@@ -18,7 +18,9 @@
           <a-input v-model:value="form.name" placeholder="如 通用代码审查" />
         </a-form-item>
         <a-form-item label="分析器" required>
-          <a-select v-model:value="form.analyzerType" :options="ANALYZER_TYPES" />
+          <a-select v-model:value="form.analyzerType" placeholder="选择分析器">
+            <a-select-option v-for="a in ANALYZER_TYPES" :key="a.value" :value="a.value">{{ a.label }}</a-select-option>
+          </a-select>
         </a-form-item>
         <a-form-item label="模型" required>
           <a-select v-model:value="form.modelConfigId" placeholder="选择模型" :options="modelOptions" />
@@ -76,12 +78,13 @@ async function onCreate() {
   }
   saving.value = true
   try {
+    const analyzerType = Number(form.value.analyzerType)
     const data: any = {
       name: form.value.name,
-      analyzerType: form.value.analyzerType,
+      analyzerType,
       modelConfigId: form.value.modelConfigId
     }
-    if (form.value.analyzerType === 2) {
+    if (analyzerType === 2) {
       const t = Number(form.value.threshold)
       if (!Number.isNaN(t) && t > 0) data.threshold = t
     }
