@@ -108,8 +108,12 @@ public class CouplingAnalyzer implements Analyzer {
     }
 
     private JsonNode llmSuggest(AnalysisContext ctx, ObjectNode deterministic) throws Exception {
-        String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT,
-                SUGGEST_PROMPT + deterministic.toPrettyString());
+        String userPrompt = SUGGEST_PROMPT + deterministic.toPrettyString();
+        if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
+            userPrompt = SUGGEST_PROMPT + "\n关注点：\n" + ctx.customPrompt()
+                    + "\n\n确定性结论：\n" + deterministic.toPrettyString();
+        }
+        String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT, userPrompt);
         return objectMapper.readTree(content);
     }
 

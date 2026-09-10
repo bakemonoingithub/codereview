@@ -27,6 +27,9 @@
           <a-form-item label="模型" required>
             <a-select v-model:value="form.modelConfigId" placeholder="选择模型" :options="modelOptions" />
           </a-form-item>
+          <a-form-item label="关注点提示词（可选）">
+            <a-select v-model:value="form.promptId" placeholder="选择提示词" :options="promptOptions" allow-clear />
+          </a-form-item>
           <a-form-item v-if="form.analyzerType === 2" label="高耦合阈值（扇出超过即标记）">
             <a-input v-model:value="form.threshold" placeholder="默认 10" />
           </a-form-item>
@@ -56,6 +59,7 @@ import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listStrategies, createStrategy, ANALYZER_TYPES, analyzerLabel } from '@/api/strategy'
 import { listModels } from '@/api/model'
+import { listPrompts } from '@/api/prompt'
 
 const records = ref<any[]>([])
 const loading = ref(false)
@@ -65,6 +69,7 @@ const form = ref({
   name: '',
   analyzerType: 1,
   modelConfigId: '',
+  promptId: '',
   threshold: '10',
   apiUrl: '',
   resultUrl: '',
@@ -72,6 +77,7 @@ const form = ref({
   token: ''
 })
 const modelOptions = ref<{ value: string; label: string }[]>([])
+const promptOptions = ref<{ value: string; label: string }[]>([])
 
 async function load() {
   loading.value = true
@@ -88,11 +94,21 @@ async function loadModels() {
   modelOptions.value = (page?.records || []).map((m: any) => ({ value: m.id, label: m.name }))
 }
 
+async function loadPrompts() {
+  try {
+    const page = (await listPrompts({ pageNum: 1, pageSize: 100 })) as any
+    promptOptions.value = (page?.records || []).map((p: any) => ({ value: p.id, label: p.name }))
+  } catch {
+    // 忽略
+  }
+}
+
 function openCreate() {
   form.value = {
     name: '',
     analyzerType: 1,
     modelConfigId: '',
+    promptId: '',
     threshold: '10',
     apiUrl: '',
     resultUrl: '',
@@ -101,6 +117,7 @@ function openCreate() {
   }
   modalOpen.value = true
   loadModels()
+  loadPrompts()
 }
 
 async function onCreate() {
@@ -125,6 +142,7 @@ async function onCreate() {
       return
     }
     params.modelConfigId = form.value.modelConfigId
+    if (form.value.promptId) params.promptVersionId = form.value.promptId
     if (analyzerType === 2) {
       const t = Number(form.value.threshold)
       if (!Number.isNaN(t) && t > 0) params.threshold = t

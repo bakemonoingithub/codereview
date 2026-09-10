@@ -7,12 +7,14 @@ import com.codereview.dto.ReviewRecordResp;
 import com.codereview.dto.ReviewTriggerReq;
 import com.codereview.entity.ModelConfig;
 import com.codereview.entity.Project;
+import com.codereview.entity.PromptVersion;
 import com.codereview.entity.ReviewRecord;
 import com.codereview.entity.ReviewStrategy;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitRepoRef;
 import com.codereview.mapper.ModelConfigMapper;
 import com.codereview.mapper.ProjectMapper;
+import com.codereview.mapper.PromptVersionMapper;
 import com.codereview.mapper.ReviewRecordMapper;
 import com.codereview.mapper.ReviewStrategyMapper;
 import com.codereview.review.ReviewStatus;
@@ -34,17 +36,20 @@ public class ReviewService {
     private final ModelConfigMapper modelConfigMapper;
     private final GitHostClient gitHostClient;
     private final ReviewExecutor reviewExecutor;
+    private final PromptVersionMapper promptVersionMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ReviewService(ReviewRecordMapper reviewRecordMapper, ProjectMapper projectMapper,
                          ReviewStrategyMapper strategyMapper, ModelConfigMapper modelConfigMapper,
-                         GitHostClient gitHostClient, ReviewExecutor reviewExecutor) {
+                         GitHostClient gitHostClient, ReviewExecutor reviewExecutor,
+                         PromptVersionMapper promptVersionMapper) {
         this.reviewRecordMapper = reviewRecordMapper;
         this.projectMapper = projectMapper;
         this.strategyMapper = strategyMapper;
         this.modelConfigMapper = modelConfigMapper;
         this.gitHostClient = gitHostClient;
         this.reviewExecutor = reviewExecutor;
+        this.promptVersionMapper = promptVersionMapper;
     }
 
     public ReviewRecord trigger(Long projectId, ReviewTriggerReq req) {
@@ -162,9 +167,27 @@ public class ReviewService {
             JsonNode params = objectMapper.readTree(
                     strategy.getParamsJson() == null || strategy.getParamsJson().isBlank() ? "{}" : strategy.getParamsJson());
             root.set("params", params);
+            String prompt = resolvePromptContent(params);
+            if (prompt != null) {
+                root.put("customPrompt", prompt);
+            }
         } catch (Exception e) {
             throw new IllegalStateException("序列化策略快照失败", e);
         }
         return root.toString();
+    }
+
+    /** 从策略参数解析提示词版本 → 内容（关注点规则），注入快照供分析器使用。 */
+    private String resolvePromptContent(JsonNode params) {
+        String pid = params.path("promptVersionId").asText(null);
+        if (pid == null || pid.isBlank()) {
+            return null;
+        }
+        try {
+            PromptVersion v = promptVersionMapper.selectById(Long.parseLong(pid));
+            return v == null ? null : v.getContent();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

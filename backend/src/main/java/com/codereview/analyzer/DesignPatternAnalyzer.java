@@ -44,8 +44,11 @@ public class DesignPatternAnalyzer implements Analyzer {
     public AnalyzeOutcome analyze(AnalysisContext ctx) throws Exception {
         Material material = materialService.prepare(ctx.project().getCredential(), ctx.ref(), ctx.branch(),
                 ctx.record().getCommitSha(), ctx.scope());
-        String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT,
-                String.format(PATTERN_PROMPT, material.structureSummary()));
+        String userPrompt = String.format(PATTERN_PROMPT, material.structureSummary());
+        if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
+            userPrompt += "\n关注点：\n" + ctx.customPrompt();
+        }
+        String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT, userPrompt);
         JsonNode result = objectMapper.readTree(content);
         return new AnalyzeOutcome(result, ReviewStatus.SUCCESS);
     }

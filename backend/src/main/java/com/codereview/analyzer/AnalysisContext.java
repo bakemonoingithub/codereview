@@ -18,6 +18,7 @@ public record AnalysisContext(
         String apiKey,
         String modelName,
         JsonNode params,
+        String customPrompt,
         Consumer<Integer> progress) {
 
     public String branch() {

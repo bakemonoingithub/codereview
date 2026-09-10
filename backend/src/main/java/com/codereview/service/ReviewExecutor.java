@@ -99,6 +99,7 @@ public class ReviewExecutor {
                 model.path("apiKey").asText(),
                 model.path("modelName").asText(),
                 snap.path("params"),
+                snap.path("customPrompt").asText(null),
                 pct -> {
                     record.setProgress(pct);
                     reviewRecordMapper.updateById(record);

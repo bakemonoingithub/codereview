@@ -135,7 +135,7 @@ public class LlmReviewAnalyzer implements Analyzer {
             }
             try {
                 String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(),
-                        SYSTEM_PROMPT, buildUserPrompt(task));
+                        SYSTEM_PROMPT, buildUserPrompt(ctx, task));
                 JsonNode result = objectMapper.readTree(content);
                 return successUnit(task, result);
             } catch (Throwable e) {
@@ -179,10 +179,14 @@ public class LlmReviewAnalyzer implements Analyzer {
         return failed;
     }
 
-    private String buildUserPrompt(UnitTask task) {
+    private String buildUserPrompt(AnalysisContext ctx, UnitTask task) {
         String header = String.format("{文件路径:%s, 类型:%s, 名称:%s, 行范围:%d-%d}",
                 task.path(), task.kind(), task.name(), task.startLine(), task.endLine());
-        return String.format(USER_TEMPLATE, header, task.code());
+        String prompt = String.format(USER_TEMPLATE, header, task.code());
+        if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
+            prompt = prompt + "\n\n关注点规则：\n" + ctx.customPrompt();
+        }
+        return prompt;
     }
 
     private ObjectNode successUnit(UnitTask task, JsonNode llmResult) {
