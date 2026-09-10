@@ -56,23 +56,35 @@
       </a-form>
     </a-modal>
 
-    <a-drawer v-model:open="versionOpen" title="版本对比" :width="720">
+    <a-modal v-model:open="versionOpen" title="版本对比" :width="1100" :footer="null">
       <a-space style="margin-bottom: 12px">
         <a-select v-model:value="fromVersion" style="width: 180px" :options="versionOptions" placeholder="旧版本" />
         <a-select v-model:value="toVersion" style="width: 180px" :options="versionOptions" placeholder="新版本" />
         <a-button type="primary" :disabled="!fromVersion || !toVersion" @click="loadDiff">对比</a-button>
       </a-space>
-      <div v-for="(line, i) in diffLines" :key="i" :class="['diff-line', line.type]">
-        <span class="diff-num">{{ line.oldLine ?? '' }} {{ line.newLine ?? '' }}</span>
-        <span class="diff-sign">{{ line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' ' }}</span>
-        <span>{{ line.text }}</span>
+      <div class="diff-header">
+        <div class="diff-col">旧版本 {{ versionLabel(fromVersion) }}</div>
+        <div class="diff-col">新版本 {{ versionLabel(toVersion) }}</div>
       </div>
-    </a-drawer>
+      <div class="diff-scroll">
+        <a-empty v-if="!diffRows.length" style="margin: 24px 0" description="暂无对比内容" />
+        <div v-for="(row, i) in diffRows" :key="i" class="diff-row">
+          <div :class="['diff-cell', row.type === 'remove' ? 'remove' : '']">
+            <span class="diff-ln">{{ row.left?.line ?? '' }}</span>
+            <span class="diff-txt">{{ row.left?.text ?? '' }}</span>
+          </div>
+          <div :class="['diff-cell', row.type === 'add' ? 'add' : '']">
+            <span class="diff-ln">{{ row.right?.line ?? '' }}</span>
+            <span class="diff-txt">{{ row.right?.text ?? '' }}</span>
+          </div>
+        </div>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listPrompts, createPrompt, getPrompt, updatePrompt, updatePromptContent, deletePrompt, diffPrompt } from '@/api/prompt'
 
@@ -90,6 +102,22 @@ const versionOptions = ref<{ value: string; label: string }[]>([])
 const fromVersion = ref('')
 const toVersion = ref('')
 const diffLines = ref<any[]>([])
+
+const diffRows = computed(() =>
+  diffLines.value.map((l: any) => {
+    if (l.type === 'same') {
+      return { left: { line: l.oldLine, text: l.text }, right: { line: l.newLine, text: l.text }, type: 'same' }
+    }
+    if (l.type === 'remove') {
+      return { left: { line: l.oldLine, text: l.text }, right: null, type: 'remove' }
+    }
+    return { left: null, right: { line: l.newLine, text: l.text }, type: 'add' }
+  })
+)
+
+function versionLabel(id: string) {
+  return versionOptions.value.find((o) => o.value === id)?.label || ''
+}
 
 function parseTags(tags: string): string[] {
   try {
@@ -183,26 +211,60 @@ onMounted(load)
 </script>
 
 <style scoped lang="less">
-.diff-line {
+.diff-header {
+  display: flex;
+  border: 1px solid #f0f0f0;
+  border-bottom: none;
+  background: #fafafa;
+  font-weight: 600;
+  padding: 8px 0;
+}
+.diff-col {
+  flex: 1;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diff-scroll {
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid #f0f0f0;
   font-family: monospace;
-  white-space: pre-wrap;
-  padding: 1px 4px;
   font-size: 12px;
 }
-.diff-line.add {
-  background: #e6ffed;
+.diff-row {
+  display: flex;
+  min-height: 20px;
 }
-.diff-line.remove {
+.diff-cell {
+  flex: 1;
+  display: flex;
+  white-space: pre-wrap;
+  padding: 1px 4px;
+  min-width: 0;
+}
+.diff-cell + .diff-cell {
+  border-left: 1px solid #f0f0f0;
+}
+.diff-cell.remove {
   background: #ffebe6;
 }
-.diff-num {
-  display: inline-block;
-  width: 60px;
-  color: #999;
+.diff-cell.add {
+  background: #e6ffed;
 }
-.diff-sign {
-  display: inline-block;
-  width: 12px;
+.diff-ln {
+  flex: none;
+  width: 48px;
+  min-width: 48px;
   color: #999;
+  text-align: right;
+  padding-right: 8px;
+  user-select: none;
+}
+.diff-txt {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>
