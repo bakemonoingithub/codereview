@@ -20,12 +20,12 @@ public class MaterialService {
         this.cache = cache;
     }
 
-    public Material prepare(String token, GitRepoRef ref, String branch, String commitSha, List<String> scope) {
+    public Material prepare(String token, Integer credentialType, GitRepoRef ref, String branch, String commitSha, List<String> scope) {
         return cache.getOrCompute(MaterialCache.key(commitSha, scope), () -> {
             List<SourceFile> files = new ArrayList<>();
             for (String path : scope) {
                 try {
-                    files.add(new SourceFile(path, gitHostClient.rawFile(token, ref.owner(), ref.repo(), branch, path)));
+                    files.add(new SourceFile(path, gitHostClient.rawFile(token, credentialType, ref.owner(), ref.repo(), branch, path)));
                 } catch (Exception ignored) {
                     // 单文件拉取失败跳过
                 }

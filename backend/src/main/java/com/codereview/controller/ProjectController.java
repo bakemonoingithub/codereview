@@ -5,6 +5,7 @@ import com.codereview.common.Result;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
 import com.codereview.entity.Project;
+import com.codereview.git.CommitInfo;
 import com.codereview.service.ProjectService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,5 +46,17 @@ public class ProjectController {
     @GetMapping("/{id}/branches")
     public Result<List<String>> branches(@PathVariable Long id) {
         return Result.ok(projectService.branches(id));
+    }
+
+    @GetMapping("/{id}/commits")
+    public Result<List<CommitInfo>> commits(@PathVariable Long id, @RequestParam String branch) {
+        return Result.ok(projectService.commits(id, branch));
+    }
+
+    @GetMapping("/{id}/changed-files")
+    public Result<List<String>> changedFiles(@PathVariable Long id,
+                                             @RequestParam String base,
+                                             @RequestParam String head) {
+        return Result.ok(projectService.changedFiles(id, base, head));
     }
 }

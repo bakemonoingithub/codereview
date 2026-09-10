@@ -15,7 +15,8 @@ import java.util.List;
 
 /**
  * GitHub 实现；token 可空（项目级 credential 为空时回退 github.token 兜底认证，
- * 两者都为空才匿名访问公开仓库，但仅 60 次/小时/IP）
+ * 两者都为空才匿名访问公开仓库，但仅 60 次/小时/IP）。
+ * credentialType=2 时按账号密码走 Basic Auth（credential 形如 user:pass）。
  */
 @Component
 public class GitHubClient implements GitHostClient {
@@ -32,9 +33,9 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
-    public List<GitTreeEntry> tree(String token, String owner, String repo, String branch) {
+    public List<GitTreeEntry> tree(String token, Integer credentialType, String owner, String repo, String branch) {
         String url = API_BASE + "/repos/" + owner + "/" + repo + "/git/trees/" + branch + "?recursive=1";
-        JsonNode root = getJson(url, token);
+        JsonNode root = getJson(url, token, credentialType);
         List<GitTreeEntry> entries = new ArrayList<>();
         for (JsonNode node : root.path("tree")) {
             String type = node.path("type").asText();
@@ -46,12 +47,11 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
-    public String rawFile(String token, String owner, String repo, String branch, String path) {
-        // 优先走 Contents API（与树接口同域 api.github.com），
-        // 避免 raw.githubusercontent.com 直连被墙/超时（浏览器/系统代理可达但 JVM 直连不可达）。
+    public String rawFile(String token, Integer credentialType, String owner, String repo, String branch, String path) {
+        // 优先走 Contents API（与树接口同域 api.github.com），避免 raw.githubusercontent.com 直连被墙/超时。
         String contentsUrl = API_BASE + "/repos/" + owner + "/" + repo + "/contents/" + encodePathSegments(path)
                 + "?ref=" + UriUtils.encodeQueryParam(branch, StandardCharsets.UTF_8);
-        JsonNode root = getJson(contentsUrl, token);
+        JsonNode root = getJson(contentsUrl, token, credentialType);
         String encoding = root.path("encoding").asText();
         String content = root.path("content").asText();
         if ("base64".equalsIgnoreCase(encoding) && !content.isBlank()) {
@@ -61,23 +61,22 @@ public class GitHubClient implements GitHostClient {
                 // 解码失败时回退 raw
             }
         }
-        // 回退：raw.githubusercontent.com（>1MB 时 Contents API 不返回 content）
         String rawUrl = RAW_BASE + "/" + owner + "/" + repo + "/" + branch + "/" + encodePathSegments(path);
-        return get(rawUrl, token);
+        return get(rawUrl, token, credentialType);
     }
 
     @Override
-    public String headCommitSha(String token, String owner, String repo, String branch) {
+    public String headCommitSha(String token, Integer credentialType, String owner, String repo, String branch) {
         String url = API_BASE + "/repos/" + owner + "/" + repo + "/branches/"
                 + UriUtils.encodePathSegment(branch, StandardCharsets.UTF_8);
-        JsonNode root = getJson(url, token);
+        JsonNode root = getJson(url, token, credentialType);
         return root.path("commit").path("sha").asText();
     }
 
     @Override
-    public List<String> branches(String token, String owner, String repo) {
+    public List<String> branches(String token, Integer credentialType, String owner, String repo) {
         String url = API_BASE + "/repos/" + owner + "/" + repo + "/branches";
-        JsonNode root = getJson(url, token);
+        JsonNode root = getJson(url, token, credentialType);
         List<String> names = new ArrayList<>();
         for (JsonNode node : root) {
             names.add(node.path("name").asText());
@@ -85,33 +84,62 @@ public class GitHubClient implements GitHostClient {
         return names;
     }
 
-    private JsonNode getJson(String url, String token) {
+    @Override
+    public List<CommitInfo> commits(String token, Integer credentialType, String owner, String repo, String branch) {
+        String url = API_BASE + "/repos/" + owner + "/" + repo + "/commits?sha="
+                + UriUtils.encodeQueryParam(branch, StandardCharsets.UTF_8) + "&per_page=50";
+        JsonNode root = getJson(url, token, credentialType);
+        List<CommitInfo> list = new ArrayList<>();
+        for (JsonNode node : root) {
+            list.add(new CommitInfo(
+                    node.path("sha").asText(),
+                    node.path("commit").path("message").asText(),
+                    node.path("commit").path("author").path("name").asText(),
+                    node.path("commit").path("author").path("date").asText()));
+        }
+        return list;
+    }
+
+    @Override
+    public List<String> changedFiles(String token, Integer credentialType, String owner, String repo, String base, String head) {
+        String url = API_BASE + "/repos/" + owner + "/" + repo + "/compare/" + base + "..." + head;
+        JsonNode root = getJson(url, token, credentialType);
+        List<String> files = new ArrayList<>();
+        for (JsonNode node : root.path("files")) {
+            files.add(node.path("filename").asText());
+        }
+        return files;
+    }
+
+    private JsonNode getJson(String url, String token, Integer credentialType) {
         try {
-            return mapper.readTree(get(url, token));
+            return mapper.readTree(get(url, token, credentialType));
         } catch (Exception e) {
             throw new IllegalStateException("GitHub 响应解析失败: " + e.getMessage(), e);
         }
     }
 
-    private String get(String url, String token) {
-        // 项目级 token 优先；为空时回退到全局兜底 token（github.token），
-        // 避免匿名请求触发 60 次/小时/IP 的限流。
-        String effective = resolveToken(token);
-        if (effective == null || effective.isBlank()) {
+    private String get(String url, String token, Integer credentialType) {
+        String auth = authHeader(token, credentialType);
+        if (auth == null) {
             return restClient.get().uri(url).retrieve().body(String.class);
         }
         return restClient.get().uri(url)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + effective)
+                .header(HttpHeaders.AUTHORIZATION, auth)
                 .retrieve().body(String.class);
     }
 
-    /** 取实际生效的令牌：项目级 credential 优先，其次全局兜底 token。 */
-    private String resolveToken(String token) {
+    /** 项目级 credential 优先（token→Bearer / 密码→Basic），其次全局兜底 token。 */
+    private String authHeader(String token, Integer credentialType) {
         if (token != null && !token.isBlank()) {
-            return token;
+            if (credentialType != null && credentialType == 2) {
+                String encoded = Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
+                return "Basic " + encoded;
+            }
+            return "Bearer " + token;
         }
         String fallback = properties.getToken();
-        return (fallback == null || fallback.isBlank()) ? null : fallback;
+        return (fallback == null || fallback.isBlank()) ? null : "Bearer " + fallback;
     }
 
     private static RestClient restClient() {

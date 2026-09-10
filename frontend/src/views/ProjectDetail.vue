@@ -44,6 +44,17 @@
           />
           <a-empty v-else description="加载中…" />
         </a-card>
+
+        <a-card size="small" style="margin-top: 12px">
+          <template #title>提交视图</template>
+          <a-select v-model:value="selectedCommit" style="width: 100%" placeholder="选择提交" :options="commitOptions" @change="loadChangedFiles" />
+          <a-checkbox-group v-if="changedFiles.length" v-model:value="changedChecked" style="width: 100%; margin-top: 8px">
+            <a-checkbox v-for="f in changedFiles" :key="f" :value="f">{{ f }}</a-checkbox>
+          </a-checkbox-group>
+          <a-button v-if="changedFiles.length" size="small" type="primary" style="margin-top: 8px" @click="useChangedFiles">
+            审查选中变更文件
+          </a-button>
+        </a-card>
       </a-col>
       <a-col :span="14">
         <a-card title="审查结果" size="small">
@@ -128,7 +139,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { getBranches, getTree, type TreeNode } from '@/api/project'
+import { getBranches, getTree, listCommits, listChangedFiles, type TreeNode, type CommitInfo } from '@/api/project'
 import { triggerReview, getReview, retryReview, parseResult, type ReviewRecord } from '@/api/review'
 import { listStrategies } from '@/api/strategy'
 import CouplingResult from '@/components/CouplingResult.vue'
@@ -144,6 +155,14 @@ const treeData = ref<any[]>([])
 const checkedKeys = ref<string[]>([])
 const expandedKeys = ref<string[]>([])
 const allExpandableKeys = ref<string[]>([])
+const commits = ref<CommitInfo[]>([])
+const selectedCommit = ref('')
+const changedFiles = ref<string[]>([])
+const changedChecked = ref<string[]>([])
+const commitOptions = computed(() => commits.value.map((c) => ({
+  value: c.sha,
+  label: `${c.sha.slice(0, 7)} · ${(c.message || '').split('\n')[0]}`
+})))
 const strategyId = ref('')
 const strategyOptions = ref<{ value: string; label: string }[]>([])
 const triggering = ref(false)
@@ -196,6 +215,33 @@ function collapseAll() {
   expandedKeys.value = []
 }
 
+async function loadCommits() {
+  if (!branch.value) return
+  try {
+    commits.value = await listCommits(projectId, branch.value)
+  } catch {
+    commits.value = []
+  }
+}
+
+async function loadChangedFiles() {
+  if (!selectedCommit.value || !branch.value) return
+  try {
+    const idx = commits.value.findIndex((c) => c.sha === selectedCommit.value)
+    const base = idx >= 0 && idx + 1 < commits.value.length ? commits.value[idx + 1].sha : branch.value
+    changedFiles.value = await listChangedFiles(projectId, base, selectedCommit.value)
+    changedChecked.value = []
+  } catch {
+    changedFiles.value = []
+  }
+}
+
+function useChangedFiles() {
+  if (!changedChecked.value.length) return
+  checkedKeys.value = [...new Set([...checkedKeys.value, ...changedChecked.value])]
+  message.success('已勾选变更文件，可在文件树中确认后点击「开始审查」')
+}
+
 async function loadBranches() {
   branchLoading.value = true
   try {
@@ -212,6 +258,7 @@ async function loadTree() {
   treeData.value = toTreeNodes(nodes)
   fileSet = flattenFiles(nodes)
   allExpandableKeys.value = collectExpandableKeys(nodes)
+  loadCommits()
 }
 
 async function loadStrategies() {

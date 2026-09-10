@@ -145,7 +145,7 @@ public class ReviewService {
     private String resolveCommitSha(Project p, String branch) {
         try {
             GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-            return gitHostClient.headCommitSha(p.getCredential(), ref.owner(), ref.repo(), branch);
+            return gitHostClient.headCommitSha(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
         } catch (Exception e) {
             log.warn("解析 HEAD commit sha 失败，降级留空: {}", e.getMessage());
             return null;

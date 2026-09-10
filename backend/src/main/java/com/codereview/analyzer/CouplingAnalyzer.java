@@ -50,8 +50,8 @@ public class CouplingAnalyzer implements Analyzer {
 
     @Override
     public AnalyzeOutcome analyze(AnalysisContext ctx) {
-        Material material = materialService.prepare(ctx.project().getCredential(), ctx.ref(), ctx.branch(),
-                ctx.record().getCommitSha(), ctx.scope());
+        Material material = materialService.prepare(ctx.project().getCredential(), ctx.project().getCredentialType(),
+                ctx.ref(), ctx.branch(), ctx.record().getCommitSha(), ctx.scope());
         int threshold = ctx.params() == null ? DEFAULT_THRESHOLD : ctx.params().path("threshold").asInt(DEFAULT_THRESHOLD);
         ObjectNode result = buildDeterministic(material, threshold, objectMapper);
         try {

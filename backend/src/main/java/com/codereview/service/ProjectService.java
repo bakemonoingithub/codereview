@@ -6,6 +6,7 @@ import com.codereview.common.ResultCode;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
 import com.codereview.entity.Project;
+import com.codereview.git.CommitInfo;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitRepoRef;
 import com.codereview.git.GitTreeEntry;
@@ -30,10 +31,10 @@ public class ProjectService {
     }
 
     public Project create(ProjectCreateReq req) {
-        // 保存前验证仓库连通（拉分支列表）
         GitRepoRef ref = GitRepoRef.parse(req.giteaUrl());
+        int credentialType = req.credentialType() == null ? 1 : req.credentialType();
         try {
-            gitHostClient.branches(req.credential(), ref.owner(), ref.repo());
+            gitHostClient.branches(req.credential(), credentialType, ref.owner(), ref.repo());
         } catch (Exception e) {
             throw new BusinessException(ResultCode.GIT_CONNECT_FAILED.getCode(), "仓库连通验证失败: " + e.getMessage());
         }
@@ -41,7 +42,7 @@ public class ProjectService {
         p.setName(req.name());
         p.setGiteaUrl(req.giteaUrl());
         p.setCredential(req.credential());
-        p.setCredentialType(req.credentialType() == null ? 1 : req.credentialType());
+        p.setCredentialType(credentialType);
         p.setCurrentBranch("main");
         projectMapper.insert(p);
         return p;
@@ -54,14 +55,26 @@ public class ProjectService {
     public List<TreeNodeResp> tree(Long projectId, String branch) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        List<GitTreeEntry> entries = gitHostClient.tree(p.getCredential(), ref.owner(), ref.repo(), branch);
+        List<GitTreeEntry> entries = gitHostClient.tree(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
         return buildTree(entries);
     }
 
     public List<String> branches(Long projectId) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClient.branches(p.getCredential(), ref.owner(), ref.repo());
+        return gitHostClient.branches(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo());
+    }
+
+    public List<CommitInfo> commits(Long projectId, String branch) {
+        Project p = getOrThrow(projectId);
+        GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
+        return gitHostClient.commits(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
+    }
+
+    public List<String> changedFiles(Long projectId, String base, String head) {
+        Project p = getOrThrow(projectId);
+        GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
+        return gitHostClient.changedFiles(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), base, head);
     }
 
     private Project getOrThrow(Long projectId) {

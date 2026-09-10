@@ -35,3 +35,18 @@ export function getTree(id: string, branch: string) {
 export function getBranches(id: string) {
   return request.get(`/projects/${id}/branches`) as Promise<string[]>
 }
+
+export interface CommitInfo {
+  sha: string
+  message: string
+  author: string
+  date: string
+}
+
+export function listCommits(id: string, branch: string) {
+  return request.get(`/projects/${id}/commits`, { params: { branch } }) as Promise<CommitInfo[]>
+}
+
+export function listChangedFiles(id: string, base: string, head: string) {
+  return request.get(`/projects/${id}/changed-files`, { params: { base, head } }) as Promise<string[]>
+}

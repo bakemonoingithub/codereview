@@ -87,7 +87,7 @@ public class LlmReviewAnalyzer implements Analyzer {
         List<UnitTask> tasks = new ArrayList<>();
         for (String path : paths) {
             try {
-                String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.ref().owner(), ctx.ref().repo(), ctx.branch(), path);
+                String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(), ctx.ref().owner(), ctx.ref().repo(), ctx.branch(), path);
                 for (ReviewUnit u : Chunker.chunk(path, code, props.getChunkMaxChars())) {
                     tasks.add(UnitTask.of(u));
                 }

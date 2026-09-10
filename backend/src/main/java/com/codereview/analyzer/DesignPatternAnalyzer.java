@@ -42,8 +42,8 @@ public class DesignPatternAnalyzer implements Analyzer {
 
     @Override
     public AnalyzeOutcome analyze(AnalysisContext ctx) throws Exception {
-        Material material = materialService.prepare(ctx.project().getCredential(), ctx.ref(), ctx.branch(),
-                ctx.record().getCommitSha(), ctx.scope());
+        Material material = materialService.prepare(ctx.project().getCredential(), ctx.project().getCredentialType(),
+                ctx.ref(), ctx.branch(), ctx.record().getCommitSha(), ctx.scope());
         String userPrompt = String.format(PATTERN_PROMPT, material.structureSummary());
         if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
             userPrompt += "\n关注点：\n" + ctx.customPrompt();
