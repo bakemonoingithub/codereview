@@ -44,6 +44,7 @@ declare module 'vue' {
     ATree: typeof import('ant-design-vue/es')['Tree']
     CouplingResult: typeof import('./src/components/CouplingResult.vue')['default']
     PatternResult: typeof import('./src/components/PatternResult.vue')['default']
+    RawResult: typeof import('./src/components/RawResult.vue')['default']
     ReportPanel: typeof import('./src/components/ReportPanel.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

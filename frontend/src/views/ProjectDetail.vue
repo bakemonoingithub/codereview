@@ -114,20 +114,14 @@
                     <a-table-column title="问题" data-index="title" />
                     <a-table-column title="建议" data-index="suggestion" />
                   </a-table>
-                  <a-tabs v-else-if="u.raw" type="card" size="small">
-                    <a-tab-pane key="raw" tab="raw-text">
-                      <pre class="raw-text">{{ u.raw }}</pre>
-                    </a-tab-pane>
-                    <a-tab-pane key="markdown" tab="markdown">
-                      <div class="markdown-body" v-html="renderMarkdown(u.raw)"></div>
-                    </a-tab-pane>
-                  </a-tabs>
+                  <RawResult v-else-if="u.raw" :text="u.raw" />
                 </template>
               </a-collapse-panel>
             </a-collapse>
 
             <CouplingResult v-else-if="resultType === 'coupling'" :result="parsed" />
             <PatternResult v-else-if="resultType === 'design-pattern'" :result="parsed" />
+            <RawResult v-else-if="resultType === 'raw'" :text="parsed.raw" />
 
             <div v-else-if="resultType === 'api-review'">
               <a-space v-if="parsed.resultUrl" style="margin-bottom: 8px">
@@ -164,13 +158,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
 import { getBranches, getTree, listCommits, listChangedFiles, type TreeNode, type CommitInfo } from '@/api/project'
 import { triggerReview, getReview, retryReview, parseResult, type ReviewRecord } from '@/api/review'
 import { listStrategies } from '@/api/strategy'
 import CouplingResult from '@/components/CouplingResult.vue'
 import PatternResult from '@/components/PatternResult.vue'
+import RawResult from '@/components/RawResult.vue'
 import ReportPanel from '@/components/ReportPanel.vue'
 
 const route = useRoute()
@@ -367,6 +360,7 @@ const resultType = computed(() => {
   if (Array.isArray(r.nodes) && Array.isArray(r.edges)) return 'coupling'
   if (Array.isArray(r.patterns)) return 'design-pattern'
   if (r.type === 'api-review') return 'api-review'
+  if (typeof r.raw === 'string' && r.raw) return 'raw'
   return 'none'
 })
 
@@ -394,11 +388,6 @@ function unitTagColor(u: any) {
 function unitTagText(u: any) {
   if (isRetrying(u)) return '重审中'
   return u.status === 'success' ? '成功' : '失败'
-}
-
-function renderMarkdown(text: string): string {
-  const html = marked.parse(text ?? '') as string
-  return DOMPurify.sanitize(html)
 }
 
 onMounted(() => {
@@ -430,72 +419,6 @@ onMounted(() => {
 .error-text {
   color: #cf1322;
   white-space: pre-wrap;
-}
-.raw-text {
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 4px;
-  padding: 12px;
-  max-height: 50vh;
-  overflow: auto;
-  font-size: 12px;
-  margin: 0;
-}
-.markdown-body {
-  max-height: 50vh;
-  overflow: auto;
-  font-size: 13px;
-  line-height: 1.6;
-  word-break: break-word;
-}
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3),
-.markdown-body :deep(h4) {
-  margin: 0.5em 0 0.3em;
-  font-weight: 600;
-}
-.markdown-body :deep(p) {
-  margin: 0.4em 0;
-}
-.markdown-body :deep(code) {
-  background: #f5f5f5;
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 12px;
-}
-.markdown-body :deep(pre) {
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 4px;
-  padding: 10px;
-  overflow: auto;
-}
-.markdown-body :deep(pre code) {
-  background: none;
-  padding: 0;
-}
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  padding-left: 1.5em;
-}
-.markdown-body :deep(blockquote) {
-  border-left: 3px solid #ddd;
-  margin: 0.4em 0;
-  padding-left: 0.8em;
-  color: #666;
-}
-.markdown-body :deep(table) {
-  border-collapse: collapse;
-  margin: 0.5em 0;
-}
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  border: 1px solid #eee;
-  padding: 4px 8px;
 }
 :deep(.ant-tree-indent-unit) {
   width: 12px;

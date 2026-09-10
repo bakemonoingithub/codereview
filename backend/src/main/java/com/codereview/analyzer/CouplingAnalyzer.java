@@ -26,6 +26,7 @@ public class CouplingAnalyzer implements Analyzer {
     private static final int DEFAULT_THRESHOLD = 10;
 
     private static final String SYSTEM_PROMPT = "你是资深 Java 架构审查专家，只输出合法 JSON，不要输出任何其他文字。";
+    private static final String SYSTEM_PROMPT_FREE = "你是资深 Java 架构审查专家。";
     private static final String SUGGEST_PROMPT = """
             请基于下面的确定性依赖分析结论，给出修复建议。
             输出 JSON：{"suggestions":[{"target":"类全限定名","issue":"问题","suggestion":"建议","severity":"MAJOR|MINOR"}],"summary":"一句话概述"}。
@@ -55,11 +56,18 @@ public class CouplingAnalyzer implements Analyzer {
         int threshold = ctx.params() == null ? DEFAULT_THRESHOLD : ctx.params().path("threshold").asInt(DEFAULT_THRESHOLD);
         ObjectNode result = buildDeterministic(material, threshold, objectMapper);
         try {
-            JsonNode suggestions = llmSuggest(ctx, result);
-            result.set("suggestions", suggestions.path("suggestions"));
-            String llmSummary = suggestions.path("summary").asText("");
-            if (!llmSummary.isBlank()) {
-                result.put("summary", llmSummary);
+            if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
+                String raw = llmClient.chat(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT_FREE,
+                        ctx.customPrompt() + "\n\n确定性结论：\n" + result.toPrettyString());
+                result.put("raw", raw);
+                result.set("suggestions", objectMapper.createArrayNode());
+            } else {
+                JsonNode suggestions = llmSuggest(ctx, result);
+                result.set("suggestions", suggestions.path("suggestions"));
+                String llmSummary = suggestions.path("summary").asText("");
+                if (!llmSummary.isBlank()) {
+                    result.put("summary", llmSummary);
+                }
             }
         } catch (Exception e) {
             result.set("suggestions", objectMapper.createArrayNode());
@@ -109,10 +117,6 @@ public class CouplingAnalyzer implements Analyzer {
 
     private JsonNode llmSuggest(AnalysisContext ctx, ObjectNode deterministic) throws Exception {
         String userPrompt = SUGGEST_PROMPT + deterministic.toPrettyString();
-        if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
-            userPrompt = SUGGEST_PROMPT + "\n关注点：\n" + ctx.customPrompt()
-                    + "\n\n确定性结论：\n" + deterministic.toPrettyString();
-        }
         String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT, userPrompt);
         return objectMapper.readTree(content);
     }

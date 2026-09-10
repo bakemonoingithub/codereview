@@ -22,12 +22,14 @@
       <a-table-column title="建议" data-index="suggestion" />
       <a-table-column title="级别" data-index="severity" width="80" />
     </a-table>
+    <RawResult v-if="result.raw" :text="result.raw" style="margin-top: 12px" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as echarts from 'echarts'
+import RawResult from '@/components/RawResult.vue'
 
 const props = defineProps<{ result: any }>()
 

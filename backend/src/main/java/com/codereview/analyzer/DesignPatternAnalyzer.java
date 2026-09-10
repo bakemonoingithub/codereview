@@ -6,6 +6,7 @@ import com.codereview.material.MaterialService;
 import com.codereview.review.ReviewStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class DesignPatternAnalyzer implements Analyzer {
 
     private static final String SYSTEM_PROMPT = "你是资深 Java 架构专家，只输出合法 JSON，不要输出任何其他文字。";
+    private static final String SYSTEM_PROMPT_FREE = "你是资深 Java 架构专家。";
     private static final String PATTERN_PROMPT = """
             请从下面这份「项目结构摘要」中识别设计模式，只关注以下常见模式：
             单例、工厂、抽象工厂、建造者、观察者、策略、装饰器、适配器、代理、模板方法。
@@ -44,12 +46,19 @@ public class DesignPatternAnalyzer implements Analyzer {
     public AnalyzeOutcome analyze(AnalysisContext ctx) throws Exception {
         Material material = materialService.prepare(ctx.project().getCredential(), ctx.project().getCredentialType(),
                 ctx.ref(), ctx.branch(), ctx.record().getCommitSha(), ctx.scope());
-        String userPrompt = String.format(PATTERN_PROMPT, material.structureSummary());
+        JsonNode result;
         if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
-            userPrompt += "\n关注点：\n" + ctx.customPrompt();
+            String raw = llmClient.chat(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT_FREE,
+                    ctx.customPrompt() + "\n\n结构摘要：\n" + material.structureSummary());
+            ObjectNode o = objectMapper.createObjectNode();
+            o.put("raw", raw);
+            o.put("summary", "");
+            result = o;
+        } else {
+            String userPrompt = String.format(PATTERN_PROMPT, material.structureSummary());
+            String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT, userPrompt);
+            result = objectMapper.readTree(content);
         }
-        String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(), SYSTEM_PROMPT, userPrompt);
-        JsonNode result = objectMapper.readTree(content);
         return new AnalyzeOutcome(result, ReviewStatus.SUCCESS);
     }
 }
