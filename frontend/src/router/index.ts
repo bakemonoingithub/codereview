@@ -36,6 +36,18 @@ const routes: RouteRecordRaw[] = [
         name: 'strategies',
         component: () => import('@/views/StrategyList.vue'),
         meta: { title: '策略' }
+      },
+      {
+        path: 'prompts',
+        name: 'prompts',
+        component: () => import('@/views/PromptList.vue'),
+        meta: { title: '提示词' }
+      },
+      {
+        path: 'reports',
+        name: 'reports',
+        component: () => import('@/views/ReportList.vue'),
+        meta: { title: '报告' }
       }
     ]
   }
