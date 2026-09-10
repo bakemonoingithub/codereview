@@ -21,6 +21,11 @@
         <a-form-item label="仓库地址" required>
           <a-input v-model:value="form.giteaUrl" placeholder="https://github.com/owner/repo" />
         </a-form-item>
+        <a-form-item label="访问令牌（可选）">
+          <a-input-password v-model:value="form.credential"
+                            placeholder="ghp_... 或 github_pat_...；填了可避免 API 限流，私有仓库必填"
+                            autocomplete="new-password" />
+        </a-form-item>
       </a-form>
     </a-modal>
   </div>
@@ -35,7 +40,7 @@ const projects = ref<any[]>([])
 const loading = ref(false)
 const showCreate = ref(false)
 const saving = ref(false)
-const form = ref({ name: '', giteaUrl: '' })
+const form = ref({ name: '', giteaUrl: '', credential: '' })
 
 async function load() {
   loading.value = true
@@ -48,7 +53,7 @@ async function load() {
 }
 
 function openCreate() {
-  form.value = { name: '', giteaUrl: '' }
+  form.value = { name: '', giteaUrl: '', credential: '' }
   showCreate.value = true
 }
 
@@ -59,7 +64,11 @@ async function onCreate() {
   }
   saving.value = true
   try {
-    await createProject({ name: form.value.name, giteaUrl: form.value.giteaUrl })
+    await createProject({
+      name: form.value.name,
+      giteaUrl: form.value.giteaUrl,
+      credential: form.value.credential?.trim() || undefined
+    })
     message.success('创建成功')
     showCreate.value = false
     load()

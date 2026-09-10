@@ -14,15 +14,22 @@ import java.util.Base64;
 import java.util.List;
 
 /**
- * GitHub 实现；token 可空（公开仓库匿名访问，但有频率限制）
+ * GitHub 实现；token 可空（项目级 credential 为空时回退 github.token 兜底认证，
+ * 两者都为空才匿名访问公开仓库，但仅 60 次/小时/IP）
  */
 @Component
 public class GitHubClient implements GitHostClient {
 
     private static final String API_BASE = "https://api.github.com";
     private static final String RAW_BASE = "https://raw.githubusercontent.com";
-    private final RestClient restClient = restClient();
+    private final GitHubProperties properties;
+    private final RestClient restClient;
     private final ObjectMapper mapper = new ObjectMapper();
+
+    public GitHubClient(GitHubProperties properties) {
+        this.properties = properties;
+        this.restClient = restClient();
+    }
 
     @Override
     public List<GitTreeEntry> tree(String token, String owner, String repo, String branch) {
@@ -87,12 +94,24 @@ public class GitHubClient implements GitHostClient {
     }
 
     private String get(String url, String token) {
-        if (token != null && !token.isBlank()) {
-            return restClient.get().uri(url)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                    .retrieve().body(String.class);
+        // 项目级 token 优先；为空时回退到全局兜底 token（github.token），
+        // 避免匿名请求触发 60 次/小时/IP 的限流。
+        String effective = resolveToken(token);
+        if (effective == null || effective.isBlank()) {
+            return restClient.get().uri(url).retrieve().body(String.class);
         }
-        return restClient.get().uri(url).retrieve().body(String.class);
+        return restClient.get().uri(url)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + effective)
+                .retrieve().body(String.class);
+    }
+
+    /** 取实际生效的令牌：项目级 credential 优先，其次全局兜底 token。 */
+    private String resolveToken(String token) {
+        if (token != null && !token.isBlank()) {
+            return token;
+        }
+        String fallback = properties.getToken();
+        return (fallback == null || fallback.isBlank()) ? null : fallback;
     }
 
     private static RestClient restClient() {
