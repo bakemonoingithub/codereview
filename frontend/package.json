@@ -14,6 +14,7 @@
     "ant-design-vue": "^4.2.0",
     "axios": "^1.7.0",
     "dayjs": "^1.11.10",
+    "echarts": "^6.1.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
@@ -28,6 +29,10 @@
     "vue-tsc": "^2.0.29"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "core-js", "vue-demi"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "core-js",
+      "vue-demi"
+    ]
   }
 }

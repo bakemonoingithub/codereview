@@ -64,7 +64,8 @@
               <a-button :loading="retrying" @click="onRetry">重审失败单元</a-button>
             </a-space>
             <p v-if="parsed.summary" class="summary">{{ parsed.summary }}</p>
-            <a-collapse v-if="parsed.units?.length">
+
+            <a-collapse v-if="resultType === 'llm-review' && parsed.units?.length">
               <a-collapse-panel v-for="(u, i) in parsed.units" :key="i" :header="unitTitle(u)">
                 <template #extra>
                   <span v-if="isRetrying(u)" class="retrying-badge">
@@ -93,6 +94,9 @@
                 </template>
               </a-collapse-panel>
             </a-collapse>
+
+            <CouplingResult v-else-if="resultType === 'coupling'" :result="parsed" />
+            <PatternResult v-else-if="resultType === 'design-pattern'" :result="parsed" />
           </template>
         </a-card>
       </a-col>
@@ -107,6 +111,8 @@ import { message } from 'ant-design-vue'
 import { getBranches, getTree, type TreeNode } from '@/api/project'
 import { triggerReview, getReview, retryReview, parseResult, type ReviewRecord } from '@/api/review'
 import { listStrategies } from '@/api/strategy'
+import CouplingResult from '@/components/CouplingResult.vue'
+import PatternResult from '@/components/PatternResult.vue'
 
 const route = useRoute()
 const projectId = route.params.id as string
@@ -201,7 +207,7 @@ async function loadStrategies() {
 async function onTrigger() {
   const scope = checkedKeys.value.filter((k) => fileSet.has(k))
   if (!scope.length) {
-    message.warning('请先勾选要审查的文件')
+    message.warning('请先勾选要审查的文件（可勾选目录批量选择）')
     return
   }
   if (!strategyId.value) {
@@ -226,7 +232,6 @@ async function onRetry() {
   retrying.value = true
   try {
     await retryReview(review.value.id)
-    // 乐观置为执行中，成功单元结果继续保留展示，仅失败部分刷新
     review.value.status = 1
     review.value.progress = 0
     retryInProgress.value = true
@@ -256,6 +261,14 @@ function startPoll(id: string) {
 }
 
 const parsed = computed(() => parseResult(review.value?.resultJson))
+
+const resultType = computed(() => {
+  const r = parsed.value
+  if (Array.isArray(r.units)) return 'llm-review'
+  if (Array.isArray(r.nodes) && Array.isArray(r.edges)) return 'coupling'
+  if (Array.isArray(r.patterns)) return 'design-pattern'
+  return 'none'
+})
 
 const statusAlert = computed(() => {
   const s = review.value?.status
@@ -300,7 +313,6 @@ onMounted(() => {
   color: #cf1322;
   white-space: pre-wrap;
 }
-// 树子级缩进减半（默认 24px → 12px）
 :deep(.ant-tree-indent-unit) {
   width: 12px;
 }

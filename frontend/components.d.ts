@@ -34,6 +34,8 @@ declare module 'vue' {
     ATableColumn: typeof import('ant-design-vue/es')['TableColumn']
     ATag: typeof import('ant-design-vue/es')['Tag']
     ATree: typeof import('ant-design-vue/es')['Tree']
+    CouplingResult: typeof import('./src/components/CouplingResult.vue')['default']
+    PatternResult: typeof import('./src/components/PatternResult.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }

@@ -54,11 +54,11 @@ export function listReviews(projectId: string, params: { pageNum?: number; pageS
   return request.get(`/projects/${projectId}/reviews`, { params }) as Promise<any>
 }
 
-export function parseResult(json?: string): ReviewResult {
-  if (!json) return { units: [] }
+export function parseResult(json?: string): any {
+  if (!json) return {}
   try {
-    return JSON.parse(json) as ReviewResult
+    return JSON.parse(json)
   } catch {
-    return { units: [] }
+    return {}
   }
 }
