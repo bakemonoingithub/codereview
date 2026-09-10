@@ -55,19 +55,19 @@ public class ReviewService {
         if (req.strategyId() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "请选择审查策略");
         }
-        if (req.scope() == null || req.scope().isEmpty()) {
-            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "请选择审查范围");
-        }
         ReviewStrategy strategy = strategyMapper.selectById(req.strategyId());
         if (strategy == null) {
             throw new BusinessException(ResultCode.STRATEGY_NOT_FOUND);
         }
         int analyzerType = strategy.getAnalyzerType() == null ? 0 : strategy.getAnalyzerType();
-        if (analyzerType < 1 || analyzerType > 3) {
+        if (analyzerType < 1 || analyzerType > 4) {
             throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
         }
-        ModelConfig model = resolveModelConfig(strategy);
-        String commitSha = resolveCommitSha(p, req.branch());
+        if (analyzerType != 4 && (req.scope() == null || req.scope().isEmpty())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "请选择审查范围");
+        }
+        ModelConfig model = analyzerType == 4 ? null : resolveModelConfig(strategy);
+        String commitSha = analyzerType == 4 ? null : resolveCommitSha(p, req.branch());
 
         ReviewRecord record = new ReviewRecord();
         record.setProjectId(projectId);
@@ -152,10 +152,12 @@ public class ReviewService {
         root.put("strategyId", strategy.getId().toString());
         root.put("strategyName", strategy.getName());
         root.put("analyzerType", strategy.getAnalyzerType());
-        ObjectNode m = root.putObject("model");
-        m.put("baseUrl", model.getBaseUrl());
-        m.put("apiKey", model.getToken());
-        m.put("modelName", model.getModelName());
+        if (model != null) {
+            ObjectNode m = root.putObject("model");
+            m.put("baseUrl", model.getBaseUrl());
+            m.put("apiKey", model.getToken());
+            m.put("modelName", model.getModelName());
+        }
         try {
             JsonNode params = objectMapper.readTree(
                     strategy.getParamsJson() == null || strategy.getParamsJson().isBlank() ? "{}" : strategy.getParamsJson());

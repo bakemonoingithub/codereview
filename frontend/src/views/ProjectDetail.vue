@@ -97,6 +97,26 @@
 
             <CouplingResult v-else-if="resultType === 'coupling'" :result="parsed" />
             <PatternResult v-else-if="resultType === 'design-pattern'" :result="parsed" />
+
+            <div v-else-if="resultType === 'api-review'">
+              <a-space v-if="parsed.resultUrl" style="margin-bottom: 8px">
+                <a-tag :color="parsed.triggered ? 'green' : 'red'">{{ parsed.triggered ? '已触发' : '触发失败' }}</a-tag>
+                <a :href="parsed.resultUrl" target="_blank" rel="noopener">查看 SonarQube 结果</a>
+              </a-space>
+              <p v-if="parsed.triggerError" class="error-text">触发失败：{{ parsed.triggerError }}</p>
+              <a-table
+                v-if="parsed.issues?.length"
+                :data-source="parsed.issues"
+                row-key="key"
+                size="small"
+                :pagination="false"
+                style="margin-top: 8px"
+              >
+                <a-table-column title="级别" data-index="severity" width="80" />
+                <a-table-column title="行" data-index="line" width="60" />
+                <a-table-column title="问题" data-index="message" />
+              </a-table>
+            </div>
           </template>
         </a-card>
       </a-col>
@@ -267,6 +287,7 @@ const resultType = computed(() => {
   if (Array.isArray(r.units)) return 'llm-review'
   if (Array.isArray(r.nodes) && Array.isArray(r.edges)) return 'coupling'
   if (Array.isArray(r.patterns)) return 'design-pattern'
+  if (r.type === 'api-review') return 'api-review'
   return 'none'
 })
 
