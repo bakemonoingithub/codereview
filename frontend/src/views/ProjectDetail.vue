@@ -4,8 +4,9 @@
       <a-tab-pane key="review" tab="代码审查">
         <a-row :gutter="16">
           <a-col :span="10">
-            <div class="select-row">
-              <span class="select-label">请选择分支</span>
+            <a-card title="审查配置" size="small">
+              <div class="select-row">
+                <span class="select-label">请选择分支</span>
               <a-select
                 v-model:value="branch"
                 style="width: 200px"
@@ -32,7 +33,7 @@
                 开始审查
               </a-button>
             </div>
-            <a-tabs v-model:active-key="viewTab">
+            <a-tabs v-model:active-key="viewTab" type="card">
               <a-tab-pane key="structure" tab="结构视图">
                 <div class="tree-toolbar">
                   <a-space>
@@ -59,6 +60,7 @@
                 </a-button>
               </a-tab-pane>
             </a-tabs>
+            </a-card>
           </a-col>
       <a-col :span="14">
         <a-card title="审查结果" size="small">
