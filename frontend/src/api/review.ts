@@ -38,8 +38,40 @@ export interface ReviewResult {
   summary?: string
 }
 
-export function triggerReview(projectId: string, data: { branch: string; strategyId: string; scope: string[]; mergeFiles?: boolean }) {
+export function triggerReview(
+  projectId: string,
+  data: { branch: string; strategyId: string; scope: string[]; mergeFiles?: boolean; commitSha?: string }
+) {
   return request.post(`/projects/${projectId}/reviews/trigger`, data) as Promise<any>
+}
+
+// ---------------------------------------------------------------------------
+// issue 标记（准确率复核，服务验收指标 5）
+// ---------------------------------------------------------------------------
+
+/** 0 未标记（撤销）/ 1 误报 / 2 已采纳 */
+export const MARK_NONE = 0
+export const MARK_FALSE_POSITIVE = 1
+export const MARK_ACCEPTED = 2
+
+export interface IssueMark {
+  id: string
+  recordId: string
+  unitPath: string
+  issueIndex: number
+  markValue: number
+}
+
+export function markIssue(recordId: string, data: { unitPath: string; issueIndex: number; markValue: number }) {
+  return request.post(`/reviews/${recordId}/marks`, data) as Promise<IssueMark>
+}
+
+export function unmarkIssue(recordId: string, unitPath: string, issueIndex: number) {
+  return request.delete(`/reviews/${recordId}/marks`, { params: { unitPath, issueIndex } }) as Promise<void>
+}
+
+export function listMarks(recordId: string) {
+  return request.get(`/reviews/${recordId}/marks`) as Promise<IssueMark[]>
 }
 
 export function retryReview(id: string) {

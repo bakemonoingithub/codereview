@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@git-diff-view/vue": "0.1.7",
     "@types/dompurify": "^3.2.0",
     "ant-design-vue": "^4.2.0",
     "axios": "^1.7.0",
@@ -19,6 +21,7 @@
     "echarts": "^6.1.0",
     "marked": "^18.0.12",
     "pinia": "^2.1.7",
+    "splitpanes": "4.1.2",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
   },
@@ -29,6 +32,7 @@
     "typescript": "^5.5.0",
     "unplugin-vue-components": "^0.27.0",
     "vite": "^5.4.0",
+    "vitest": "^3.2.7",
     "vue-tsc": "^2.0.29"
   },
   "pnpm": {

@@ -51,6 +51,9 @@
           <a-form-item v-if="form.analyzerType === 2" label="高耦合阈值（扇出超过即标记）">
             <a-input v-model:value="form.threshold" placeholder="默认 10" />
           </a-form-item>
+          <a-form-item v-if="form.analyzerType === 5" label="方法体窗口（变更行 ± N 行，超长方法体按此截断）">
+            <a-input v-model:value="form.methodWindowLines" placeholder="默认 60" />
+          </a-form-item>
         </template>
 
         <template v-else>
@@ -92,6 +95,7 @@ const form = ref({
   modelConfigId: '',
   promptId: '',
   threshold: '10',
+  methodWindowLines: '60',
   apiUrl: '',
   resultUrl: '',
   queryUrl: '',
@@ -144,6 +148,7 @@ function openCreate() {
     modelConfigId: '',
     promptId: '',
     threshold: '10',
+    methodWindowLines: '60',
     apiUrl: '',
     resultUrl: '',
     queryUrl: '',
@@ -168,6 +173,7 @@ function openEdit(record: any) {
     modelConfigId: params.modelConfigId || '',
     promptId: params.promptId || params.promptVersionId || '',
     threshold: params.threshold != null ? String(params.threshold) : '10',
+    methodWindowLines: params.methodWindowLines != null ? String(params.methodWindowLines) : '60',
     apiUrl: params.apiUrl || '',
     resultUrl: params.resultUrl || '',
     queryUrl: params.queryUrl || '',
@@ -204,6 +210,10 @@ async function onSave() {
     if (analyzerType === 2) {
       const t = Number(form.value.threshold)
       if (!Number.isNaN(t) && t > 0) params.threshold = t
+    }
+    if (analyzerType === 5) {
+      const w = Number(form.value.methodWindowLines)
+      if (!Number.isNaN(w) && w > 0) params.methodWindowLines = w
     }
   }
   saving.value = true
