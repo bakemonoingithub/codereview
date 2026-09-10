@@ -1,6 +1,7 @@
 package com.codereview.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.codereview.dto.ReviewRecordResp;
@@ -69,17 +70,17 @@ public class ReviewService {
             throw new BusinessException(ResultCode.STRATEGY_NOT_FOUND);
         }
         int analyzerType = strategy.getAnalyzerType() == null ? 0 : strategy.getAnalyzerType();
-        if (analyzerType < 1 || analyzerType > 5) {
+        if (!AnalyzerTypes.isValid(analyzerType)) {
             throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
         }
-        boolean diffReview = analyzerType == 5;
+        boolean diffReview = AnalyzerTypes.requiresCommitSha(analyzerType);
         // diff 审查的范围由提交的变更文件决定，允许为空（为空即审全部变更文件）
-        if (analyzerType != 4 && !diffReview && (req.scope() == null || req.scope().isEmpty())) {
+        if (analyzerType != AnalyzerTypes.API_REVIEW && !diffReview && (req.scope() == null || req.scope().isEmpty())) {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "请选择审查范围");
         }
-        ModelConfig model = analyzerType == 4 ? null : resolveModelConfig(strategy);
+        ModelConfig model = AnalyzerTypes.requiresModel(analyzerType) ? resolveModelConfig(strategy) : null;
         String commitSha;
-        if (analyzerType == 4) {
+        if (analyzerType == AnalyzerTypes.API_REVIEW) {
             commitSha = null;
         } else if (diffReview) {
             // 必须锚定到具体提交：不接受缺省，否则会静默审到分支最新代码

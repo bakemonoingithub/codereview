@@ -2,6 +2,7 @@ package com.codereview.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.codereview.dto.StrategyReq;
@@ -14,9 +15,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 审查策略（M4 完整版）：四种分析器（llm-review/coupling/design-pattern/api-review）+ 按类型参数校验 + 编辑/删除。
+ * 审查策略：五种分析器（llm-review/coupling/design-pattern/api-review/diff-review）+ 按类型参数校验 + 编辑/删除。
  * 参数：
- *   llm-review/coupling/design-pattern → {modelConfigId, threshold?, promptId?}
+ *   llm-review/coupling/design-pattern/diff-review → {modelConfigId, threshold?, promptId?, methodWindowLines?}
  *   api-review → {apiUrl, resultUrl, queryUrl?, token?}
  */
 @Service
@@ -35,8 +36,8 @@ public class ReviewStrategyService {
         if (req.name() == null || req.name().isBlank()) {
             throw new BusinessException(ResultCode.PARAM_ERROR);
         }
-        int analyzerType = req.analyzerType() == null ? 1 : req.analyzerType();
-        if (analyzerType < 1 || analyzerType > 4) {
+        int analyzerType = req.analyzerType() == null ? AnalyzerTypes.LLM_REVIEW : req.analyzerType();
+        if (!AnalyzerTypes.isValid(analyzerType)) {
             throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
         }
         Map<String, Object> params = req.params() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(req.params());
@@ -56,7 +57,7 @@ public class ReviewStrategyService {
         }
         if (req.analyzerType() != null) {
             int at = req.analyzerType();
-            if (at < 1 || at > 4) {
+            if (!AnalyzerTypes.isValid(at)) {
                 throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
             }
             s.setAnalyzerType(at);
@@ -96,7 +97,7 @@ public class ReviewStrategyService {
     }
 
     private void validateParams(int analyzerType, Map<String, Object> params) {
-        if (analyzerType == 4) {
+        if (analyzerType == AnalyzerTypes.API_REVIEW) {
             if (blank(params.get("apiUrl")) || blank(params.get("resultUrl"))) {
                 throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "api-review 策略需配置调用API与结果展示地址");
             }
@@ -107,6 +108,16 @@ public class ReviewStrategyService {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "请选择模型");
         }
         modelConfigService.getOrThrow(Long.parseLong(String.valueOf(modelId)));
+
+        if (analyzerType == AnalyzerTypes.DIFF_REVIEW && !blank(params.get("methodWindowLines"))) {
+            try {
+                if (Integer.parseInt(String.valueOf(params.get("methodWindowLines"))) <= 0) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException e) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "方法体窗口必须是正整数");
+            }
+        }
     }
 
     private String writeParams(Map<String, Object> params) {
