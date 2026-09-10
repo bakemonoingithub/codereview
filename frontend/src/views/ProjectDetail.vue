@@ -2,62 +2,64 @@
   <div>
     <a-tabs v-model:active-key="activeTab">
       <a-tab-pane key="review" tab="代码审查">
-        <a-space style="margin-bottom: 16px">
-      <a-select
-        v-model:value="branch"
-        style="width: 200px"
-        placeholder="选择分支"
-        :loading="branchLoading"
-        @change="loadTree"
-      >
-        <a-select-option v-for="b in branches" :key="b" :value="b">{{ b }}</a-select-option>
-      </a-select>
-      <a-select
-        v-model:value="strategyId"
-        style="width: 220px"
-        placeholder="选择审查策略"
-        :options="strategyOptions"
-      >
-        <template #notFoundContent>
-          <div>暂无策略，<router-link to="/strategies">去创建</router-link></div>
-        </template>
-      </a-select>
-      <a-button type="primary" :loading="triggering" :disabled="!strategyId" @click="onTrigger">
-        开始审查
-      </a-button>
-    </a-space>
-
-    <a-row :gutter="16">
-      <a-col :span="10">
-        <a-card size="small">
-          <template #title>文件树</template>
-          <template #extra>
-            <a-space>
-              <a-button size="small" @click="expandAll">展开全部</a-button>
-              <a-button size="small" @click="collapseAll">收起全部</a-button>
-            </a-space>
-          </template>
-          <a-tree
-            v-if="treeData.length"
-            checkable
-            :tree-data="treeData"
-            v-model:checked-keys="checkedKeys"
-            v-model:expanded-keys="expandedKeys"
-          />
-          <a-empty v-else description="加载中…" />
-        </a-card>
-
-        <a-card size="small" style="margin-top: 12px">
-          <template #title>提交视图</template>
-          <a-select v-model:value="selectedCommit" style="width: 100%" placeholder="选择提交" :options="commitOptions" @change="loadChangedFiles" />
-          <a-checkbox-group v-if="changedFiles.length" v-model:value="changedChecked" style="width: 100%; margin-top: 8px">
-            <a-checkbox v-for="f in changedFiles" :key="f" :value="f">{{ f }}</a-checkbox>
-          </a-checkbox-group>
-          <a-button v-if="changedFiles.length" size="small" type="primary" style="margin-top: 8px" @click="useChangedFiles">
-            审查选中变更文件
-          </a-button>
-        </a-card>
-      </a-col>
+        <a-row :gutter="16">
+          <a-col :span="10">
+            <div class="select-row">
+              <span class="select-label">请选择分支</span>
+              <a-select
+                v-model:value="branch"
+                style="width: 200px"
+                placeholder="选择分支"
+                :loading="branchLoading"
+                @change="loadTree"
+              >
+                <a-select-option v-for="b in branches" :key="b" :value="b">{{ b }}</a-select-option>
+              </a-select>
+            </div>
+            <div class="select-row">
+              <span class="select-label">请选择审查策略</span>
+              <a-select
+                v-model:value="strategyId"
+                style="width: 220px"
+                placeholder="选择审查策略"
+                :options="strategyOptions"
+              >
+                <template #notFoundContent>
+                  <div>暂无策略，<router-link to="/strategies">去创建</router-link></div>
+                </template>
+              </a-select>
+              <a-button type="primary" :loading="triggering" :disabled="!strategyId" @click="onTrigger">
+                开始审查
+              </a-button>
+            </div>
+            <a-tabs v-model:active-key="viewTab">
+              <a-tab-pane key="structure" tab="结构视图">
+                <div class="tree-toolbar">
+                  <a-space>
+                    <a-button size="small" @click="expandAll">展开全部</a-button>
+                    <a-button size="small" @click="collapseAll">收起全部</a-button>
+                  </a-space>
+                </div>
+                <a-tree
+                  v-if="treeData.length"
+                  checkable
+                  :tree-data="treeData"
+                  v-model:checked-keys="checkedKeys"
+                  v-model:expanded-keys="expandedKeys"
+                />
+                <a-empty v-else description="加载中…" />
+              </a-tab-pane>
+              <a-tab-pane key="commit" tab="提交视图">
+                <a-select v-model:value="selectedCommit" style="width: 100%" placeholder="选择提交" :options="commitOptions" @change="loadChangedFiles" />
+                <a-checkbox-group v-if="changedFiles.length" v-model:value="changedChecked" style="width: 100%; margin-top: 8px">
+                  <a-checkbox v-for="f in changedFiles" :key="f" :value="f">{{ f }}</a-checkbox>
+                </a-checkbox-group>
+                <a-button v-if="changedFiles.length" size="small" type="primary" style="margin-top: 8px" @click="useChangedFiles">
+                  审查选中变更文件
+                </a-button>
+              </a-tab-pane>
+            </a-tabs>
+          </a-col>
       <a-col :span="14">
         <a-card title="审查结果" size="small">
           <div v-if="!review">尚未触发审查</div>
@@ -156,6 +158,7 @@ import ReportPanel from '@/components/ReportPanel.vue'
 const route = useRoute()
 const projectId = route.params.id as string
 const activeTab = ref('review')
+const viewTab = ref('structure')
 
 const branches = ref<string[]>([])
 const branch = ref('')
@@ -380,6 +383,19 @@ onMounted(() => {
 </script>
 
 <style scoped lang="less">
+.select-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.select-label {
+  flex: none;
+  width: 110px;
+  color: rgba(0, 0, 0, 0.88);
+}
+.tree-toolbar {
+  margin-bottom: 8px;
+}
 .summary {
   color: #666;
 }

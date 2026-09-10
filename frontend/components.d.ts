@@ -37,6 +37,8 @@ declare module 'vue' {
     ASpace: typeof import('ant-design-vue/es')['Space']
     ATable: typeof import('ant-design-vue/es')['Table']
     ATableColumn: typeof import('ant-design-vue/es')['TableColumn']
+    ATabPane: typeof import('ant-design-vue/es')['TabPane']
+    ATabs: typeof import('ant-design-vue/es')['Tabs']
     ATag: typeof import('ant-design-vue/es')['Tag']
     ATextarea: typeof import('ant-design-vue/es')['Textarea']
     ATree: typeof import('ant-design-vue/es')['Tree']
