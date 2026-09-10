@@ -8,7 +8,7 @@ export interface Strategy {
   createdAt: string
 }
 
-export function listStrategies(params: { pageNum?: number; pageSize?: number } = {}) {
+export function listStrategies(params: { pageNum?: number; pageSize?: number; keyword?: string; analyzerType?: number } = {}) {
   return request.get('/strategies', { params }) as Promise<any>
 }
 

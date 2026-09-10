@@ -1,5 +1,6 @@
 package com.codereview.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
@@ -74,8 +75,16 @@ public class ReviewStrategyService {
         strategyMapper.deleteById(id);
     }
 
-    public Page<ReviewStrategy> list(long pageNum, long pageSize) {
-        return strategyMapper.selectPage(new Page<>(pageNum, pageSize), null);
+    public Page<ReviewStrategy> list(long pageNum, long pageSize, String keyword, Integer analyzerType) {
+        LambdaQueryWrapper<ReviewStrategy> w = new LambdaQueryWrapper<>();
+        if (keyword != null && !keyword.isBlank()) {
+            w.like(ReviewStrategy::getName, keyword);
+        }
+        if (analyzerType != null) {
+            w.eq(ReviewStrategy::getAnalyzerType, analyzerType);
+        }
+        w.orderByDesc(ReviewStrategy::getUpdatedAt);
+        return strategyMapper.selectPage(new Page<>(pageNum, pageSize), w);
     }
 
     public ReviewStrategy getOrThrow(Long id) {

@@ -1,8 +1,16 @@
 <template>
   <div>
-    <a-space style="margin-bottom: 16px">
+    <div class="toolbar">
+      <a-space>
+        <a-input v-model:value="keyword" placeholder="搜索名称" style="width: 240px" allow-clear @pressEnter="load" />
+        <a-select v-model:value="filterAnalyzerType" placeholder="分析器" style="width: 180px" allow-clear>
+          <a-select-option v-for="a in ANALYZER_TYPES" :key="a.value" :value="a.value">{{ a.label }}</a-select-option>
+        </a-select>
+        <a-button type="primary" @click="load">搜索</a-button>
+        <a-button @click="resetSearch">重置</a-button>
+      </a-space>
       <a-button type="primary" @click="openCreate">新建策略</a-button>
-    </a-space>
+    </div>
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name" />
@@ -10,15 +18,25 @@
         <template #default="{ text }">{{ analyzerLabel(text) }}</template>
       </a-table-column>
       <a-table-column title="创建时间" data-index="createdAt" />
+      <a-table-column title="操作">
+        <template #default="{ record }">
+          <a-space>
+            <a-button size="small" @click="openEdit(record)">编辑</a-button>
+            <a-popconfirm title="确认删除？" @confirm="onDelete(record.id)">
+              <a-button size="small" danger>删除</a-button>
+            </a-popconfirm>
+          </a-space>
+        </template>
+      </a-table-column>
     </a-table>
 
-    <a-modal v-model:open="modalOpen" title="新建策略" :confirm-loading="saving" @ok="onCreate">
+    <a-modal v-model:open="modalOpen" :title="editingId ? '编辑策略' : '新建策略'" :confirm-loading="saving" @ok="onSave">
       <a-form layout="vertical">
         <a-form-item label="名称" required>
           <a-input v-model:value="form.name" placeholder="如 通用代码审查" />
         </a-form-item>
         <a-form-item label="分析器" required>
-          <a-select v-model:value="form.analyzerType" placeholder="选择分析器">
+          <a-select v-model:value="form.analyzerType" placeholder="选择分析器" :disabled="!!editingId">
             <a-select-option v-for="a in ANALYZER_TYPES" :key="a.value" :value="a.value">{{ a.label }}</a-select-option>
           </a-select>
         </a-form-item>
@@ -57,14 +75,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
-import { listStrategies, createStrategy, ANALYZER_TYPES, analyzerLabel } from '@/api/strategy'
+import { listStrategies, createStrategy, updateStrategy, deleteStrategy, ANALYZER_TYPES, analyzerLabel } from '@/api/strategy'
 import { listModels } from '@/api/model'
 import { listPrompts } from '@/api/prompt'
 
 const records = ref<any[]>([])
 const loading = ref(false)
+const keyword = ref('')
+const filterAnalyzerType = ref<number | undefined>(undefined)
 const modalOpen = ref(false)
 const saving = ref(false)
+const editingId = ref('')
 const form = ref({
   name: '',
   analyzerType: 1,
@@ -82,11 +103,23 @@ const promptOptions = ref<{ value: string; label: string }[]>([])
 async function load() {
   loading.value = true
   try {
-    const page = (await listStrategies({ pageNum: 1, pageSize: 100 })) as any
+    const params: Record<string, any> = { pageNum: 1, pageSize: 100 }
+    const kw = keyword.value.trim()
+    if (kw) params.keyword = kw
+    if (filterAnalyzerType.value !== undefined && filterAnalyzerType.value !== null) {
+      params.analyzerType = filterAnalyzerType.value
+    }
+    const page = (await listStrategies(params)) as any
     records.value = page?.records || []
   } finally {
     loading.value = false
   }
+}
+
+function resetSearch() {
+  keyword.value = ''
+  filterAnalyzerType.value = undefined
+  load()
 }
 
 async function loadModels() {
@@ -104,6 +137,7 @@ async function loadPrompts() {
 }
 
 function openCreate() {
+  editingId.value = ''
   form.value = {
     name: '',
     analyzerType: 1,
@@ -120,7 +154,31 @@ function openCreate() {
   loadPrompts()
 }
 
-async function onCreate() {
+function openEdit(record: any) {
+  editingId.value = record.id
+  let params: Record<string, any> = {}
+  try {
+    params = JSON.parse(record.paramsJson || '{}')
+  } catch {
+    params = {}
+  }
+  form.value = {
+    name: record.name,
+    analyzerType: record.analyzerType,
+    modelConfigId: params.modelConfigId || '',
+    promptId: params.promptVersionId || '',
+    threshold: params.threshold != null ? String(params.threshold) : '10',
+    apiUrl: params.apiUrl || '',
+    resultUrl: params.resultUrl || '',
+    queryUrl: params.queryUrl || '',
+    token: params.token || ''
+  }
+  modalOpen.value = true
+  loadModels()
+  loadPrompts()
+}
+
+async function onSave() {
   if (!form.value.name) {
     message.warning('请填写名称')
     return
@@ -150,16 +208,40 @@ async function onCreate() {
   }
   saving.value = true
   try {
-    await createStrategy({ name: form.value.name, analyzerType, params })
-    message.success('创建成功')
+    if (editingId.value) {
+      await updateStrategy(editingId.value, { name: form.value.name, params })
+      message.success('保存成功')
+    } else {
+      await createStrategy({ name: form.value.name, analyzerType, params })
+      message.success('创建成功')
+    }
     modalOpen.value = false
     await load()
   } catch (e: any) {
-    message.error(e?.message || '创建失败')
+    message.error(e?.message || '保存失败')
   } finally {
     saving.value = false
   }
 }
 
+async function onDelete(id: string) {
+  try {
+    await deleteStrategy(id)
+    message.success('删除成功')
+    await load()
+  } catch (e: any) {
+    message.error(e?.message || '删除失败')
+  }
+}
+
 onMounted(load)
 </script>
+
+<style scoped lang="less">
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+</style>

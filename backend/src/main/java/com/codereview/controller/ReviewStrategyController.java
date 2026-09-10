@@ -27,8 +27,10 @@ public class ReviewStrategyController {
 
     @GetMapping
     public Result<Page<ReviewStrategy>> list(@RequestParam(defaultValue = "1") long pageNum,
-                                             @RequestParam(defaultValue = "10") long pageSize) {
-        return Result.ok(strategyService.list(pageNum, pageSize));
+                                             @RequestParam(defaultValue = "10") long pageSize,
+                                             @RequestParam(required = false) String keyword,
+                                             @RequestParam(required = false) Integer analyzerType) {
+        return Result.ok(strategyService.list(pageNum, pageSize, keyword, analyzerType));
     }
 
     @PostMapping
