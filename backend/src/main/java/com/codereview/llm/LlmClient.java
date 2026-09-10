@@ -58,4 +58,23 @@ public class LlmClient {
     public String chatJson(String systemPrompt, String userPrompt) {
         return chatJson(props.getBaseUrl(), props.getApiKey(), props.getModel(), systemPrompt, userPrompt);
     }
+
+    /** 连通性验证：发一个极简 chat/completions 请求，能返回 200 即视为连通（否则抛异常）。 */
+    public void ping(String baseUrl, String apiKey, String model) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("模型未配置 token（apiKey）");
+        }
+        ObjectNode body = mapper.createObjectNode();
+        body.put("model", model);
+        body.put("max_tokens", 1);
+        ArrayNode messages = body.putArray("messages");
+        messages.addObject().put("role", "user").put("content", "ping");
+        restClient.post()
+                .uri(baseUrl + "/chat/completions")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(String.class);
+    }
 }

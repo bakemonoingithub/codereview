@@ -5,19 +5,22 @@ import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.codereview.dto.ModelConfigReq;
 import com.codereview.entity.ModelConfig;
+import com.codereview.llm.LlmClient;
 import com.codereview.mapper.ModelConfigMapper;
 import org.springframework.stereotype.Service;
 
 /**
- * 模型接入配置（M2 最小：列表 + 新建；连通验证与加密留给 M4）
+ * 模型接入配置（M4 完整版）：新建/编辑/删除 + 连通性验证（保存时发最小请求，回显成功/失败）。
  */
 @Service
 public class ModelConfigService {
 
     private final ModelConfigMapper modelConfigMapper;
+    private final LlmClient llmClient;
 
-    public ModelConfigService(ModelConfigMapper modelConfigMapper) {
+    public ModelConfigService(ModelConfigMapper modelConfigMapper, LlmClient llmClient) {
         this.modelConfigMapper = modelConfigMapper;
+        this.llmClient = llmClient;
     }
 
     public ModelConfig create(ModelConfigReq req) {
@@ -29,9 +32,30 @@ public class ModelConfigService {
         m.setBaseUrl(req.baseUrl());
         m.setToken(req.token());
         m.setModelName(req.modelName());
-        m.setStatus(1); // M2 暂不做连通验证（M4 补），直接标记为可用
+        m.setStatus(0); // 未验证
         modelConfigMapper.insert(m);
-        return m;
+        return verifyConnectivity(m);
+    }
+
+    public ModelConfig update(Long id, ModelConfigReq req) {
+        ModelConfig m = getOrThrow(id);
+        if (req.name() != null && !req.name().isBlank()) {
+            m.setName(req.name());
+        }
+        m.setBaseUrl(req.baseUrl());
+        m.setToken(req.token());
+        m.setModelName(req.modelName());
+        modelConfigMapper.updateById(m);
+        return verifyConnectivity(m);
+    }
+
+    public void delete(Long id) {
+        getOrThrow(id);
+        modelConfigMapper.deleteById(id);
+    }
+
+    public ModelConfig verify(Long id) {
+        return verifyConnectivity(getOrThrow(id));
     }
 
     public Page<ModelConfig> list(long pageNum, long pageSize) {
@@ -43,6 +67,17 @@ public class ModelConfigService {
         if (m == null) {
             throw new BusinessException(ResultCode.MODEL_NOT_FOUND);
         }
+        return m;
+    }
+
+    private ModelConfig verifyConnectivity(ModelConfig m) {
+        try {
+            llmClient.ping(m.getBaseUrl(), m.getToken(), m.getModelName());
+            m.setStatus(1); // 验证成功
+        } catch (Exception e) {
+            m.setStatus(2); // 验证失败
+        }
+        modelConfigMapper.updateById(m);
         return m;
     }
 }
