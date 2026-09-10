@@ -77,7 +77,7 @@ public class ReviewService {
         ReviewRecord record = new ReviewRecord();
         record.setProjectId(projectId);
         record.setStrategyId(strategy.getId());
-        record.setStrategySnapshotJson(buildSnapshot(strategy, model));
+        record.setStrategySnapshotJson(buildSnapshot(strategy, model, Boolean.TRUE.equals(req.mergeFiles())));
         record.setBranch(req.branch());
         record.setCommitSha(commitSha);
         try {
@@ -152,11 +152,12 @@ public class ReviewService {
         }
     }
 
-    private String buildSnapshot(ReviewStrategy strategy, ModelConfig model) {
+    private String buildSnapshot(ReviewStrategy strategy, ModelConfig model, boolean mergeFiles) {
         ObjectNode root = objectMapper.createObjectNode();
         root.put("strategyId", strategy.getId().toString());
         root.put("strategyName", strategy.getName());
         root.put("analyzerType", strategy.getAnalyzerType());
+        root.put("mergeFiles", mergeFiles);
         if (model != null) {
             ObjectNode m = root.putObject("model");
             m.put("baseUrl", model.getBaseUrl());

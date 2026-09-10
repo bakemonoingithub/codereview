@@ -38,6 +38,14 @@ public class LlmReviewAnalyzer implements Analyzer {
                     + "\"category\":\"...\",\"line\":行号,\"title\":\"...\",\"description\":\"...\","
                     + "\"suggestion\":\"...\"}],\"summary\":\"一句话概述\"}。\n\n单元信息：%s\n代码：\n%s";
 
+    private static final String MERGED_USER_TEMPLATE =
+            "请审查下面的多个 Java 文件（各文件已用「==== 文件: 路径 ====」分隔），找出问题"
+                    + "（命名规范、代码缺陷、业务规则、设计问题、跨文件一致性问题），并以 JSON 返回，"
+                    + "格式：{\"issues\":[{\"severity\":\"MAJOR|MINOR|INFO\",\"category\":\"...\","
+                    + "\"file\":\"问题所在文件的路径（与分隔标记一致）\",\"line\":该文件内行号,"
+                    + "\"title\":\"...\",\"description\":\"...\",\"suggestion\":\"...\"}],"
+                    + "\"summary\":\"一句话概述\"}。\n\n共 %d 个文件。\n代码：\n%s";
+
     private final GitHostClient gitHostClient;
     private final LlmClient llmClient;
     private final ThreadPoolTaskExecutor unitExecutor;
@@ -60,12 +68,18 @@ public class LlmReviewAnalyzer implements Analyzer {
 
     @Override
     public AnalyzeOutcome analyze(AnalysisContext ctx) {
+        if (ctx.mergeFiles() && ctx.scope().size() > 1) {
+            return analyzeMerged(ctx);
+        }
         ArrayNode units = runPaths(ctx, ctx.scope());
         return outcome(units);
     }
 
     @Override
     public AnalyzeOutcome retry(AnalysisContext ctx, JsonNode oldResult) {
+        if (ctx.mergeFiles() && ctx.scope().size() > 1) {
+            return analyzeMerged(ctx);
+        }
         Set<String> failedPaths = failedPaths(oldResult, ctx.scope());
         if (failedPaths.isEmpty()) {
             return new AnalyzeOutcome(oldResult, ReviewStatus.SUCCESS);
@@ -117,6 +131,113 @@ public class LlmReviewAnalyzer implements Analyzer {
             ctx.progress().accept(done * 100 / submitted);
         }
         return results;
+    }
+
+    /** 多文件合并审查：拉取全部文件 → 带标记拼接 → 单次 LLM 调用。 */
+    private AnalyzeOutcome analyzeMerged(AnalysisContext ctx) {
+        StringBuilder merged = new StringBuilder();
+        int fetched = 0;
+        int totalLines = 0;
+        for (String path : ctx.scope()) {
+            try {
+                String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
+                        ctx.ref().owner(), ctx.ref().repo(), ctx.branch(), path);
+                merged.append("==== 文件: ").append(path).append(" ====\n");
+                merged.append(code).append("\n\n");
+                fetched++;
+                totalLines += countLines(code);
+            } catch (Exception e) {
+                // 单文件拉取失败跳过（与逐文件模式一致）
+            }
+        }
+        if (fetched == 0) {
+            return mergedFailed(0, 0, "所有文件拉取失败");
+        }
+        if (merged.length() > props.getChunkMaxChars()) {
+            return mergedFailed(fetched, totalLines,
+                    "合并后内容超过阈值(" + props.getChunkMaxChars() + " 字符)，请减少文件数量或关闭多文件合并审查");
+        }
+        Throwable last = null;
+        for (int attempt = 0; attempt <= props.getRetryMax(); attempt++) {
+            if (attempt > 0) {
+                try {
+                    Thread.sleep(RetryPolicy.backoffMillis(attempt - 1));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            try {
+                String content = llmClient.chatJson(ctx.baseUrl(), ctx.apiKey(), ctx.modelName(),
+                        SYSTEM_PROMPT, buildMergedPrompt(ctx, fetched, merged.toString()));
+                JsonNode result = objectMapper.readTree(content);
+                return mergedOutcome(fetched, totalLines, result);
+            } catch (Throwable e) {
+                last = e;
+                if (!RetryPolicy.isRetryable(e)) {
+                    break;
+                }
+            }
+        }
+        return mergedFailed(fetched, totalLines, last == null ? "未知错误" : last.getMessage());
+    }
+
+    private String buildMergedPrompt(AnalysisContext ctx, int fileCount, String code) {
+        String prompt = String.format(MERGED_USER_TEMPLATE, fileCount, code);
+        if (ctx.customPrompt() != null && !ctx.customPrompt().isBlank()) {
+            prompt = prompt + "\n\n关注点规则：\n" + ctx.customPrompt();
+        }
+        return prompt;
+    }
+
+    private AnalyzeOutcome mergedOutcome(int fileCount, int totalLines, JsonNode llmResult) {
+        ObjectNode unit = objectMapper.createObjectNode();
+        unit.put("path", "多文件合并");
+        ObjectNode meta = unit.putObject("unit");
+        meta.put("kind", "merged");
+        meta.put("name", fileCount + " 个文件");
+        meta.put("lines", "1-" + totalLines);
+        unit.put("status", "success");
+        unit.set("issues", llmResult.path("issues"));
+        unit.put("summary", llmResult.path("summary").asText(""));
+
+        ArrayNode units = objectMapper.createArrayNode();
+        units.add(unit);
+        ObjectNode root = objectMapper.createObjectNode();
+        root.set("units", units);
+        root.put("summary", "审查完成：合并审查 " + fileCount + " 个文件");
+        return new AnalyzeOutcome(root, ReviewStatus.SUCCESS);
+    }
+
+    private AnalyzeOutcome mergedFailed(int fileCount, int totalLines, String error) {
+        ObjectNode unit = objectMapper.createObjectNode();
+        unit.put("path", "多文件合并");
+        ObjectNode meta = unit.putObject("unit");
+        meta.put("kind", "merged");
+        meta.put("name", (fileCount > 0 ? fileCount : 1) + " 个文件");
+        meta.put("lines", totalLines > 0 ? "1-" + totalLines : "");
+        unit.put("status", "failed");
+        unit.put("error", error);
+
+        ArrayNode units = objectMapper.createArrayNode();
+        units.add(unit);
+        ObjectNode root = objectMapper.createObjectNode();
+        root.set("units", units);
+        root.put("summary", "合并审查失败");
+        return new AnalyzeOutcome(root, ReviewStatus.FAILED);
+    }
+
+    private static int countLines(String code) {
+        if (code == null || code.isEmpty()) {
+            return 0;
+        }
+        int n = 1;
+        for (int i = 0; i < code.length(); i++) {
+            if (code.charAt(i) == '\n') {
+                n++;
+            }
+        }
+        return n;
     }
 
     private ObjectNode executeUnit(AnalysisContext ctx, UnitTask task) {

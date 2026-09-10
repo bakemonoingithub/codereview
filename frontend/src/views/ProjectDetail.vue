@@ -33,6 +33,9 @@
                 开始审查
               </a-button>
             </div>
+            <div v-if="selectedAnalyzerType === 1" class="select-row">
+              <a-checkbox v-model:checked="mergeFiles">多文件合并审查</a-checkbox>
+            </div>
             <a-tabs v-model:active-key="viewTab" type="card">
               <a-tab-pane key="structure" tab="结构视图">
                 <div class="tree-toolbar">
@@ -105,6 +108,9 @@
                   >
                     <a-table-column title="级别" data-index="severity" width="80" />
                     <a-table-column title="行" data-index="line" width="60" />
+                    <a-table-column title="文件" data-index="file" width="140">
+                      <template #default="{ text }">{{ text || u.path }}</template>
+                    </a-table-column>
                     <a-table-column title="问题" data-index="title" />
                     <a-table-column title="建议" data-index="suggestion" />
                   </a-table>
@@ -178,7 +184,9 @@ const commitOptions = computed(() => commits.value.map((c) => ({
   label: `${c.sha.slice(0, 7)} · ${(c.message || '').split('\n')[0]}`
 })))
 const strategyId = ref('')
-const strategyOptions = ref<{ value: string; label: string }[]>([])
+const strategyOptions = ref<{ value: string; label: string; analyzerType: number }[]>([])
+const mergeFiles = ref(false)
+const selectedAnalyzerType = computed(() => strategyOptions.value.find((o) => o.value === strategyId.value)?.analyzerType)
 const triggering = ref(false)
 const retrying = ref(false)
 const retryInProgress = ref(false)
@@ -278,7 +286,7 @@ async function loadTree() {
 async function loadStrategies() {
   try {
     const page = (await listStrategies({ pageNum: 1, pageSize: 100 })) as any
-    strategyOptions.value = (page?.records || []).map((s: any) => ({ value: s.id, label: s.name }))
+    strategyOptions.value = (page?.records || []).map((s: any) => ({ value: s.id, label: s.name, analyzerType: s.analyzerType }))
     if (strategyOptions.value.length === 1) strategyId.value = strategyOptions.value[0].value
   } catch {
     // 策略加载失败不阻塞
@@ -298,7 +306,7 @@ async function onTrigger() {
   triggering.value = true
   try {
     retryInProgress.value = false
-    const record = await triggerReview(projectId, { branch: branch.value, strategyId: strategyId.value, scope })
+    const record = await triggerReview(projectId, { branch: branch.value, strategyId: strategyId.value, scope, mergeFiles: mergeFiles.value })
     review.value = record
     startPoll(record.id)
   } catch (e: any) {

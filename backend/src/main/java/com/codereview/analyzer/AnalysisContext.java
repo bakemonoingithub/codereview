@@ -19,6 +19,7 @@ public record AnalysisContext(
         String modelName,
         JsonNode params,
         String customPrompt,
+        boolean mergeFiles,
         Consumer<Integer> progress) {
 
     public String branch() {

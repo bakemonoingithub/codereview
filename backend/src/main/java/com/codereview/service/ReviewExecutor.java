@@ -100,6 +100,7 @@ public class ReviewExecutor {
                 model.path("modelName").asText(),
                 snap.path("params"),
                 snap.path("customPrompt").asText(null),
+                snap.path("mergeFiles").asBoolean(false),
                 pct -> {
                     record.setProgress(pct);
                     reviewRecordMapper.updateById(record);

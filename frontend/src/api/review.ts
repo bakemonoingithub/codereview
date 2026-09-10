@@ -38,7 +38,7 @@ export interface ReviewResult {
   summary?: string
 }
 
-export function triggerReview(projectId: string, data: { branch: string; strategyId: string; scope: string[] }) {
+export function triggerReview(projectId: string, data: { branch: string; strategyId: string; scope: string[]; mergeFiles?: boolean }) {
   return request.post(`/projects/${projectId}/reviews/trigger`, data) as Promise<any>
 }
 
