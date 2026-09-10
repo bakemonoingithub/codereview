@@ -7,6 +7,7 @@ import com.codereview.dto.ReviewRecordResp;
 import com.codereview.dto.ReviewTriggerReq;
 import com.codereview.entity.ModelConfig;
 import com.codereview.entity.Project;
+import com.codereview.entity.Prompt;
 import com.codereview.entity.PromptVersion;
 import com.codereview.entity.ReviewRecord;
 import com.codereview.entity.ReviewStrategy;
@@ -14,6 +15,7 @@ import com.codereview.git.GitHostClient;
 import com.codereview.git.GitRepoRef;
 import com.codereview.mapper.ModelConfigMapper;
 import com.codereview.mapper.ProjectMapper;
+import com.codereview.mapper.PromptMapper;
 import com.codereview.mapper.PromptVersionMapper;
 import com.codereview.mapper.ReviewRecordMapper;
 import com.codereview.mapper.ReviewStrategyMapper;
@@ -36,19 +38,21 @@ public class ReviewService {
     private final ModelConfigMapper modelConfigMapper;
     private final GitHostClient gitHostClient;
     private final ReviewExecutor reviewExecutor;
+    private final PromptMapper promptMapper;
     private final PromptVersionMapper promptVersionMapper;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ReviewService(ReviewRecordMapper reviewRecordMapper, ProjectMapper projectMapper,
                          ReviewStrategyMapper strategyMapper, ModelConfigMapper modelConfigMapper,
                          GitHostClient gitHostClient, ReviewExecutor reviewExecutor,
-                         PromptVersionMapper promptVersionMapper) {
+                         PromptMapper promptMapper, PromptVersionMapper promptVersionMapper) {
         this.reviewRecordMapper = reviewRecordMapper;
         this.projectMapper = projectMapper;
         this.strategyMapper = strategyMapper;
         this.modelConfigMapper = modelConfigMapper;
         this.gitHostClient = gitHostClient;
         this.reviewExecutor = reviewExecutor;
+        this.promptMapper = promptMapper;
         this.promptVersionMapper = promptVersionMapper;
     }
 
@@ -178,14 +182,21 @@ public class ReviewService {
         return root.toString();
     }
 
-    /** 从策略参数解析提示词版本 → 内容（关注点规则），注入快照供分析器使用。 */
+    /** 从策略参数解析提示词 → 当前版本内容（关注点规则），注入快照供分析器使用。 */
     private String resolvePromptContent(JsonNode params) {
-        String pid = params.path("promptVersionId").asText(null);
+        String pid = params.path("promptId").asText(null);
+        if (pid == null || pid.isBlank()) {
+            pid = params.path("promptVersionId").asText(null);
+        }
         if (pid == null || pid.isBlank()) {
             return null;
         }
         try {
-            PromptVersion v = promptVersionMapper.selectById(Long.parseLong(pid));
+            Prompt p = promptMapper.selectById(Long.parseLong(pid));
+            if (p == null || p.getCurrentVersionId() == null) {
+                return null;
+            }
+            PromptVersion v = promptVersionMapper.selectById(p.getCurrentVersionId());
             return v == null ? null : v.getContent();
         } catch (Exception e) {
             return null;

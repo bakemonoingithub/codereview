@@ -166,7 +166,7 @@ function openEdit(record: any) {
     name: record.name,
     analyzerType: record.analyzerType,
     modelConfigId: params.modelConfigId || '',
-    promptId: params.promptVersionId || '',
+    promptId: params.promptId || params.promptVersionId || '',
     threshold: params.threshold != null ? String(params.threshold) : '10',
     apiUrl: params.apiUrl || '',
     resultUrl: params.resultUrl || '',
@@ -200,7 +200,7 @@ async function onSave() {
       return
     }
     params.modelConfigId = form.value.modelConfigId
-    if (form.value.promptId) params.promptVersionId = form.value.promptId
+    if (form.value.promptId) params.promptId = form.value.promptId
     if (analyzerType === 2) {
       const t = Number(form.value.threshold)
       if (!Number.isNaN(t) && t > 0) params.threshold = t

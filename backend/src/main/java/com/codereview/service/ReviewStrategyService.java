@@ -16,7 +16,7 @@ import java.util.Map;
 /**
  * 审查策略（M4 完整版）：四种分析器（llm-review/coupling/design-pattern/api-review）+ 按类型参数校验 + 编辑/删除。
  * 参数：
- *   llm-review/coupling/design-pattern → {modelConfigId, threshold?, promptVersionId?}
+ *   llm-review/coupling/design-pattern → {modelConfigId, threshold?, promptId?}
  *   api-review → {apiUrl, resultUrl, queryUrl?, token?}
  */
 @Service
