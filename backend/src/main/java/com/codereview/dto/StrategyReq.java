@@ -1,4 +1,6 @@
 package com.codereview.dto;
 
-public record StrategyReq(String name, Integer analyzerType, Long modelConfigId, Integer threshold) {
+import java.util.Map;
+
+public record StrategyReq(String name, Integer analyzerType, Map<String, Object> params) {
 }
