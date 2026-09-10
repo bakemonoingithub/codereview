@@ -69,14 +69,28 @@ public class ReviewService {
             throw new BusinessException(ResultCode.STRATEGY_NOT_FOUND);
         }
         int analyzerType = strategy.getAnalyzerType() == null ? 0 : strategy.getAnalyzerType();
-        if (analyzerType < 1 || analyzerType > 4) {
+        if (analyzerType < 1 || analyzerType > 5) {
             throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
         }
-        if (analyzerType != 4 && (req.scope() == null || req.scope().isEmpty())) {
+        boolean diffReview = analyzerType == 5;
+        // diff 审查的范围由提交的变更文件决定，允许为空（为空即审全部变更文件）
+        if (analyzerType != 4 && !diffReview && (req.scope() == null || req.scope().isEmpty())) {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "请选择审查范围");
         }
         ModelConfig model = analyzerType == 4 ? null : resolveModelConfig(strategy);
-        String commitSha = analyzerType == 4 ? null : resolveCommitSha(p, req.branch());
+        String commitSha;
+        if (analyzerType == 4) {
+            commitSha = null;
+        } else if (diffReview) {
+            // 必须锚定到具体提交：不接受缺省，否则会静默审到分支最新代码
+            if (req.commitSha() == null || req.commitSha().isBlank()) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(),
+                        "diff 审查必须指定提交（commitSha）");
+            }
+            commitSha = req.commitSha().trim();
+        } else {
+            commitSha = resolveCommitSha(p, req.branch());
+        }
 
         ReviewRecord record = new ReviewRecord();
         record.setProjectId(projectId);

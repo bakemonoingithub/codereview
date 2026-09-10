@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * 分析器 SPI（简化版）。type 对应 review_strategy.analyzer_type：
- * 1 llm-review / 2 coupling / 3 design-pattern（4 api-review 留 M4）。
+ * 1 llm-review / 2 coupling / 3 design-pattern / 4 api-review / 5 diff-review。
  */
 public interface Analyzer {
 
