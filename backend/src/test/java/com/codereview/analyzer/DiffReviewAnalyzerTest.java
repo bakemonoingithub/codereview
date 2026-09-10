@@ -176,6 +176,37 @@ class DiffReviewAnalyzerTest {
         assertEquals("无法判断", unit.path("intentVerdict").asText(), "缺 intentVerdict 时归一化为无法判断");
     }
 
+    @Test
+    void boundPromptIsInjectedAsFocusRulesNotReplacingTemplate() {
+        String javaFile = "public class A {\n"
+                + "    public void m() {\n"
+                + "        int a = 1;\n"
+                + "        int b = 2;\n"
+                + "    }\n"
+                + "}\n";
+        String patch = "@@ -1,5 +1,6 @@\n"
+                + " public class A {\n"
+                + "     public void m() {\n"
+                + "         int a = 1;\n"
+                + "+        int b = 2;\n"
+                + "     }\n"
+                + " }\n";
+        when(git.commitDetail(any(), any(), any(), any(), any())).thenReturn(new CommitDetail(
+                "abc1234", List.of("p1"), "msg", "author", "date", 1, 0, 1, false,
+                List.of(new ChangedFile("src/A.java", null, "modified", 1, 0, 1, patch))));
+        when(git.rawFile(any(), any(), any(), any(), any(), any())).thenReturn(javaFile);
+        when(llm.chatJson(any(), any(), any(), any(), any())).thenReturn("{\"issues\":[],\"summary\":\"ok\"}");
+
+        analyzer.analyze(ctxWithPrompt("禁止使用魔法值，必须判空"));
+
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(llm).chatJson(any(), any(), any(), any(), prompt.capture());
+        String sent = prompt.getValue();
+        assertTrue(sent.contains("[本次审查的关注点与规则]"), "策略绑定的提示词应作为关注点注入");
+        assertTrue(sent.contains("禁止使用魔法值，必须判空"));
+        assertTrue(sent.contains("intentVerdict"), "方法模板不应被用户提示词替代");
+    }
+
     // ---------------- 意图结论归一化 ----------------
 
     @Test
@@ -197,6 +228,14 @@ class DiffReviewAnalyzerTest {
     }
 
     private AnalysisContext ctx(String commitSha, List<String> scope) {
+        return ctx(commitSha, scope, null);
+    }
+
+    private AnalysisContext ctxWithPrompt(String customPrompt) {
+        return ctx("abc1234", List.of(), customPrompt);
+    }
+
+    private AnalysisContext ctx(String commitSha, List<String> scope, String customPrompt) {
         ReviewRecord record = new ReviewRecord();
         record.setBranch("main");
         record.setCommitSha(commitSha);
@@ -206,7 +245,7 @@ class DiffReviewAnalyzerTest {
         project.setCredentialType(1);
         return new AnalysisContext(record, project, GitRepoRef.parse("https://github.com/o/r"), scope,
                 "https://api.deepseek.com", "key", "deepseek-chat",
-                mapper.createObjectNode(), null, false, pct -> {
+                mapper.createObjectNode(), customPrompt, false, pct -> {
         });
     }
 }

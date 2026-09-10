@@ -59,7 +59,7 @@ public class DiffReviewAnalyzer implements Analyzer {
 
             [变更意图]
             %s
-
+            %s
             [单元 %d/%d] %s
             变更类型: %s   范围: 新侧第 %d-%d 行
 
@@ -123,7 +123,7 @@ public class DiffReviewAnalyzer implements Analyzer {
         for (int i = 0; i < tasks.size(); i++) {
             UnitTask t = tasks.get(i);
             tasks.set(i, new UnitTask(t.unit(), t.file(),
-                    buildUserPrompt(t.unit(), t.file(), detail, i + 1, tasks.size())));
+                    buildUserPrompt(t.unit(), t.file(), detail, i + 1, tasks.size(), ctx.customPrompt())));
         }
 
         // 并行限流执行（单元级重试）
@@ -229,14 +229,18 @@ public class DiffReviewAnalyzer implements Analyzer {
     // 提示词
     // ------------------------------------------------------------------
 
-    private String buildUserPrompt(DiffReviewUnit unit, ChangedFile file, CommitDetail detail, int index, int total) {
+    private String buildUserPrompt(DiffReviewUnit unit, ChangedFile file, CommitDetail detail,
+                                   int index, int total, String focusPrompt) {
         String changeLabel = String.format("%s（+%s/-%s）",
                 unit.changeType() == null ? "modified" : unit.changeType(),
                 file == null || file.additions() == null ? "?" : file.additions(),
                 file == null || file.deletions() == null ? "?" : file.deletions());
         String header = unit.header() + (unit.truncated() ? "（方法体已按窗口截断）" : "")
                 + (unit.note() == null ? "" : "（" + unit.note() + "）");
-        return String.format(USER_TEMPLATE, intentBlock(detail), index, total, header, changeLabel,
+        // 策略绑定的提示词按「关注点/规则」注入插槽，不替代方法模板（见 系统方案设计 §4.1）
+        String focusBlock = (focusPrompt == null || focusPrompt.isBlank())
+                ? "" : "\n[本次审查的关注点与规则]\n" + focusPrompt.trim() + "\n";
+        return String.format(USER_TEMPLATE, intentBlock(detail), focusBlock, index, total, header, changeLabel,
                 unit.startLine(), unit.endLine(), unit.text());
     }
 
