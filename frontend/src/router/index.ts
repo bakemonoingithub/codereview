@@ -42,12 +42,6 @@ const routes: RouteRecordRaw[] = [
         name: 'prompts',
         component: () => import('@/views/PromptList.vue'),
         meta: { title: '提示词' }
-      },
-      {
-        path: 'reports',
-        name: 'reports',
-        component: () => import('@/views/ReportList.vue'),
-        meta: { title: '报告' }
       }
     ]
   }

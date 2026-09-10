@@ -1,6 +1,8 @@
 <template>
   <div>
-    <a-space style="margin-bottom: 16px">
+    <a-tabs v-model:active-key="activeTab">
+      <a-tab-pane key="review" tab="代码审查">
+        <a-space style="margin-bottom: 16px">
       <a-select
         v-model:value="branch"
         style="width: 200px"
@@ -132,6 +134,11 @@
         </a-card>
       </a-col>
     </a-row>
+      </a-tab-pane>
+      <a-tab-pane key="report" tab="报告生成">
+        <ReportPanel :project-id="projectId" />
+      </a-tab-pane>
+    </a-tabs>
   </div>
 </template>
 
@@ -144,9 +151,11 @@ import { triggerReview, getReview, retryReview, parseResult, type ReviewRecord }
 import { listStrategies } from '@/api/strategy'
 import CouplingResult from '@/components/CouplingResult.vue'
 import PatternResult from '@/components/PatternResult.vue'
+import ReportPanel from '@/components/ReportPanel.vue'
 
 const route = useRoute()
 const projectId = route.params.id as string
+const activeTab = ref('review')
 
 const branches = ref<string[]>([])
 const branch = ref('')

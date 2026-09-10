@@ -1,10 +1,6 @@
 <template>
   <div>
-    <a-space style="margin-bottom: 16px">
-      <a-select v-model:value="projectId" style="width: 280px" placeholder="选择项目" :options="projectOptions" @change="loadAll" />
-    </a-space>
-
-    <a-row v-if="projectId" :gutter="16">
+    <a-row :gutter="16">
       <a-col :span="12">
         <a-card title="选择审查记录（已完成）" size="small">
           <a-table
@@ -70,14 +66,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
-import { listProjects } from '@/api/project'
 import { listReviews } from '@/api/review'
 import { listModels } from '@/api/model'
 import { listPrompts } from '@/api/prompt'
 import { generateReport, listReports, getReport } from '@/api/report'
 
-const projectId = ref('')
-const projectOptions = ref<{ value: string; label: string }[]>([])
+const props = defineProps<{ projectId: string }>()
+
 const records = ref<any[]>([])
 const recordsLoading = ref(false)
 const selectedIds = ref<string[]>([])
@@ -99,16 +94,10 @@ function reportStatusText(s: number) {
   return s === 0 ? '排队' : s === 1 ? '生成中' : s === 2 ? '成功' : '失败'
 }
 
-async function loadProjects() {
-  const page = (await listProjects({ pageNum: 1, pageSize: 100 })) as any
-  projectOptions.value = (page?.records || []).map((p: any) => ({ value: p.id, label: p.name }))
-}
-
 async function loadAll() {
-  if (!projectId.value) return
   recordsLoading.value = true
   try {
-    const rp = (await listReviews(projectId.value, { pageNum: 1, pageSize: 100 })) as any
+    const rp = (await listReviews(props.projectId, { pageNum: 1, pageSize: 100 })) as any
     records.value = (rp?.records || []).filter((r: any) => r.status >= 2)
   } finally {
     recordsLoading.value = false
@@ -127,7 +116,7 @@ async function loadAll() {
   }
   reportsLoading.value = true
   try {
-    const rp2 = (await listReports(projectId.value, { pageNum: 1, pageSize: 100 })) as any
+    const rp2 = (await listReports(props.projectId, { pageNum: 1, pageSize: 100 })) as any
     reports.value = rp2?.records || []
   } finally {
     reportsLoading.value = false
@@ -141,7 +130,7 @@ function onSelect(keys: any[]) {
 async function onGenerate() {
   generating.value = true
   try {
-    await generateReport(projectId.value, {
+    await generateReport(props.projectId, {
       name: reportName.value || undefined,
       modelConfigId: modelId.value,
       recordIds: selectedIds.value,
@@ -172,7 +161,7 @@ function downloadMarkdown() {
   URL.revokeObjectURL(url)
 }
 
-onMounted(loadProjects)
+onMounted(loadAll)
 </script>
 
 <style scoped lang="less">

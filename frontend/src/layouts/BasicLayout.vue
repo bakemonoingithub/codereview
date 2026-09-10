@@ -26,8 +26,7 @@ const menuItems = [
   { path: '/projects', title: '项目' },
   { path: '/models', title: '模型' },
   { path: '/strategies', title: '策略' },
-  { path: '/prompts', title: '提示词' },
-  { path: '/reports', title: '报告' }
+  { path: '/prompts', title: '提示词' }
 ]
 </script>
 
