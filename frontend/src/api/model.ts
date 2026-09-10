@@ -6,6 +6,7 @@ export interface ModelConfig {
   baseUrl?: string
   modelName?: string
   status?: number
+  hasToken?: boolean
   createdAt: string
 }
 
@@ -17,7 +18,7 @@ export function createModel(data: { name: string; baseUrl?: string; token?: stri
   return request.post('/models', data) as Promise<any>
 }
 
-export function updateModel(id: string, data: { name?: string; baseUrl?: string; token?: string; modelName?: string }) {
+export function updateModel(id: string, data: { name?: string; baseUrl?: string; token?: string; modelName?: string; clearToken?: boolean }) {
   return request.put(`/models/${id}`, data) as Promise<any>
 }
 

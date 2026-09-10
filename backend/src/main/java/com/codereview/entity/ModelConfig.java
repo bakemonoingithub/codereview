@@ -32,4 +32,11 @@ public class ModelConfig {
     private Long updatedBy;
     @TableLogic
     private Integer isDeleted;
+
+    /**
+     * 仅提示是否已配置 token，不返回 token 真值（token 字段本身为 WRITE_ONLY）。
+     */
+    public boolean isHasToken() {
+        return token != null && !token.isBlank();
+    }
 }

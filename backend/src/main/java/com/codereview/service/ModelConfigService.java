@@ -43,8 +43,13 @@ public class ModelConfigService {
             m.setName(req.name());
         }
         m.setBaseUrl(req.baseUrl());
-        m.setToken(req.token());
         m.setModelName(req.modelName());
+        if (Boolean.TRUE.equals(req.clearToken())) {
+            m.setToken(null);
+        } else if (req.token() != null && !req.token().isBlank()) {
+            m.setToken(req.token());
+        }
+        // 否则 token 留空：保留原值（不覆盖）
         modelConfigMapper.updateById(m);
         return verifyConnectivity(m);
     }

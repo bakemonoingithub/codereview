@@ -37,7 +37,8 @@
           <a-input v-model:value="form.baseUrl" placeholder="https://api.deepseek.com" />
         </a-form-item>
         <a-form-item label="Token">
-          <a-input-password v-model:value="form.token" placeholder="sk-..." />
+          <a-input-password v-model:value="form.token" :placeholder="tokenConfigured ? '••••••••（已配置，留空不修改）' : 'sk-...'" :disabled="clearToken" />
+          <a-checkbox v-if="editingId && tokenConfigured" v-model:checked="clearToken" style="margin-top: 6px">清除 token</a-checkbox>
         </a-form-item>
         <a-form-item label="模型名">
           <a-input v-model:value="form.modelName" placeholder="deepseek-chat" />
@@ -57,6 +58,8 @@ const loading = ref(false)
 const modalOpen = ref(false)
 const saving = ref(false)
 const editingId = ref('')
+const tokenConfigured = ref(false)
+const clearToken = ref(false)
 const form = ref({ name: '', baseUrl: 'https://api.deepseek.com', token: '', modelName: 'deepseek-chat' })
 
 async function load() {
@@ -71,12 +74,16 @@ async function load() {
 
 function openCreate() {
   editingId.value = ''
+  tokenConfigured.value = false
+  clearToken.value = false
   form.value = { name: '', baseUrl: 'https://api.deepseek.com', token: '', modelName: 'deepseek-chat' }
   modalOpen.value = true
 }
 
 function openEdit(record: any) {
   editingId.value = record.id
+  tokenConfigured.value = !!record.hasToken
+  clearToken.value = false
   form.value = { name: record.name, baseUrl: record.baseUrl || '', token: '', modelName: record.modelName || '' }
   modalOpen.value = true
 }
@@ -89,7 +96,17 @@ async function onSave() {
   saving.value = true
   try {
     if (editingId.value) {
-      await updateModel(editingId.value, form.value)
+      const payload: Record<string, any> = {
+        name: form.value.name,
+        baseUrl: form.value.baseUrl,
+        modelName: form.value.modelName
+      }
+      if (clearToken.value) {
+        payload.clearToken = true
+      } else if (form.value.token && form.value.token.trim()) {
+        payload.token = form.value.token
+      }
+      await updateModel(editingId.value, payload)
     } else {
       await createModel(form.value)
     }
