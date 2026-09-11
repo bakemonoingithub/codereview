@@ -68,4 +68,16 @@ describe('ProjectList 加载失败', () => {
 
     expect(wrapper.find('a-alert-stub').exists()).toBe(false)
   })
+
+  /** C1：无数据时不能只有一行"暂无数据"，要告诉用户下一步做什么 */
+  it('无数据时给出空态引导与新建入口', async () => {
+    ;(listProjects as any).mockResolvedValueOnce({ records: [] })
+
+    const wrapper = mount(ProjectList, options)
+    await flush()
+
+    expect(wrapper.text()).toContain('还没有项目')
+    expect(wrapper.text()).toContain('Gitea')
+    expect(wrapper.findAll('a-button-stub').some((b) => b.text() === '新建项目')).toBe(true)
+  })
 })

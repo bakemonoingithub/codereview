@@ -33,6 +33,7 @@ vi.mock('@/api/prompt', async (importOriginal) => {
 })
 
 import { listStrategies, updateStrategy } from '@/api/strategy'
+import { listModels } from '@/api/model'
 
 /** 服务端回传的 api-review 策略：参数里**没有** token，只有 hasToken 标记 */
 const apiReviewRow = {
@@ -152,5 +153,63 @@ describe('策略编辑：token 三态', () => {
 
     expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
     expect(wrapper.html()).toContain('只读 token（可选）')
+  })
+})
+
+/**
+ * C1：依赖链断在半路 —— 新建策略必须选模型，而模型下拉为空/加载失败时，
+ * 原先只弹一句"请选择模型"，不说原因、也没有任何地方能点进去创建模型。
+ *
+ * 注意：这里要开的是"新建策略"表单（默认 llm-review 类型）。api-review 记录走的是
+ * 另一条分支（只有 3 个 URL 输入框），根本不会渲染模型下拉，用它测不到这条契约。
+ */
+describe('策略表单的模型依赖引导', () => {
+  async function openCreateForm() {
+    ;(listStrategies as any).mockResolvedValue({ records: [] })
+    const wrapper = mount(StrategyList, options)
+    await flush()
+    const createBtn = wrapper.findAll('a-button-stub').find((b) => b.text() === '新建策略')!
+    await createBtn.trigger('click')
+    await wrapper.vm.$nextTick()
+    await flush()
+    return wrapper
+  }
+
+  it('模型列表为空时给出"去创建模型"入口', async () => {
+    ;(listModels as any).mockResolvedValue({ records: [] })
+
+    const wrapper = await openCreateForm()
+
+    expect(wrapper.text()).toContain('暂无可用模型')
+    expect(wrapper.text()).toContain('去创建模型')
+  })
+
+  it('模型列表加载失败时给出原因与重试入口（而不是让下拉空着不说为什么）', async () => {
+    ;(listModels as any).mockRejectedValue(new Error('无法连接服务器，请检查网络或后端服务是否已启动'))
+
+    const wrapper = await openCreateForm()
+
+    expect(wrapper.text()).toContain('无法连接服务器')
+    expect(wrapper.text()).toContain('去模型页重试')
+  })
+
+  it('模型列表正常时不显示加载失败提示', async () => {
+    ;(listModels as any).mockResolvedValue({ records: [{ id: '1', name: '默认模型' }] })
+
+    const wrapper = await openCreateForm()
+
+    // 只断言"错误提示"这个真正带条件的分支。
+    // `#notFoundContent` 是插槽内容，测试里 stub 会无条件渲染它，
+    // 所以"没有模型时才显示去创建模型"这半句在单测里断言不到（需人工点开下拉验收）。
+    expect(wrapper.text()).not.toContain('去模型页重试')
+  })
+
+  it('无策略时列表给空态引导', async () => {
+    ;(listStrategies as any).mockResolvedValue({ records: [] })
+    const wrapper = mount(StrategyList, options)
+    await flush()
+
+    expect(wrapper.text()).toContain('还没有审查策略')
+    expect(wrapper.text()).toContain('模型 + 提示词')
   })
 })

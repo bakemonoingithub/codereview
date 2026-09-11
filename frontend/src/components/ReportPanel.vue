@@ -41,14 +41,29 @@
               <a-input v-model:value="reportName" placeholder="综合报告" />
             </a-form-item>
             <a-form-item label="模型" required>
-              <a-select v-model:value="modelId" :options="modelOptions" placeholder="选择模型" />
+              <a-select v-model:value="modelId" :options="modelOptions" placeholder="选择模型">
+                <template #notFoundContent>
+                  <div class="not-found">
+                    <span>暂无可用模型</span>
+                    <router-link to="/models">去创建模型</router-link>
+                  </div>
+                </template>
+              </a-select>
             </a-form-item>
             <a-form-item label="报告提示词（可选）">
               <a-select v-model:value="promptId" :options="promptOptions" placeholder="选择提示词" allow-clear />
             </a-form-item>
-            <a-button type="primary" :loading="generating" :disabled="!modelId || !selectedIds.length" @click="onGenerate">
-              生成报告
-            </a-button>
+            <!-- 原先只把按钮置灰、不说原因，用户不知道还差什么 -->
+            <a-tooltip :title="generateDisabledReason">
+              <a-button
+                type="primary"
+                :loading="generating"
+                :disabled="!!generateDisabledReason"
+                @click="onGenerate"
+              >
+                生成报告
+              </a-button>
+            </a-tooltip>
           </a-form>
         </a-card>
       </a-col>
@@ -91,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { listReviews, type ReviewRecordRow } from '@/api/review'
 import { listModels } from '@/api/model'
@@ -166,6 +181,21 @@ function onSelect(keys: any[]) {
 function clearSelection() {
   selectedIds.value = []
 }
+
+/**
+ * 「生成报告」被禁用的原因。
+ *
+ * 原先按钮只是灰着，用户看不出还差什么（是没选模型？还是没勾记录？）。
+ */
+const generateDisabledReason = computed(() => {
+  if (!modelId.value) {
+    return '请先选择模型'
+  }
+  if (!selectedIds.value.length) {
+    return '请先在左侧勾选要纳入报告的审查记录'
+  }
+  return ''
+})
 
 const loadModels = async () => {
   const mp = (await listModels({ pageNum: 1, pageSize: 100 })) as any
@@ -261,6 +291,14 @@ onMounted(loadAll)
 .picked {
   color: #0958d9;
   font-size: 12px;
+}
+.not-found {
+  padding: 4px 0;
+  text-align: center;
+  color: #8c8c8c;
+  a {
+    margin-left: 6px;
+  }
 }
 .markdown {
   white-space: pre-wrap;

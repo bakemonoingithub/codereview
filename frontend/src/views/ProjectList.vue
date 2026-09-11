@@ -6,6 +6,14 @@
 
     <LoadErrorAlert :message="loadError" @retry="load" />
     <a-table :data-source="projects" row-key="id" :loading="loading" :pagination="false">
+      <template #emptyText>
+        <EmptyGuide
+          title="还没有项目"
+          hint="创建一个项目，把内网 Gitea 的仓库接进来，之后就能对它做审查"
+          action-text="新建项目"
+          @action="openCreate"
+        />
+      </template>
       <a-table-column title="名称" data-index="name">
         <template #default="{ record }">
           <router-link :to="`/projects/${record.id}`">{{ record.name }}</router-link>
@@ -39,6 +47,7 @@ import { message } from 'ant-design-vue'
 import { listProjects, createProject } from '@/api/project'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import ListPageLayout from '@/components/ListPageLayout.vue'
+import EmptyGuide from '@/components/EmptyGuide.vue'
 
 const projects = ref<any[]>([])
 const loading = ref(false)

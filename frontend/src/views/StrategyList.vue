@@ -18,6 +18,14 @@
     <LoadErrorAlert :message="loadError" @retry="load" />
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
+      <template #emptyText>
+        <EmptyGuide
+          title="还没有审查策略"
+          hint="策略 = 模型 + 提示词（或外部 API）。建好之后在项目详情页选它就能开始审查"
+          action-text="新建策略"
+          @action="openCreate"
+        />
+      </template>
       <a-table-column title="名称" data-index="name" />
       <a-table-column title="分析器" data-index="analyzerType">
         <template #default="{ text }">{{ analyzerLabel(text) }}</template>
@@ -48,10 +56,31 @@
 
         <template v-if="form.analyzerType !== 4">
           <a-form-item label="模型" required>
-            <a-select v-model:value="form.modelConfigId" placeholder="选择模型" :options="modelOptions" />
+            <a-select v-model:value="form.modelConfigId" placeholder="选择模型" :options="modelOptions">
+              <template #notFoundContent>
+                <div class="not-found">
+                  <span>暂无可用模型</span>
+                  <router-link to="/models">去创建模型</router-link>
+                </div>
+              </template>
+            </a-select>
+            <!-- 依赖链断点：模型表拉取失败时原先只弹"请选择模型"，不说为什么、也没地方点进去 -->
+            <div v-if="modelLoadError" class="form-hint-error">
+              {{ modelLoadError }}，<router-link to="/models">去模型页重试</router-link>
+            </div>
           </a-form-item>
           <a-form-item label="关注点提示词（可选）">
-            <a-select v-model:value="form.promptId" placeholder="选择提示词" :options="promptOptions" allow-clear />
+            <a-select v-model:value="form.promptId" placeholder="选择提示词" :options="promptOptions" allow-clear>
+              <template #notFoundContent>
+                <div class="not-found">
+                  <span>暂无提示词</span>
+                  <router-link to="/prompts">去创建提示词</router-link>
+                </div>
+              </template>
+            </a-select>
+            <div v-if="promptLoadError" class="form-hint-error">
+              {{ promptLoadError }}，<router-link to="/prompts">去提示词页重试</router-link>
+            </div>
           </a-form-item>
           <a-form-item v-if="form.analyzerType === 2" label="高耦合阈值（扇出超过即标记）">
             <a-input v-model:value="form.threshold" placeholder="默认 10" />
@@ -92,6 +121,7 @@ import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listStrategies, createStrategy, updateStrategy, deleteStrategy, ANALYZER_TYPES, analyzerLabel } from '@/api/strategy'
 import ListPageLayout from '@/components/ListPageLayout.vue'
+import EmptyGuide from '@/components/EmptyGuide.vue'
 import { listModels } from '@/api/model'
 import { listPrompts } from '@/api/prompt'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
@@ -125,6 +155,9 @@ const promptOptions = ref<{ value: string; label: string }[]>([])
  */
 const tokenConfigured = ref(false)
 const clearToken = ref(false)
+/** 模态框里两个依赖下拉的加载失败：失败要说清原因并给出入口，而不是让下拉空着 */
+const modelLoadError = ref('')
+const promptLoadError = ref('')
 
 async function load() {
   loading.value = true
@@ -152,16 +185,23 @@ function resetSearch() {
 }
 
 async function loadModels() {
-  const page = (await listModels({ pageNum: 1, pageSize: 100 })) as any
-  modelOptions.value = (page?.records || []).map((m: any) => ({ value: m.id, label: m.name }))
+  modelLoadError.value = ''
+  try {
+    const page = (await listModels({ pageNum: 1, pageSize: 100 })) as any
+    modelOptions.value = (page?.records || []).map((m: any) => ({ value: m.id, label: m.name }))
+  } catch (e: any) {
+    // 原先这里连 try/catch 都没有：失败即未处理的 rejection，下拉静默为空
+    modelLoadError.value = e?.message || '模型列表加载失败'
+  }
 }
 
 async function loadPrompts() {
+  promptLoadError.value = ''
   try {
     const page = (await listPrompts({ pageNum: 1, pageSize: 100 })) as any
     promptOptions.value = (page?.records || []).map((p: any) => ({ value: p.id, label: p.name }))
-  } catch {
-    // 忽略
+  } catch (e: any) {
+    promptLoadError.value = e?.message || '提示词列表加载失败'
   }
 }
 
@@ -281,3 +321,19 @@ async function onDelete(id: string) {
 
 onMounted(load)
 </script>
+
+<style scoped lang="less">
+.not-found {
+  padding: 4px 0;
+  text-align: center;
+  color: #8c8c8c;
+  a {
+    margin-left: 6px;
+  }
+}
+.form-hint-error {
+  margin-top: 4px;
+  color: #cf1322;
+  font-size: 12px;
+}
+</style>

@@ -7,6 +7,14 @@
     <LoadErrorAlert :message="loadError" @retry="load" />
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
+      <template #emptyText>
+        <EmptyGuide
+          title="还没有接入模型"
+          hint="审查策略要绑定模型才能工作；先填内网 AI 网关的地址与令牌"
+          action-text="新建模型"
+          @action="openCreate"
+        />
+      </template>
       <a-table-column title="名称" data-index="name" />
       <a-table-column title="接口地址" data-index="baseUrl" ellipsis />
       <a-table-column title="模型名" data-index="modelName" width="160" />
@@ -56,6 +64,7 @@ import { message } from 'ant-design-vue'
 import { listModels, createModel, updateModel, deleteModel, verifyModel } from '@/api/model'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import ListPageLayout from '@/components/ListPageLayout.vue'
+import EmptyGuide from '@/components/EmptyGuide.vue'
 
 const records = ref<any[]>([])
 const loading = ref(false)

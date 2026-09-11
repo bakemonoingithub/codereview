@@ -11,6 +11,18 @@
     <LoadErrorAlert :message="loadError" @retry="load" />
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
+      <template #emptyText>
+        <EmptyGuide
+          :title="keyword ? '没有匹配的提示词' : '还没有提示词'"
+          :hint="
+            keyword
+              ? '换个关键词，或清空搜索看全部'
+              : '提示词就是你的业务审查规则；写好后在「审查策略」里绑定即可生效'
+          "
+          :action-text="keyword ? '' : '新建提示词'"
+          @action="openCreate"
+        />
+      </template>
       <a-table-column title="名称" data-index="name" />
       <a-table-column title="描述" data-index="description" ellipsis />
       <a-table-column title="标签" data-index="tags">
@@ -93,6 +105,7 @@ import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listPrompts, createPrompt, getPrompt, updatePrompt, updatePromptContent, deletePrompt, diffPrompt } from '@/api/prompt'
 import ListPageLayout from '@/components/ListPageLayout.vue'
+import EmptyGuide from '@/components/EmptyGuide.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import { hasChanges, toUnifiedPatch, type PromptDiffRow } from '@/utils/promptDiff'
