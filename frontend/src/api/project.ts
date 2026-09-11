@@ -21,6 +21,11 @@ export function listProjects(params: { pageNum?: number; pageSize?: number } = {
   return request.get('/projects', { params }) as Promise<any>
 }
 
+/** 项目详情：详情页用它显示"当前在哪个项目"（凭据字段不回传） */
+export function getProject(id: string) {
+  return request.get(`/projects/${id}`) as Promise<ProjectItem>
+}
+
 export function createProject(data: {
   name: string
   giteaUrl: string

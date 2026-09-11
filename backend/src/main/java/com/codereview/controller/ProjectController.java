@@ -40,6 +40,12 @@ public class ProjectController {
         return Result.ok(projectService.list(pageNum, pageSize));
     }
 
+    /** 项目详情：供详情页显示项目名/仓库地址（凭据字段为 WRITE_ONLY，不会回传）。 */
+    @GetMapping("/{id}")
+    public Result<Project> detail(@PathVariable Long id) {
+        return Result.ok(projectService.detail(id));
+    }
+
     @GetMapping("/{id}/tree")
     public Result<List<TreeNodeResp>> tree(@PathVariable Long id, @RequestParam String branch) {
         return Result.ok(projectService.tree(id, branch));

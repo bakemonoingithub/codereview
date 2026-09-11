@@ -10,7 +10,8 @@ import { mount } from '@vue/test-utils'
  * 现在：连续失败到上限才停，并给出「继续等待」。
  */
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { id: '9' } })
+  useRoute: () => ({ params: { id: '9' } }),
+  useRouter: () => ({ push: vi.fn() })
 }))
 
 vi.mock('@/api/review', async (importOriginal) => {
@@ -32,7 +33,8 @@ vi.mock('@/api/project', async (importOriginal) => {
     getTree: vi.fn().mockResolvedValue([]),
     listCommitPage: vi.fn().mockResolvedValue({ commits: [], hasMore: false }),
     getCommitDetail: vi.fn(),
-    getAccuracy: vi.fn().mockResolvedValue([])
+    getAccuracy: vi.fn().mockResolvedValue([]),
+    getProject: vi.fn().mockResolvedValue({ id: '9', name: '演示项目', giteaUrl: 'http://gitea/team/repo' })
   }
 })
 

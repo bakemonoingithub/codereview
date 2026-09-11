@@ -1,8 +1,9 @@
 <template>
   <a-layout style="min-height: 100vh">
-    <a-layout-sider>
+    <!-- 窄屏（笔记本录屏）时侧栏自动折叠，避免挤掉内容区 -->
+    <a-layout-sider :width="200" breakpoint="lg" collapsible :collapsed-width="64">
       <div class="logo">智能代码分析</div>
-      <a-menu theme="dark" mode="inline" :selected-keys="[route.path]">
+      <a-menu theme="dark" mode="inline" :selected-keys="selectedKeys">
         <a-menu-item v-for="item in menuItems" :key="item.path">
           <router-link :to="item.path">{{ item.title }}</router-link>
         </a-menu-item>
@@ -18,16 +19,17 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { activeMenuKey, menuItems } from '@/router'
 
 const route = useRoute()
 
-const menuItems = [
-  { path: '/projects', title: '项目' },
-  { path: '/models', title: '模型' },
-  { path: '/strategies', title: '策略' },
-  { path: '/prompts', title: '提示词' }
-]
+/** 菜单高亮：详情页 /projects/123 也保持在「项目」上（见 activeMenuKey） */
+const selectedKeys = computed(() => {
+  const key = activeMenuKey(route.path)
+  return key ? [key] : []
+})
 </script>
 
 <style scoped lang="less">
@@ -36,6 +38,8 @@ const menuItems = [
   padding: 16px;
   text-align: center;
   font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .header {
   background: #fff;

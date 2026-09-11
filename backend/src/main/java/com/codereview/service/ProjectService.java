@@ -55,6 +55,16 @@ public class ProjectService {
         return projectMapper.selectPage(new Page<>(pageNum, pageSize), null);
     }
 
+    /**
+     * 项目详情。界面用它显示"当前在哪个项目"（面包屑/标题）—— 原先前端只能拉列表去找，
+     * 而列表是分页的，翻不到的项目连名字都显示不出来。
+     *
+     * <p>{@code credential} 是 WRITE_ONLY，不会随响应回传。
+     */
+    public Project detail(Long projectId) {
+        return getOrThrow(projectId);
+    }
+
     public List<TreeNodeResp> tree(Long projectId, String branch) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());

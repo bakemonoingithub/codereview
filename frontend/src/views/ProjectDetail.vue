@@ -1,5 +1,20 @@
 <template>
   <div>
+    <!--
+      详情页原先整页不出现项目名，只靠侧边栏猜自己在哪；这里补面包屑 + 项目名 + 返回。
+    -->
+    <div class="detail-head">
+      <a-breadcrumb>
+        <a-breadcrumb-item><router-link to="/projects">项目</router-link></a-breadcrumb-item>
+        <a-breadcrumb-item>{{ projectName }}</a-breadcrumb-item>
+      </a-breadcrumb>
+      <div class="detail-title-row">
+        <h2 class="detail-title">{{ projectName }}</h2>
+        <span v-if="project?.giteaUrl" class="detail-repo">{{ project.giteaUrl }}</span>
+        <a-button size="small" @click="router.push('/projects')">返回项目列表</a-button>
+      </div>
+    </div>
+
     <a-tabs v-model:active-key="activeTab">
       <a-tab-pane key="review" tab="代码审查">
         <LoadErrorAlert :message="pageError" @retry="loadPage" />
@@ -221,7 +236,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
   getBranches,
@@ -229,6 +244,8 @@ import {
   listCommitPage,
   getCommitDetail,
   getAccuracy,
+  getProject,
+  type ProjectItem,
   type TreeNode,
   type CommitInfo,
   type CommitDetail
@@ -260,7 +277,12 @@ import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import AccuracyBar from '@/components/AccuracyBar.vue'
 
 const route = useRoute()
+const router = useRouter()
 const projectId = route.params.id as string
+
+/** 项目名/仓库地址：详情页头部与面包屑用；拉取失败也不阻塞审查主流程（只显示兜底文案） */
+const project = ref<ProjectItem | null>(null)
+const projectName = computed(() => project.value?.name || `项目 #${projectId}`)
 
 const activeTab = ref('review')
 const viewTab = ref('structure')
@@ -520,10 +542,15 @@ async function loadStrategies() {
  */
 const pageError = ref('')
 
+async function loadProject() {
+  project.value = await getProject(projectId)
+}
+
 async function loadPage() {
   pageError.value = ''
   const failures: string[] = []
   await Promise.all([
+    loadProject().catch(() => failures.push('项目信息')),
     loadBranches().catch(() => failures.push('分支与文件树')),
     loadStrategies().catch(() => failures.push('策略'))
   ])
@@ -749,6 +776,31 @@ defineExpose({ startPoll, resumePoll, pollError, stopPoll })
 </script>
 
 <style scoped lang="less">
+.detail-head {
+  margin-bottom: 12px;
+}
+.detail-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 6px;
+}
+.detail-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  color: rgba(0, 0, 0, 0.88);
+}
+.detail-repo {
+  flex: 1;
+  min-width: 0;
+  color: #8c8c8c;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .select-row {
   display: flex;
   align-items: center;

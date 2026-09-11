@@ -13,7 +13,8 @@ import { mount } from '@vue/test-utils'
  * 否则表格压根不在 DOM 里 —— 断言会以"找不到分页器"的形式假阳性失败。
  */
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { id: '9' } })
+  useRoute: () => ({ params: { id: '9' } }),
+  useRouter: () => ({ push: vi.fn() })
 }))
 
 vi.mock('@/api/review', async (importOriginal) => {
@@ -35,7 +36,8 @@ vi.mock('@/api/project', async (importOriginal) => {
     getTree: vi.fn().mockResolvedValue([]),
     listCommitPage: vi.fn().mockResolvedValue({ commits: [], hasMore: false }),
     getCommitDetail: vi.fn(),
-    getAccuracy: vi.fn().mockResolvedValue([])
+    getAccuracy: vi.fn().mockResolvedValue([]),
+    getProject: vi.fn().mockResolvedValue({ id: '9', name: '演示项目', giteaUrl: 'http://gitea/team/repo' })
   }
 })
 
