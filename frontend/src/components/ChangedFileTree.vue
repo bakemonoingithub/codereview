@@ -8,7 +8,9 @@
       <a-space :size="4">
         <a-button size="small" @click="expandAll">展开</a-button>
         <a-button size="small" @click="collapseAll">收起</a-button>
-        <a-button size="small" @click="selectAllReviewable">全选</a-button>
+        <a-button size="small" @click="selectAllFiltered">
+          {{ keyword || statusFilter ? '全选筛选结果' : '全选' }}
+        </a-button>
         <a-button size="small" @click="clearAll">清空</a-button>
       </a-space>
       <span class="count">已选 {{ checked.length }} / 可审查 {{ reviewablePaths.length }}</span>
@@ -19,16 +21,21 @@
           <a-button size="small" @click="$emit('retry')">重试</a-button>
         </template>
       </a-alert>
+      <!--
+        截断只作**警告**，不能再把树吃掉：原先 truncated 与 a-tree 是互斥分支，
+        结果是"看到超过 300 个的警告、却没有树可勾"，而 commitChecked 已被默认全选 ——
+        清空后再也选不回来，整条分支变成死路。
+      -->
       <a-alert
-        v-else-if="truncated"
+        v-if="truncated && !error"
         type="warning"
         show-icon
         class="mb8"
-        message="该提交变更文件超过 300 个，列表可能不完整，建议改用更小的提交"
+        message="该提交变更文件较多，宿主只返回了第一页，列表可能不完整"
       />
-      <a-empty v-else-if="!loading && !filteredFiles.length" :description="emptyText" />
+      <a-empty v-if="!error && !loading && !filteredFiles.length" :description="emptyText" />
       <a-tree
-        v-else
+        v-else-if="!error"
         checkable
         :selectable="false"
         :tree-data="treeData"
@@ -108,20 +115,26 @@ const filteredFiles = computed(() => filterChangedFiles(props.files, keyword.val
 const treeData = computed(() => buildChangedFileTree(filteredFiles.value))
 const reviewablePaths = computed(() => collectReviewablePaths(buildChangedFileTree(props.files)))
 
-// 过滤变化后自动展开，省去用户逐层点开
-watch(treeData, () => {
-  const keys: string[] = []
-  const walk = (nodes: any[]) => {
-    for (const node of nodes) {
-      if (node.children?.length) {
-        keys.push(node.key)
-        walk(node.children)
+// 过滤变化后自动展开，省去用户逐层点开。
+// `immediate` 不能省：挂载时 files 若已经就位（或数据是同步给的），treeData 不会再"变化"，
+// 这个 watch 就永远不会触发，树会一直停在折叠状态只显示一层目录。
+watch(
+  treeData,
+  () => {
+    const keys: string[] = []
+    const walk = (nodes: any[]) => {
+      for (const node of nodes) {
+        if (node.children?.length) {
+          keys.push(node.key)
+          walk(node.children)
+        }
       }
     }
-  }
-  walk(treeData.value)
-  expandedKeys.value = keys
-})
+    walk(treeData.value)
+    expandedKeys.value = keys
+  },
+  { immediate: true }
+)
 
 function onCheck(keys: any) {
   const list: string[] = Array.isArray(keys) ? keys : (keys?.checked || [])
@@ -148,8 +161,19 @@ function collapseAll() {
   expandedKeys.value = []
 }
 
-function selectAllReviewable() {
-  emit('update:checked', [...reviewablePaths.value])
+/**
+ * 全选**当前筛选结果**。
+ *
+ * 原先是 `[...reviewablePaths]`（未过滤的全集）：搜索出 3 个文件后点"全选"，
+ * 实际勾上的是全部可审文件 —— 用户以为只选了筛出来的那几个，随后要么被单元数上限拦住，
+ * 要么跑出远超预期的审查。
+ */
+function selectAllFiltered() {
+  const allowed = new Set(reviewablePaths.value)
+  emit(
+    'update:checked',
+    filteredFiles.value.map((f) => f.path).filter((path) => allowed.has(path))
+  )
 }
 
 function clearAll() {

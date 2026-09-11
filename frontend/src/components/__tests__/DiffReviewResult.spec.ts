@@ -15,6 +15,7 @@ const result = {
     {
       path: 'A.java',
       status: 'success',
+      changeType: 'modified',
       unit: { name: 'foo', kind: 'method', lines: '1-10' },
       issues: [
         { severity: 'MAJOR', title: '空指针风险', newLine: 5, description: '可能为 null' },
@@ -89,5 +90,27 @@ describe('DiffReviewResult 行内标记的只读降级', () => {
     const wrapper = mountResult()
     await buttonByText(wrapper, '误报')!.trigger('click')
     expect(wrapper.emitted('mark')?.[0]).toEqual(['A.java', 0, 1])
+  })
+})
+
+/**
+ * C4：英文枚举保留（与后端/日志逐字对应），中文放 tooltip。
+ * tooltip 的 title 在 stub 上是元素属性，可以直接断言。
+ */
+describe('DiffReviewResult 英文枚举的中文提示', () => {
+  it('问题级别：显示 MAJOR，tooltip 给出"重要"', () => {
+    const wrapper = mountResult()
+
+    const titles = wrapper.findAll('a-tooltip-stub').map((t) => t.attributes('title'))
+    expect(wrapper.text()).toContain('MAJOR')
+    expect(titles).toContain('MAJOR · 重要')
+  })
+
+  it('变更类型：显示 modified，tooltip 给出"修改"', () => {
+    const wrapper = mountResult()
+
+    const titles = wrapper.findAll('a-tooltip-stub').map((t) => t.attributes('title'))
+    expect(wrapper.text()).toContain('modified')
+    expect(titles).toContain('modified · 修改')
   })
 })

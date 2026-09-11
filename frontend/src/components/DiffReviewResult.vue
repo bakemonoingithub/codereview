@@ -26,7 +26,10 @@
             <a-tag :color="unit.status === 'success' ? 'green' : 'red'">
               {{ unit.status === 'success' ? '成功' : '失败' }}
             </a-tag>
-            <a-tag v-if="unit.changeType" color="geekblue">{{ unit.changeType }}</a-tag>
+            <a-tooltip v-if="unit.changeType && changeTypeTip(unit.changeType)" :title="changeTypeTip(unit.changeType)">
+              <a-tag color="geekblue">{{ unit.changeType }}</a-tag>
+            </a-tooltip>
+            <a-tag v-else-if="unit.changeType" color="geekblue">{{ unit.changeType }}</a-tag>
             <span class="unit-path">{{ unit.path }}</span>
             <span class="unit-name">{{ unit.unit?.name }}</span>
             <a-tag v-if="unit.intentVerdict" :color="verdictColor(unit.intentVerdict)">
@@ -54,7 +57,10 @@
               <template #extend="{ items }">
                 <div v-for="(item, i) in items" :key="i" class="comment">
                   <div class="comment-head">
-                    <a-tag :color="severityColor(item.issue.severity)">{{ item.issue.severity }}</a-tag>
+                    <a-tooltip v-if="severityTip(item.issue.severity)" :title="severityTip(item.issue.severity)">
+                      <a-tag :color="severityColor(item.issue.severity)">{{ item.issue.severity }}</a-tag>
+                    </a-tooltip>
+                    <a-tag v-else :color="severityColor(item.issue.severity)">{{ item.issue.severity }}</a-tag>
                     <span class="comment-title">{{ item.issue.title }}</span>
                     <a-space :size="4" class="comment-actions">
                       <a-button
@@ -99,7 +105,14 @@
             row-key="title"
             class="mt8"
           >
-            <a-table-column title="级别" data-index="severity" width="70" />
+            <a-table-column title="级别" data-index="severity" width="70">
+              <template #default="{ text }">
+                <a-tooltip v-if="severityTip(text)" :title="severityTip(text)">
+                  <span>{{ text }}</span>
+                </a-tooltip>
+                <span v-else>{{ text }}</span>
+              </template>
+            </a-table-column>
             <a-table-column title="问题" data-index="title" />
             <a-table-column title="建议" data-index="suggestion" />
           </a-table>
@@ -116,6 +129,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { getFilePatch } from '@/api/project'
 import { MARK_ACCEPTED, MARK_FALSE_POSITIVE, MARK_NONE, type IssueMark } from '@/api/review'
+import { changeTypeTip, severityTip } from '@/utils/enums'
 
 const props = defineProps<{
   projectId: string

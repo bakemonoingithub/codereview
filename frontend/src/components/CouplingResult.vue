@@ -20,7 +20,14 @@
       <a-table-column title="类" data-index="target" />
       <a-table-column title="问题" data-index="issue" />
       <a-table-column title="建议" data-index="suggestion" />
-      <a-table-column title="级别" data-index="severity" width="80" />
+      <a-table-column title="级别" data-index="severity" width="80">
+        <template #default="{ text }">
+          <a-tooltip v-if="severityTip(text)" :title="severityTip(text)">
+            <span>{{ text }}</span>
+          </a-tooltip>
+          <span v-else>{{ text }}</span>
+        </template>
+      </a-table-column>
     </a-table>
     <RawResult v-if="result.raw" :text="result.raw" style="margin-top: 12px" />
   </div>
@@ -30,6 +37,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as echarts from 'echarts'
 import RawResult from '@/components/RawResult.vue'
+import { severityTip } from '@/utils/enums'
 
 const props = defineProps<{ result: any }>()
 

@@ -1,9 +1,9 @@
 <template>
   <a-tabs type="card" size="small">
-    <a-tab-pane key="raw" tab="raw-text">
+    <a-tab-pane key="raw" tab="原文">
       <pre class="raw-text">{{ text }}</pre>
     </a-tab-pane>
-    <a-tab-pane key="markdown" tab="markdown">
+    <a-tab-pane key="markdown" tab="Markdown">
       <div class="markdown-body" v-html="renderMarkdown(text)"></div>
     </a-tab-pane>
   </a-tabs>

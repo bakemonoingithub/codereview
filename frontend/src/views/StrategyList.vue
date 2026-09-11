@@ -28,7 +28,12 @@
       </template>
       <a-table-column title="名称" data-index="name" />
       <a-table-column title="分析器" data-index="analyzerType">
-        <template #default="{ text }">{{ analyzerLabel(text) }}</template>
+        <template #default="{ text }">
+          <!-- 保留英文枚举（与后端 AnalyzerTypes / 日志对应），中文放 tooltip -->
+          <a-tooltip :title="analyzerName(text)">
+            <span>{{ analyzerLabel(text) }}</span>
+          </a-tooltip>
+        </template>
       </a-table-column>
       <a-table-column title="创建时间" data-index="createdAt" />
       <a-table-column title="操作">
@@ -124,6 +129,7 @@ import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import { listModels } from '@/api/model'
 import { listPrompts } from '@/api/prompt'
+import { analyzerName } from '@/utils/accuracy'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
 const records = ref<any[]>([])

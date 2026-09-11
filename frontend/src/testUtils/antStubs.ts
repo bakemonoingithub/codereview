@@ -159,6 +159,7 @@ export const antStubs = {
   'a-collapse-panel': silentStub('a-collapse-panel-stub'),
   'a-space': silentStub('a-space-stub'),
   'a-tag': silentStub('a-tag-stub'),
+  'a-tooltip': attrsStub('a-tooltip-stub'),
   'a-alert': attrsStub('a-alert-stub'),
   'a-progress': attrsStub('a-progress-stub'),
   'a-empty': attrsStub('a-empty-stub'),

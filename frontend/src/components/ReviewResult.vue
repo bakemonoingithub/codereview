@@ -48,7 +48,10 @@
             <a-tag :color="u.status === 'success' ? 'green' : 'red'">
               {{ u.status === 'success' ? '成功' : '失败' }}
             </a-tag>
-            <span class="unit-meta">{{ u.unit.kind }} · 行 {{ u.unit.lines }}</span>
+            <a-tooltip v-if="unitKindTip(u.unit.kind)" :title="unitKindTip(u.unit.kind)">
+              <span class="unit-meta">{{ u.unit.kind }} · 行 {{ u.unit.lines }}</span>
+            </a-tooltip>
+            <span v-else class="unit-meta">{{ u.unit.kind }} · 行 {{ u.unit.lines }}</span>
           </a-space>
           <div v-if="u.status === 'failed'" class="error-text">{{ u.error }}</div>
           <template v-else>
@@ -60,7 +63,14 @@
               size="small"
               :pagination="false"
             >
-              <a-table-column title="级别" data-index="severity" width="80" />
+              <a-table-column title="级别" data-index="severity" width="80">
+                <template #default="{ text }">
+                  <a-tooltip v-if="severityTip(text)" :title="severityTip(text)">
+                    <span>{{ text }}</span>
+                  </a-tooltip>
+                  <span v-else>{{ text }}</span>
+                </template>
+              </a-table-column>
               <a-table-column title="行" data-index="line" width="60" />
               <a-table-column title="文件" data-index="file" width="140">
                 <template #default="{ text }">{{ text || u.path }}</template>
@@ -93,7 +103,14 @@
           :pagination="false"
           style="margin-top: 8px"
         >
-          <a-table-column title="级别" data-index="severity" width="80" />
+          <a-table-column title="级别" data-index="severity" width="80">
+            <template #default="{ text }">
+              <a-tooltip v-if="severityTip(text)" :title="severityTip(text)">
+                <span>{{ text }}</span>
+              </a-tooltip>
+              <span v-else>{{ text }}</span>
+            </template>
+          </a-table-column>
           <a-table-column title="行" data-index="line" width="60" />
           <a-table-column title="问题" data-index="message" />
         </a-table>
@@ -113,6 +130,7 @@ import {
   recordStatusAlert
 } from '@/utils/reviewResult'
 import { formatDuration, formatElapsed } from '@/utils/duration'
+import { severityTip, unitKindTip } from '@/utils/enums'
 import CouplingResult from '@/components/CouplingResult.vue'
 import PatternResult from '@/components/PatternResult.vue'
 import RawResult from '@/components/RawResult.vue'
