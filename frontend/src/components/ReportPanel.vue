@@ -1,6 +1,7 @@
 <template>
   <div>
     <LoadErrorAlert :message="loadError" @retry="loadAll" />
+    <LoadErrorAlert :message="recordsError" @retry="reloadRecords" />
     <a-row :gutter="16">
       <a-col :span="12">
         <a-card title="选择审查记录（已完成）" size="small">
@@ -132,16 +133,14 @@ const COMPLETED_STATUS_MIN = 2
  * total 会把未完成记录也算进去，于是会出现"整页只剩一两条"甚至空页。
  */
 async function loadRecordsPage(params: { pageNum: number; pageSize: number }) {
-  try {
-    return await listReviews(props.projectId, { ...params, statusMin: COMPLETED_STATUS_MIN })
-  } catch {
-    return null
-  }
+  // 失败就抛：错误信息由 useRecordPagination 兜住并暴露到界面（不再"失败即清空列表"）
+  return await listReviews(props.projectId, { ...params, statusMin: COMPLETED_STATUS_MIN })
 }
 
 const {
   records,
   loading: recordsLoading,
+  error: recordsError,
   pagination,
   fetchPage: reloadRecords
 } = useRecordPagination<ReviewRecordRow>({ loader: loadRecordsPage })

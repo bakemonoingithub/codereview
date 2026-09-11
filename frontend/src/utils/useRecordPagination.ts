@@ -18,8 +18,14 @@ export interface PageResult<T> {
   total: number
 }
 
-/** 加载器返回 null 代表本次请求失败/已作废，由调用方决定怎么提示 */
-export type PageLoader<T> = (params: { pageNum: number; pageSize: number }) => Promise<PageResult<T> | null>
+/**
+ * 加载器：**失败就抛**，由本 hook 统一兜住。
+ *
+ * 早先的约定是"失败返回 null"，结果两个调用方都 `catch { return null }` 之后
+ * 什么也不做 —— hook 只好把列表清空，界面上"记录被清空了"和"接口挂了"长得一模一样。
+ * 改成抛异常后，错误信息（已由 request.ts 归一成中文）能一路传到界面上。
+ */
+export type PageLoader<T> = (params: { pageNum: number; pageSize: number }) => Promise<PageResult<T>>
 
 export interface UseRecordPaginationOptions<T> {
   loader: PageLoader<T>
@@ -30,6 +36,8 @@ export interface UseRecordPaginationOptions<T> {
 export function useRecordPagination<T>(options: UseRecordPaginationOptions<T>) {
   const records = ref<T[]>([]) as Ref<T[]>
   const loading = ref(false)
+  /** 非空表示"本次加载失败"，界面据此显示错误提示与重试 */
+  const error = ref('')
   const pageNum = ref(1)
   const pageSize = ref<number>(DEFAULT_PAGE_SIZE)
   const total = ref(0)
@@ -45,14 +53,18 @@ export function useRecordPagination<T>(options: UseRecordPaginationOptions<T>) {
       if (seq !== requestSeq) {
         return
       }
-      if (!result) {
-        records.value = []
-        total.value = 0
+      records.value = result?.records || []
+      // total 缺失时按当前页条数兜底而不是归零：归零会让分页器整个消失
+      total.value = typeof result?.total === 'number' && result.total >= 0 ? result.total : records.value.length
+      error.value = ''
+    } catch (e: any) {
+      if (seq !== requestSeq) {
         return
       }
-      records.value = result.records
-      // total 缺失时按当前页条数兜底而不是归零：归零会让分页器整个消失
-      total.value = typeof result.total === 'number' && result.total >= 0 ? result.total : result.records.length
+      // 失败**不清空**已有数据：清空会让用户以为"记录没了"，而其实只是这次没取到。
+      // 代价是翻页失败时表格短暂显示的是上一页内容 —— 但上方有明确的错误提示与重试，
+      // 且重试会按用户点的那一页重新拉，比"清空 + 不说话"诚实得多。
+      error.value = e?.message || '加载失败，请重试'
     } finally {
       if (seq === requestSeq) {
         loading.value = false
@@ -107,5 +119,16 @@ export function useRecordPagination<T>(options: UseRecordPaginationOptions<T>) {
     }
   )
 
-  return { records, loading, pageNum, pageSize, total, pagination, fetchPage, onPageChange, reloadFromFirstPage }
+  return {
+    records,
+    loading,
+    error,
+    pageNum,
+    pageSize,
+    total,
+    pagination,
+    fetchPage,
+    onPageChange,
+    reloadFromFirstPage
+  }
 }

@@ -12,6 +12,7 @@ function mountPagination(loader: (params: { pageNum: number; pageSize: number })
   const api = {
     records: ref<any[]>([]),
     loading: ref(false),
+    error: ref(''),
     pageNum: ref(1),
     pageSize: ref(20),
     total: ref(0),
@@ -57,6 +58,7 @@ describe('useRecordPagination', () => {
     expect(calls).toEqual([{ pageNum: 1, pageSize: 20 }])
     expect(api.records.value.length).toBe(18)
     expect(api.total.value).toBe(18)
+    expect(api.error.value).toBe('')
     expect(api.pagination.value.showSizeChanger).toBe(true)
     expect(api.pagination.value.pageSizeOptions).toEqual(['10', '20', '50'])
   })
@@ -88,13 +90,59 @@ describe('useRecordPagination', () => {
     expect(api.pageSize.value).toBe(10)
   })
 
-  it('加载器返回 null（请求失败）时清空数据，不抛错', async () => {
-    const { api } = mountPagination(async () => null)
+  /** 回归（A 批 E8）：失败原先会静默把列表清空，与"接口挂了"无法区分 */
+  it('加载失败：暴露 error、保留已加载数据、不把异常抛给调用方', async () => {
+    let call = 0
+    const { api } = mountPagination(async () => {
+      call += 1
+      if (call === 1) {
+        return { records: [{ id: 'ok-1' }, { id: 'ok-2' }], total: 2 }
+      }
+      throw new Error('无法连接服务器，请检查网络或后端服务是否已启动')
+    })
+
+    await flush()
+    expect(api.records.value.map((r: any) => r.id)).toEqual(['ok-1', 'ok-2'])
+
+    // 翻页失败：数据必须还在，错误必须可见，且调用方不会被异常打断
+    await expect(api.onPageChange(2, 20)).resolves.toBeUndefined()
     await flush()
 
+    expect(api.error.value).toContain('无法连接服务器')
+    expect(api.records.value.map((r: any) => r.id)).toEqual(['ok-1', 'ok-2'])
+    expect(api.total.value).toBe(2)
+    expect(api.loading.value).toBe(false)
+  })
+
+  it('首次加载就失败：error 非空、列表为空、loading 归 false', async () => {
+    const { api } = mountPagination(async () => {
+      throw new Error('请求超时，请稍后重试')
+    })
+    await flush()
+
+    expect(api.error.value).toBe('请求超时，请稍后重试')
     expect(api.records.value).toEqual([])
     expect(api.total.value).toBe(0)
     expect(api.loading.value).toBe(false)
+  })
+
+  it('重试成功后 error 清空并换上新数据', async () => {
+    let call = 0
+    const { api } = mountPagination(async () => {
+      call += 1
+      if (call === 1) {
+        throw new Error('请求超时，请稍后重试')
+      }
+      return { records: [{ id: 'fresh' }], total: 1 }
+    })
+    await flush()
+    expect(api.error.value).not.toBe('')
+
+    await api.fetchPage()
+    await flush()
+
+    expect(api.error.value).toBe('')
+    expect(api.records.value.map((r: any) => r.id)).toEqual(['fresh'])
   })
 
   it('后端没给 total 时按当前页条数兜底（归零会让分页器整个消失）', async () => {

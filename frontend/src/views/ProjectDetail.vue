@@ -137,6 +137,7 @@
       <a-tab-pane key="records" tab="审查记录">
         <AccuracyBar :stats="accuracy" :loading="accuracyLoading" />
         <a-divider style="margin: 12px 0" />
+        <LoadErrorAlert :message="recordsError" @retry="retryRecords" />
         <a-table
           :data-source="records"
           row-key="id"
@@ -660,19 +661,16 @@ async function loadAccuracy() {
  * 每次翻页重拉纯属浪费，还会让汇总条闪一下 loading。
  */
 async function loadRecordsPage(params: { pageNum: number; pageSize: number }) {
-  try {
-    // 原样返回：`records`/`total` 的兜底语义统一由 useRecordPagination 负责，
-    // 这里若把 total 写成 `?? 0`，就把"后端没给 total"这个信号提前抹掉了
-    return await listReviews(projectId, params)
-  } catch {
-    return null
-  }
+  // 失败就抛：错误信息由 useRecordPagination 兜住并暴露到界面（不再"失败即清空列表"）
+  return await listReviews(projectId, params)
 }
 
 const {
   records,
   loading: recordsLoading,
+  error: recordsError,
   pagination,
+  fetchPage: retryRecords,
   reloadFromFirstPage: reloadRecordsFromFirstPage
 } = useRecordPagination<ReviewRecordRow>({ loader: loadRecordsPage })
 
