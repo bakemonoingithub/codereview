@@ -57,6 +57,7 @@ declare module 'vue' {
     EmptyGuide: typeof import('./src/components/EmptyGuide.vue')['default']
     ListPageLayout: typeof import('./src/components/ListPageLayout.vue')['default']
     LoadErrorAlert: typeof import('./src/components/LoadErrorAlert.vue')['default']
+    MarkdownView: typeof import('./src/components/MarkdownView.vue')['default']
     PatternResult: typeof import('./src/components/PatternResult.vue')['default']
     RawResult: typeof import('./src/components/RawResult.vue')['default']
     ReportPanel: typeof import('./src/components/ReportPanel.vue')['default']

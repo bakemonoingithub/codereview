@@ -87,11 +87,38 @@
       </a-table>
     </a-card>
 
-    <a-modal v-model:open="reportOpen" :title="currentReport?.name" :width="720" :footer="null">
-      <a-space style="margin-bottom: 8px">
-        <a-button size="small" @click="downloadMarkdown">下载 Markdown</a-button>
-      </a-space>
-      <pre class="markdown">{{ currentReport?.contentMarkdown }}</pre>
+    <a-modal
+      v-model:open="reportOpen"
+      :title="currentReport?.name || '报告详情'"
+      :width="880"
+      :footer="null"
+    >
+      <a-spin :spinning="reportLoading" tip="加载报告…">
+        <a-alert v-if="reportError" type="error" show-icon :message="reportError" class="mb8" />
+        <template v-if="currentReport">
+          <!-- 报告生成失败时给明确说明：原先弹窗里只有空内容 + 一个下载按钮 -->
+          <a-alert
+            v-if="currentReport.status === 3"
+            type="error"
+            show-icon
+            class="mb8"
+            message="该报告生成失败"
+            description="可回到左侧重新勾选审核记录并再次生成。"
+          />
+          <a-space style="margin-bottom: 8px">
+            <a-button
+              size="small"
+              :disabled="!currentReport.contentMarkdown"
+              @click="downloadMarkdown"
+            >
+              下载 Markdown
+            </a-button>
+          </a-space>
+          <!-- 用 Markdown 渲染：原先 <pre> 直出源码，报告里满是 ** 和 # -->
+          <MarkdownView v-if="currentReport.contentMarkdown" :text="currentReport.contentMarkdown" />
+          <a-empty v-else description="该报告没有正文内容" />
+        </template>
+      </a-spin>
     </a-modal>
 
     <!-- 只读查看审查记录：与「审查记录」页签用的是同一个弹窗组件 -->
@@ -116,6 +143,7 @@ import { generateReport, listReports, getReport } from '@/api/report'
 import { formatDuration } from '@/utils/duration'
 import { useRecordPagination } from '@/utils/useRecordPagination'
 import ReviewRecordViewer from '@/components/ReviewRecordViewer.vue'
+import MarkdownView from '@/components/MarkdownView.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
 const props = defineProps<{ projectId: string }>()
@@ -131,6 +159,9 @@ const reports = ref<any[]>([])
 const reportsLoading = ref(false)
 const reportOpen = ref(false)
 const currentReport = ref<any>(null)
+/** 报告详情取数期间的 loading 与失败提示（原先两者都没有） */
+const reportLoading = ref(false)
+const reportError = ref('')
 /** 查看弹窗只认 id：完整记录由弹窗自己按 id 拉（列表行不带 resultJson） */
 const recordViewerOpen = ref(false)
 const viewerRecordId = ref('')
@@ -311,19 +342,36 @@ function startReportPoll() {
 }
 
 async function openReport(r: any) {
-  currentReport.value = await getReport(r.id)
+  // 原先无 loading、无 catch：慢请求期间界面毫无反馈，失败则静默打开一个空弹窗
   reportOpen.value = true
+  reportLoading.value = true
+  reportError.value = ''
+  currentReport.value = null
+  try {
+    currentReport.value = await getReport(r.id)
+  } catch (e: any) {
+    reportError.value = e?.message || '报告加载失败'
+  } finally {
+    reportLoading.value = false
+  }
 }
 
 function downloadMarkdown() {
   const content = currentReport.value?.contentMarkdown || ''
+  if (!content) {
+    return
+  }
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = `${currentReport.value?.name || 'report'}.md`
+  // 必须真挂到 DOM 再点击：游离节点在部分浏览器（Firefox/Safari）不触发下载
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  // 立刻 revoke 会让慢磁盘/大文件拿到空内容，延后释放
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 onMounted(loadAll)
@@ -353,13 +401,7 @@ defineExpose({ startReportPoll, stopReportPoll })
     margin-left: 6px;
   }
 }
-.markdown {
-  white-space: pre-wrap;
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 4px;
-  padding: 12px;
-  max-height: 60vh;
-  overflow: auto;
+.mb8 {
+  margin-bottom: 8px;
 }
 </style>
