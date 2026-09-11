@@ -1,0 +1,249 @@
+// @vitest-environment happy-dom
+import { describe, expect, it, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
+
+/**
+ * 「结构视图」的搜索 / 计数 / 全选 / 清空。
+ *
+ * 原先这里只有「展开全部 / 收起全部」两个按钮：大仓库里要勾十几个文件，
+ * 只能靠肉眼在几百行树里翻，也没有任何"已经选了几个"的反馈，
+ * 更没有任何一键选中/清空的手段。
+ *
+ * 语义（与提交视图的 ChangedFileTree 对齐）：
+ * - 搜索只影响**显示与全选范围**，不会动已选中的集合；
+ * - 因此计数要说清"筛选内选了几个"以及"有几个已选被搜掉了"。
+ *
+ * 断言口径：树**不用 DOM 文本**判，改用 `a-tree` 的 `tree-data` / `expanded-keys` 两个 prop。
+ * 原因是 antd Tree 的节点增删带过渡动画，happy-dom 里退场节点会一直留在 DOM 上
+ * （实测搜 'src' 后树上仍能读到已被过滤掉的 README.md），照 DOM 断言只会测出环境的锅。
+ */
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ params: { id: '9' } }),
+  useRouter: () => ({ push: vi.fn() })
+}))
+
+vi.mock('@/api/review', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/review')>()
+  return {
+    ...actual,
+    listReviews: vi.fn().mockResolvedValue({ records: [], total: 0, current: 1, size: 20 }),
+    listMarks: vi.fn().mockResolvedValue([]),
+    getReview: vi.fn(),
+    retryReview: vi.fn()
+  }
+})
+
+// vi.mock 的工厂会被提升到文件顶部，里面的变量必须一起提升，否则读不到
+const { tree } = vi.hoisted(() => ({
+  tree: [
+    {
+      path: 'src',
+      name: 'src',
+      type: 'tree',
+      children: [
+        { path: 'src/a.ts', name: 'a.ts', type: 'blob' },
+        { path: 'src/b.ts', name: 'b.ts', type: 'blob' }
+      ]
+    },
+    { path: 'README.md', name: 'README.md', type: 'blob' },
+    {
+      path: 'docs',
+      name: 'docs',
+      type: 'tree',
+      children: [{ path: 'docs/guide.md', name: 'guide.md', type: 'blob' }]
+    }
+  ]
+}))
+
+vi.mock('@/api/project', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/project')>()
+  return {
+    ...actual,
+    getBranches: vi.fn().mockResolvedValue(['master']),
+    getTree: vi.fn().mockResolvedValue(tree),
+    listCommitPage: vi.fn().mockResolvedValue({ commits: [], hasMore: false }),
+    getCommitDetail: vi.fn(),
+    getAccuracy: vi.fn().mockResolvedValue([]),
+    getProject: vi.fn().mockResolvedValue({ id: '9', name: '演示项目', giteaUrl: 'http://gitea/team/repo' })
+  }
+})
+
+vi.mock('@/api/strategy', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/strategy')>()
+  return {
+    ...actual,
+    listStrategies: vi.fn().mockResolvedValue({ records: [{ id: '7', name: '结构审查', analyzerType: 2 }] })
+  }
+})
+
+import ProjectDetail from '@/views/ProjectDetail.vue'
+
+const options = {
+  global: {
+    stubs: {
+      AccuracyBar: true,
+      ReportPanel: true,
+      ReviewConfigSnapshot: true,
+      ReviewResult: true,
+      // SplitPane **不能 stub**：结构视图就在它的插槽里，
+      // stub 掉插槽内容整块消失，断言会以"找不到搜索框"的形式假失败
+      CommitTable: true,
+      ChangedFileTree: true,
+      ReviewRecordViewer: true
+    }
+  }
+}
+
+type Wrapper = ReturnType<typeof mount>
+
+async function flush() {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+async function mountView() {
+  const wrapper = mount(ProjectDetail, options)
+  await flush()
+  await wrapper.vm.$nextTick()
+  return wrapper
+}
+
+function searchBox(wrapper: Wrapper) {
+  const input = wrapper.findAll('input').find((i) => i.attributes('placeholder') === '按路径搜索')
+  expect(input, '结构视图应有「按路径搜索」输入框').toBeTruthy()
+  return input!
+}
+
+async function fillSearch(wrapper: Wrapper, keyword: string) {
+  await searchBox(wrapper).setValue(keyword)
+  await flush()
+  await wrapper.vm.$nextTick()
+}
+
+/**
+ * 按文案找按钮。**必须忽略空白**：antd Button 会在两个汉字之间自动插空格
+ * （"全选" 在 DOM 里是 "全 选"），按原样比较会找不到。
+ */
+function button(wrapper: Wrapper, text: string) {
+  const found = wrapper
+    .findAll('button')
+    .find((b) => b.text().replace(/\s/g, '') === text)
+  expect(found, `应存在按钮「${text}」`).toBeTruthy()
+  return found!
+}
+
+function countText(wrapper: Wrapper) {
+  return wrapper.find('.count').text()
+}
+
+function structureTree(wrapper: Wrapper) {
+  const treeComponent = wrapper.findAllComponents({ name: 'ATree' })[0]
+  expect(treeComponent, '结构视图应渲染 a-tree').toBeTruthy()
+  return treeComponent!.props('treeData') as any[]
+}
+
+function flattenKeys(nodes: any[]): string[] {
+  return nodes.flatMap((node) => [node.key, ...(node.children?.length ? flattenKeys(node.children) : [])])
+}
+
+function treeKeys(wrapper: Wrapper) {
+  return flattenKeys(structureTree(wrapper))
+}
+
+function currentExpandedKeys(wrapper: Wrapper) {
+  const treeComponent = wrapper.findAllComponents({ name: 'ATree' })[0]
+  return treeComponent!.props('expandedKeys') as string[]
+}
+
+describe('结构视图：搜索 / 计数 / 全选 / 清空', () => {
+  it('默认展示全部文件，并给出「已选 0 / 可审查 N」', async () => {
+    const wrapper = await mountView()
+
+    expect(countText(wrapper)).toBe('已选 0 / 可审查 4')
+    expect(treeKeys(wrapper)).toEqual([
+      'src',
+      'src/a.ts',
+      'src/b.ts',
+      'README.md',
+      'docs',
+      'docs/guide.md'
+    ])
+    expect(button(wrapper, '全选').exists()).toBe(true)
+  })
+
+  it('搜索后只保留命中的分支，计数切到「匹配」口径', async () => {
+    const wrapper = await mountView()
+
+    await fillSearch(wrapper, 'src')
+
+    expect(treeKeys(wrapper)).toEqual(['src', 'src/a.ts', 'src/b.ts'])
+    expect(countText(wrapper)).toBe('已选 0 / 匹配 2')
+    expect(button(wrapper, '全选筛选结果').exists()).toBe(true)
+  })
+
+  it('「全选筛选结果」只选筛选出来的文件，不动筛选外的', async () => {
+    const wrapper = await mountView()
+
+    await fillSearch(wrapper, 'src')
+    await button(wrapper, '全选筛选结果').trigger('click')
+    await flush()
+
+    expect(countText(wrapper)).toBe('已选 2 / 匹配 2')
+
+    // 清空筛选后可见：只选中了 src 下两个，README/docs 未被选中
+    await fillSearch(wrapper, '')
+    expect(countText(wrapper)).toBe('已选 2 / 可审查 4')
+  })
+
+  it('已选被搜索藏起来时显式提示条数，不静默丢选择', async () => {
+    const wrapper = await mountView()
+
+    await button(wrapper, '全选').trigger('click')
+    await flush()
+    expect(countText(wrapper)).toBe('已选 4 / 可审查 4')
+
+    await fillSearch(wrapper, 'src')
+
+    expect(countText(wrapper)).toBe('已选 2 / 匹配 2（另有 2 个已选不在筛选中）')
+  })
+
+  it('点「清空」把选中集清干净', async () => {
+    const wrapper = await mountView()
+
+    await button(wrapper, '全选').trigger('click')
+    await flush()
+    expect(countText(wrapper)).toBe('已选 4 / 可审查 4')
+
+    await button(wrapper, '清空').trigger('click')
+    await flush()
+    expect(countText(wrapper)).toBe('已选 0 / 可审查 4')
+  })
+
+  it('关键词无命中时给出「没有匹配的文件」而不是「该分支无文件」', async () => {
+    const wrapper = await mountView()
+
+    await fillSearch(wrapper, 'zzz-not-exist')
+
+    expect(wrapper.text()).toContain('没有匹配的文件')
+    expect(wrapper.text()).not.toContain('该分支无文件')
+    expect(countText(wrapper)).toBe('已选 0 / 匹配 0')
+  })
+
+  it('搜索命中的目录自动展开，命中的文件当场可见', async () => {
+    const wrapper = await mountView()
+
+    await fillSearch(wrapper, 'guide')
+
+    expect(treeKeys(wrapper)).toEqual(['docs', 'docs/guide.md'])
+    expect(currentExpandedKeys(wrapper)).toContain('docs')
+  })
+
+  it('「展开全部」用的仍是完整文件树的目录键', async () => {
+    const wrapper = await mountView()
+
+    await fillSearch(wrapper, 'src')
+    await button(wrapper, '展开全部').trigger('click')
+    await flush()
+
+    expect(currentExpandedKeys(wrapper)).toEqual(expect.arrayContaining(['src', 'docs']))
+  })
+})

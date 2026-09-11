@@ -52,11 +52,24 @@
                 <div v-if="structureAnalyzerType === 1" class="select-row">
                   <a-checkbox v-model:checked="mergeFiles">多文件合并审查</a-checkbox>
                 </div>
+                <div class="tree-search">
+                  <a-input
+                    v-model:value="structureKeyword"
+                    size="small"
+                    placeholder="按路径搜索"
+                    allow-clear
+                  />
+                </div>
                 <div class="tree-toolbar">
-                  <a-space>
+                  <a-space :size="4">
                     <a-button size="small" @click="expandAll">展开全部</a-button>
                     <a-button size="small" @click="collapseAll">收起全部</a-button>
+                    <a-button size="small" @click="selectAllStructure">
+                      {{ structureKeyword ? '全选筛选结果' : '全选' }}
+                    </a-button>
+                    <a-button size="small" @click="clearStructureChecked">清空</a-button>
                   </a-space>
+                  <span class="count">{{ structureSelectionText }}</span>
                   <a-button
                     type="primary"
                     size="small"
@@ -73,11 +86,14 @@
                       <a-button size="small" @click="loadTree">重试</a-button>
                     </template>
                   </a-alert>
-                  <a-empty v-else-if="!treeLoading && !treeData.length" description="该分支无文件" />
+                  <a-empty
+                    v-else-if="!treeLoading && !structureTree.length"
+                    :description="structureKeyword ? '没有匹配的文件' : '该分支无文件'"
+                  />
                   <a-tree
                     v-else
                     checkable
-                    :tree-data="treeData"
+                    :tree-data="structureTree"
                     v-model:checked-keys="structureChecked"
                     v-model:expanded-keys="expandedKeys"
                   />
@@ -235,7 +251,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -301,7 +317,93 @@ const expandedKeys = ref<string[]>([])
 const allExpandableKeys = ref<string[]>([])
 const structureStrategyId = ref('')
 const mergeFiles = ref(false)
+const structureKeyword = ref('')
+const fileCount = ref(0)
 let fileSet = new Set<string>()
+
+/**
+ * 结构视图的搜索与「全选」。
+ *
+ * 与提交视图的 ChangedFileTree 保持同一套语义：搜索只影响**显示与全选范围**，
+ * 已勾选但被搜掉的路径仍留在选中集里（不会因为敲了几个字就静默丢选择）。
+ */
+const structureMatchedFiles = computed(() => {
+  const keyword = structureKeyword.value.trim().toLowerCase()
+  const paths = [...fileSet]
+  if (!keyword) return paths
+  return paths.filter((path) => path.toLowerCase().includes(keyword))
+})
+
+const structureTree = computed(() => filterTree(treeData.value, structureKeyword.value.trim().toLowerCase()))
+
+/**
+ * 「已选 N / …」文案。
+ *
+ * 搜索时 `已选` 只数**筛选结果内**的选中项，另外把"被搜索藏起来的已选"显式说出来：
+ * 搜索只隐藏不改选中集，若不提示，用户会以为审查范围就是眼前这几个文件。
+ */
+const structureSelectionText = computed(() => {
+  if (!structureKeyword.value) {
+    return `已选 ${structureChecked.value.length} / 可审查 ${fileCount.value}`
+  }
+  const matched = new Set(structureMatchedFiles.value)
+  const inFilter = structureChecked.value.filter((key) => matched.has(key))
+  const hidden = structureChecked.value.length - inFilter.length
+  const hiddenText = hidden ? `（另有 ${hidden} 个已选不在筛选中）` : ''
+  return `已选 ${inFilter.length} / 匹配 ${structureMatchedFiles.value.length}${hiddenText}`
+})
+
+/**
+ * 按关键词裁剪文件树：命中子节点的目录保留，目录自身命中则保留整棵子树。
+ * 只按 path（完整路径）判断，与 `structureMatchedFiles` 口径一致 ——
+ * 否则会出现"计数说匹配 3 个、树上却看得到 5 个"的错位。
+ */
+function filterTree(nodes: any[], keyword: string): any[] {
+  if (!keyword) return nodes
+  const walk = (list: any[]): any[] => {
+    const result: any[] = []
+    for (const node of list) {
+      const children = Array.isArray(node.children) ? walk(node.children) : []
+      if (children.length) {
+        result.push({ ...node, children })
+      } else if (String(node.key ?? '').toLowerCase().includes(keyword)) {
+        result.push({ ...node, children: node.children })
+      }
+    }
+    return result
+  }
+  return walk(nodes)
+}
+
+function keysOfTree(nodes: any[]): string[] {
+  const keys: string[] = []
+  const walk = (list: any[]) => {
+    for (const node of list) {
+      if (node.children?.length) {
+        keys.push(node.key)
+        walk(node.children)
+      }
+    }
+  }
+  walk(nodes)
+  return keys
+}
+
+// 搜索后自动展开，省去用户逐层点开
+watch(structureKeyword, () => {
+  if (structureKeyword.value) {
+    expandedKeys.value = keysOfTree(structureTree.value)
+  }
+})
+
+/** 全选**当前筛选结果**（与 ChangedFileTree 的 selectAllFiltered 同义） */
+function selectAllStructure() {
+  structureChecked.value = [...structureMatchedFiles.value]
+}
+
+function clearStructureChecked() {
+  structureChecked.value = []
+}
 
 // ---------------- 提交视图（独立选中集） ----------------
 const commits = ref<CommitInfo[]>([])
@@ -436,9 +538,12 @@ async function loadTree() {
     const nodes = await getTree(projectId, branch.value)
     treeData.value = toTreeNodes(nodes)
     fileSet = flattenFiles(nodes)
+    // fileSet 是普通 Set（非响应式），计数要单独用 ref 暴露给模板
+    fileCount.value = fileSet.size
     allExpandableKeys.value = collectExpandableKeys(nodes)
   } catch (e: any) {
     treeData.value = []
+    fileCount.value = 0
     treeError.value = e?.message || '文件树加载失败'
   } finally {
     treeLoading.value = false
@@ -811,11 +916,21 @@ defineExpose({ startPoll, resumePoll, pollError, stopPoll })
   width: 60px;
   color: rgba(0, 0, 0, 0.88);
 }
+.tree-search {
+  margin-bottom: 8px;
+}
 .tree-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 8px;
+}
+.count {
+  margin-left: auto;
+  color: #999;
+  font-size: 12px;
+  white-space: nowrap;
 }
 .hint {
   color: #999;
