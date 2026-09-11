@@ -38,6 +38,10 @@ deepseek:
   base-url: https://api.deepseek.com
   api-key: ${DEEPSEEK_API_KEY:}
   model: deepseek-chat
+  # LLM 调用超时（毫秒）。**务必保持有限**：网关挂起时靠它把单元收敛为失败，
+  # 否则记录会永远停在"执行中"并占满并发线程。配 0 或负数会被回退成默认值。
+  connect-timeout-ms: 10000     # 建连超时
+  read-timeout-ms: 300000       # 读超时（单次调用最长等待）
 
 # 审查编排参数（均有默认值，可省略；以下为默认值示例）
 review:
