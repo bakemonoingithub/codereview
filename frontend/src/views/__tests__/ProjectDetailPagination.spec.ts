@@ -173,15 +173,12 @@ describe('审查记录分页器真实渲染（数据 18 条）', () => {
     expect(paginationOf(wrapper).total).toBe(2)
   })
 
-  it('18 条数据、每页 20 条时，分页条是否真的渲染出来（用户报的就是这个状态）', async () => {
+  it('18 条数据、每页 20 条时：单页也照常渲染分页条与每页条数选择器', async () => {
     const wrapper = await mountOnRecordsTab(18)
-    const paginationEls = wrapper.findAll('.ant-pagination')
-    // eslint-disable-next-line no-console
-    console.log('DEBUG 每页20条时 .ant-pagination 节点数 >>', paginationEls.length)
-    // eslint-disable-next-line no-console
-    console.log('DEBUG 表格行数 >>', wrapper.findAll('.ant-table-tbody tr.ant-table-row').length)
-    // eslint-disable-next-line no-console
-    console.log('DEBUG 存在每页条数选择器 >>', wrapper.html().includes('ant-pagination-options'))
-    expect(wrapper.findAll('.ant-table-tbody tr.ant-table-row').length).toBe(18)
+
+    expect(wrapper.findAll('.ant-table-tbody tr.ant-table-row')).toHaveLength(18)
+    // 单页时 antd 默认也会显示分页条 —— 用户要在 18 条的情况下切到"10 条/页"就靠它
+    expect(wrapper.findAll('.ant-pagination').length).toBeGreaterThan(0)
+    expect(wrapper.find('.ant-pagination-options').exists()).toBe(true)
   })
 })
