@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { listReviews, type ReviewRecordRow } from '@/api/review'
 import { listModels } from '@/api/model'
@@ -246,6 +246,8 @@ async function onGenerate() {
     })
     message.success('已提交生成')
     await Promise.all([reloadRecords(), loadReports()])
+    // 报告是异步任务：这里不盯一眼，列表会一直停在"排队"
+    startReportPoll()
   } catch (e: any) {
     message.error(e?.message || '生成失败')
   } finally {
@@ -253,15 +255,61 @@ async function onGenerate() {
   }
 }
 
-async function loadReports() {
-  reportsLoading.value = true
+/** 静默刷新：轮询时不要每 5 秒闪一次表格 loading */
+async function loadReports(silent = false) {
+  if (!silent) {
+    reportsLoading.value = true
+  }
   try {
     const page = (await listReports(props.projectId, { pageNum: 1, pageSize: 100 })) as any
     reports.value = page?.records || []
   } finally {
-    reportsLoading.value = false
+    if (!silent) {
+      reportsLoading.value = false
+    }
   }
 }
+
+/** 报告状态：0 排队 / 1 生成中 */
+const PENDING_REPORT_STATUS = [0, 1]
+const REPORT_POLL_INTERVAL = 5000
+let reportPollTimer: number | undefined
+
+function hasPendingReport() {
+  return reports.value.some((r: any) => PENDING_REPORT_STATUS.includes(r.status))
+}
+
+function stopReportPoll() {
+  if (reportPollTimer) {
+    window.clearInterval(reportPollTimer)
+    reportPollTimer = undefined
+  }
+}
+
+/**
+ * 生成报告后盯住"排队/生成中"的行。
+ *
+ * 原先生成完只弹一句"已提交生成"，此后**不再刷新**（ReportPanel 一直在 DOM 里、
+ * 切页签也不会重挂载），现场看到的是状态永远停在"排队"，只能手动刷页。
+ */
+function startReportPoll() {
+  stopReportPoll()
+  if (!hasPendingReport()) {
+    return
+  }
+  reportPollTimer = window.setInterval(async () => {
+    try {
+      await loadReports(true)
+    } catch {
+      // 单次失败不打断轮询：下一周期再试，列表本身有错误态
+      return
+    }
+    if (!hasPendingReport()) {
+      stopReportPoll()
+    }
+  }, REPORT_POLL_INTERVAL)
+}
+
 async function openReport(r: any) {
   currentReport.value = await getReport(r.id)
   reportOpen.value = true
@@ -279,6 +327,11 @@ function downloadMarkdown() {
 }
 
 onMounted(loadAll)
+
+onUnmounted(stopReportPoll)
+
+// 供测试驱动轮询（与 ProjectDetail 的进度轮询同理：定时器只能这样验）
+defineExpose({ startReportPoll, stopReportPoll })
 </script>
 
 <style scoped lang="less">
