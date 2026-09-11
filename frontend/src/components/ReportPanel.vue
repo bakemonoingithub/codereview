@@ -15,18 +15,19 @@
             :loading="recordsLoading"
             :pagination="pagination"
             size="small"
+            :scroll="{ x: 'max-content' }"
             :row-selection="{ selectedRowKeys: selectedIds, onChange: onSelect }"
           >
-            <a-table-column title="创建时间" data-index="createdAt" width="170" />
+            <a-table-column title="创建时间" data-index="createdAt" width="150" />
             <a-table-column title="分支" data-index="branch" width="100" />
             <a-table-column title="提交" data-index="commitSha" width="90">
               <template #default="{ text }">{{ text ? text.slice(0, 7) : '—' }}</template>
             </a-table-column>
             <a-table-column title="策略" data-index="strategyName" ellipsis />
-            <a-table-column title="状态" data-index="status" width="90">
+            <a-table-column title="状态" data-index="status" width="80">
               <template #default="{ text }">{{ statusText(text) }}</template>
             </a-table-column>
-            <a-table-column title="操作" width="80">
+            <a-table-column title="操作" width="72">
               <template #default="{ record }">
                 <a-button size="small" @click="viewRecord(record)">查看</a-button>
               </template>

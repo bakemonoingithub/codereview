@@ -183,4 +183,13 @@ describe('审查记录分页器真实渲染（数据 18 条）', () => {
     expect(wrapper.findAll('.ant-pagination').length).toBeGreaterThan(0)
     expect(wrapper.find('.ant-pagination-options').exists()).toBe(true)
   })
+
+  it('记录表自带横向滚动：窄屏下滚动的是表体，不是整页', async () => {
+    const wrapper = await mountOnRecordsTab(18)
+    const table = wrapper
+      .findAllComponents({ name: 'ATable' })
+      .find((t) => (t.props('pagination') as any)?.showTotal)
+
+    expect(table!.props('scroll')).toEqual({ x: 'max-content' })
+  })
 })

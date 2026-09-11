@@ -147,6 +147,13 @@ describe('ReportPanel 选择审查记录', () => {
     wrapper.unmount()
   })
 
+  it('表格自带横向滚动：窄屏（笔记本）下滚动的是表体，不是整页', async () => {
+    const { wrapper } = await mountPanel(25)
+    const table = wrapper.findAllComponents({ name: 'ATable' })[0]
+    expect(table.props('scroll')).toEqual({ x: 'max-content' })
+    wrapper.unmount()
+  })
+
   it('点某行"查看"把该记录交给只读弹窗', async () => {
     const { wrapper } = await mountPanel(25)
     const viewBtn = wrapper.findAll('a-button-stub').find((b) => b.text() === '查看')!

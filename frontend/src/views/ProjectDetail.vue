@@ -177,25 +177,26 @@
           :loading="recordsLoading"
           :pagination="pagination"
           size="small"
+          :scroll="{ x: 'max-content' }"
         >
-          <a-table-column title="时间" data-index="createdAt" width="170" />
-          <a-table-column title="耗时" width="100">
+          <a-table-column title="时间" data-index="createdAt" width="150" />
+          <a-table-column title="耗时" width="90">
             <template #default="{ record }">{{ formatDuration(record.startedAt, record.finishedAt) }}</template>
           </a-table-column>
-          <a-table-column title="分支" data-index="branch" width="110" />
-          <a-table-column title="提交" data-index="commitSha" width="90">
+          <a-table-column title="分支" data-index="branch" width="100" ellipsis />
+          <a-table-column title="提交" data-index="commitSha" width="80">
             <template #default="{ text }">{{ text ? text.slice(0, 7) : '—' }}</template>
           </a-table-column>
-          <a-table-column title="策略" data-index="strategyName" width="150" ellipsis />
-          <a-table-column title="状态" data-index="status" width="90">
+          <a-table-column title="策略" data-index="strategyName" width="130" ellipsis />
+          <a-table-column title="状态" data-index="status" width="85">
             <template #default="{ text }">
               <a-tag :color="recordStatusColor(text)">{{ recordStatusText(text) }}</a-tag>
             </template>
           </a-table-column>
-          <a-table-column title="进度" data-index="progress" width="80">
+          <a-table-column title="进度" data-index="progress" width="70">
             <template #default="{ text }">{{ text }}%</template>
           </a-table-column>
-          <a-table-column title="操作" width="150">
+          <a-table-column title="操作" width="140">
             <template #default="{ record }">
               <a-space>
                 <a-button size="small" @click="viewRecord(record)">查看</a-button>
@@ -953,6 +954,8 @@ defineExpose({ startPoll, resumePoll, pollError, stopPoll })
   align-items: baseline;
   gap: 12px;
   margin-top: 6px;
+  /* 窄屏（笔记本 1366 + 125% 缩放）下项目名+仓库地址+返回按钮会顶出一层横向滚动 */
+  flex-wrap: wrap;
 }
 .detail-title {
   margin: 0;
