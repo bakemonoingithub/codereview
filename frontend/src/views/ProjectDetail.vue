@@ -158,7 +158,7 @@
               :marks="marks"
               :retrying="retrying"
               :poll-error="pollError"
-              @retry="onRetry"
+              @retry="askRetryUnits"
               @resume-poll="resumePoll"
               @mark="onMark"
             />
@@ -202,7 +202,7 @@
                 <a-button
                   size="small"
                   :disabled="record.status !== 3 && record.status !== 4"
-                  @click="onRetryRecord(record)"
+                  @click="askRetryRecord(record)"
                 >
                   重审
                 </a-button>
@@ -238,6 +238,18 @@
         class="mt12"
         message="单元数超过上限 50，后端会直接拒绝；请减少勾选文件或分批审查"
       />
+    </a-modal>
+
+    <!-- 重审二次确认：重审会真花额度并覆盖上一次的结果，误点没有撤销入口 -->
+    <a-modal
+      v-model:open="retryConfirmOpen"
+      :title="retryConfirmTitle"
+      :confirm-loading="retryConfirmLoading"
+      ok-text="确认重审"
+      cancel-text="取消"
+      @ok="confirmRetry"
+    >
+      <p class="retry-confirm-text">{{ retryConfirmMessage }}</p>
     </a-modal>
 
     <!-- 查看历史记录：全屏只读快照，不影响页签里正在进行的审查 -->
@@ -715,7 +727,59 @@ async function doTrigger() {
   }
 }
 
-async function onRetry() {
+// ---------------- 重审二次确认 ----------------
+/**
+ * 重审会真的再调一次大模型：既消耗额度，又会覆盖上一次的结果，误点没有撤销入口。
+ * 两个入口（结果区的"重审失败单元"、记录列表的"重审"）合并到同一个确认框，
+ * 确认后才真正发请求。
+ */
+const retryConfirmOpen = ref(false)
+const retryConfirmLoading = ref(false)
+const retryTarget = ref<{ kind: 'units'; id: string } | { kind: 'record'; record: ReviewRecordRow } | null>(null)
+
+const retryConfirmTitle = computed(() =>
+  retryTarget.value?.kind === 'units' ? '确认重审失败单元' : '确认重审该次审查'
+)
+
+const retryConfirmMessage = computed(() => {
+  const target = retryTarget.value
+  if (!target) return ''
+  if (target.kind === 'units') {
+    return '将重新调用大模型审查这次失败的单元。会消耗额度，并覆盖这次的结果。'
+  }
+  const sha = target.record.commitSha ? `（提交 ${target.record.commitSha.slice(0, 7)}）` : ''
+  return `将重新审查这条记录${sha}。会消耗额度，并覆盖原有结果。`
+})
+
+function askRetryUnits() {
+  if (!review.value) return
+  retryTarget.value = { kind: 'units', id: review.value.id }
+  retryConfirmOpen.value = true
+}
+
+function askRetryRecord(record: ReviewRecordRow) {
+  retryTarget.value = { kind: 'record', record }
+  retryConfirmOpen.value = true
+}
+
+async function confirmRetry() {
+  const target = retryTarget.value
+  if (!target) return
+  retryConfirmLoading.value = true
+  try {
+    if (target.kind === 'units') {
+      await doRetryUnits()
+    } else {
+      await doRetryRecord(target.record)
+    }
+    retryConfirmOpen.value = false
+    retryTarget.value = null
+  } finally {
+    retryConfirmLoading.value = false
+  }
+}
+
+async function doRetryUnits() {
   if (!review.value) return
   retrying.value = true
   try {
@@ -731,7 +795,7 @@ async function onRetry() {
   }
 }
 
-async function onRetryRecord(record: ReviewRecordRow) {
+async function doRetryRecord(record: ReviewRecordRow) {
   try {
     await retryReview(record.id)
     message.success('已提交重审')
@@ -938,6 +1002,10 @@ defineExpose({ startPoll, resumePoll, pollError, stopPoll })
 }
 .mt12 {
   margin-top: 12px;
+}
+.retry-confirm-text {
+  margin: 0;
+  line-height: 22px;
 }
 :deep(.ant-tree-indent-unit) {
   width: 12px;
