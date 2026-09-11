@@ -7,6 +7,10 @@ export interface ReportItem {
   contentMarkdown?: string
   status: number
   progress: number
+  /** 开始生成时间（异步任务真正开始时写入） */
+  startedAt?: string
+  /** 生成结束时间（成功或失败都会写入） */
+  finishedAt?: string
   createdAt: string
 }
 

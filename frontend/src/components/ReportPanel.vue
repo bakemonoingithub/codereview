@@ -59,6 +59,9 @@
           <template #default="{ text }">{{ reportStatusText(text) }}</template>
         </a-table-column>
         <a-table-column title="创建时间" data-index="createdAt" />
+        <a-table-column title="耗时" width="110">
+          <template #default="{ record }">{{ formatDuration(record.startedAt, record.finishedAt) }}</template>
+        </a-table-column>
         <a-table-column title="操作">
           <template #default="{ record }">
             <a-button size="small" @click="openReport(record)">查看</a-button>
@@ -93,6 +96,7 @@ import { listModels } from '@/api/model'
 import { listPrompts } from '@/api/prompt'
 import { listStrategies } from '@/api/strategy'
 import { generateReport, listReports, getReport } from '@/api/report'
+import { formatDuration } from '@/utils/duration'
 import { useRecordPagination } from '@/utils/useRecordPagination'
 import ReviewRecordViewer from '@/components/ReviewRecordViewer.vue'
 

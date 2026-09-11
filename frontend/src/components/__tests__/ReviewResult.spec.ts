@@ -210,6 +210,43 @@ describe('ReviewResult 只读降级', () => {
     expect(wrapper.find('.placeholder').exists()).toBe(false)
   })
 
+  it('已完成审查展示耗时（支撑指标 8 的"记录完整耗时"）', () => {
+    const wrapper = mount(ReviewResult, {
+      props: {
+        record: makeRecord({
+          status: 2,
+          startedAt: '2026-09-10 08:00:00',
+          finishedAt: '2026-09-10 08:12:34'
+        }),
+        projectId: 'p1'
+      },
+      ...options
+    })
+    expect(wrapper.text()).toContain('耗时 12 分 34 秒')
+  })
+
+  it('缺时间戳时不显示一个没有信息量的"耗时 —"', () => {
+    const wrapper = mount(ReviewResult, {
+      props: { record: makeRecord({ status: 2 }), projectId: 'p1' },
+      ...options
+    })
+    expect(wrapper.find('.duration').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('耗时')
+  })
+
+  it('执行中的记录显示已耗时', () => {
+    const wrapper = mount(ReviewResult, {
+      props: {
+        record: makeRecord({ status: 1, progress: 40, startedAt: '2026-09-10 08:00:00' }),
+        projectId: 'p1'
+      },
+      ...options
+    })
+    expect(wrapper.text()).toContain('已耗时')
+    // 执行中不该出现"耗时 X"这种看似已完成的文案
+    expect(wrapper.find('.duration').exists()).toBe(false)
+  })
+
   it('执行中的记录显示进度而不是结果', () => {
     const wrapper = mount(ReviewResult, {
       props: { record: makeRecord({ status: 1, progress: 40 }), projectId: 'p1' },

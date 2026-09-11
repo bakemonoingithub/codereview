@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -72,6 +73,8 @@ public class ReportExecutor {
         }
         report.setStatus(1);
         report.setProgress(0);
+        // 耗时从"任务真正开始"算起（排队时间不计），用于自证指标 8 的完整耗时
+        report.setStartedAt(LocalDateTime.now());
         reportMapper.updateById(report);
         try {
             ModelConfig model = modelConfigMapper.selectById(modelConfigId);
@@ -89,11 +92,14 @@ public class ReportExecutor {
             report.setContentMarkdown(markdown);
             report.setStatus(2);
             report.setProgress(100);
+            report.setFinishedAt(LocalDateTime.now());
             reportMapper.updateById(report);
         } catch (Exception e) {
             log.error("报告生成失败 reportId={}", reportId, e);
             report.setStatus(3);
             report.setProgress(100);
+            // 失败也要写结束时间，否则"失败的报告耗时多久"无从得知
+            report.setFinishedAt(LocalDateTime.now());
             reportMapper.updateById(report);
         }
     }

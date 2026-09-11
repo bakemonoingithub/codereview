@@ -20,6 +20,10 @@ public class Report {
     private String contentMarkdown;
     private Integer status;
     private Integer progress;
+    /** 开始生成时间（异步任务真正开始时写入），用于自证指标 8 的"完整耗时" */
+    private LocalDateTime startedAt;
+    /** 生成结束时间（成功或失败都会写入） */
+    private LocalDateTime finishedAt;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     @TableField(fill = FieldFill.INSERT_UPDATE)

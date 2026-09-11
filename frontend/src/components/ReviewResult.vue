@@ -4,7 +4,10 @@
     <template v-else>
       <div v-if="running" class="mb8">
         <a-progress :percent="record.progress" status="active" />
-        <p class="summary">{{ record.status === 0 ? '排队中…' : '审查执行中…' }}</p>
+        <p class="summary">
+          {{ record.status === 0 ? '排队中…' : '审查执行中…' }}
+          <span v-if="elapsedText" class="elapsed">· {{ elapsedText }}</span>
+        </p>
       </div>
       <div class="result-head">
         <a-alert
@@ -14,6 +17,7 @@
           show-icon
           class="flex1"
         />
+        <a-tag v-if="durationText" class="duration">{{ durationText }}</a-tag>
         <a-button v-if="showRetry" :loading="retrying" @click="$emit('retry')">重审失败单元</a-button>
       </div>
       <p v-if="parsed.summary" class="summary">{{ parsed.summary }}</p>
@@ -99,6 +103,7 @@ import {
   parseResultJson,
   recordStatusAlert
 } from '@/utils/reviewResult'
+import { formatDuration, formatElapsed } from '@/utils/duration'
 import CouplingResult from '@/components/CouplingResult.vue'
 import PatternResult from '@/components/PatternResult.vue'
 import RawResult from '@/components/RawResult.vue'
@@ -146,6 +151,35 @@ const statusAlert = computed(() => recordStatusAlert(props.record?.status ?? 0))
 /** 执行中不显示重审；只读查看历史记录时也不显示 —— 重审入口在"审查记录"列表里 */
 const showRetry = computed(() => !props.readonly && !!props.record && canRetry(props.record.status))
 
+/**
+ * 已完成审查的耗时。
+ *
+ * 直接支撑验收指标 8（"记录完整耗时"）：在这之前前端从不展示耗时，
+ * 只能靠现场秒表或查库。缺时间戳时返回空串而不是"—"，避免状态条旁边
+ * 多出一个没有信息量的破折号。
+ */
+const durationText = computed(() => {
+  if (!props.record || running.value) {
+    return ''
+  }
+  const text = formatDuration(props.record.startedAt, props.record.finishedAt)
+  return text === '—' ? '' : `耗时 ${text}`
+})
+
+/**
+ * 进行中的已耗时。
+ *
+ * 依赖 `props.record` 的引用变化触发重算 —— 页签里每 2 秒轮询会换一个新对象，
+ * 所以这里显示的是"跟着进度一起跳的数"，而不是冻住的值。
+ */
+const elapsedText = computed(() => {
+  if (!props.record || !running.value) {
+    return ''
+  }
+  const text = formatElapsed(props.record.startedAt)
+  return text === '—' ? '' : `已耗时 ${text}`
+})
+
 function onMark(unitPath: string, issueIndex: number, markValue: number) {
   // 只读态下按钮已 disabled；这里再兜一层，防止后续改动误把点击透传出去
   if (props.readonly) {
@@ -163,6 +197,9 @@ function unitTitle(u: any) {
 .review-result {
   .summary {
     color: #666;
+  }
+  .elapsed {
+    color: #999;
   }
   .unit-meta {
     color: #999;

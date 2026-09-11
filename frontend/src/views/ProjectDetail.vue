@@ -144,6 +144,9 @@
           size="small"
         >
           <a-table-column title="时间" data-index="createdAt" width="170" />
+          <a-table-column title="耗时" width="100">
+            <template #default="{ record }">{{ formatDuration(record.startedAt, record.finishedAt) }}</template>
+          </a-table-column>
           <a-table-column title="分支" data-index="branch" width="110" />
           <a-table-column title="提交" data-index="commitSha" width="90">
             <template #default="{ text }">{{ text ? text.slice(0, 7) : '—' }}</template>
@@ -240,6 +243,7 @@ import {
 import { listStrategies } from '@/api/strategy'
 import { summarize, type ChangedFile } from '@/utils/changedFiles'
 import { recordStatusColor, recordStatusText } from '@/utils/reviewResult'
+import { formatDuration } from '@/utils/duration'
 import { useRecordPagination } from '@/utils/useRecordPagination'
 import type { AccuracyStat } from '@/utils/accuracy'
 import ReportPanel from '@/components/ReportPanel.vue'
