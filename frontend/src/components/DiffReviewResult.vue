@@ -102,7 +102,7 @@
             :data-source="unlocatedIssues(unit)"
             :pagination="false"
             size="small"
-            row-key="title"
+            row-key="__key"
             class="mt8"
           >
             <a-table-column title="级别" data-index="severity" width="70">
@@ -113,8 +113,8 @@
                 <span v-else>{{ text }}</span>
               </template>
             </a-table-column>
-            <a-table-column title="问题" data-index="title" />
-            <a-table-column title="建议" data-index="suggestion" />
+            <a-table-column title="问题" data-index="title" ellipsis />
+            <a-table-column title="建议" data-index="suggestion" ellipsis />
           </a-table>
         </template>
       </a-collapse-panel>
@@ -185,9 +185,16 @@ function commentsOf(unit: any) {
     .filter((item: any) => item.line !== null)
 }
 
-/** 无法锚定行号的 issue → 退化为普通表格 */
+/**
+ * 无法锚定到新文件行号的 issue → 退化为普通表格。
+ *
+ * 顺带给每行加稳定 key：原先 `row-key="title"` 在同名问题时会重复
+ * （而这里的行**全都没有行号**，所以不能靠 title+行号 区分）。
+ */
 function unlocatedIssues(unit: any) {
-  return (unit.issues || []).filter((issue: any) => (issue.newLine ?? issue.line ?? null) === null)
+  return (unit.issues || [])
+    .map((issue: any, index: number) => ({ ...issue, __key: `${unit.path ?? ''}#${index}` }))
+    .filter((issue: any) => (issue.newLine ?? issue.line ?? null) === null)
 }
 
 function markOf(unitPath: string, issueIndex: number): number {

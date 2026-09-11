@@ -58,8 +58,8 @@
             <p v-if="u.summary" class="summary">{{ u.summary }}</p>
             <a-table
               v-if="u.issues?.length"
-              :data-source="u.issues"
-              row-key="title"
+              :data-source="issueRows(u)"
+              row-key="__key"
               size="small"
               :pagination="false"
             >
@@ -72,11 +72,11 @@
                 </template>
               </a-table-column>
               <a-table-column title="行" data-index="line" width="60" />
-              <a-table-column title="文件" data-index="file" width="140">
+              <a-table-column title="文件" data-index="file" width="140" ellipsis>
                 <template #default="{ text }">{{ text || u.path }}</template>
               </a-table-column>
-              <a-table-column title="问题" data-index="title" />
-              <a-table-column title="建议" data-index="suggestion" />
+              <a-table-column title="问题" data-index="title" ellipsis />
+              <a-table-column title="建议" data-index="suggestion" ellipsis />
             </a-table>
             <RawResult v-else-if="u.raw" :text="u.raw" />
           </template>
@@ -112,7 +112,7 @@
             </template>
           </a-table-column>
           <a-table-column title="行" data-index="line" width="60" />
-          <a-table-column title="问题" data-index="message" />
+          <a-table-column title="问题" data-index="message" ellipsis />
         </a-table>
       </div>
     </template>
@@ -221,6 +221,20 @@ function onMark(unitPath: string, issueIndex: number, markValue: number) {
 
 function unitTitle(u: any) {
   return `${u.path} · ${u.unit.name}`
+}
+
+/**
+ * 问题行加稳定 key。
+ *
+ * 原先直接 `row-key="title"`：同名问题会让 key 重复，控制台刷 Vue 的重复 key 告警。
+ * 用「单元路径 + 序号」而不是 title：同一单元内序号必然唯一（title 可能重复）。
+ * 注意不能只靠行号 —— 无法定位行号的问题正是没有 line 的那一批。
+ */
+function issueRows(unit: any): any[] {
+  return (unit.issues || []).map((issue: any, index: number) => ({
+    ...issue,
+    __key: `${unit.path ?? ''}#${index}`
+  }))
 }
 </script>
 

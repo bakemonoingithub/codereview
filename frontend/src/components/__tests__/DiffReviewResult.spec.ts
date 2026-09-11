@@ -114,3 +114,64 @@ describe('DiffReviewResult 英文枚举的中文提示', () => {
     expect(titles).toContain('modified · 修改')
   })
 })
+
+/**
+ * C12：同名问题不应产生重复行 key。
+ *
+ * 这里必须用**真实表格**：只有真渲染才会输出 `data-row-key`，
+ * stub 掉的表格读不到 key，断言会变成"什么都没测到"。
+ */
+describe('DiffReviewResult 问题行的 key', () => {
+  const realTableOptions = {
+    global: {
+      stubs: {
+        ...antStubs,
+        'a-table': false,
+        'a-table-column': false,
+        DiffViewer: {
+          name: 'DiffViewer',
+          props: ['comments'],
+          computed: {
+            extendItems(this: any) {
+              return ((this.comments as any[]) || []).map((c: any) => c.data)
+            }
+          },
+          template: '<div class="diff-viewer-stub"><slot name="extend" :items="extendItems" /></div>'
+        }
+      }
+    }
+  }
+
+  it('两条同名且都无法定位行号的问题，行 key 仍然唯一', async () => {
+    const duplicated = {
+      commit: { sha: 'abcdef1' },
+      units: [
+        {
+          path: 'A.java',
+          status: 'success',
+          unit: { name: 'foo', kind: 'method', lines: '1-10' },
+          issues: [
+            { severity: 'MINOR', title: '命名不规范' },
+            { severity: 'MINOR', title: '命名不规范' }
+          ]
+        }
+      ]
+    }
+
+    const wrapper = mount(DiffReviewResult, {
+      props: {
+        projectId: 'p1',
+        commitSha: 'abcdef1234567890',
+        recordId: '1001',
+        result: duplicated,
+        marks: []
+      },
+      ...realTableOptions
+    })
+    await wrapper.vm.$nextTick()
+
+    const keys = wrapper.findAll('tr[data-row-key]').map((tr) => tr.attributes('data-row-key'))
+    expect(keys.length, '两条问题都应渲染成行').toBe(2)
+    expect(new Set(keys).size, '行 key 不能重复（否则控制台刷告警）').toBe(2)
+  })
+})
