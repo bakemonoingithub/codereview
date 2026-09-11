@@ -247,6 +247,36 @@ describe('ReviewResult 只读降级', () => {
     expect(wrapper.find('.duration').exists()).toBe(false)
   })
 
+  it('轮询停止时给出「继续等待」入口，点了把事件抛出去', async () => {
+    const wrapper = mount(ReviewResult, {
+      props: {
+        record: makeRecord({ status: 1, progress: 40 }),
+        projectId: 'p1',
+        pollError: '请求超时，请稍后重试'
+      },
+      ...options
+    })
+
+    // 文案在 a-alert 的 message 属性上（stub 渲染成元素属性）
+    const alert = wrapper.find('a-alert-stub')
+    expect(alert.attributes('message')).toContain('进度获取失败')
+    expect(alert.attributes('message')).toContain('请求超时')
+
+    const resume = wrapper.findAll('a-button-stub').find((b) => b.text() === '继续等待')!
+    expect(resume).toBeTruthy()
+    await resume.trigger('click')
+    expect(wrapper.emitted('resume-poll')).toBeTruthy()
+  })
+
+  it('轮询正常时不显示恢复入口', () => {
+    const wrapper = mount(ReviewResult, {
+      props: { record: makeRecord({ status: 1, progress: 40 }), projectId: 'p1' },
+      ...options
+    })
+
+    expect(wrapper.findAll('a-button-stub').some((b) => b.text() === '继续等待')).toBe(false)
+  })
+
   it('执行中的记录显示进度而不是结果', () => {
     const wrapper = mount(ReviewResult, {
       props: { record: makeRecord({ status: 1, progress: 40 }), projectId: 'p1' },

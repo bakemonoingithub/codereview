@@ -8,6 +8,15 @@
           {{ record.status === 0 ? '排队中…' : '审查执行中…' }}
           <span v-if="elapsedText" class="elapsed">· {{ elapsedText }}</span>
         </p>
+        <!--
+          轮询因连续失败停止时给出恢复入口：原先失败即静默停止，
+          界面永远停在最后一次进度上，用户只能刷新页面。
+        -->
+        <a-alert v-if="pollError" type="warning" show-icon :message="`进度获取失败：${pollError}`">
+          <template #action>
+            <a-button size="small" @click="$emit('resume-poll')">继续等待</a-button>
+          </template>
+        </a-alert>
       </div>
       <div class="result-head">
         <a-alert
@@ -125,17 +134,21 @@ const props = withDefaults(
     retrying?: boolean
     /** 只读（查看历史记录）：关闭全部写操作入口 */
     readonly?: boolean
+    /** 非空表示进度轮询已停止（连续失败），界面据此给出「继续等待」 */
+    pollError?: string
   }>(),
   {
     marks: () => [],
     retrying: false,
-    readonly: false
+    readonly: false,
+    pollError: ''
   }
 )
 
 const emit = defineEmits<{
   (e: 'retry'): void
   (e: 'mark', unitPath: string, issueIndex: number, markValue: number): void
+  (e: 'resume-poll'): void
 }>()
 
 /**

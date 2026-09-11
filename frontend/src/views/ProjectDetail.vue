@@ -126,7 +126,9 @@
               :project-id="projectId"
               :marks="marks"
               :retrying="retrying"
+              :poll-error="pollError"
               @retry="onRetry"
+              @resume-poll="resumePoll"
               @mark="onMark"
             />
           </template>
@@ -308,6 +310,12 @@ const retrying = ref(false)
 const review = ref<ReviewRecord | null>(null)
 const marks = ref<IssueMark[]>([])
 let pollTimer: number | undefined
+/** 当前轮询的记录 id（供「继续等待」恢复用，不依赖 review 是否还在） */
+let polledId = ''
+/** 连续失败次数（成功一次即清零） */
+let pollFailures = 0
+/** 非空表示"轮询已因连续失败而停止"，界面给出恢复入口 */
+const pollError = ref('')
 
 // ---------------- 确认框 ----------------
 const confirmOpen = ref(false)
@@ -602,22 +610,64 @@ async function onRetryRecord(record: ReviewRecordRow) {
   }
 }
 
+/** 轮询失败连续达到这个次数才停：单次抖动（网关重启、偶发 5xx）不该让进度永久停住 */
+const MAX_POLL_FAILURES = 3
+
+function stopPoll() {
+  if (pollTimer) {
+    window.clearInterval(pollTimer)
+    pollTimer = undefined
+  }
+}
+
+/**
+ * 启动进度轮询。
+ *
+ * 原先的实现里 **任何一次** 请求失败就 `clearInterval` 静默退出 —— 界面永远停在最后一次
+ * 进度上，既不报错也没有恢复入口，用户只能刷新页面。现在改成：
+ * 连续失败到 {@link MAX_POLL_FAILURES} 次才停，并给出「继续等待」让用户手动恢复。
+ */
 function startPoll(id: string) {
-  if (pollTimer) window.clearInterval(pollTimer)
-  pollTimer = window.setInterval(async () => {
-    try {
-      const r = await getReview(id)
-      review.value = r
-      if (r.status >= 2) {
-        window.clearInterval(pollTimer)
-        await loadMarks(id)
-        // 新完成的审查一定排在最前，回到第 1 页才看得到
-        await Promise.all([reloadRecordsFromFirstPage(), loadAccuracy()])
-      }
-    } catch {
-      window.clearInterval(pollTimer)
+  stopPoll()
+  polledId = id
+  pollFailures = 0
+  pollError.value = ''
+  pollTimer = window.setInterval(() => void pollOnce(id), 2000)
+}
+
+async function pollOnce(id: string) {
+  try {
+    const r = await getReview(id)
+    pollFailures = 0
+    pollError.value = ''
+    review.value = r
+    if (r.status >= 2) {
+      stopPoll()
+      await loadMarks(id)
+      // 新完成的审查一定排在最前，回到第 1 页才看得到
+      await Promise.all([reloadRecordsFromFirstPage(), loadAccuracy()])
     }
-  }, 2000)
+  } catch (e: any) {
+    pollFailures += 1
+    if (pollFailures >= MAX_POLL_FAILURES) {
+      stopPoll()
+      pollError.value = e?.message || '进度获取失败'
+    }
+    // 未达阈值就静静等下一次 tick
+  }
+}
+
+/**
+ * 「继续等待」：立即恢复轮询（常用于后端刚重启完的情况）。
+ *
+ * 用记录的 `polledId` 而不是 `review.value?.id` —— 后者在 `review` 为空时会静默什么都不做。
+ */
+function resumePoll() {
+  if (!polledId) {
+    return
+  }
+  startPoll(polledId)
+  void pollOnce(polledId)
 }
 
 // =====================================================================
@@ -690,8 +740,12 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (pollTimer) window.clearInterval(pollTimer)
+  stopPoll()
 })
+
+// 供测试驱动轮询：轮询是"失败不再永久停止"这条契约的唯一实现处，
+// 而它由 setInterval 驱动，只能通过实例入口配合假定时器验证
+defineExpose({ startPoll, resumePoll, pollError, stopPoll })
 </script>
 
 <style scoped lang="less">
