@@ -4,7 +4,10 @@ export interface Strategy {
   id: string
   name: string
   analyzerType: number
+  /** 策略参数 JSON；**不含 token**（凭据只写不读，服务端已摘除） */
   paramsJson?: string
+  /** api-review 是否已配置 token —— 明文不回传，界面靠它显示"已配置" */
+  hasToken?: boolean
   createdAt: string
 }
 

@@ -88,14 +88,60 @@ export const checkboxStub = () =>
     }
   })
 
+/**
+ * 输入框 stub：**内部必须真的放一个 `<input>`**。
+ *
+ * 与复选框同理：测试要像用户那样输入就只能对真实 input 调 `setValue`；
+ * 只渲染一个空标签的话，表单类断言会以"找不到 input"失败，看不出是 stub 的锅。
+ * 同时保留 `placeholder`，便于断言"已配置，留空不修改"这类提示文案。
+ */
+export const inputStub = (tag: string) =>
+  defineComponent({
+    props: {
+      value: { type: [String, Number], default: '' },
+      disabled: { type: Boolean, default: false },
+      placeholder: { type: String, default: '' }
+    },
+    emits: ['update:value', 'change', 'pressEnter'],
+    setup(props, { emit, slots, attrs }) {
+      return () =>
+        h(
+          tag,
+          {
+            ...attrs,
+            disabled: props.disabled || undefined,
+            placeholder: props.placeholder || undefined
+          },
+          [
+            h('input', {
+              value: props.value,
+              disabled: props.disabled,
+              placeholder: props.placeholder,
+              onInput: (event: Event) => {
+                const value = (event.target as HTMLInputElement).value
+                emit('update:value', value)
+                emit('change', event)
+              },
+              onKeydown: (event: KeyboardEvent) => {
+                if (event.key === 'Enter') {
+                  emit('pressEnter', event)
+                }
+              }
+            }),
+            slots.default ? slots.default() : []
+          ]
+        )
+    }
+  })
+
 export const antStubs = {
   'a-button': attrsStub('a-button-stub'),
   'a-select': attrsStub('a-select-stub'),
   'a-select-option': attrsStub('a-select-option-stub'),
   'a-checkbox': checkboxStub(),
-  'a-input': attrsStub('a-input-stub'),
-  'a-input-password': attrsStub('a-input-password-stub'),
-  'a-textarea': attrsStub('a-textarea-stub'),
+  'a-input': inputStub('a-input-stub'),
+  'a-input-password': inputStub('a-input-password-stub'),
+  'a-textarea': inputStub('a-textarea-stub'),
   'a-table': silentStub('a-table-stub'),
   'a-table-column': silentStub('a-table-column-stub'),
   'a-collapse': silentStub('a-collapse-stub'),

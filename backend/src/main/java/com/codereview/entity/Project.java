@@ -18,6 +18,12 @@ public class Project {
     private Long id;
     private String name;
     private String giteaUrl;
+    /**
+     * 仓库访问令牌/账号密码。**只写不读**：创建时提交，但绝不随响应回传浏览器。
+     * 对照 {@link ModelConfig} 的 token 处理 —— 后者一直是 WRITE_ONLY，此处原先漏了，
+     * 导致 `GET /api/projects` 每次列表都把仓库凭据明文发给前端。
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String credential;
     private Integer credentialType;
     private String currentBranch;

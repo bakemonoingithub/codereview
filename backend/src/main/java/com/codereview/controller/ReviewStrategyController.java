@@ -3,7 +3,7 @@ package com.codereview.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.Result;
 import com.codereview.dto.StrategyReq;
-import com.codereview.entity.ReviewStrategy;
+import com.codereview.dto.StrategyResp;
 import com.codereview.service.ReviewStrategyService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,20 +26,20 @@ public class ReviewStrategyController {
     }
 
     @GetMapping
-    public Result<Page<ReviewStrategy>> list(@RequestParam(defaultValue = "1") long pageNum,
-                                             @RequestParam(defaultValue = "10") long pageSize,
-                                             @RequestParam(required = false) String keyword,
-                                             @RequestParam(required = false) Integer analyzerType) {
+    public Result<Page<StrategyResp>> list(@RequestParam(defaultValue = "1") long pageNum,
+                                           @RequestParam(defaultValue = "10") long pageSize,
+                                           @RequestParam(required = false) String keyword,
+                                           @RequestParam(required = false) Integer analyzerType) {
         return Result.ok(strategyService.list(pageNum, pageSize, keyword, analyzerType));
     }
 
     @PostMapping
-    public Result<ReviewStrategy> create(@RequestBody StrategyReq req) {
+    public Result<StrategyResp> create(@RequestBody StrategyReq req) {
         return Result.ok(strategyService.create(req));
     }
 
     @PutMapping("/{id}")
-    public Result<ReviewStrategy> update(@PathVariable Long id, @RequestBody StrategyReq req) {
+    public Result<StrategyResp> update(@PathVariable Long id, @RequestBody StrategyReq req) {
         return Result.ok(strategyService.update(id, req));
     }
 

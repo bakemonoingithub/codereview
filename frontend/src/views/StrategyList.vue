@@ -67,7 +67,14 @@
             <a-input v-model:value="form.queryUrl" placeholder="SonarQube Web API 地址（可选）" />
           </a-form-item>
           <a-form-item label="Token">
-            <a-input-password v-model:value="form.token" placeholder="只读 token（可选）" />
+            <a-input-password
+              v-model:value="form.token"
+              :placeholder="tokenConfigured ? '••••••••（已配置，留空不修改）' : '只读 token（可选）'"
+              :disabled="clearToken"
+            />
+            <a-checkbox v-if="tokenConfigured" v-model:checked="clearToken" style="margin-top: 6px">
+              清除 token
+            </a-checkbox>
           </a-form-item>
         </template>
       </a-form>
@@ -103,6 +110,12 @@ const form = ref({
 })
 const modelOptions = ref<{ value: string; label: string }[]>([])
 const promptOptions = ref<{ value: string; label: string }[]>([])
+/**
+ * api-review 的 token 只写不读：服务端不再回传明文，因此编辑时**没有**可预填的值。
+ * 用 hasToken 标记显示"已配置"，留空即表示不修改；要删掉就勾"清除 token"。
+ */
+const tokenConfigured = ref(false)
+const clearToken = ref(false)
 
 async function load() {
   loading.value = true
@@ -142,6 +155,8 @@ async function loadPrompts() {
 
 function openCreate() {
   editingId.value = ''
+  tokenConfigured.value = false
+  clearToken.value = false
   form.value = {
     name: '',
     analyzerType: 1,
@@ -167,6 +182,9 @@ function openEdit(record: any) {
   } catch {
     params = {}
   }
+  // token 不再回传，这里只剩 hasToken 标记；输入框留空
+  tokenConfigured.value = !!record.hasToken
+  clearToken.value = false
   form.value = {
     name: record.name,
     analyzerType: record.analyzerType,
@@ -177,7 +195,7 @@ function openEdit(record: any) {
     apiUrl: params.apiUrl || '',
     resultUrl: params.resultUrl || '',
     queryUrl: params.queryUrl || '',
-    token: params.token || ''
+    token: ''
   }
   modalOpen.value = true
   loadModels()
@@ -199,7 +217,12 @@ async function onSave() {
     params.apiUrl = form.value.apiUrl
     params.resultUrl = form.value.resultUrl
     if (form.value.queryUrl) params.queryUrl = form.value.queryUrl
-    if (form.value.token) params.token = form.value.token
+    // token 三态：勾了清除 → clearToken；重填了 → 覆盖；都没做 → 不下发，由服务端沿用原值
+    if (clearToken.value) {
+      params.clearToken = true
+    } else if (form.value.token) {
+      params.token = form.value.token
+    }
   } else {
     if (!form.value.modelConfigId) {
       message.warning('请选择模型')

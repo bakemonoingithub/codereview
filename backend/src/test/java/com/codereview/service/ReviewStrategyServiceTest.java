@@ -3,6 +3,7 @@ package com.codereview.service;
 import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
 import com.codereview.dto.StrategyReq;
+import com.codereview.dto.StrategyResp;
 import com.codereview.entity.ModelConfig;
 import com.codereview.entity.ReviewStrategy;
 import com.codereview.mapper.ReviewStrategyMapper;
@@ -13,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,10 +48,10 @@ class ReviewStrategyServiceTest {
 
     @Test
     void acceptsDiffReviewType() {
-        ReviewStrategy created = service.create(new StrategyReq("变更审查", AnalyzerTypes.DIFF_REVIEW, llmParams()));
+        StrategyResp created = service.create(new StrategyReq("变更审查", AnalyzerTypes.DIFF_REVIEW, llmParams()));
 
-        assertEquals(AnalyzerTypes.DIFF_REVIEW, created.getAnalyzerType());
-        assertTrue(created.getParamsJson().contains("modelConfigId"));
+        assertEquals(AnalyzerTypes.DIFF_REVIEW, created.analyzerType());
+        assertTrue(created.paramsJson().contains("modelConfigId"));
     }
 
     @Test
@@ -58,7 +60,7 @@ class ReviewStrategyServiceTest {
             Map<String, Object> params = type == AnalyzerTypes.API_REVIEW
                     ? Map.of("apiUrl", "http://x", "resultUrl", "http://y")
                     : llmParams();
-            assertEquals(type, service.create(new StrategyReq("策略" + type, type, params)).getAnalyzerType());
+            assertEquals(type, service.create(new StrategyReq("策略" + type, type, params)).analyzerType());
         }
     }
 
@@ -93,6 +95,90 @@ class ReviewStrategyServiceTest {
     @Test
     void diffReviewWindowIsOptional() {
         assertEquals(AnalyzerTypes.DIFF_REVIEW,
-                service.create(new StrategyReq("无窗口", AnalyzerTypes.DIFF_REVIEW, llmParams())).getAnalyzerType());
+                service.create(new StrategyReq("无窗口", AnalyzerTypes.DIFF_REVIEW, llmParams())).analyzerType());
+    }
+
+    // ------------------------------------------------------------------
+    // 凭据只写不读（E4）
+    // ------------------------------------------------------------------
+
+    private static Map<String, Object> apiReviewParams(Object token) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("apiUrl", "http://sonar/api");
+        params.put("resultUrl", "http://sonar/dashboard");
+        if (token != null) {
+            params.put("token", token);
+        }
+        return params;
+    }
+
+    private ReviewStrategy existingApiReview(String paramsJson) {
+        ReviewStrategy existing = new ReviewStrategy();
+        existing.setId(1L);
+        existing.setName("Sonar 审查");
+        existing.setAnalyzerType(AnalyzerTypes.API_REVIEW);
+        existing.setParamsJson(paramsJson);
+        when(strategyMapper.selectById(1L)).thenReturn(existing);
+        return existing;
+    }
+
+    @Test
+    void createResponseNeverCarriesToken() {
+        StrategyResp resp = service.create(
+                new StrategyReq("Sonar", AnalyzerTypes.API_REVIEW, apiReviewParams("sonar-secret-token")));
+
+        assertFalse(resp.paramsJson().contains("sonar-secret-token"), "响应里不能出现 token 明文");
+        assertFalse(resp.paramsJson().contains("token"), "token 键本身也应被摘掉");
+        assertTrue(resp.hasToken(), "但界面要能知道'已配置 token'");
+        assertTrue(resp.paramsJson().contains("apiUrl"), "其余参数仍要回传给编辑表单");
+    }
+
+    @Test
+    void editWithoutTokenKeepsStoredToken() {
+        // 关键回归：token 不再回传浏览器 ⇒ 前端编辑时拿不到明文 ⇒ 提交的 params 里没有 token。
+        // 若按入参整体覆盖，一次普通编辑就会把已存的 Sonar token 静默抹掉。
+        ReviewStrategy existing = existingApiReview(
+                "{\"apiUrl\":\"http://sonar/api\",\"resultUrl\":\"http://sonar/d\",\"token\":\"stored-token\"}");
+
+        StrategyResp resp = service.update(1L, new StrategyReq("改名", null, apiReviewParams(null)));
+
+        assertTrue(existing.getParamsJson().contains("stored-token"), "未重填时应保留原 token");
+        assertTrue(resp.hasToken());
+        assertFalse(resp.paramsJson().contains("stored-token"), "响应仍然不能带明文");
+    }
+
+    @Test
+    void editWithNewTokenReplacesStoredToken() {
+        ReviewStrategy existing = existingApiReview(
+                "{\"apiUrl\":\"http://sonar/api\",\"resultUrl\":\"http://sonar/d\",\"token\":\"stored-token\"}");
+
+        service.update(1L, new StrategyReq("改名", null, apiReviewParams("brand-new-token")));
+
+        assertTrue(existing.getParamsJson().contains("brand-new-token"));
+        assertFalse(existing.getParamsJson().contains("stored-token"), "旧 token 应被替换");
+    }
+
+    @Test
+    void editWithClearTokenRemovesIt() {
+        ReviewStrategy existing = existingApiReview(
+                "{\"apiUrl\":\"http://sonar/api\",\"resultUrl\":\"http://sonar/d\",\"token\":\"stored-token\"}");
+        Map<String, Object> params = apiReviewParams(null);
+        params.put("clearToken", true);
+
+        StrategyResp resp = service.update(1L, new StrategyReq("改名", null, params));
+
+        assertFalse(existing.getParamsJson().contains("token"), "显式清除后不应残留 token");
+        assertFalse(resp.hasToken());
+        assertFalse(existing.getParamsJson().contains("clearToken"), "clearToken 是控制位，不应入库");
+    }
+
+    @Test
+    void corruptStoredParamsDoesNotBreakResponse() {
+        existingApiReview("{坏掉的 json");
+
+        StrategyResp resp = service.update(1L, new StrategyReq("改名", null, apiReviewParams(null)));
+
+        assertFalse(resp.hasToken(), "脏数据退化为无 token，而不是让接口抛错");
+        assertTrue(resp.paramsJson().startsWith("{"));
     }
 }

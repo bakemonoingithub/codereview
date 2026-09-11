@@ -6,8 +6,10 @@ import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.codereview.dto.StrategyReq;
+import com.codereview.dto.StrategyResp;
 import com.codereview.entity.ReviewStrategy;
 import com.codereview.mapper.ReviewStrategyMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
@@ -19,9 +21,17 @@ import java.util.Map;
  * 参数：
  *   llm-review/coupling/design-pattern/diff-review → {modelConfigId, threshold?, promptId?, methodWindowLines?}
  *   api-review → {apiUrl, resultUrl, queryUrl?, token?}
+ *
+ * <p>**凭据处理**：api-review 的 token 只写不读（响应里被摘掉，只留 hasToken 标记），
+ * 且编辑时"入参不带 token"表示沿用原值，避免一次普通编辑把已存的 Sonar token 抹掉。
  */
 @Service
 public class ReviewStrategyService {
+
+    /** 只写不读的凭据键：请求可带，响应必摘 */
+    private static final String TOKEN_KEY = "token";
+    /** 请求里置 true 表示显式清除凭据 */
+    private static final String CLEAR_TOKEN_KEY = "clearToken";
 
     private final ReviewStrategyMapper strategyMapper;
     private final ModelConfigService modelConfigService;
@@ -32,7 +42,7 @@ public class ReviewStrategyService {
         this.modelConfigService = modelConfigService;
     }
 
-    public ReviewStrategy create(StrategyReq req) {
+    public StrategyResp create(StrategyReq req) {
         if (req.name() == null || req.name().isBlank()) {
             throw new BusinessException(ResultCode.PARAM_ERROR);
         }
@@ -41,16 +51,17 @@ public class ReviewStrategyService {
             throw new BusinessException(ResultCode.ANALYZER_TYPE_UNSUPPORTED);
         }
         Map<String, Object> params = req.params() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(req.params());
+        params.remove(CLEAR_TOKEN_KEY); // 不是策略参数，不入库
         validateParams(analyzerType, params);
         ReviewStrategy s = new ReviewStrategy();
         s.setName(req.name());
         s.setAnalyzerType(analyzerType);
         s.setParamsJson(writeParams(params));
         strategyMapper.insert(s);
-        return s;
+        return toResp(s);
     }
 
-    public ReviewStrategy update(Long id, StrategyReq req) {
+    public StrategyResp update(Long id, StrategyReq req) {
         ReviewStrategy s = getOrThrow(id);
         if (req.name() != null && !req.name().isBlank()) {
             s.setName(req.name());
@@ -63,12 +74,12 @@ public class ReviewStrategyService {
             s.setAnalyzerType(at);
         }
         if (req.params() != null) {
-            Map<String, Object> params = new LinkedHashMap<>(req.params());
+            Map<String, Object> params = mergePreservingToken(s, new LinkedHashMap<>(req.params()));
             validateParams(s.getAnalyzerType(), params);
             s.setParamsJson(writeParams(params));
         }
         strategyMapper.updateById(s);
-        return s;
+        return toResp(s);
     }
 
     public void delete(Long id) {
@@ -76,7 +87,7 @@ public class ReviewStrategyService {
         strategyMapper.deleteById(id);
     }
 
-    public Page<ReviewStrategy> list(long pageNum, long pageSize, String keyword, Integer analyzerType) {
+    public Page<StrategyResp> list(long pageNum, long pageSize, String keyword, Integer analyzerType) {
         LambdaQueryWrapper<ReviewStrategy> w = new LambdaQueryWrapper<>();
         if (keyword != null && !keyword.isBlank()) {
             w.like(ReviewStrategy::getName, keyword);
@@ -85,7 +96,10 @@ public class ReviewStrategyService {
             w.eq(ReviewStrategy::getAnalyzerType, analyzerType);
         }
         w.orderByDesc(ReviewStrategy::getUpdatedAt);
-        return strategyMapper.selectPage(new Page<>(pageNum, pageSize), w);
+        Page<ReviewStrategy> page = strategyMapper.selectPage(new Page<>(pageNum, pageSize), w);
+        Page<StrategyResp> rows = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
+        rows.setRecords(page.getRecords().stream().map(this::toResp).toList());
+        return rows;
     }
 
     public ReviewStrategy getOrThrow(Long id) {
@@ -94,6 +108,63 @@ public class ReviewStrategyService {
             throw new BusinessException(ResultCode.STRATEGY_NOT_FOUND);
         }
         return s;
+    }
+
+    /**
+     * 实体 → 响应：摘掉凭据，只留 {@code hasToken}。
+     *
+     * <p>不能整体隐藏 {@code paramsJson} —— 界面编辑要用 apiUrl/threshold 等参数。
+     */
+    private StrategyResp toResp(ReviewStrategy s) {
+        Map<String, Object> params = readParams(s.getParamsJson());
+        boolean hasToken = !blank(params.get(TOKEN_KEY));
+        params.remove(TOKEN_KEY);
+        params.remove(CLEAR_TOKEN_KEY);
+        return new StrategyResp(s.getId(), s.getName(), s.getAnalyzerType(), writeParams(params), hasToken,
+                s.getCreatedAt(), s.getUpdatedAt());
+    }
+
+    /**
+     * 合并策略参数，重点是 token 的三态：
+     * <ul>
+     *   <li>入参带了 token → 覆盖（用户重填了）；</li>
+     *   <li>入参带了 {@code clearToken: true} → 清除；</li>
+     *   <li>两者都没有 → 沿用已存的值。</li>
+     * </ul>
+     *
+     * <p>第三态是必须的：token 已不回传浏览器，前端拿不到明文，不能要求它每次编辑都重填；
+     * 若按入参整体覆盖，一次普通编辑就会静默抹掉 Sonar token，而验收指标 2/3 正依赖它。
+     */
+    private Map<String, Object> mergePreservingToken(ReviewStrategy s, Map<String, Object> incoming) {
+        Map<String, Object> stored = readParams(s.getParamsJson());
+        Object clearFlag = incoming.remove(CLEAR_TOKEN_KEY);
+        boolean clear = clearFlag instanceof Boolean b ? b : "true".equalsIgnoreCase(String.valueOf(clearFlag));
+
+        if (clear) {
+            incoming.remove(TOKEN_KEY);
+            return incoming;
+        }
+        if (blank(incoming.get(TOKEN_KEY))) {
+            incoming.remove(TOKEN_KEY);
+            Object storedToken = stored.get(TOKEN_KEY);
+            if (!blank(storedToken)) {
+                incoming.put(TOKEN_KEY, storedToken);
+            }
+        }
+        return incoming;
+    }
+
+    private Map<String, Object> readParams(String json) {
+        if (json == null || json.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
+            });
+        } catch (Exception e) {
+            // 存量脏数据不该让整个列表接口挂掉：退化为空参数（hasToken 也就为 false）
+            return new LinkedHashMap<>();
+        }
     }
 
     private void validateParams(int analyzerType, Map<String, Object> params) {
