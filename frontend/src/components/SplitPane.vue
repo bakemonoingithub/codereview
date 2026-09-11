@@ -1,5 +1,5 @@
 <template>
-  <div class="split-wrap" :style="{ height }">
+  <div ref="wrapRef" class="split-wrap" :style="wrapStyle">
     <splitpanes class="default-theme" @resized="onResized">
       <pane :size="leftSize" min-size="20">
         <section class="pane" :class="{ 'pane-maximized': maximized === 'left' }">
@@ -34,13 +34,11 @@
         </section>
       </pane>
     </splitpanes>
-    <!-- 全屏遮罩：点击退出。用固定定位放大「同一份 DOM」，避免重复挂载插槽内容造成双份请求 -->
-    <div v-if="maximized" class="fs-mask" @click="maximized = null"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Pane, Splitpanes } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 import { FullscreenExitOutlined, FullscreenOutlined } from '@ant-design/icons-vue'
@@ -49,17 +47,59 @@ const props = withDefaults(
   defineProps<{
     leftTitle?: string
     rightTitle?: string
-    /** 不传则按 tab 内默认高度；弹窗里传 '100%' 撑满模态框 */
+    /**
+     * 显式高度。弹窗里传 '100%' 撑满模态框；
+     * 不传则由组件自己按元素顶部位置算，避免再写死 `calc(100vh - 250px)`
+     * 这类「换个页签高度就对不上」的魔法值。
+     */
     height?: string
     storageKey?: string
   }>(),
   {
     leftTitle: '',
     rightTitle: '',
-    height: 'calc(100vh - 250px)',
+    height: '',
     storageKey: 'dsh:project-detail:split'
   }
 )
+
+/** 兜底最小高度：窗口过矮时至少留出可用的滚动区 */
+const MIN_HEIGHT = 320
+/** 底部留白，避免贴住视口下沿 */
+const BOTTOM_GAP = 24
+
+const wrapRef = ref<HTMLElement | null>(null)
+const autoHeight = ref('')
+
+const wrapStyle = computed(() =>
+  props.height ? { height: props.height } : { height: autoHeight.value }
+)
+
+/**
+ * 按元素当前顶部位置撑满剩余视口。
+ * 之所以量位置而不是写死 `100vh - Npx`：同一组件在页签里、弹窗里的
+ * 头部高度完全不同，写死的 N 必然在其中一处错位。
+ */
+function measure() {
+  if (props.height) return
+  const el = wrapRef.value
+  if (!el || typeof el.getBoundingClientRect !== 'function') return
+  const top = el.getBoundingClientRect().top
+  autoHeight.value = `${Math.max(MIN_HEIGHT, Math.floor(window.innerHeight - top - BOTTOM_GAP))}px`
+}
+
+onMounted(() => {
+  measure()
+  // 首帧后字体/图标落地可能让顶部位置变化，补量一次
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(measure)
+  }
+  window.addEventListener('resize', measure)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', measure)
+})
 
 const maximized = ref<'left' | 'right' | null>(null)
 
@@ -117,12 +157,6 @@ function onResized(event: any) {
   z-index: 1001;
   border: none;
   border-radius: 0;
-}
-.fs-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.45);
 }
 .pane-head {
   display: flex;
