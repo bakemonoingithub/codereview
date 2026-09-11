@@ -1,14 +1,15 @@
 <template>
-  <div>
-    <a-space style="margin-bottom: 16px">
+  <ListPageLayout title="模型接入" subtitle="配置内网 AI 网关（OpenAI 兼容）的地址、令牌与模型名；策略里选择模型即可">
+    <template #actions>
       <a-button type="primary" @click="openCreate">新建模型</a-button>
-    </a-space>
+    </template>
+
     <LoadErrorAlert :message="loadError" @retry="load" />
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name" />
-      <a-table-column title="接口地址" data-index="baseUrl" />
-      <a-table-column title="模型名" data-index="modelName" />
+      <a-table-column title="接口地址" data-index="baseUrl" ellipsis />
+      <a-table-column title="模型名" data-index="modelName" width="160" />
       <a-table-column title="状态" data-index="status">
         <template #default="{ text }">
           <a-tag :color="text === 1 ? 'green' : text === 2 ? 'red' : 'default'">
@@ -46,7 +47,7 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </div>
+  </ListPageLayout>
 </template>
 
 <script setup lang="ts">
@@ -54,6 +55,7 @@ import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listModels, createModel, updateModel, deleteModel, verifyModel } from '@/api/model'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import ListPageLayout from '@/components/ListPageLayout.vue'
 
 const records = ref<any[]>([])
 const loading = ref(false)

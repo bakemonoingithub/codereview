@@ -1,8 +1,9 @@
 <template>
-  <div>
-    <div class="toolbar">
+  <ListPageLayout title="项目管理" subtitle="维护要审查的代码仓库；审查入口在项目详情页">
+    <template #actions>
       <a-button type="primary" @click="openCreate">新建项目</a-button>
-    </div>
+    </template>
+
     <LoadErrorAlert :message="loadError" @retry="load" />
     <a-table :data-source="projects" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name">
@@ -10,8 +11,8 @@
           <router-link :to="`/projects/${record.id}`">{{ record.name }}</router-link>
         </template>
       </a-table-column>
-      <a-table-column title="仓库地址" data-index="giteaUrl" />
-      <a-table-column title="当前分支" data-index="currentBranch" />
+      <a-table-column title="仓库地址" data-index="giteaUrl" ellipsis />
+      <a-table-column title="当前分支" data-index="currentBranch" width="140" />
     </a-table>
 
     <a-modal v-model:open="showCreate" title="新建项目" :confirm-loading="saving" @ok="onCreate">
@@ -20,16 +21,16 @@
           <a-input v-model:value="form.name" placeholder="项目名" />
         </a-form-item>
         <a-form-item label="仓库地址" required>
-          <a-input v-model:value="form.giteaUrl" placeholder="https://github.com/owner/repo" />
+          <a-input v-model:value="form.giteaUrl" placeholder="https://gitea.内网/owner/repo" />
         </a-form-item>
         <a-form-item label="访问令牌（可选）">
           <a-input-password v-model:value="form.credential"
-                            placeholder="ghp_... 或 github_pat_...；填了可避免 API 限流，私有仓库必填"
+                            placeholder="仓库访问令牌；填了可避免 API 限流，私有仓库必填"
                             autocomplete="new-password" />
         </a-form-item>
       </a-form>
     </a-modal>
-  </div>
+  </ListPageLayout>
 </template>
 
 <script setup lang="ts">
@@ -37,6 +38,7 @@ import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listProjects, createProject } from '@/api/project'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import ListPageLayout from '@/components/ListPageLayout.vue'
 
 const projects = ref<any[]>([])
 const loading = ref(false)
@@ -88,9 +90,3 @@ async function onCreate() {
 
 onMounted(load)
 </script>
-
-<style scoped lang="less">
-.toolbar {
-  margin-bottom: 16px;
-}
-</style>

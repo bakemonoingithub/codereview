@@ -1,6 +1,10 @@
 <template>
-  <div>
-    <div class="toolbar">
+  <ListPageLayout title="审查策略" subtitle="把「模型 + 提示词」或「外部 API」组装成一次可复用的审查配置">
+    <template #actions>
+      <a-button type="primary" @click="openCreate">新建策略</a-button>
+    </template>
+
+    <template #filters>
       <a-space>
         <a-input v-model:value="keyword" placeholder="搜索名称" style="width: 240px" allow-clear @pressEnter="load" />
         <a-select v-model:value="filterAnalyzerType" placeholder="分析器" style="width: 180px" allow-clear>
@@ -9,8 +13,7 @@
         <a-button type="primary" @click="load">搜索</a-button>
         <a-button @click="resetSearch">重置</a-button>
       </a-space>
-      <a-button type="primary" @click="openCreate">新建策略</a-button>
-    </div>
+    </template>
 
     <LoadErrorAlert :message="loadError" @retry="load" />
 
@@ -81,13 +84,14 @@
         </template>
       </a-form>
     </a-modal>
-  </div>
+  </ListPageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listStrategies, createStrategy, updateStrategy, deleteStrategy, ANALYZER_TYPES, analyzerLabel } from '@/api/strategy'
+import ListPageLayout from '@/components/ListPageLayout.vue'
 import { listModels } from '@/api/model'
 import { listPrompts } from '@/api/prompt'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
@@ -277,12 +281,3 @@ async function onDelete(id: string) {
 
 onMounted(load)
 </script>
-
-<style scoped lang="less">
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-</style>

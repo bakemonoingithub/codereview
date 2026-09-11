@@ -1,14 +1,18 @@
 <template>
-  <div>
-    <a-space style="margin-bottom: 16px">
-      <a-input-search v-model:value="keyword" placeholder="搜索名称/标签/正文" style="width: 240px" @search="load" />
+  <ListPageLayout title="提示词管理" subtitle="编写业务个性化审查规则；改正文会生成新版本，可对比历史版本">
+    <template #actions>
       <a-button type="primary" @click="openCreate">新建提示词</a-button>
-    </a-space>
+    </template>
+
+    <template #filters>
+      <a-input-search v-model:value="keyword" placeholder="搜索名称/标签/正文" style="width: 280px" @search="load" />
+    </template>
+
     <LoadErrorAlert :message="loadError" @retry="load" />
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name" />
-      <a-table-column title="描述" data-index="description" />
+      <a-table-column title="描述" data-index="description" ellipsis />
       <a-table-column title="标签" data-index="tags">
         <template #default="{ text }">
           <template v-if="parseTags(text).length">
@@ -81,13 +85,14 @@
         />
       </div>
     </a-modal>
-  </div>
+  </ListPageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listPrompts, createPrompt, getPrompt, updatePrompt, updatePromptContent, deletePrompt, diffPrompt } from '@/api/prompt'
+import ListPageLayout from '@/components/ListPageLayout.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import { hasChanges, toUnifiedPatch, type PromptDiffRow } from '@/utils/promptDiff'
