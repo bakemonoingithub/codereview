@@ -1,5 +1,6 @@
 <template>
   <div>
+    <LoadErrorAlert :message="loadError" @retry="loadAll" />
     <a-row :gutter="16">
       <a-col :span="12">
         <a-card title="选择审查记录（已完成）" size="small">
@@ -99,6 +100,7 @@ import { generateReport, listReports, getReport } from '@/api/report'
 import { formatDuration } from '@/utils/duration'
 import { useRecordPagination } from '@/utils/useRecordPagination'
 import ReviewRecordViewer from '@/components/ReviewRecordViewer.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
 const props = defineProps<{ projectId: string }>()
 
@@ -166,31 +168,41 @@ function clearSelection() {
   selectedIds.value = []
 }
 
+const loadModels = async () => {
+  const mp = (await listModels({ pageNum: 1, pageSize: 100 })) as any
+  modelOptions.value = (mp?.records || []).map((m: any) => ({ value: m.id, label: m.name }))
+}
+
+const loadPrompts = async () => {
+  const pp = (await listPrompts({ pageNum: 1, pageSize: 100 })) as any
+  promptOptions.value = (pp?.records || []).map((p: any) => ({ value: p.id, label: p.name }))
+}
+
+const loadStrategies = async () => {
+  const sp = (await listStrategies({ pageNum: 1, pageSize: 100 })) as any
+  strategies.value = (sp?.records || []).map((s: any) => ({ value: s.id, label: s.name }))
+}
+
+/**
+ * 面板级加载：模型/提示词/策略字典 + 报告列表。
+ *
+ * 这些请求原先各自 `catch {}` 吞掉（注释写着"忽略"），后果是：
+ * 模型下拉空 → 「生成报告」按钮常驻 disabled 且**不说明原因**；
+ * 策略字典空 → 记录行的策略名显示不出来；报告列表失败则一片空白。
+ */
+const loadError = ref('')
+
 const loadAll = async () => {
-  try {
-    const mp = (await listModels({ pageNum: 1, pageSize: 100 })) as any
-    modelOptions.value = (mp?.records || []).map((m: any) => ({ value: m.id, label: m.name }))
-  } catch {
-    // 忽略
-  }
-  try {
-    const pp = (await listPrompts({ pageNum: 1, pageSize: 100 })) as any
-    promptOptions.value = (pp?.records || []).map((p: any) => ({ value: p.id, label: p.name }))
-  } catch {
-    // 忽略
-  }
-  try {
-    const sp = (await listStrategies({ pageNum: 1, pageSize: 100 })) as any
-    strategies.value = (sp?.records || []).map((s: any) => ({ value: s.id, label: s.name }))
-  } catch {
-    // 忽略
-  }
-  reportsLoading.value = true
-  try {
-    const rp2 = (await listReports(props.projectId, { pageNum: 1, pageSize: 100 })) as any
-    reports.value = rp2?.records || []
-  } finally {
-    reportsLoading.value = false
+  loadError.value = ''
+  const failures: string[] = []
+  await Promise.all([
+    loadModels().catch(() => failures.push('模型')),
+    loadPrompts().catch(() => failures.push('提示词')),
+    loadStrategies().catch(() => failures.push('策略')),
+    loadReports().catch(() => failures.push('报告列表'))
+  ])
+  if (failures.length) {
+    loadError.value = `以下数据加载失败：${failures.join('、')}，请重试`
   }
 }
 
@@ -221,7 +233,6 @@ async function loadReports() {
     reportsLoading.value = false
   }
 }
-
 async function openReport(r: any) {
   currentReport.value = await getReport(r.id)
   reportOpen.value = true

@@ -4,6 +4,7 @@
       <a-input-search v-model:value="keyword" placeholder="搜索名称/标签/正文" style="width: 240px" @search="load" />
       <a-button type="primary" @click="openCreate">新建提示词</a-button>
     </a-space>
+    <LoadErrorAlert :message="loadError" @retry="load" />
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name" />
@@ -88,10 +89,13 @@ import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listPrompts, createPrompt, getPrompt, updatePrompt, updatePromptContent, deletePrompt, diffPrompt } from '@/api/prompt'
 import DiffViewer from '@/components/DiffViewer.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import { hasChanges, toUnifiedPatch, type PromptDiffRow } from '@/utils/promptDiff'
 
 const records = ref<any[]>([])
 const loading = ref(false)
+// 原先 load 没有 catch：请求失败时表格永远空着，且不给任何提示与重试入口
+const loadError = ref('')
 const keyword = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
@@ -132,9 +136,12 @@ function parseTags(tags: string): string[] {
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const page = (await listPrompts({ pageNum: 1, pageSize: 100, keyword: keyword.value || undefined })) as any
     records.value = page?.records || []
+  } catch (e: any) {
+    loadError.value = e?.message || '提示词列表加载失败'
   } finally {
     loading.value = false
   }

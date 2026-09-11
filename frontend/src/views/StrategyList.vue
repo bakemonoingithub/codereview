@@ -12,6 +12,8 @@
       <a-button type="primary" @click="openCreate">新建策略</a-button>
     </div>
 
+    <LoadErrorAlert :message="loadError" @retry="load" />
+
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name" />
       <a-table-column title="分析器" data-index="analyzerType">
@@ -88,9 +90,12 @@ import { message } from 'ant-design-vue'
 import { listStrategies, createStrategy, updateStrategy, deleteStrategy, ANALYZER_TYPES, analyzerLabel } from '@/api/strategy'
 import { listModels } from '@/api/model'
 import { listPrompts } from '@/api/prompt'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
 const records = ref<any[]>([])
 const loading = ref(false)
+// 原先 load 没有 catch：请求失败时表格永远空着，且不给任何提示与重试入口
+const loadError = ref('')
 const keyword = ref('')
 const filterAnalyzerType = ref<number | undefined>(undefined)
 const modalOpen = ref(false)
@@ -119,6 +124,7 @@ const clearToken = ref(false)
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const params: Record<string, any> = { pageNum: 1, pageSize: 100 }
     const kw = keyword.value.trim()
@@ -128,6 +134,8 @@ async function load() {
     }
     const page = (await listStrategies(params)) as any
     records.value = page?.records || []
+  } catch (e: any) {
+    loadError.value = e?.message || '策略列表加载失败'
   } finally {
     loading.value = false
   }

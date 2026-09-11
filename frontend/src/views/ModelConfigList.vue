@@ -3,6 +3,7 @@
     <a-space style="margin-bottom: 16px">
       <a-button type="primary" @click="openCreate">新建模型</a-button>
     </a-space>
+    <LoadErrorAlert :message="loadError" @retry="load" />
 
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name" />
@@ -52,9 +53,12 @@
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listModels, createModel, updateModel, deleteModel, verifyModel } from '@/api/model'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
 const records = ref<any[]>([])
 const loading = ref(false)
+// 原先 load 没有 catch：请求失败时表格永远空着，且不给任何提示与重试入口
+const loadError = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
 const editingId = ref('')
@@ -64,9 +68,12 @@ const form = ref({ name: '', baseUrl: 'https://api.deepseek.com', token: '', mod
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const page = (await listModels({ pageNum: 1, pageSize: 100 })) as any
     records.value = page?.records || []
+  } catch (e: any) {
+    loadError.value = e?.message || '模型列表加载失败'
   } finally {
     loading.value = false
   }

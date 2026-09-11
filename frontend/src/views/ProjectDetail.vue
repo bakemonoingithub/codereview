@@ -2,6 +2,7 @@
   <div>
     <a-tabs v-model:active-key="activeTab">
       <a-tab-pane key="review" tab="代码审查">
+        <LoadErrorAlert :message="pageError" @retry="loadPage" />
         <SplitPane left-title="审查配置" right-title="审查结果">
           <template #left>
             <div class="select-row">
@@ -252,6 +253,7 @@ import CommitTable from '@/components/CommitTable.vue'
 import ChangedFileTree from '@/components/ChangedFileTree.vue'
 import ReviewResult from '@/components/ReviewResult.vue'
 import ReviewRecordViewer from '@/components/ReviewRecordViewer.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import AccuracyBar from '@/components/AccuracyBar.vue'
 
 const route = useRoute()
@@ -487,19 +489,37 @@ async function loadCommitDetail(sha: string) {
 // =====================================================================
 
 async function loadStrategies() {
-  try {
-    const page = (await listStrategies({ pageNum: 1, pageSize: 100 })) as any
-    strategies.value = (page?.records || []).map((s: any) => ({
-      value: s.id,
-      label: s.name,
-      analyzerType: s.analyzerType
-    }))
-    const firstDiff = strategies.value.find((s) => s.analyzerType === 5)
-    if (firstDiff) commitStrategyId.value = firstDiff.value
-    const firstOther = strategies.value.find((s) => s.analyzerType !== 5)
-    if (firstOther) structureStrategyId.value = firstOther.value
-  } catch {
-    // 策略加载失败不阻塞
+  const page = (await listStrategies({ pageNum: 1, pageSize: 100 })) as any
+  strategies.value = (page?.records || []).map((s: any) => ({
+    value: s.id,
+    label: s.name,
+    analyzerType: s.analyzerType
+  }))
+  const firstDiff = strategies.value.find((s) => s.analyzerType === 5)
+  if (firstDiff) commitStrategyId.value = firstDiff.value
+  const firstOther = strategies.value.find((s) => s.analyzerType !== 5)
+  if (firstOther) structureStrategyId.value = firstOther.value
+}
+
+/**
+ * 页面级加载：分支/文件树 与 策略表。
+ *
+ * 这两处原先失败是**静默**的 —— `loadBranches` 完全没有 catch（未处理的 rejection），
+ * `loadStrategies` 的 catch 里只写了句"策略加载失败不阻塞"。后果是：分支下拉空、
+ * 文件树与提交列表永不加载、策略下拉空导致「开始审查」永远点不动，
+ * 而界面上没有任何提示能解释为什么。
+ */
+const pageError = ref('')
+
+async function loadPage() {
+  pageError.value = ''
+  const failures: string[] = []
+  await Promise.all([
+    loadBranches().catch(() => failures.push('分支与文件树')),
+    loadStrategies().catch(() => failures.push('策略'))
+  ])
+  if (failures.length) {
+    pageError.value = `以下数据加载失败：${failures.join('、')}，请检查后端服务后重试`
   }
 }
 
@@ -668,7 +688,7 @@ function viewRecord(record: ReviewRecordRow) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadBranches(), loadStrategies(), loadAccuracy()])
+  await Promise.all([loadPage(), loadAccuracy()])
 })
 
 onUnmounted(() => {

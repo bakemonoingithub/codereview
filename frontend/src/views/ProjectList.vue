@@ -3,6 +3,7 @@
     <div class="toolbar">
       <a-button type="primary" @click="openCreate">新建项目</a-button>
     </div>
+    <LoadErrorAlert :message="loadError" @retry="load" />
     <a-table :data-source="projects" row-key="id" :loading="loading" :pagination="false">
       <a-table-column title="名称" data-index="name">
         <template #default="{ record }">
@@ -35,18 +36,24 @@
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { listProjects, createProject } from '@/api/project'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
 const projects = ref<any[]>([])
 const loading = ref(false)
+// 原先 load 没有 catch：请求失败时表格永远空着，且不给任何提示与重试入口
+const loadError = ref('')
 const showCreate = ref(false)
 const saving = ref(false)
 const form = ref({ name: '', giteaUrl: '', credential: '' })
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     const page = await listProjects({ pageNum: 1, pageSize: 100 })
     projects.value = page.records || []
+  } catch (e: any) {
+    loadError.value = e?.message || '项目列表加载失败'
   } finally {
     loading.value = false
   }

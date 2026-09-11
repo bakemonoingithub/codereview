@@ -52,6 +52,7 @@ declare module 'vue' {
     CouplingResult: typeof import('./src/components/CouplingResult.vue')['default']
     DiffReviewResult: typeof import('./src/components/DiffReviewResult.vue')['default']
     DiffViewer: typeof import('./src/components/DiffViewer.vue')['default']
+    LoadErrorAlert: typeof import('./src/components/LoadErrorAlert.vue')['default']
     PatternResult: typeof import('./src/components/PatternResult.vue')['default']
     RawResult: typeof import('./src/components/RawResult.vue')['default']
     ReportPanel: typeof import('./src/components/ReportPanel.vue')['default']

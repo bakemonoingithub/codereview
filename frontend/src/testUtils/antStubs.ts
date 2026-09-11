@@ -1,4 +1,4 @@
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, type VNodeChild } from 'vue'
 
 /**
  * 组件测试用的 AntDV stub：**保留插槽渲染**。
@@ -7,6 +7,19 @@ import { defineComponent, h } from 'vue'
  * 结果区全都取不到，也没法断言 disabled。这里用带插槽的轻量 stub 顶掉 AntDV，
  * 让"置灰"这种 DOM 级契约能被真正断言。
  */
+
+/**
+ * 渲染组件声明的**所有**插槽（含具名插槽）。
+ *
+ * 只渲染 `default` 会静默丢掉具名插槽的内容 —— 例如 `a-alert` 的 `#action` 里放着
+ * "重试"按钮，漏掉它会让"错误态有没有重试入口"这类断言以"找不到按钮"失败，
+ * 却看不出是 stub 的锅。
+ */
+function renderAllSlots(slots: Record<string, unknown>, props: unknown): VNodeChild[] {
+  return Object.values(slots)
+    .filter((slot): slot is (p?: unknown) => VNodeChild => typeof slot === 'function')
+    .map((slot) => slot(props))
+}
 
 /**
  * 保留 `disabled` 属性落到根元素，便于断言置灰。
@@ -29,9 +42,7 @@ export const attrsStub = (tag: string) =>
     },
     setup(props, { slots, attrs }) {
       return () =>
-        h(tag, { ...attrs, disabled: props.disabled || undefined }, [
-          slots.default ? slots.default() : []
-        ])
+        h(tag, { ...attrs, disabled: props.disabled || undefined }, renderAllSlots(slots as any, props))
     }
   })
 
@@ -45,7 +56,7 @@ export const attrsStub = (tag: string) =>
 export const silentStub = (tag: string) =>
   defineComponent({
     setup(props, { slots }) {
-      return () => h(tag, {}, slots.default ? slots.default(props as any) : [])
+      return () => h(tag, {}, renderAllSlots(slots as any, props))
     }
   })
 
