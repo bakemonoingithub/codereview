@@ -94,8 +94,9 @@
                     v-else
                     checkable
                     :tree-data="structureTree"
-                    v-model:checked-keys="structureChecked"
+                    :checked-keys="structureChecked"
                     v-model:expanded-keys="expandedKeys"
+                    @check="onStructureCheck"
                   />
                 </a-spin>
               </a-tab-pane>
@@ -412,6 +413,27 @@ watch(structureKeyword, () => {
 /** 全选**当前筛选结果**（与 ChangedFileTree 的 selectAllFiltered 同义） */
 function selectAllStructure() {
   structureChecked.value = [...structureMatchedFiles.value]
+}
+
+/**
+ * `a-tree` 的勾选回写。
+ *
+ * <p>**必须过滤掉目录键**：`a-tree` 默认父子联动（`checkStrictly=false`），当过滤后的树里
+ * 某个目录的**可见**子节点被全部勾上时，它会把**该目录自身的 key** 也一并回写进
+ * `checkedKeys`。原实现用 `v-model:checked-keys` 原样落库，于是清空搜索、整棵树恢复后，
+ * 那个目录键仍然在选中集里 —— 一勾就等于勾上它**全部子文件**：
+ * 视觉上"所有文件都被选中"，计数也把目录算了进去。
+ *
+ * <p>改成 `:checked-keys` + `@check` 是为了拿回写入权。展示不受影响：存进去的都是叶子键，
+ * antd 自己会把父目录推导成选中/半选。
+ *
+ * <p>口径与 {@link ChangedFileTree} 的 `onCheck` 一致（那边写作"目录级勾选会带上
+ * 不可审查的叶子，这里统一过滤掉"）。
+ */
+function onStructureCheck(keys: any) {
+  // checkStrictly 打开时 antd 回传 { checked, halfChecked }，两种形状都兜住
+  const list: string[] = Array.isArray(keys) ? keys : (keys?.checked || [])
+  structureChecked.value = list.filter((k) => fileSet.has(k))
 }
 
 function clearStructureChecked() {

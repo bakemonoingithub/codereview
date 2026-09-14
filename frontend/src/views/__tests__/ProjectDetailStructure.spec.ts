@@ -246,4 +246,38 @@ describe('结构视图：搜索 / 计数 / 全选 / 清空', () => {
 
     expect(currentExpandedKeys(wrapper)).toEqual(expect.arrayContaining(['src', 'docs']))
   })
+
+  /**
+   * 回归：antd Tree 的**勾选回写里会带目录键**，必须过滤掉再存。
+   *
+   * 真实浏览器里 `a-tree` 默认父子联动（`checkStrictly=false`）：当过滤后的树中某个目录的
+   * 可见子节点被全部勾上时，它会把**该目录自身的 key** 也一并回写到 `checkedKeys`。
+   * 原实现用 `v-model:checked-keys` 直接落库 —— 于是清空搜索、整棵树恢复后，
+   * 那个目录键仍然在选中集里，一勾就等于勾上它**全部子文件**：
+   * 视觉上"所有文件都被选中"，计数也把目录算了进去。
+   *
+   * 注意：这里**必须手工触发** antd 的这次回写。happy-dom 里真实渲染的 `a-tree`
+   * 不会自己产生它，所以只点"全选筛选结果"的用例永远发现不了这个 bug ——
+   * 那条路径走的是我们自己的 `selectAllStructure()`，本来就是对逻辑。
+   */
+  it('回写里混入目录键时被过滤，否则清空搜索会变成全选', async () => {
+    const wrapper = await mountView()
+    await fillSearch(wrapper, 'src')
+
+    const treeComponent = wrapper.findAllComponents({ name: 'ATree' })[0]!
+    // 模拟 antd 的回写：目录 'src' 被判定为全选，于是连同两个文件一起回传
+    treeComponent.vm.$emit('check', ['src', 'src/a.ts', 'src/b.ts'], { halfCheckedKeys: [] })
+    await flush()
+    await wrapper.vm.$nextTick()
+
+    // 直接断言存在组件里的选中集：目录键必须是丢掉的
+    const checkedKeys = treeComponent.props('checkedKeys') as string[]
+    expect(checkedKeys).not.toContain('src')
+    expect(checkedKeys.sort()).toEqual(['src/a.ts', 'src/b.ts'])
+    expect(countText(wrapper)).toBe('已选 2 / 匹配 2')
+
+    // 清空搜索后不能因为那个目录键而把整棵树都勾上
+    await fillSearch(wrapper, '')
+    expect(countText(wrapper)).toBe('已选 2 / 可审查 4')
+  })
 })
