@@ -53,6 +53,7 @@ public class ReviewStrategyService {
         Map<String, Object> params = req.params() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(req.params());
         params.remove(CLEAR_TOKEN_KEY); // 不是策略参数，不入库
         validateParams(analyzerType, params);
+        ensureNameAvailable(req.name(), null);
         ReviewStrategy s = new ReviewStrategy();
         s.setName(req.name());
         s.setAnalyzerType(analyzerType);
@@ -61,11 +62,37 @@ public class ReviewStrategyService {
         return toResp(s);
     }
 
+    /**
+     * 名称在**未删除**的策略中必须唯一。
+     *
+     * <p>原先由数据库唯一索引 {@code uk_name} 保证，但唯一索引 + 逻辑删除会让**已删除的记录
+     * 继续占用名称** —— 删掉后用同名重建必然失败。V5 移除该索引后，判重下移到这里
+     * （MySQL 不支持"仅对未删除行唯一"的部分唯一索引）。
+     *
+     * <p>判重依赖 MyBatis-Plus 逻辑删除自动补 {@code is_deleted = 0}：已删除记录不参与，
+     * 这正是"删除后可重建"成立的前提。
+     *
+     * <p>{@code excludeId} 用于编辑场景排除自身 —— 否则"只改参数不改名"会被自己判为重复。
+     */
+    private void ensureNameAvailable(String name, Long excludeId) {
+        LambdaQueryWrapper<ReviewStrategy> w =
+                new LambdaQueryWrapper<ReviewStrategy>().eq(ReviewStrategy::getName, name);
+        if (excludeId != null) {
+            w.ne(ReviewStrategy::getId, excludeId);
+        }
+        Long count = strategyMapper.selectCount(w);
+        // 判空是为了兼容单测里未 stub 的 mapper（Mockito 默认返回 null）
+        if (count != null && count > 0) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR.getCode(), "策略名称已存在：" + name);
+        }
+    }
+
     public StrategyResp update(Long id, StrategyReq req) {
         ReviewStrategy s = getOrThrow(id);
         if (req.name() != null && !req.name().isBlank()) {
             s.setName(req.name());
         }
+        ensureNameAvailable(s.getName(), s.getId());
         if (req.analyzerType() != null) {
             int at = req.analyzerType();
             if (!AnalyzerTypes.isValid(at)) {

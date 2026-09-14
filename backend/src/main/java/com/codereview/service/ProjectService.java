@@ -1,5 +1,6 @@
 package com.codereview.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
@@ -36,6 +37,7 @@ public class ProjectService {
     public Project create(ProjectCreateReq req) {
         GitRepoRef ref = GitRepoRef.parse(req.giteaUrl());
         int credentialType = req.credentialType() == null ? 1 : req.credentialType();
+        ensureUrlAvailable(req.giteaUrl());
         try {
             gitHostClient.branches(req.credential(), credentialType, ref.owner(), ref.repo());
         } catch (Exception e) {
@@ -49,6 +51,28 @@ public class ProjectService {
         p.setCurrentBranch("main");
         projectMapper.insert(p);
         return p;
+    }
+
+    /**
+     * 仓库地址在**未删除**的项目中必须唯一。
+     *
+     * <p>原先由数据库唯一索引 {@code uk_gitea_url} 保证，但唯一索引 + 逻辑删除会让
+     * **已删除的项目继续占用该地址** —— 删掉后用同一仓库重建必然失败。V5 移除该索引后，
+     * 判重下移到这里（MySQL 不支持"仅对未删除行唯一"的部分唯一索引）。
+     *
+     * <p>判重依赖 MyBatis-Plus 逻辑删除自动补 {@code is_deleted = 0}：已删除记录不参与，
+     * 这正是"删除后可重建"成立的前提。
+     *
+     * <p>放在连通性验证**之前**：地址已被占用时没必要再打一次远端。
+     */
+    private void ensureUrlAvailable(String giteaUrl) {
+        Long count = projectMapper.selectCount(
+                new LambdaQueryWrapper<Project>().eq(Project::getGiteaUrl, giteaUrl));
+        // 判空是为了兼容单测里未 stub 的 mapper（Mockito 默认返回 null）
+        if (count != null && count > 0) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR.getCode(),
+                    "该仓库地址已被其他项目使用：" + giteaUrl);
+        }
     }
 
     public Page<Project> list(long pageNum, long pageSize) {

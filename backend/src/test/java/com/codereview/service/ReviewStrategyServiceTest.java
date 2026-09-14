@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -180,5 +182,55 @@ class ReviewStrategyServiceTest {
 
         assertFalse(resp.hasToken(), "脏数据退化为无 token，而不是让接口抛错");
         assertTrue(resp.paramsJson().startsWith("{"));
+    }
+
+    /**
+     * 名称判重（V5 移除 {@code uk_name} 后由应用层承接）。
+     * <p>
+     * 既有用例没有 stub {@code selectCount}，Mockito 默认返回 null —— 判重实现必须
+     * 对 null 安全，否则这些用例会被新逻辑弄挂。
+     */
+    @Test
+    void rejectsDuplicateNameOnCreate() {
+        when(strategyMapper.selectCount(any())).thenReturn(1L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> service.create(new StrategyReq("重名", AnalyzerTypes.LLM_REVIEW, llmParams())));
+
+        assertEquals(1005, e.getCode());
+        verify(strategyMapper, never()).insert(any(ReviewStrategy.class));
+    }
+
+    @Test
+    void rejectsRenameThatCollidesWithAnother() {
+        ReviewStrategy existing = new ReviewStrategy();
+        existing.setId(1L);
+        existing.setName("原名");
+        existing.setAnalyzerType(AnalyzerTypes.LLM_REVIEW);
+        existing.setParamsJson("{\"modelConfigId\":\"1\"}");
+        when(strategyMapper.selectById(1L)).thenReturn(existing);
+        when(strategyMapper.selectCount(any())).thenReturn(1L);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> service.update(1L, new StrategyReq("已占用", null, llmParams())));
+
+        assertEquals(1005, e.getCode());
+        verify(strategyMapper, never()).updateById(any(ReviewStrategy.class));
+    }
+
+    @Test
+    void allowsKeepingOwnNameOnUpdate() {
+        ReviewStrategy existing = new ReviewStrategy();
+        existing.setId(1L);
+        existing.setName("原名");
+        existing.setAnalyzerType(AnalyzerTypes.LLM_REVIEW);
+        existing.setParamsJson("{\"modelConfigId\":\"1\"}");
+        when(strategyMapper.selectById(1L)).thenReturn(existing);
+        // 排除自身后不应命中任何记录
+        when(strategyMapper.selectCount(any())).thenReturn(0L);
+
+        StrategyResp resp = service.update(1L, new StrategyReq("原名", null, llmParams()));
+
+        assertEquals("原名", resp.name());
     }
 }
