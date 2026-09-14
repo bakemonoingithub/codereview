@@ -1,10 +1,15 @@
 package com.codereview.service;
 
 import com.codereview.common.BusinessException;
+import com.codereview.config.ReviewProperties;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.entity.Project;
 import com.codereview.git.GitHostClient;
+import com.codereview.mapper.IssueMarkMapper;
 import com.codereview.mapper.ProjectMapper;
+import com.codereview.mapper.ReportMapper;
+import com.codereview.mapper.ReportRecordMapper;
+import com.codereview.mapper.ReviewRecordMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +44,9 @@ class ProjectServiceCreateTest {
     void setUp() {
         projectMapper = mock(ProjectMapper.class);
         gitHostClient = mock(GitHostClient.class);
-        service = new ProjectService(projectMapper, gitHostClient);
+        service = new ProjectService(projectMapper, gitHostClient, new ReviewProperties(),
+                mock(ReviewRecordMapper.class), mock(ReportMapper.class),
+                mock(ReportRecordMapper.class), mock(IssueMarkMapper.class));
     }
 
     private static ProjectCreateReq req() {

@@ -100,3 +100,35 @@ export function getFilePatch(id: string, sha: string, path: string) {
 export function getAccuracy(id: string) {
   return request.get(`/projects/${id}/accuracy`) as Promise<AccuracyStat[]>
 }
+
+// ---------------------------------------------------------------------------
+// 删除项目
+// ---------------------------------------------------------------------------
+
+export interface DeleteImpact {
+  /** 将被一并删除的审查记录数 */
+  recordCount: number
+  /** 将被一并删除的报告数 */
+  reportCount: number
+  /** 是否因"有正在进行的审查"而被拒绝删除 */
+  blocked: boolean
+  /** 拒绝原因（blocked=false 时为 null） */
+  blockReason?: string | null
+  /** 阻塞窗口（分钟）：超过该时长仍未结束的审查视为已卡死，不再阻止删除 */
+  thresholdMinutes: number
+}
+
+/**
+ * 删除前的影响范围预览。
+ *
+ * 删除项目会级联销毁它的审查记录与报告，而报告是能下载成 Markdown 沉淀的资产。
+ * 先拿这个接口、再弹确认框，用户才知道自己将要失去什么。
+ */
+export function getDeleteImpact(id: string) {
+  return request.get(`/projects/${id}/delete-impact`) as Promise<DeleteImpact>
+}
+
+/** 删除项目：级联删除它的审查记录、报告与 issue 标记（逻辑删除，库中仍可恢复，但界面无恢复入口） */
+export function deleteProject(id: string) {
+  return request.delete(`/projects/${id}`) as Promise<void>
+}

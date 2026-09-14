@@ -4,9 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
+import com.codereview.config.ReviewProperties;
+import com.codereview.dto.DeleteImpactResp;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
+import com.codereview.entity.IssueMark;
 import com.codereview.entity.Project;
+import com.codereview.entity.Report;
+import com.codereview.entity.ReportRecord;
+import com.codereview.entity.ReviewRecord;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
 import com.codereview.git.CommitInfo;
@@ -14,9 +20,15 @@ import com.codereview.git.CommitPage;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitRepoRef;
 import com.codereview.git.GitTreeEntry;
+import com.codereview.mapper.IssueMarkMapper;
 import com.codereview.mapper.ProjectMapper;
+import com.codereview.mapper.ReportMapper;
+import com.codereview.mapper.ReportRecordMapper;
+import com.codereview.mapper.ReviewRecordMapper;
+import com.codereview.review.ReviewStatus;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -28,10 +40,22 @@ public class ProjectService {
 
     private final ProjectMapper projectMapper;
     private final GitHostClient gitHostClient;
+    private final ReviewProperties props;
+    private final ReviewRecordMapper reviewRecordMapper;
+    private final ReportMapper reportMapper;
+    private final ReportRecordMapper reportRecordMapper;
+    private final IssueMarkMapper issueMarkMapper;
 
-    public ProjectService(ProjectMapper projectMapper, GitHostClient gitHostClient) {
+    public ProjectService(ProjectMapper projectMapper, GitHostClient gitHostClient, ReviewProperties props,
+                          ReviewRecordMapper reviewRecordMapper, ReportMapper reportMapper,
+                          ReportRecordMapper reportRecordMapper, IssueMarkMapper issueMarkMapper) {
         this.projectMapper = projectMapper;
         this.gitHostClient = gitHostClient;
+        this.props = props;
+        this.reviewRecordMapper = reviewRecordMapper;
+        this.reportMapper = reportMapper;
+        this.reportRecordMapper = reportRecordMapper;
+        this.issueMarkMapper = issueMarkMapper;
     }
 
     public Project create(ProjectCreateReq req) {
@@ -87,6 +111,126 @@ public class ProjectService {
      */
     public Project detail(Long projectId) {
         return getOrThrow(projectId);
+    }
+
+    /**
+     * 删除项目前的**影响范围预览**。
+     *
+     * <p>前端先调它、再弹确认框：让用户在"知道会一并销毁 N 条审查记录、M 份报告"的
+     * 前提下决定。报告是可下载成 Markdown 沉淀的资产，不该在用户不知情时被删掉。
+     */
+    public DeleteImpactResp deleteImpact(Long projectId) {
+        getOrThrow(projectId);
+        ReviewRecord blocking = findBlockingRecord(projectId);
+        return new DeleteImpactResp(countRecords(projectId), countReports(projectId),
+                blocking != null, blocking == null ? null : blockReason(), props.getDeleteBlockMinutes());
+    }
+
+    /**
+     * 删除项目：逻辑删除项目本身，并**级联**逻辑删除它的审查记录、报告、报告-记录关联与 issue 标记。
+     *
+     * <p>级联是必要的：这些表用的都是**逻辑外键**（没有物理外键约束），删掉项目后它们会变成
+     * "列表里看不到、详情页也进不去"的孤儿数据。其中 {@code issue_mark} 存的是"误报/已采纳"
+     * 标记（准确率的数据来源），不清理会留下指向已删记录的孤儿标记。
+     *
+     * <p>**删除时会再校验一次**"是否有正在进行的审查" —— 确认弹窗打开期间状态可能已经变化，
+     * 只在预览时校验是不够的。
+     *
+     * <p>用的是逻辑删除，数据仍在库中，理论上可恢复，但目前**没有恢复入口**。
+     */
+    public void delete(Long projectId) {
+        getOrThrow(projectId);
+        if (findBlockingRecord(projectId) != null) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR.getCode(), blockReason());
+        }
+        // 先收集子记录 id：父行一旦被逻辑删除，后续查询就再也查不到它们了
+        List<Long> recordIds = reviewRecordMapper.selectList(
+                        new LambdaQueryWrapper<ReviewRecord>().eq(ReviewRecord::getProjectId, projectId))
+                .stream().map(ReviewRecord::getId).toList();
+        List<Long> reportIds = reportMapper.selectList(
+                        new LambdaQueryWrapper<Report>().eq(Report::getProjectId, projectId))
+                .stream().map(Report::getId).toList();
+
+        if (!recordIds.isEmpty()) {
+            issueMarkMapper.delete(new LambdaQueryWrapper<IssueMark>().in(IssueMark::getRecordId, recordIds));
+            reportRecordMapper.delete(
+                    new LambdaQueryWrapper<ReportRecord>().in(ReportRecord::getRecordId, recordIds));
+        }
+        if (!reportIds.isEmpty()) {
+            reportRecordMapper.delete(
+                    new LambdaQueryWrapper<ReportRecord>().in(ReportRecord::getReportId, reportIds));
+        }
+        reportMapper.delete(new LambdaQueryWrapper<Report>().eq(Report::getProjectId, projectId));
+        reviewRecordMapper.delete(new LambdaQueryWrapper<ReviewRecord>().eq(ReviewRecord::getProjectId, projectId));
+        projectMapper.deleteById(projectId);
+    }
+
+    private int countRecords(Long projectId) {
+        Long c = reviewRecordMapper.selectCount(
+                new LambdaQueryWrapper<ReviewRecord>().eq(ReviewRecord::getProjectId, projectId));
+        return c == null ? 0 : c.intValue();
+    }
+
+    private int countReports(Long projectId) {
+        Long c = reportMapper.selectCount(
+                new LambdaQueryWrapper<Report>().eq(Report::getProjectId, projectId));
+        return c == null ? 0 : c.intValue();
+    }
+
+    /**
+     * 找一条"正在进行的审查"：状态为**排队中或执行中**，且创建时间在阻塞窗口内。
+     *
+     * <p>超过窗口的记录**不算**阻塞 —— 视为任务已卡死，否则一个卡死的任务会让项目永远删不掉。
+     * 这与验收指标 8 的"1 小时"口径一致。
+     *
+     * <p>时间基准取 {@code created_at} 而非 {@code started_at}：排队阶段后者仍为 NULL，
+     * 用它会拦不住"卡在队列里"的任务。
+     */
+    private ReviewRecord findBlockingRecord(Long projectId) {
+        // SQL 先按状态过滤（省掉无关行的传输）；窗口判定交给下面的纯函数 ——
+        // 它是这条规则的唯一权威，且能直接被单测覆盖。
+        List<ReviewRecord> candidates = reviewRecordMapper.selectList(
+                new LambdaQueryWrapper<ReviewRecord>()
+                        .eq(ReviewRecord::getProjectId, projectId)
+                        .in(ReviewRecord::getStatus, ReviewStatus.QUEUED, ReviewStatus.RUNNING));
+        LocalDateTime now = LocalDateTime.now();
+        return candidates.stream()
+                .filter(r -> isWithinBlockWindow(r, now, props.getDeleteBlockMinutes()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * 该记录是否落在「阻塞删除」的窗口内。
+     *
+     * <p>规则：状态为**排队中或执行中**，且 **{@code created_at}** 距今不足 {@code windowMinutes} 分钟。
+     * 超过窗口的视为任务已卡死，**不再阻止删除** —— 否则一个卡死的任务会让项目永远删不掉。
+     * 这与验收指标 8 的"1 小时"口径一致。
+     *
+     * <p>为什么按 {@code created_at} 而不是 {@code started_at}：排队阶段的 {@code started_at}
+     * 仍为 NULL，用它会拦不住"卡在队列里"的任务，与规则意图正好相反。
+     *
+     * <p>{@code created_at} 为空（历史脏数据）按"不在窗口内"处理：宁可允许删除，
+     * 也不让一条脏数据把项目永久锁死。
+     *
+     * <p>抽成 static 纯函数是为了能直接单测这条规则 —— 它藏在数据库查询里时装不出来，
+     * 而它恰恰是本功能最容易写错的地方。
+     */
+    static boolean isWithinBlockWindow(ReviewRecord record, LocalDateTime now, int windowMinutes) {
+        if (record == null || record.getStatus() == null) {
+            return false;
+        }
+        int status = record.getStatus();
+        if (status != ReviewStatus.QUEUED && status != ReviewStatus.RUNNING) {
+            return false;
+        }
+        LocalDateTime createdAt = record.getCreatedAt();
+        return createdAt != null && createdAt.isAfter(now.minusMinutes(windowMinutes));
+    }
+
+    private String blockReason() {
+        return "该项目有正在进行的审查（开始不足 " + props.getDeleteBlockMinutes()
+                + " 分钟），请等待完成后再删除";
     }
 
     public List<TreeNodeResp> tree(Long projectId, String branch) {

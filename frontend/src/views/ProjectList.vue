@@ -21,6 +21,11 @@
       </a-table-column>
       <a-table-column title="仓库地址" data-index="giteaUrl" ellipsis />
       <a-table-column title="当前分支" data-index="currentBranch" width="140" />
+      <a-table-column title="操作" width="80">
+        <template #default="{ record }">
+          <a-button type="link" danger size="small" @click="onDelete(record)">删除</a-button>
+        </template>
+      </a-table-column>
     </a-table>
 
     <a-modal v-model:open="showCreate" title="新建项目" :confirm-loading="saving" @ok="onCreate">
@@ -43,8 +48,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
-import { listProjects, createProject } from '@/api/project'
+import { message, Modal } from 'ant-design-vue'
+import { listProjects, createProject, getDeleteImpact, deleteProject } from '@/api/project'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
@@ -95,6 +100,49 @@ async function onCreate() {
   } finally {
     saving.value = false
   }
+}
+
+/**
+ * 删除项目：**先查影响范围、再弹确认**。
+ *
+ * 不用 a-popconfirm：它放不下"将一并删除 N 条审查记录、M 份报告"这句关键信息，
+ * 而报告是能下载成 Markdown 沉淀的资产 —— 让用户在不知道会销毁什么的前提下点"确认"，
+ * 是删除功能最不该有的体验。
+ */
+async function onDelete(record: any) {
+  let impact
+  try {
+    impact = await getDeleteImpact(record.id)
+  } catch (e: any) {
+    message.error(e?.message || '无法获取删除影响范围')
+    return
+  }
+  // 有正在进行的审查时后端会拒绝，没必要让用户白点一次确认
+  if (impact.blocked) {
+    message.warning(impact.blockReason || '该项目有正在进行的审查，暂时无法删除')
+    return
+  }
+  let content = `确定删除项目「${record.name}」？`
+  if (impact.recordCount > 0 || impact.reportCount > 0) {
+    content += `同时会删除该项目下的 ${impact.recordCount} 条审查记录和 ${impact.reportCount} 份报告，删除后界面上无法恢复。`
+  }
+  Modal.confirm({
+    title: '删除项目',
+    content,
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      try {
+        await deleteProject(record.id)
+      } catch (e: any) {
+        message.error(e?.message || '删除失败')
+        throw e // 抛出让弹窗保持打开，便于重试
+      }
+      message.success('已删除')
+      load()
+    }
+  })
 }
 
 onMounted(load)

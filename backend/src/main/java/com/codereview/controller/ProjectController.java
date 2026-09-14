@@ -2,6 +2,7 @@ package com.codereview.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.Result;
+import com.codereview.dto.DeleteImpactResp;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
 import com.codereview.entity.Project;
@@ -9,6 +10,7 @@ import com.codereview.git.CommitDetail;
 import com.codereview.git.CommitInfo;
 import com.codereview.git.CommitPage;
 import com.codereview.service.ProjectService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -92,5 +94,25 @@ public class ProjectController {
                                     @PathVariable String sha,
                                     @RequestParam String path) {
         return Result.ok(projectService.filePatch(id, sha, path));
+    }
+
+    /**
+     * 删除前的**影响范围预览**：前端拿它弹确认框，让用户知道会一并销毁多少记录与报告。
+     * 同时告知"是否因有正在进行的审查而被拒绝"，避免点了删除才知道删不了。
+     */
+    @GetMapping("/{id}/delete-impact")
+    public Result<DeleteImpactResp> deleteImpact(@PathVariable Long id) {
+        return Result.ok(projectService.deleteImpact(id));
+    }
+
+    /**
+     * 删除项目：逻辑删除项目本身，并级联删除它的审查记录、报告与 issue 标记。
+     *
+     * <p>存在"正在进行的审查"时返回业务错误（1005），由前端展示具体原因。
+     */
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        projectService.delete(id);
+        return Result.ok();
     }
 }
