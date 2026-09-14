@@ -410,9 +410,24 @@ watch(structureKeyword, () => {
   }
 })
 
-/** 全选**当前筛选结果**（与 ChangedFileTree 的 selectAllFiltered 同义） */
+/**
+ * 把一次勾选的结果并回选中集：**只改"当前筛选下可见"的那部分，被搜掉的保持原样**。
+ *
+ * <p>不能直接 `structureChecked.value = 回写结果`：`a-tree` 只认识当前 `treeData` 里的节点，
+ * 过滤后回写的 keys **不含被搜掉的已选**。直接覆盖就变成"换一个关键词再勾，
+ * 上一次勾的全没了" —— 与本视图声明的语义（"搜索只影响显示与全选范围，
+ * 已勾选但被搜掉的路径仍留在选中集里"）正好相反。
+ */
+function mergeVisibleSelection(selectedVisible: string[]) {
+  const visible = new Set(structureMatchedFiles.value)
+  const kept = structureChecked.value.filter((k) => !visible.has(k))
+  const now = selectedVisible.filter((k) => visible.has(k))
+  structureChecked.value = [...new Set([...kept, ...now])]
+}
+
+/** 全选**当前筛选结果**（与 ChangedFileTree 的 selectAllFiltered 同义）；筛选外的已选保留 */
 function selectAllStructure() {
-  structureChecked.value = [...structureMatchedFiles.value]
+  mergeVisibleSelection([...structureMatchedFiles.value])
 }
 
 /**
@@ -424,16 +439,16 @@ function selectAllStructure() {
  * 那个目录键仍然在选中集里 —— 一勾就等于勾上它**全部子文件**：
  * 视觉上"所有文件都被选中"，计数也把目录算了进去。
  *
- * <p>改成 `:checked-keys` + `@check` 是为了拿回写入权。展示不受影响：存进去的都是叶子键，
+ * <p>改成 `:checked-keys` + `@check` 是为了拿回写入权；再经 {@link mergeVisibleSelection}
+ * 并回，避免"换关键词再勾"时把筛选外的已选一起抹掉。展示不受影响：存进去的都是叶子键，
  * antd 自己会把父目录推导成选中/半选。
  *
- * <p>口径与 {@link ChangedFileTree} 的 `onCheck` 一致（那边写作"目录级勾选会带上
- * 不可审查的叶子，这里统一过滤掉"）。
+ * <p>口径与 {@link ChangedFileTree} 的 `onCheck` 一致。
  */
 function onStructureCheck(keys: any) {
   // checkStrictly 打开时 antd 回传 { checked, halfChecked }，两种形状都兜住
   const list: string[] = Array.isArray(keys) ? keys : (keys?.checked || [])
-  structureChecked.value = list.filter((k) => fileSet.has(k))
+  mergeVisibleSelection(list.filter((k) => fileSet.has(k)))
 }
 
 function clearStructureChecked() {

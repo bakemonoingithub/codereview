@@ -136,11 +136,26 @@ watch(
   { immediate: true }
 )
 
-function onCheck(keys: any) {
-  const list: string[] = Array.isArray(keys) ? keys : (keys?.checked || [])
-  // 目录级勾选会带上不可审查的叶子，这里统一过滤掉
+/**
+ * 把一次勾选的结果并回选中集：**只改"当前筛选下可见"的那部分，被筛掉的保持原样**。
+ *
+ * 直接 emit 回写结果是不行的：a-tree 只认识当前 treeData 里的节点，筛选后回写的 keys
+ * **不含被筛掉的已选**。直接覆盖会变成"换一个关键词再勾，上一次勾的全没了" ——
+ * 与"搜索只影响显示与全选范围"的语义正好相反。
+ *
+ * 顺带完成原先 onCheck 的过滤：`visible` 已与可审查集合取过交集，所以目录键与
+ * 不可审查的叶子都被挡在外面（目录级勾选会把它们一起带上）。
+ */
+function mergeVisibleSelection(selectedVisible: string[]) {
   const allowed = new Set(reviewablePaths.value)
-  emit('update:checked', list.filter((k) => allowed.has(k)))
+  const visible = new Set(filteredFiles.value.map((f) => f.path).filter((p) => allowed.has(p)))
+  const kept = props.checked.filter((k) => !visible.has(k))
+  const now = selectedVisible.filter((k) => visible.has(k))
+  emit('update:checked', [...new Set([...kept, ...now])])
+}
+
+function onCheck(keys: any) {
+  mergeVisibleSelection(Array.isArray(keys) ? keys : (keys?.checked || []))
 }
 
 function expandAll() {
@@ -169,11 +184,8 @@ function collapseAll() {
  * 要么跑出远超预期的审查。
  */
 function selectAllFiltered() {
-  const allowed = new Set(reviewablePaths.value)
-  emit(
-    'update:checked',
-    filteredFiles.value.map((f) => f.path).filter((path) => allowed.has(path))
-  )
+  // 走 mergeVisibleSelection：筛选外的已选必须保留，否则"换个关键词再全选"会丢掉上一次的选择
+  mergeVisibleSelection(filteredFiles.value.map((f) => f.path))
 }
 
 function clearAll() {

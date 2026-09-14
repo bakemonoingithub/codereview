@@ -93,4 +93,48 @@ describe('C10 全选只作用于当前筛选结果', () => {
     const emitted = wrapper.emitted('update:checked')?.[0]?.[0] as string[]
     expect(emitted.sort()).toEqual(['src/a/A.java', 'src/b/B.java', 'src/c/C.java'])
   })
+
+  /**
+   * 回归：**换一个关键词再勾选，不能覆盖上一次的选择**。
+   *
+   * a-tree 只认识当前 treeData 里的节点，筛选后回写的 keys 不含被筛掉的已选。
+   * 原先把回写/全选结果整体 emit 出去，于是"用 A 筛一遍勾几个、再用 B 勾几个"会丢掉 A 那批。
+   */
+  it('换一个关键词再全选，上一次的选择不会被覆盖', async () => {
+    const wrapper = mountTree()
+    const search = wrapper.find('a-input-stub input')
+    const selectAll = async () => {
+      const btn = wrapper.findAll('a-button-stub').find((b) => b.text() === '全选筛选结果')
+      expect(btn, '筛选生效后按钮应改叫「全选筛选结果」').toBeTruthy()
+      await btn!.trigger('click')
+    }
+
+    await search.setValue('B.java')
+    await wrapper.vm.$nextTick()
+    await selectAll()
+    expect(wrapper.emitted('update:checked')?.at(-1)?.[0]).toEqual(['src/b/B.java'])
+
+    // 模拟父组件的 v-model 回写：选中集里此刻已经有 B（组件本身不持有选中状态）
+    await wrapper.setProps({ checked: ['src/b/B.java'] })
+
+    await search.setValue('A.java')
+    await wrapper.vm.$nextTick()
+    await selectAll()
+
+    const last = wrapper.emitted('update:checked')?.at(-1)?.[0] as string[]
+    expect(last.sort()).toEqual(['src/a/A.java', 'src/b/B.java'])
+  })
+
+  it('a-tree 回写里的目录键会被过滤掉', async () => {
+    const wrapper = mountTree()
+    await wrapper.vm.$nextTick()
+
+    // 目录 'src' 被判定为全选时会连同子节点一起回传；它本身不是可审文件，必须丢掉
+    wrapper
+      .findComponent({ name: 'ATree' })
+      .vm.$emit('check', ['src', 'src/a/A.java'], { halfCheckedKeys: [] })
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update:checked')?.at(-1)?.[0]).toEqual(['src/a/A.java'])
+  })
 })

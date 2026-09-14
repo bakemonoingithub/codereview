@@ -280,4 +280,51 @@ describe('结构视图：搜索 / 计数 / 全选 / 清空', () => {
     await fillSearch(wrapper, '')
     expect(countText(wrapper)).toBe('已选 2 / 可审查 4')
   })
+
+  /**
+   * 回归：**换关键词再勾选，不能覆盖上一次的选择**。
+   *
+   * a-tree 只认识当前 treeData 里的节点，过滤后回写的 keys 不含被搜掉的已选。
+   * 原先把回写/全选结果整体覆盖到选中集上，于是"用 A 筛一遍勾几个、再用 B 勾几个"
+   * 会丢掉 A 那批 —— 与本视图声明的语义（搜索只影响显示与全选范围）正好相反。
+   */
+  it('换关键词再勾选时，上一次的选择不会被覆盖', async () => {
+    const wrapper = await mountView()
+
+    await fillSearch(wrapper, 'src')
+    await button(wrapper, '全选筛选结果').trigger('click')
+    await flush()
+    expect(countText(wrapper)).toBe('已选 2 / 匹配 2')
+
+    await fillSearch(wrapper, 'guide')
+    await button(wrapper, '全选筛选结果').trigger('click')
+    await flush()
+    expect(countText(wrapper)).toBe('已选 1 / 匹配 1（另有 2 个已选不在筛选中）')
+
+    await fillSearch(wrapper, '')
+    expect(countText(wrapper)).toBe('已选 3 / 可审查 4')
+  })
+
+  it('换关键词后 a-tree 的回写不会抹掉筛选外的已选', async () => {
+    const wrapper = await mountView()
+    const tree = () => wrapper.findAllComponents({ name: 'ATree' })[0]!
+
+    await fillSearch(wrapper, 'src')
+    tree().vm.$emit('check', ['src', 'src/a.ts', 'src/b.ts'], { halfCheckedKeys: [] })
+    await flush()
+    await wrapper.vm.$nextTick()
+    expect((tree().props('checkedKeys') as string[]).sort()).toEqual(['src/a.ts', 'src/b.ts'])
+
+    // 换到另一个关键词：这次 a-tree 的视野里只有 docs 下的文件
+    await fillSearch(wrapper, 'guide')
+    tree().vm.$emit('check', ['docs', 'docs/guide.md'], { halfCheckedKeys: [] })
+    await flush()
+    await wrapper.vm.$nextTick()
+
+    expect((tree().props('checkedKeys') as string[]).sort()).toEqual([
+      'docs/guide.md',
+      'src/a.ts',
+      'src/b.ts'
+    ])
+  })
 })
