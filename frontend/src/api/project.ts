@@ -14,6 +14,8 @@ export interface TreeNode {
   path: string
   name: string
   type: string
+  /** 是否可审查：**由后端唯一判定**（不在白名单内的文件提交后会被跳过），前端只读 */
+  reviewable?: boolean
   children?: TreeNode[]
 }
 

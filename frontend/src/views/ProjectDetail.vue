@@ -228,13 +228,20 @@
         </a-descriptions-item>
         <a-descriptions-item label="审查范围">
           {{ confirmScope.length }} 个文件
-          <span v-if="confirmMode === 'commit' && binaryCount">（另有 {{ binaryCount }} 个不可审查文件未选中）</span>
+          <span v-if="confirmSkippedCount">（其中 {{ confirmSkippedCount }} 个不可审查）</span>
         </a-descriptions-item>
         <a-descriptions-item label="策略">{{ confirmStrategyName }}</a-descriptions-item>
-        <a-descriptions-item label="预估单元数">{{ confirmScope.length }}</a-descriptions-item>
+        <a-descriptions-item label="预估单元数">{{ confirmReviewableCount }}</a-descriptions-item>
       </a-descriptions>
       <a-alert
-        v-if="confirmScope.length > 50"
+        v-if="confirmSkippedCount"
+        type="warning"
+        show-icon
+        class="mt12"
+        message="所选范围里有部分文件不在可审查名单内，本次会跳过它们、只审查其余文件"
+      />
+      <a-alert
+        v-if="confirmReviewableCount > 50"
         type="warning"
         show-icon
         class="mt12"
@@ -292,7 +299,7 @@ import {
   type IssueMark
 } from '@/api/review'
 import { listStrategies } from '@/api/strategy'
-import { summarize, type ChangedFile } from '@/utils/changedFiles'
+import type { ChangedFile } from '@/utils/changedFiles'
 import { recordStatusColor, recordStatusText } from '@/utils/reviewResult'
 import { formatDuration } from '@/utils/duration'
 import { useRecordPagination } from '@/utils/useRecordPagination'
@@ -358,7 +365,9 @@ const structureTree = computed(() => filterTree(treeData.value, structureKeyword
  */
 const structureSelectionText = computed(() => {
   if (!structureKeyword.value) {
-    return `已选 ${structureChecked.value.length} / 可审查 ${fileCount.value}`
+    // 标签用"共 N 个文件"而不是"可审查 N"：fileCount 统计的是全部 blob，
+    // 而不可审查的文件现在同样可勾选（提交时统一告知哪些会被跳过），叫"可审查"会误导。
+    return `已选 ${structureChecked.value.length} / 共 ${fileCount.value} 个文件`
   }
   const matched = new Set(structureMatchedFiles.value)
   const inFilter = structureChecked.value.filter((key) => matched.has(key))
@@ -496,12 +505,24 @@ const confirmOpen = ref(false)
 const confirmMode = ref<'structure' | 'commit'>('structure')
 const confirmScope = ref<string[]>([])
 const confirmStrategyName = ref('')
-const binaryCount = computed(() => {
-  if (confirmMode.value !== 'commit' || !commitDetail.value) {
-    return 0
-  }
-  return summarize(commitDetail.value.files || []).binary
-})
+/**
+ * 可审查路径集合 —— **直接来自后端下发的 `reviewable`**（文件树节点 / 变更文件各一份），
+ * 前端不维护扩展名表。判定权只在后端 `ReviewableFiles` 一处。
+ */
+let structureReviewableSet = new Set<string>()
+let commitReviewableSet = new Set<string>()
+
+function reviewableSetFor(mode: 'structure' | 'commit'): Set<string> {
+  return mode === 'commit' ? commitReviewableSet : structureReviewableSet
+}
+
+/** 本次范围里可审查的文件数 —— 也就是实际会执行的工作量（预估单元数） */
+const confirmReviewableCount = computed(
+  () => confirmScope.value.filter((p) => reviewableSetFor(confirmMode.value).has(p)).length
+)
+
+/** 本次范围里会被后端跳过的文件数 */
+const confirmSkippedCount = computed(() => confirmScope.value.length - confirmReviewableCount.value)
 
 // ---------------- 记录与准确率 ----------------
 // 分页状态由 useRecordPagination 持有（与"报告-选择审查记录"共用同一套分页语义）
@@ -566,6 +587,24 @@ function flattenFiles(nodes: TreeNode[]): Set<string> {
   return set
 }
 
+/**
+ * 收集可审查的 blob 路径。
+ *
+ * `reviewable` 由后端判定（`ReviewableFiles`），这里只做收集 ——
+ * 前端不再自己维护扩展名表，也就不会再和后端漂移。
+ */
+function collectReviewable(nodes: TreeNode[]): Set<string> {
+  const set = new Set<string>()
+  const walk = (list: TreeNode[]) => {
+    for (const n of list) {
+      if (n.type === 'blob' && n.reviewable) set.add(n.path)
+      if (n.children) walk(n.children)
+    }
+  }
+  walk(nodes)
+  return set
+}
+
 function collectExpandableKeys(nodes: TreeNode[]): string[] {
   const keys: string[] = []
   const walk = (list: TreeNode[]) => {
@@ -588,6 +627,7 @@ async function loadTree() {
     const nodes = await getTree(projectId, branch.value)
     treeData.value = toTreeNodes(nodes)
     fileSet = flattenFiles(nodes)
+    structureReviewableSet = collectReviewable(nodes)
     // fileSet 是普通 Set（非响应式），计数要单独用 ref 暴露给模板
     fileCount.value = fileSet.size
     allExpandableKeys.value = collectExpandableKeys(nodes)
@@ -651,7 +691,13 @@ async function onSelectCommit(sha: string) {
   await loadCommitDetail(sha)
 }
 
-/** 拉取单提交详情（列表视图，不含 patch）；默认全选可审查文件（Q24） */
+/**
+ * 拉取单提交详情（列表视图，不含 patch）；**默认全选全部变更文件**。
+ *
+ * 原先是"默认只选可审查的"（把二进制排除在外）—— 那是一种静默预筛：用户看到的勾选状态
+ * 与实际范围已经不一致，却没有任何提示。现在统一为"全都能勾，提交时告知哪些会被跳过"，
+ * 默认选中就不再偷偷剔除任何文件。
+ */
 async function loadCommitDetail(sha: string) {
   if (!sha) return
   detailLoading.value = true
@@ -659,11 +705,13 @@ async function loadCommitDetail(sha: string) {
   try {
     const detail = await getCommitDetail(projectId, sha)
     commitDetail.value = detail
-    commitChecked.value = (detail.files || [])
-      .filter((f: ChangedFile) => !summarize([f]).binary)
-      .map((f: ChangedFile) => f.path)
+    const files: ChangedFile[] = detail.files || []
+    commitChecked.value = files.map((f) => f.path)
+    // reviewable 来自后端下发的字段
+    commitReviewableSet = new Set(files.filter((f) => f.reviewable).map((f) => f.path))
   } catch (e: any) {
     commitDetail.value = null
+    commitReviewableSet = new Set()
     detailError.value = e?.message || '变更文件加载失败'
   } finally {
     detailLoading.value = false
@@ -734,6 +782,12 @@ function openConfirm(mode: 'structure' | 'commit') {
       message.warning('请先勾选要审查的变更文件')
       return
     }
+  }
+  // 一个可审查文件都没有：在点下去之前就拦住，不产生一条注定失败的记录
+  // （后端 ReviewService/ReviewExecutor 有同样的兜底，用于绕过前端的调用）
+  if (!confirmReviewableCount.value) {
+    message.warning('所选文件中没有可审查的文件，请改选后再试')
+    return
   }
   confirmOpen.value = true
 }

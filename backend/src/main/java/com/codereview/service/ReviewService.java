@@ -6,6 +6,7 @@ import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
 import com.codereview.common.PageLimits;
 import com.codereview.common.ResultCode;
+import com.codereview.common.ReviewableFiles;
 import com.codereview.dto.ReviewRecordResp;
 import com.codereview.dto.ReviewRecordRow;
 import com.codereview.dto.ReviewTriggerReq;
@@ -83,6 +84,14 @@ public class ReviewService {
         // diff 审查的范围由提交的变更文件决定，允许为空（为空即审全部变更文件）
         if (analyzerType != AnalyzerTypes.API_REVIEW && !diffReview && (req.scope() == null || req.scope().isEmpty())) {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "请选择审查范围");
+        }
+        // 勾了文件、但一个都不在可审查名单内：在入口就拒绝，不产生一条注定失败的记录。
+        // （前端也会拦；这里是绕过前端直接调 API 时的兜底。）
+        if (analyzerType != AnalyzerTypes.API_REVIEW
+                && req.scope() != null && !req.scope().isEmpty()
+                && ReviewableFiles.reviewableOnly(req.scope()).isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(),
+                    "所选文件中没有可审查的文件（共 " + req.scope().size() + " 个均不在可审查名单内）");
         }
         ModelConfig model = AnalyzerTypes.requiresModel(analyzerType) ? resolveModelConfig(strategy) : null;
         String commitSha;

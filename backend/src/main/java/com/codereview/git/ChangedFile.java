@@ -1,5 +1,7 @@
 package com.codereview.git;
 
+import com.codereview.common.ReviewableFiles;
+
 /**
  * 单个变更文件（按「最小公共能力」设计，屏蔽 GitHub 与 Gitea 的能力差异）。
  * <ul>
@@ -9,6 +11,9 @@ package com.codereview.git;
  *       Gitea 用 {@code --no-renames} 不检测重命名，恒为空）；</li>
  *   <li>{@code status}：{@code added} / {@code modified} / {@code removed} / {@code renamed}
  *       （Gitea 只给前三种）。</li>
+ *   <li>{@code reviewable}：是否落在可审查名单内，**完全由 {@code path} 推导**
+ *       （见 {@link ReviewableFiles}）。放在紧凑构造器里强制计算，调用方无法写错 ——
+ *       它不是一个可传入的独立事实，只是 path 的函数。</li>
  * </ul>
  */
 public record ChangedFile(
@@ -18,12 +23,24 @@ public record ChangedFile(
         Integer additions,
         Integer deletions,
         Integer changes,
-        String patch) {
+        String patch,
+        Boolean reviewable) {
 
     public static final String ADDED = "added";
     public static final String MODIFIED = "modified";
     public static final String REMOVED = "removed";
     public static final String RENAMED = "renamed";
+
+    /** 紧凑构造器：忽略传入值，一律由 path 推导，杜绝调用方写出不一致的 reviewable。 */
+    public ChangedFile {
+        reviewable = ReviewableFiles.isReviewable(path);
+    }
+
+    /** 兼容旧调用点（解析器、测试、{@link #withoutPatch()}）：reviewable 由紧凑构造器算出。 */
+    public ChangedFile(String path, String previousPath, String status,
+                       Integer additions, Integer deletions, Integer changes, String patch) {
+        this(path, previousPath, status, additions, deletions, changes, patch, null);
+    }
 
     /** 是否重命名：状态为 renamed，或宿主给了原路径。 */
     public boolean renamed() {

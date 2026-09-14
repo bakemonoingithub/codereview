@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
+import com.codereview.common.ReviewableFiles;
 import com.codereview.config.ReviewProperties;
 import com.codereview.dto.DeleteImpactResp;
 import com.codereview.dto.ProjectCreateReq;
@@ -310,7 +311,9 @@ public class ProjectService {
         for (GitTreeEntry e : sorted) {
             String path = e.path();
             String name = path.substring(path.lastIndexOf('/') + 1);
-            TreeNodeResp node = new TreeNodeResp(path, name, e.type(), new ArrayList<>());
+            // reviewable 由后端唯一判定（ReviewableFiles），前端直接读、不自己维护扩展名表
+            TreeNodeResp node = new TreeNodeResp(path, name, e.type(),
+                    ReviewableFiles.isReviewable(path), new ArrayList<>());
             map.put(path, node);
             int idx = path.lastIndexOf('/');
             String parentPath = idx > 0 ? path.substring(0, idx) : null;

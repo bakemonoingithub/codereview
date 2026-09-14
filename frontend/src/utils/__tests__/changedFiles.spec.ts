@@ -4,9 +4,7 @@ import {
   collectAllLeafPaths,
   collectReviewablePaths,
   countLeaves,
-  extensionOf,
   filterChangedFiles,
-  isProbablyBinary,
   isRenamed,
   isReviewable,
   sortByPath,
@@ -15,8 +13,13 @@ import {
   type ChangedFile
 } from '../changedFiles'
 
-function file(path: string, status = 'modified', patch: string | null = '@@ -1 +1 @@'): ChangedFile {
-  return { path, status, patch, additions: 1, deletions: 1 }
+function file(
+  path: string,
+  status = 'modified',
+  patch: string | null = '@@ -1 +1 @@',
+  reviewable = true
+): ChangedFile {
+  return { path, status, patch, additions: 1, deletions: 1, reviewable }
 }
 
 describe('状态徽标', () => {
@@ -40,30 +43,16 @@ describe('状态徽标', () => {
   })
 })
 
-describe('二进制判定与可审查性', () => {
-  it('提取扩展名', () => {
-    expect(extensionOf('src/main/A.java')).toBe('.java')
-    expect(extensionOf('Makefile')).toBe('')
-    expect(extensionOf('.gitignore')).toBe('')
+describe('可审查性 —— 只看后端下发的字段', () => {
+  it('由 reviewable 决定，不再由前端猜扩展名或看 patch', () => {
+    // 图片也可能被后端判为可审查（比如将来改了名单）—— 前端不质疑，照读
+    expect(isReviewable(file('assets/logo.png', 'modified', null, true))).toBe(true)
+    // Java 也可能不可审查 —— 前端同样照读
+    expect(isReviewable(file('src/A.java', 'modified', '@@', false))).toBe(false)
   })
 
-  it('图片/压缩包等判为二进制', () => {
-    expect(isProbablyBinary('assets/logo.png')).toBe(true)
-    expect(isProbablyBinary('lib/x.jar')).toBe(true)
-    expect(isProbablyBinary('src/main/A.java')).toBe(false)
-  })
-
-  it('有 patch 一定可审查', () => {
-    expect(isReviewable(file('src/A.java'))).toBe(true)
-  })
-
-  it('无 patch 时：文本文件仍可审（后端退化为审查完整文件），二进制禁用', () => {
-    expect(isReviewable(file('src/main/A.java', 'modified', null))).toBe(true)
-    expect(isReviewable(file('assets/logo.png', 'modified', null))).toBe(false)
-  })
-
-  it('空 patch 视为无 patch', () => {
-    expect(isReviewable(file('assets/logo.png', 'modified', '   '))).toBe(false)
+  it('字段缺失（老接口 / 未下发）按不可审查处理，不猜', () => {
+    expect(isReviewable({ path: 'src/A.java' })).toBe(false)
   })
 })
 
@@ -103,8 +92,11 @@ describe('目录树组装', () => {
     expect(collectReviewablePaths(tree)).toHaveLength(4)
   })
 
-  it('不可审查的叶子不出现在可勾选路径里', () => {
-    const tree = buildChangedFileTree([file('src/A.java'), file('assets/logo.png', 'modified', null)])
+  it('不可审查的叶子不出现在可审查路径里（但仍在全部叶子里）', () => {
+    const tree = buildChangedFileTree([
+      file('src/A.java', 'modified', '@@', true),
+      file('assets/logo.png', 'modified', null, false)
+    ])
     expect(collectAllLeafPaths(tree)).toHaveLength(2)
     expect(collectReviewablePaths(tree)).toEqual(['src/A.java'])
   })
@@ -151,16 +143,16 @@ describe('筛选', () => {
 })
 
 describe('汇总', () => {
-  it('统计总数/可审查数/二进制数与增删行', () => {
+  it('统计总数/可审查数/不可审查数与增删行', () => {
     const files: ChangedFile[] = [
-      { path: 'src/A.java', status: 'modified', patch: '@@', additions: 10, deletions: 2 },
-      { path: 'assets/logo.png', status: 'modified', patch: null, additions: 0, deletions: 0 },
-      { path: 'src/B.java', status: 'added', patch: '@@', additions: 5, deletions: 0 }
+      { path: 'src/A.java', status: 'modified', patch: '@@', additions: 10, deletions: 2, reviewable: true },
+      { path: 'assets/logo.png', status: 'modified', patch: null, additions: 0, deletions: 0, reviewable: false },
+      { path: 'src/B.java', status: 'added', patch: '@@', additions: 5, deletions: 0, reviewable: true }
     ]
     expect(summarize(files)).toEqual({
       total: 3,
       reviewable: 2,
-      binary: 1,
+      nonReviewable: 1,
       additions: 15,
       deletions: 2
     })

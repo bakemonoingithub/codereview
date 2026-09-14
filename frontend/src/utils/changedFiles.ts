@@ -12,6 +12,8 @@ export interface ChangedFile {
   deletions?: number | null
   changes?: number | null
   patch?: string | null
+  /** 是否可审查：**由后端唯一判定**（`ReviewableFiles`），前端只读，不自己维护扩展名表 */
+  reviewable?: boolean
 }
 
 export interface ChangedFileNode {
@@ -41,24 +43,6 @@ const STATUS_META: Record<string, StatusMeta> = {
 
 const UNKNOWN_META: StatusMeta = { letter: '?', color: 'default', label: '未知' }
 
-/** 明确按二进制处理的扩展名（无 patch 时不可审查） */
-const BINARY_EXTENSIONS = new Set([
-  '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp',
-  '.zip', '.gz', '.tar', '.jar', '.war', '.class', '.pdf',
-  '.woff', '.woff2', '.ttf', '.eot', '.otf',
-  '.mp3', '.mp4', '.avi', '.mov', '.xlsx', '.xls', '.docx', '.doc', '.pptx'
-])
-
-export function extensionOf(path: string): string {
-  const name = path.slice(path.lastIndexOf('/') + 1)
-  const dot = name.lastIndexOf('.')
-  return dot > 0 ? name.slice(dot).toLowerCase() : ''
-}
-
-export function isProbablyBinary(path: string): boolean {
-  return BINARY_EXTENSIONS.has(extensionOf(path))
-}
-
 /** 是否重命名：状态为 renamed，或宿主给了原路径 */
 export function isRenamed(file: ChangedFile): boolean {
   return file.status === 'renamed' || !!file.previousPath
@@ -77,16 +61,15 @@ export function hasPatch(file: ChangedFile): boolean {
 }
 
 /**
- * 是否可勾选审查。
- * 无 patch 时：文本文件仍可审（后端会退化为审查完整文件）；二进制文件禁用（Q37）。
+ * 是否可审查 —— **直接读后端下发的字段**，前端不再自己判定。
+ *
+ * 这里原先维护了一份二进制扩展名表并据此置灰（`isProbablyBinary`）。两个问题：
+ * ① 黑名单永远补不全（漏了 `.exe`/`.dll`/`.so`/`.bin`/`.7z` …）；
+ * ② 判定分散在前端两处，早晚漂移。
+ * 现在判定只在后端 `ReviewableFiles` 一处，前面两个视图与后端编排层读的是同一个结论。
  */
 export function isReviewable(file: ChangedFile): boolean {
-  return hasPatch(file) || !isProbablyBinary(file.path)
-}
-
-/** 不可审查的原因文案 */
-export function notReviewableReason(file: ChangedFile): string {
-  return hasPatch(file) ? '' : '无可用 diff（二进制或改动过大），已禁用勾选'
+  return file.reviewable === true
 }
 
 export function fileName(path: string): string {
@@ -187,22 +170,22 @@ export function countLeaves(node: ChangedFileNode): number {
 export function summarize(files: ChangedFile[]): {
   total: number
   reviewable: number
-  binary: number
+  nonReviewable: number
   additions: number
   deletions: number
 } {
   let reviewable = 0
-  let binary = 0
+  let nonReviewable = 0
   let additions = 0
   let deletions = 0
   for (const f of files) {
     if (isReviewable(f)) {
       reviewable++
     } else {
-      binary++
+      nonReviewable++
     }
     additions += f.additions || 0
     deletions += f.deletions || 0
   }
-  return { total: files.length, reviewable, binary, additions, deletions }
+  return { total: files.length, reviewable, nonReviewable, additions, deletions }
 }

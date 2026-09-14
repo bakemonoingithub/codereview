@@ -13,7 +13,7 @@
         </a-button>
         <a-button size="small" @click="clearAll">清空</a-button>
       </a-space>
-      <span class="count">已选 {{ checked.length }} / 可审查 {{ reviewablePaths.length }}</span>
+      <span class="count">已选 {{ checked.length }} / 共 {{ selectablePaths.length }} 个文件</span>
     </div>
     <a-spin :spinning="loading">
       <a-alert v-if="error" type="error" show-icon :message="error" class="mb8">
@@ -48,16 +48,13 @@
             <a-tag v-if="dataRef.file" :color="statusMeta(dataRef.file).color" class="badge">
               {{ statusMeta(dataRef.file).letter }}
             </a-tag>
-            <span class="name" :class="{ muted: dataRef.file && !isReviewable(dataRef.file) }">
+            <span class="name">
               {{ dataRef.title }}
             </span>
             <span v-if="dataRef.file" class="stat">
               <span v-if="dataRef.file.additions" class="add">+{{ dataRef.file.additions }}</span>
               <span v-if="dataRef.file.deletions" class="del">-{{ dataRef.file.deletions }}</span>
             </span>
-            <a-tooltip v-if="dataRef.file && !isReviewable(dataRef.file)" :title="notReviewableReason(dataRef.file)">
-              <span class="mark">不可审查</span>
-            </a-tooltip>
           </span>
         </template>
       </a-tree>
@@ -69,10 +66,8 @@
 import { computed, ref, watch } from 'vue'
 import {
   buildChangedFileTree,
-  collectReviewablePaths,
+  collectAllLeafPaths,
   filterChangedFiles,
-  isReviewable,
-  notReviewableReason,
   statusMeta,
   type ChangedFile
 } from '@/utils/changedFiles'
@@ -113,7 +108,14 @@ const statusOptions = [
 
 const filteredFiles = computed(() => filterChangedFiles(props.files, keyword.value, statusFilter.value))
 const treeData = computed(() => buildChangedFileTree(filteredFiles.value))
-const reviewablePaths = computed(() => collectReviewablePaths(buildChangedFileTree(props.files)))
+/**
+ * 可勾选的叶子路径 —— **全部**叶子。
+ *
+ * 这里原先是 `collectReviewablePaths`（只收可审查的），配合置灰把二进制挡在勾选之外。
+ * 现在改成"都能勾、提交时统一警告"：静默过滤会让用户"勾了却不生效"又不知道原因
+ * （正是前两次刚修过的那类问题），而且判定权已收归后端 `ReviewableFiles`，前端不再自己筛。
+ */
+const selectablePaths = computed(() => collectAllLeafPaths(buildChangedFileTree(props.files)))
 
 // 过滤变化后自动展开，省去用户逐层点开。
 // `immediate` 不能省：挂载时 files 若已经就位（或数据是同步给的），treeData 不会再"变化"，
@@ -147,7 +149,7 @@ watch(
  * 不可审查的叶子都被挡在外面（目录级勾选会把它们一起带上）。
  */
 function mergeVisibleSelection(selectedVisible: string[]) {
-  const allowed = new Set(reviewablePaths.value)
+  const allowed = new Set(selectablePaths.value)
   const visible = new Set(filteredFiles.value.map((f) => f.path).filter((p) => allowed.has(p)))
   const kept = props.checked.filter((k) => !visible.has(k))
   const now = selectedVisible.filter((k) => visible.has(k))
