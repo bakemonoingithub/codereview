@@ -47,7 +47,21 @@
       </a-table-column>
     </a-table>
 
-    <a-modal v-model:open="modalOpen" :title="editingId ? '编辑提示词' : '新建提示词'" :confirm-loading="saving" @ok="onSave">
+    <a-modal
+      v-model:open="modalOpen"
+      :width="maximized ? '95vw' : '80vw'"
+      :wrap-class-name="maximized ? 'prompt-edit-modal is-maximized' : 'prompt-edit-modal'"
+      :confirm-loading="saving"
+      @ok="onSave"
+    >
+      <template #title>
+        <div class="modal-title-bar">
+          <span>{{ editingId ? '编辑提示词' : '新建提示词' }}</span>
+          <a-button type="link" size="small" @click="maximized = !maximized">
+            {{ maximized ? '还原' : '最大化' }}
+          </a-button>
+        </div>
+      </template>
       <a-form layout="vertical">
         <a-form-item label="名称" required>
           <a-input v-model:value="form.name" placeholder="如 通用代码审查规则" />
@@ -65,7 +79,7 @@
           />
         </a-form-item>
         <a-form-item label="正文" required>
-          <a-textarea v-model:value="form.content" :rows="8" />
+          <a-textarea v-model:value="form.content" :auto-size="textareaAutoSize" show-count />
         </a-form-item>
         <a-form-item v-if="editingId">
           <a-checkbox v-model:checked="form.createNewVersion">保存为新版本（不勾选则覆盖当前版本）</a-checkbox>
@@ -117,8 +131,13 @@ const loadError = ref('')
 const keyword = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
+const maximized = ref(false)
 const editingId = ref('')
 const form = ref({ name: '', description: '', tags: [] as string[], content: '', createNewVersion: true })
+const textareaAutoSize = computed(() => ({
+  minRows: maximized.value ? 20 : 12,
+  maxRows: maximized.value ? 40 : 30
+}))
 
 const versionOpen = ref(false)
 const versionPromptId = ref('')
@@ -167,12 +186,14 @@ async function load() {
 
 function openCreate() {
   editingId.value = ''
+  maximized.value = false
   form.value = { name: '', description: '', tags: [], content: '', createNewVersion: true }
   modalOpen.value = true
 }
 
 function openEdit(record: any) {
   editingId.value = record.id
+  maximized.value = false
   form.value = { name: record.name, description: record.description || '', tags: parseTags(record.tags), content: '', createNewVersion: true }
   getPrompt(record.id).then((d: any) => {
     form.value.content = d.currentContent || ''
@@ -242,6 +263,12 @@ onMounted(load)
   max-height: 70vh;
   overflow: auto;
 }
+.modal-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 24px;
+}
 </style>
 
 <!-- 弹窗被传送到 body，scoped 样式够不到，故用非 scoped 块给 90vw 加个上限 -->
@@ -249,6 +276,18 @@ onMounted(load)
 .prompt-diff-modal {
   .ant-modal {
     max-width: 1400px;
+  }
+}
+.prompt-edit-modal {
+  .ant-modal {
+    max-width: 1200px;
+  }
+  .ant-modal-body {
+    max-height: 70vh;
+    overflow: auto;
+  }
+  &.is-maximized .ant-modal {
+    max-width: none;
   }
 }
 </style>
