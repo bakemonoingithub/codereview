@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.codereview.common.ReviewableFiles;
+import com.codereview.common.TextWindow;
 import com.codereview.config.ReviewProperties;
 import com.codereview.dto.DeleteImpactResp;
+import com.codereview.dto.FileContentResp;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
 import com.codereview.entity.IssueMark;
@@ -18,6 +20,7 @@ import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
 import com.codereview.git.CommitInfo;
 import com.codereview.git.CommitPage;
+import com.codereview.git.GitCache;
 import com.codereview.git.GitHostClientRegistry;
 import com.codereview.git.GitRepoRef;
 import com.codereview.git.GitTreeEntry;
@@ -293,6 +296,92 @@ public class ProjectService {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
         return gitHostClients.forRepo(ref).commitDetail(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), sha);
+    }
+
+    /** 文件查看：默认最多 1000 行；{@code full=true} 放宽到 20000 行。 */
+    public static final int VIEW_MAX_LINES = 1000;
+    public static final int VIEW_FULL_MAX_LINES = 20_000;
+    /** 行数够看 ≠ 体积可控：压缩过的 js/css、单行 json 一千行就能到几十 MB。 */
+    public static final int VIEW_MAX_BYTES = 2 * 1024 * 1024;
+
+    /**
+     * 查看仓库里的一个文本文件（或该提交对它的差异）。
+     *
+     * <p>两个刻意的选择：
+     * <ul>
+     *   <li><b>服务端截断</b>：默认只回前 1000 行并带上真实总行数，避免把几万行原样塞给浏览器
+     *       —— "先全发过去再由前端截断"只是把浪费藏起来；</li>
+     *   <li><b>服务端二次校验"是否可查看"</b>：前端只让可点，但接口自己能被人直接调，
+     *       判定必须落在后端 {@link ReviewableFiles} 这一处。</li>
+     * </ul>
+     *
+     * @param mode {@code content} 取文件原文；{@code diff} 取该提交对该文件的差异
+     * @param full 是否放宽上限（界面上的「加载全文」）
+     */
+    public FileContentResp fileView(Long projectId, String ref, String path, String mode, boolean full) {
+        String normalizedMode = mode == null || mode.isBlank() ? "content" : mode.trim().toLowerCase();
+        if (!"content".equals(normalizedMode) && !"diff".equals(normalizedMode)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "不支持的模式：" + mode);
+        }
+        if (ref == null || ref.isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "缺少 ref（分支名或提交 sha）");
+        }
+        String safePath = requireSafePath(path);
+        if (!ReviewableFiles.isReviewable(safePath)) {
+            throw new BusinessException(ResultCode.GIT_FILE_NOT_VIEWABLE.getCode(),
+                    "该文件不是可查看的文本文件：" + safePath);
+        }
+        int maxLines = full ? VIEW_FULL_MAX_LINES : VIEW_MAX_LINES;
+        String text = "content".equals(normalizedMode)
+                ? readFileContent(projectId, ref.trim(), safePath)
+                : filePatch(projectId, requireSha(ref, normalizedMode), safePath);
+        TextWindow window = TextWindow.of(text, maxLines, VIEW_MAX_BYTES);
+        return new FileContentResp(normalizedMode, safePath, ref.trim(),
+                window.content(), window.truncated(), window.totalLines());
+    }
+
+    private String readFileContent(Long projectId, String ref, String path) {
+        Project p = getOrThrow(projectId);
+        GitRepoRef gitRef = GitRepoRef.parse(p.getGiteaUrl());
+        return gitHostClients.forRepo(gitRef)
+                .rawFile(p.getCredential(), p.getCredentialType(), gitRef.owner(), gitRef.repo(), ref, path);
+    }
+
+    /** diff 模式必须锚定到提交：分支名会移动，而且 commitDetail 本来就按 sha 取。 */
+    private static String requireSha(String ref, String mode) {
+        if (!GitCache.isImmutableRef(ref)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(),
+                    "diff 模式需要提交 sha，收到：" + ref + "（分支名会移动，不能用来取某个提交的差异）");
+        }
+        return ref;
+    }
+
+    /**
+     * 路径白名单：只接受仓库内的相对路径。
+     *
+     * <p>这个值会被直接拼进 Git 宿主的 URL，且 {@code ..} 能穿越到路径之外，
+     * 所以在入口就挡掉绝对路径、上跳段与反斜杠（git 路径不用 {@code \}）。
+     */
+    static String requireSafePath(String path) {
+        if (path == null || path.isBlank()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "缺少文件路径");
+        }
+        String trimmed = path.trim();
+        if (trimmed.startsWith("/") || trimmed.startsWith("\\")) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "只接受仓库内的相对路径：" + trimmed);
+        }
+        if (trimmed.contains("\\")) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "路径不能含反斜杠：" + trimmed);
+        }
+        for (String segment : trimmed.split("/")) {
+            if ("..".equals(segment) || ".".equals(segment)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "路径不能含 . 或 .. 段：" + trimmed);
+            }
+        }
+        if (trimmed.length() > 512) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "路径过长");
+        }
+        return trimmed;
     }
 
     private Project getOrThrow(Long projectId) {

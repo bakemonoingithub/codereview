@@ -26,6 +26,7 @@ public enum ResultCode {
     PROJECT_NOT_FOUND(5001, "项目不存在"),
     GIT_CONNECT_FAILED(5002, "仓库连通验证失败"),
     GIT_HOST_UNSUPPORTED(5003, "未接入的仓库宿主"),
+    GIT_FILE_NOT_VIEWABLE(5004, "该文件不是可查看的文本文件"),
     REVIEW_NOT_FOUND(6001, "审查记录不存在"),
     REVIEW_EXEC_FAILED(6002, "审查执行失败"),
     REPORT_NOT_FOUND(7001, "报告不存在"),

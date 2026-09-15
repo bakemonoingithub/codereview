@@ -3,6 +3,7 @@ package com.codereview.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.Result;
 import com.codereview.dto.DeleteImpactResp;
+import com.codereview.dto.FileContentResp;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.dto.TreeNodeResp;
 import com.codereview.entity.Project;
@@ -94,6 +95,27 @@ public class ProjectController {
                                     @PathVariable String sha,
                                     @RequestParam String path) {
         return Result.ok(projectService.filePatch(id, sha, path));
+    }
+
+    /**
+     * 文件查看：返回**已截断**的文本与截断元信息。
+     *
+     * <p>与上面那个 patch 接口的区别是刻意的：patch 接口返回裸字符串（审查结果页在用，不能改形状），
+     * 而这里要带 {@code truncated}/{@code totalLines} 让界面说清"已显示前 1000 行，共 N 行"，
+     * 所以走 JSON 信封。默认 1000 行，{@code full=true} 放宽到 20000 行且始终受 2MB 字节上限约束。
+     *
+     * @param ref  分支名或 sha（sha 才能保证"看到的是那个提交的内容"）
+     * @param path 仓库内相对路径（服务端会拒绝绝对路径与 {@code ..}，并二次校验是否可查看）
+     * @param mode {@code content}=文件原文（默认），{@code diff}=该提交对该文件的差异
+     * @param full 是否放宽上限（界面上的「加载全文」）
+     */
+    @GetMapping("/{id}/file")
+    public Result<FileContentResp> file(@PathVariable Long id,
+                                        @RequestParam String ref,
+                                        @RequestParam String path,
+                                        @RequestParam(defaultValue = "content") String mode,
+                                        @RequestParam(defaultValue = "false") boolean full) {
+        return Result.ok(projectService.fileView(id, ref, path, mode, full));
     }
 
     /**
