@@ -48,7 +48,22 @@
             <a-tag v-if="dataRef.file" :color="statusMeta(dataRef.file).color" class="badge">
               {{ statusMeta(dataRef.file).letter }}
             </a-tag>
-            <span class="name">
+            <!--
+              可查看的文本文件标题可点（=看这个提交对它的差异）。
+              这里不用 antd 的 select：树开着 checkable，用复选框勾选审查范围，
+              再让整行变成"可选中"会与勾选语义混在一起；只把标题做成可点最不容易误伤。
+
+              `.stop` 不能省：这棵树是 `:selectable="false"` 的 checkable 树，
+              点标题会被 antd 当成**切换勾选** —— 少了它，"点文件看差异"会顺手把该文件
+              加进/移出审查范围（实测踩到，见 ChangedFileTree.spec 的断言）。
+            -->
+            <span
+              v-if="dataRef.file && isReviewable(dataRef.file)"
+              class="name clickable"
+              :title="`查看 ${dataRef.title} 的提交差异`"
+              @click.stop="emit('view', dataRef.file.path)"
+            >{{ dataRef.title }}</span>
+            <span v-else class="name" :class="{ muted: dataRef.file }">
               {{ dataRef.title }}
             </span>
             <span v-if="dataRef.file" class="stat">
@@ -68,6 +83,7 @@ import {
   buildChangedFileTree,
   collectAllLeafPaths,
   filterChangedFiles,
+  isReviewable,
   statusMeta,
   type ChangedFile
 } from '@/utils/changedFiles'
@@ -92,6 +108,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: 'update:checked', value: string[]): void
   (e: 'retry'): void
+  /** 点了可查看的文件标题：调用方据此打开差异弹窗 */
+  (e: 'view', path: string): void
 }>()
 
 const keyword = ref('')
@@ -221,6 +239,15 @@ function clearAll() {
   }
   .name.muted {
     color: #bfbfbf;
+  }
+  /* 可查看的文件：看起来就该能点（下划线 + 手型），否则用户不会去试 */
+  .name.clickable {
+    color: #1677ff;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
   .stat {
     font-size: 11px;

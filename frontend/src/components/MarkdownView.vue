@@ -4,17 +4,20 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import { renderMarkdown } from '@/utils/markdown'
 
 /**
- * Markdown 渲染（marked + DOMPurify）。
+ * Markdown 渲染（marked + highlight.js + DOMPurify）。
  *
  * 抽出来的原因：这段逻辑原先只在 `RawResult` 里，而"报告预览"用 `<pre>` 直出原文 ——
  * 于是报告里显示的是 `**加粗**`、`# 标题` 这样的源码，而不是排版后的正文。
  *
+ * 渲染器本身在 `utils/markdown.ts`（按需注册语言、接管代码块以做语法高亮）；
+ * 这里只负责净化与展示。
+ *
  * `html` 用 computed 而不是模板里直接调函数：模板里调用会在**每次渲染**都重跑
- * marked + DOMPurify，长报告/大文本上很浪费。
+ * marked + highlight.js + DOMPurify，长报告/大文本上很浪费。
  */
 const props = defineProps<{
   text?: string | null
@@ -25,7 +28,7 @@ const html = computed(() => {
   if (!raw) {
     return ''
   }
-  return DOMPurify.sanitize(marked.parse(raw) as string)
+  return DOMPurify.sanitize(renderMarkdown(raw))
 })
 </script>
 

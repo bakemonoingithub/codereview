@@ -138,3 +138,57 @@ describe('C10 全选只作用于当前筛选结果', () => {
     expect(wrapper.emitted('update:checked')?.at(-1)?.[0]).toEqual(['src/a/A.java'])
   })
 })
+
+/**
+ * 点文件标题看"该提交对它的差异"。
+ *
+ * `ChangedFile.reviewable` 由后端下发（前端只读），所以这里直接构造带该字段的文件：
+ * 文本文件可点，二进制/不可审查的不可点 —— 与"能不能看内容"是同一套口径。
+ */
+describe('点文件看提交差异', () => {
+  const mixed: ChangedFile[] = [
+    { path: 'src/A.java', status: 'modified', reviewable: true },
+    { path: 'assets/logo.png', status: 'added', reviewable: false }
+  ]
+
+  function mountMixed() {
+    const wrapper = mount(ChangedFileTree, {
+      props: { files: mixed, checked: [] },
+      ...options
+    })
+    wrapper.vm.$nextTick()
+    return wrapper
+  }
+
+  it('可查看的文件标题可点，点击抛出 view 事件', async () => {
+    const wrapper = mountMixed()
+    await wrapper.vm.$nextTick()
+
+    const link = wrapper.findAll('.name.clickable').find((n) => n.text() === 'A.java')
+    expect(link, '可查看文件应有可点样式').toBeTruthy()
+
+    await link!.trigger('click')
+    expect(wrapper.emitted('view')?.[0]).toEqual(['src/A.java'])
+  })
+
+  it('不可查看的文件标题不可点（也不会抛事件）', async () => {
+    const wrapper = mountMixed()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findAll('.name.clickable').some((n) => n.text() === 'logo.png')).toBe(false)
+    const plain = wrapper.findAll('.name.muted').find((n) => n.text() === 'logo.png')
+    expect(plain, '不可查看文件应保持灰色文本').toBeTruthy()
+
+    await plain!.trigger('click')
+    expect(wrapper.emitted('view')).toBeFalsy()
+  })
+
+  it('点标题不会改动勾选集（勾选是审查范围）', async () => {
+    const wrapper = mountMixed()
+    await wrapper.vm.$nextTick()
+
+    await wrapper.findAll('.name.clickable')[0].trigger('click')
+
+    expect(wrapper.emitted('update:checked')).toBeFalsy()
+  })
+})

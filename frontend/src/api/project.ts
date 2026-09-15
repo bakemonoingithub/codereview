@@ -98,6 +98,32 @@ export function getFilePatch(id: string, sha: string, path: string) {
   return request.get(`/projects/${id}/commits/${sha}/patch`, { params: { path } }) as Promise<string | null>
 }
 
+/** 文件查看的响应：内容可能已被**服务端**截断，truncated/totalLines 用来说明"看到的是不是全文" */
+export interface FileContent {
+  mode: 'content' | 'diff'
+  path: string
+  ref: string
+  content: string
+  truncated: boolean
+  totalLines: number
+}
+
+/**
+ * 查看一个文本文件（或该提交对它的差异）。
+ *
+ * 与 {@link getFilePatch} 的区别是刻意的：那个接口返回裸字符串（审查结果页在用），
+ * 这个返回带截断元信息的 JSON，界面才能说清"已显示前 N 行，共 M 行"。
+ *
+ * @param mode content=文件原文；diff=该提交对该文件的差异（此时 ref 必须是 sha）
+ * @param full 是否放宽上限（界面上的「加载全文」）
+ */
+export function getFileContent(
+  id: string,
+  params: { ref: string; path: string; mode?: 'content' | 'diff'; full?: boolean }
+) {
+  return request.get(`/projects/${id}/file`, { params }) as Promise<FileContent>
+}
+
 /** 项目维度的准确率统计（服务验收指标 5） */
 export function getAccuracy(id: string) {
   return request.get(`/projects/${id}/accuracy`) as Promise<AccuracyStat[]>

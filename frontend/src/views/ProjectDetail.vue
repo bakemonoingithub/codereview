@@ -97,7 +97,23 @@
                     :checked-keys="structureChecked"
                     v-model:expanded-keys="expandedKeys"
                     @check="onStructureCheck"
-                  />
+                    @select="onStructureSelect"
+                  >
+                    <template #title="{ dataRef }">
+                      <!--
+                        可查看的文本文件做成可点击（点击=看内容）；二进制/无扩展名文件保持普通文本。
+                        判定用**后端下发的 reviewable**，前端不自己维护扩展名表。
+                        点击处理统一走 @select（antd 的节点点击），这里只负责样式与提示。
+                      -->
+                      <span v-if="dataRef.isFile && dataRef.reviewable" class="file-link">
+                        {{ dataRef.title }}
+                      </span>
+                      <span v-else-if="dataRef.isFile" class="not-viewable" title="非文本文件，无法查看内容">
+                        {{ dataRef.title }}
+                      </span>
+                      <span v-else>{{ dataRef.title }}</span>
+                    </template>
+                  </a-tree>
                 </a-spin>
               </a-tab-pane>
 
@@ -147,6 +163,7 @@
                   :error="detailError"
                   :truncated="!!commitDetail?.truncated"
                   @retry="loadCommitDetail(selectedCommit)"
+                  @view="openCommitDiff"
                 />
               </a-tab-pane>
             </a-tabs>
@@ -261,6 +278,15 @@
       <p class="retry-confirm-text">{{ retryConfirmMessage }}</p>
     </a-modal>
 
+    <!-- 文件查看：结构视图看内容、提交视图看该提交的差异（同一个壳，两种模式） -->
+    <FileViewerModal
+      v-model:open="fileViewerOpen"
+      :project-id="projectId"
+      :path="fileViewerPath"
+      :git-ref="fileViewerRef"
+      :mode="fileViewerMode"
+    />
+
     <!-- 查看历史记录：全屏只读快照，不影响页签里正在进行的审查 -->
     <ReviewRecordViewer
       v-model:open="recordViewerOpen"
@@ -310,6 +336,7 @@ import CommitTable from '@/components/CommitTable.vue'
 import ChangedFileTree from '@/components/ChangedFileTree.vue'
 import ReviewResult from '@/components/ReviewResult.vue'
 import ReviewRecordViewer from '@/components/ReviewRecordViewer.vue'
+import FileViewerModal from '@/components/FileViewerModal.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import AccuracyBar from '@/components/AccuracyBar.vue'
 
@@ -464,6 +491,19 @@ function clearStructureChecked() {
   structureChecked.value = []
 }
 
+/**
+ * 点节点 = 看文件内容（仅限"可查看的文本文件"）。
+ *
+ * 目录不弹窗（点它只应展开/折叠），不可查看的文件也不弹窗 —— 它们没有可展示的文本；
+ * 勾选走的是复选框（`@check`），与这里互不影响。
+ */
+function onStructureSelect(_selectedKeys: any, info: any) {
+  const node = info?.node?.dataRef ?? info?.node
+  if (node?.isFile && node?.reviewable) {
+    openFileContent(node.path)
+  }
+}
+
 // ---------------- 提交视图（独立选中集） ----------------
 const commits = ref<CommitInfo[]>([])
 const commitPage = ref(1)
@@ -534,6 +574,27 @@ const accuracyLoading = ref(false)
 const recordViewerOpen = ref(false)
 const recordViewerId = ref('')
 
+// ---------------- 文件查看 ----------------
+// 结构视图看的是"这个文件的内容"（ref=当前分支）；提交视图看的是"这个提交对它的差异"（ref=sha）
+const fileViewerOpen = ref(false)
+const fileViewerPath = ref('')
+const fileViewerRef = ref('')
+const fileViewerMode = ref<'content' | 'diff'>('content')
+
+function openFileContent(path: string) {
+  fileViewerPath.value = path
+  fileViewerRef.value = branch.value
+  fileViewerMode.value = 'content'
+  fileViewerOpen.value = true
+}
+
+function openCommitDiff(path: string) {
+  fileViewerPath.value = path
+  fileViewerRef.value = selectedCommit.value
+  fileViewerMode.value = 'diff'
+  fileViewerOpen.value = true
+}
+
 // =====================================================================
 // 分支
 // =====================================================================
@@ -567,10 +628,20 @@ async function onBranchChange() {
 // 结构视图
 // =====================================================================
 
+/**
+ * 结构树 → antd 树节点。
+ *
+ * 刻意把 `isFile` 与 `reviewable` 带下去：前者区分"文件 / 目录"（目录同样有 path，
+ * 但点它应该只展开，不该弹窗），后者决定"这个文件能不能看内容"。
+ * 判定来源是**后端下发的 reviewable**，前端不自己维护扩展名表。
+ */
 function toTreeNodes(nodes: TreeNode[]): any[] {
   return nodes.map((n) => ({
     title: n.name,
     key: n.path,
+    path: n.path,
+    isFile: n.type === 'blob',
+    reviewable: n.reviewable === true,
     children: n.children?.length ? toTreeNodes(n.children) : undefined
   }))
 }
@@ -1093,6 +1164,18 @@ defineExpose({ startPoll, resumePoll, pollError, stopPoll })
 .hint {
   color: #999;
   font-size: 12px;
+}
+/* 可查看的文件：看起来就该能点；不可查看的保持灰色但可辨认 */
+.file-link {
+  color: #1677ff;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+.not-viewable {
+  color: #bfbfbf;
 }
 .mt12 {
   margin-top: 12px;

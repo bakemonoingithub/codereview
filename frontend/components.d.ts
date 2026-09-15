@@ -55,6 +55,7 @@ declare module 'vue' {
     DiffReviewResult: typeof import('./src/components/DiffReviewResult.vue')['default']
     DiffViewer: typeof import('./src/components/DiffViewer.vue')['default']
     EmptyGuide: typeof import('./src/components/EmptyGuide.vue')['default']
+    FileViewerModal: typeof import('./src/components/FileViewerModal.vue')['default']
     ListPageLayout: typeof import('./src/components/ListPageLayout.vue')['default']
     LoadErrorAlert: typeof import('./src/components/LoadErrorAlert.vue')['default']
     MarkdownView: typeof import('./src/components/MarkdownView.vue')['default']
