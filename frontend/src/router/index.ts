@@ -1,5 +1,12 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import type { Component } from 'vue'
+import {
+  FileTextOutlined,
+  FolderOutlined,
+  RobotOutlined,
+  SettingOutlined
+} from '@ant-design/icons-vue'
 
 const APP_TITLE = '智能代码分析工具'
 
@@ -7,6 +14,13 @@ const APP_TITLE = '智能代码分析工具'
 export interface MenuItem {
   path: string
   title: string
+  /**
+   * 菜单图标。
+   *
+   * 放**组件本身**而不是组件名字符串：名字写错只会在运行时变成"这个菜单没有图标"，
+   * 静默且难查；放组件则由 TS 在编译期拦住。代价只是路由模块多 import 4 个小图标组件。
+   */
+  icon?: Component
 }
 
 const appRoutes: RouteRecordRaw[] = [
@@ -14,7 +28,7 @@ const appRoutes: RouteRecordRaw[] = [
     path: 'projects',
     name: 'projects',
     component: () => import('@/views/ProjectList.vue'),
-    meta: { title: '项目' }
+    meta: { title: '项目', icon: FolderOutlined }
   },
   {
     path: 'projects/:id',
@@ -26,19 +40,19 @@ const appRoutes: RouteRecordRaw[] = [
     path: 'models',
     name: 'models',
     component: () => import('@/views/ModelConfigList.vue'),
-    meta: { title: '模型' }
+    meta: { title: '模型', icon: RobotOutlined }
   },
   {
     path: 'strategies',
     name: 'strategies',
     component: () => import('@/views/StrategyList.vue'),
-    meta: { title: '策略' }
+    meta: { title: '策略', icon: SettingOutlined }
   },
   {
     path: 'prompts',
     name: 'prompts',
     component: () => import('@/views/PromptList.vue'),
-    meta: { title: '提示词' }
+    meta: { title: '提示词', icon: FileTextOutlined }
   }
 ]
 
@@ -50,7 +64,11 @@ const appRoutes: RouteRecordRaw[] = [
  */
 export const menuItems: MenuItem[] = appRoutes
   .filter((route) => route.meta && !route.meta.hideMenu)
-  .map((route) => ({ path: `/${route.path}`, title: String(route.meta!.title) }))
+  .map((route) => ({
+    path: `/${route.path}`,
+    title: String(route.meta!.title),
+    icon: route.meta!.icon as Component | undefined
+  }))
 
 /**
  * 当前路径对应哪个菜单项。
