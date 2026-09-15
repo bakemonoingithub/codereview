@@ -29,6 +29,17 @@
         <a-tag v-if="durationText" class="duration">{{ durationText }}</a-tag>
         <a-button v-if="showRetry" :loading="retrying" @click="$emit('retry')">重审失败单元</a-button>
       </div>
+      <!--
+        失败原因单独一条：后端把它放在 error_message（有界列），不再往 result_json 里塞，
+        所以"失败"这件事第一次有了解释——否则界面上只有一条"失败"，看不出是网关、凭据还是范围问题。
+      -->
+      <a-alert
+        v-if="record.errorMessage"
+        type="error"
+        show-icon
+        class="mb8"
+        :message="`失败原因：${record.errorMessage}`"
+      />
       <p v-if="parsed.summary" class="summary">{{ parsed.summary }}</p>
 
       <DiffReviewResult

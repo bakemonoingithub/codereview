@@ -301,4 +301,55 @@ describe('ReviewResult 只读降级', () => {
       expect(wrapper.findComponent({ name: component }).exists()).toBe(true)
     }
   })
+
+  /**
+   * 失败原因（后端 `error_message`）。
+   *
+   * 落库失败/网关报错以前界面只有一条"失败"，看不出原因；
+   * 后端已把原因搬到有界的 error_message 列，前端必须把它显出来。
+   */
+  it('失败记录显示后端给的原因', () => {
+    const wrapper = mount(ReviewResult, {
+      props: {
+        record: makeRecord({
+          status: 3,
+          resultJson: undefined,
+          errorMessage: '结果落库失败：Data too long for column \'result_json\' at row 1'
+        }),
+        projectId: 'p1'
+      },
+      ...options
+    })
+
+    const alert = wrapper.findAll('a-alert-stub').find((a) => a.attributes('message')?.includes('失败原因'))
+    expect(alert, '失败原因要单独给一条 error 提示').toBeTruthy()
+    expect(alert!.attributes('message')).toContain('失败原因：结果落库失败')
+    expect(alert!.attributes('message')).toContain('Data too long')
+    expect(alert!.attributes('type')).toBe('error')
+  })
+
+  it('没有原因时不渲染空的失败提示', () => {
+    const wrapper = mount(ReviewResult, {
+      props: { record: makeRecord({ status: 2 }), projectId: 'p1' },
+      ...options
+    })
+
+    expect(wrapper.findAll('a-alert-stub').some((a) => a.attributes('message')?.includes('失败原因'))).toBe(false)
+  })
+
+  it('重审失败但库里留着上一次结果时：结果与原因同时可见', () => {
+    // 失败路径不覆盖 result_json，所以界面会同时有"上一次的结果"和"这次为什么失败"
+    const wrapper = mount(ReviewResult, {
+      props: {
+        record: makeRecord({ status: 3, errorMessage: '重审失败：网关返回 502' }),
+        projectId: 'p1'
+      },
+      ...options
+    })
+
+    const reason = wrapper.findAll('a-alert-stub').find((a) => a.attributes('message')?.includes('失败原因'))
+    expect(reason!.attributes('message')).toContain('重审失败：网关返回 502')
+    // a-alert 的 message 是 prop、不进 text()，所以上一次的结果单独按文本断言
+    expect(wrapper.text()).toContain('无问题')
+  })
 })

@@ -141,7 +141,7 @@ public class ReviewService {
     public ReviewRecordResp detail(Long reviewId) {
         ReviewRecord r = getOrThrow(reviewId);
         return new ReviewRecordResp(r.getId(), r.getProjectId(), r.getStrategyId(), r.getBranch(), r.getCommitSha(),
-                r.getScopeJson(), r.getStatus(), r.getProgress(), r.getResultJson(),
+                r.getScopeJson(), r.getStatus(), r.getProgress(), r.getResultJson(), r.getErrorMessage(),
                 r.getStartedAt(), r.getFinishedAt(), r.getCreatedAt());
     }
 

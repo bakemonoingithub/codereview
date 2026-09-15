@@ -17,6 +17,7 @@ import org.mockito.ArgumentCaptor;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -118,7 +119,10 @@ class ReviewExecutorScopeTest {
 
         verify(analyzer, never()).analyze(any());
         assertEquals(ReviewStatus.FAILED, r.getStatus());
-        assertTrue(r.getResultJson().contains("没有可审查的文件"), "失败原因要写进记录：" + r.getResultJson());
+        // 失败原因归口到 error_message：result_json 一栏留给"结果"，
+        // 失败路径不再往里面塞 summary（否则重审失败会把上一次的结果覆盖掉）
+        assertTrue(r.getErrorMessage().contains("没有可审查的文件"), "失败原因要写进记录：" + r.getErrorMessage());
+        assertNull(r.getResultJson(), "失败路径不该写 result_json");
     }
 
     /**

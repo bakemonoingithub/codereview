@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,11 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class ReviewExecutor {
+
+    /** error_message 的列宽（V6 迁移），写入侧必须自己负责上限。 */
+    static final int ERROR_MESSAGE_MAX = 1000;
+    /** 结果体积告警阈值：现实载荷是几十 KB～几百 KB，超过它说明有异常大的记录。 */
+    static final int RESULT_WARN_BYTES = 1024 * 1024;
 
     private final ReviewRecordMapper reviewRecordMapper;
     private final ProjectMapper projectMapper;
@@ -64,7 +70,8 @@ public class ReviewExecutor {
             persist(record, outcome, scope.skipped());
         } catch (Exception e) {
             log.error("审查执行失败 recordId={}", recordId, e);
-            markFailed(record);
+            // 原因要落到记录上：否则界面只有一条"失败"，无从判断是网关、凭据还是范围问题
+            markFailedWithReason(record, "审查执行失败：" + rootMessage(e));
         }
     }
 
@@ -87,7 +94,7 @@ public class ReviewExecutor {
             persist(record, outcome, scope.skipped());
         } catch (Exception e) {
             log.error("重审失败 recordId={}", recordId, e);
-            markFailed(record);
+            markFailedWithReason(record, "重审失败：" + rootMessage(e));
         }
     }
 
@@ -139,6 +146,12 @@ public class ReviewExecutor {
      * <p>被过滤掉的文件不产生单元，所以记录里会出现"范围 N 个文件、结果只有 M 个单元"的差。
      * 这里**把差额写进 summary**：弹窗看过就没了，但记录是长期留存的资产，
      * 不写清楚的话事后会被当成 bug 排查。
+     *
+     * <p><b>落库失败必须变成"失败 + 原因"，不能把记录卡在"执行中"</b>：
+     * 早先的写法是异常冒泡给 {@link #execute} 的 catch 再调 {@code markFailed}，
+     * 而那次失败写用的实体**还带着刚刚落库失败的超大 result_json**，于是第二次同样失败、
+     * 异常逃出 {@code @Async} 方法（没有 UncaughtExceptionHandler），
+     * 记录永久停在 status=1/progress=0，接口层面零错误可见。
      */
     private void persist(ReviewRecord record, AnalyzeOutcome outcome, int skipped) {
         JsonNode result = outcome.result();
@@ -148,11 +161,67 @@ public class ReviewExecutor {
                     ? "已跳过 " + skipped + " 个非可审查文件"
                     : summary + "；已跳过 " + skipped + " 个非可审查文件");
         }
-        record.setResultJson(result.toString());
+        String json = result.toString();
+        warnIfOversized(record.getId(), json);
+        record.setResultJson(json);
         record.setStatus(outcome.status());
         record.setProgress(100);
         record.setFinishedAt(LocalDateTime.now());
-        reviewRecordMapper.updateById(record);
+        // 成功/部分成功不留旧的失败原因（重审成功的场景）
+        record.setErrorMessage(null);
+        try {
+            reviewRecordMapper.updateById(record);
+        } catch (Exception e) {
+            log.error("审查结果落库失败 recordId={} resultBytes={}", record.getId(),
+                    json.getBytes(StandardCharsets.UTF_8).length, e);
+            markFailedWithReason(record, "结果落库失败：" + rootMessage(e));
+        }
+    }
+
+    /**
+     * 结果异常大时留一条日志。
+     *
+     * <p>阈值远高于现实载荷（几十 KB～几百 KB），用途是**验收前发现病理级记录**，
+     * 而不是常规体检 —— 贴近旧的 64KB 上限只会让日志噪音掩盖真正的信号。
+     */
+    private static void warnIfOversized(Long recordId, String json) {
+        int bytes = json.getBytes(StandardCharsets.UTF_8).length;
+        if (bytes > RESULT_WARN_BYTES) {
+            log.warn("审查结果体积异常 recordId={} bytes={} threshold={}", recordId, bytes, RESULT_WARN_BYTES);
+        }
+    }
+
+    /** 取最内层原因，避免把整条 SQL 都糊到界面上。 */
+    private static String rootMessage(Throwable e) {
+        Throwable cause = e;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        String message = cause.getMessage();
+        return message == null || message.isBlank() ? cause.getClass().getSimpleName() : message;
+    }
+
+    /** 把记录落到失败态并写明原因；失败原因统一走这里，不再往 result_json 里塞。 */
+    private void markFailedWithReason(ReviewRecord record, String reason) {
+        record.setResultJson(null);
+        record.setErrorMessage(bounded(reason));
+        record.setStatus(ReviewStatus.FAILED);
+        record.setProgress(100);
+        record.setFinishedAt(LocalDateTime.now());
+        try {
+            reviewRecordMapper.updateById(record);
+        } catch (Exception e) {
+            // 连失败态都写不进去（例如库不可用）时，至少别让异常静默消失
+            log.error("写失败态也失败 recordId={}", record.getId(), e);
+        }
+    }
+
+    /** 截断到列宽：error_message 是有界列，写入侧必须自己负责上限。 */
+    static String bounded(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        return reason.length() <= ERROR_MESSAGE_MAX ? reason : reason.substring(0, ERROR_MESSAGE_MAX - 1) + "…";
     }
 
     private void markRunning(ReviewRecord record) {
@@ -161,22 +230,9 @@ public class ReviewExecutor {
             record.setStartedAt(LocalDateTime.now());
         }
         record.setProgress(0);
+        // 重审时清掉上一次的失败原因（实体策略是"总是写这一列"，故这里必须显式置空）
+        record.setErrorMessage(null);
         reviewRecordMapper.updateById(record);
-    }
-
-    private void markFailed(ReviewRecord record) {
-        record.setStatus(ReviewStatus.FAILED);
-        record.setProgress(100);
-        record.setFinishedAt(LocalDateTime.now());
-        reviewRecordMapper.updateById(record);
-    }
-
-    /** 失败也要留下可读原因，否则记录里只有一条"失败"、无从判断为什么。 */
-    private void markFailedWithReason(ReviewRecord record, String reason) {
-        ObjectNode result = objectMapper.createObjectNode();
-        result.put("summary", reason);
-        record.setResultJson(result.toString());
-        markFailed(record);
     }
 
     private static String emptyScopeReason(int total) {

@@ -10,6 +10,13 @@ export interface ReviewRecord {
   status: number
   progress: number
   resultJson?: string
+  /**
+   * 失败原因（后端 `review_record.error_message`，有界列）。
+   *
+   * 失败时 `resultJson` 可能为空、也可能仍是**上一次成功**的结果（失败不覆盖它），
+   * 所以"为什么失败"只能看这个字段，不能从结果 JSON 的 summary 里猜。
+   */
+  errorMessage?: string
   startedAt?: string
   finishedAt?: string
   createdAt: string
