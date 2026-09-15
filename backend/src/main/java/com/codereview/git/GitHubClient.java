@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriUtils;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -189,7 +190,7 @@ public class GitHubClient implements GitHostClient {
     /** 需要读响应头（Link 分页）时用这个。 */
     private ResponseEntity<String> getEntity(String url, String token, Integer credentialType) {
         String auth = authHeader(token, credentialType);
-        RestClient.RequestHeadersSpec<?> spec = restClient.get().uri(url);
+        RestClient.RequestHeadersSpec<?> spec = restClient.get().uri(encodedUri(url));
         if (auth != null) {
             spec = spec.header(HttpHeaders.AUTHORIZATION, auth);
         }
@@ -199,11 +200,28 @@ public class GitHubClient implements GitHostClient {
     private String get(String url, String token, Integer credentialType) {
         String auth = authHeader(token, credentialType);
         if (auth == null) {
-            return restClient.get().uri(url).retrieve().body(String.class);
+            return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
         }
-        return restClient.get().uri(url)
+        return restClient.get().uri(encodedUri(url))
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .retrieve().body(String.class);
+    }
+
+    /**
+     * 把**已经按段编码好的** URL 原样交给 RestClient。
+     *
+     * <p>必须传 {@link URI} 而不是 `String`：传 String 时 Spring 会把它当成 URI 模板再编码一遍，
+     * 于是 `feature/x` 编码成的 `feature%2Fx` 被二次编码成 `feature%252Fx`
+     * ——服务端解出来是字面量 `feature%2Fx`，**分支名含斜杠的请求必然 404**。
+     * 后果不只是报错：`ReviewService.resolveCommitSha` 对失败是"日志警告 + 返回 null"，
+     * 于是记录里 `commit_sha` 静默为空、审查按会移动的分支名取内容，结果不可复现。
+     *
+     * <p>前提：调用方必须已经完成编码（各方法用的是 {@code UriUtils.encodePathSegment} /
+     * {@code encodeQueryParam} / {@code encodePathSegments}）。传 {@code URI} 后 Spring 不再插手，
+     * 所以**新增调用点时务必自己编码**。
+     */
+    private static URI encodedUri(String url) {
+        return URI.create(url);
     }
 
     /** 项目级 credential 优先（token→Bearer / 密码→Basic），其次全局兜底 token。 */
