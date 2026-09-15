@@ -25,6 +25,7 @@ public enum ResultCode {
     ANALYZER_TYPE_UNSUPPORTED(4002, "分析器类型不支持"),
     PROJECT_NOT_FOUND(5001, "项目不存在"),
     GIT_CONNECT_FAILED(5002, "仓库连通验证失败"),
+    GIT_HOST_UNSUPPORTED(5003, "未接入的仓库宿主"),
     REVIEW_NOT_FOUND(6001, "审查记录不存在"),
     REVIEW_EXEC_FAILED(6002, "审查执行失败"),
     REPORT_NOT_FOUND(7001, "报告不存在"),

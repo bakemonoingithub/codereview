@@ -6,6 +6,7 @@ import com.codereview.entity.ReviewRecord;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
 import com.codereview.git.GitHostClient;
+import com.codereview.git.TestGitHostClients;
 import com.codereview.git.GitRepoRef;
 import com.codereview.llm.LlmClient;
 import com.codereview.review.ReviewStatus;
@@ -45,7 +46,7 @@ class DiffReviewAnalyzerTest {
         executor.setMaxPoolSize(2);
         executor.setQueueCapacity(64);
         executor.initialize();
-        analyzer = new DiffReviewAnalyzer(git, llm, executor, new ReviewProperties());
+        analyzer = new DiffReviewAnalyzer(TestGitHostClients.routingTo(git), llm, executor, new ReviewProperties());
     }
 
     @AfterEach

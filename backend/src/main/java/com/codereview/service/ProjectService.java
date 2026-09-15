@@ -18,7 +18,7 @@ import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
 import com.codereview.git.CommitInfo;
 import com.codereview.git.CommitPage;
-import com.codereview.git.GitHostClient;
+import com.codereview.git.GitHostClientRegistry;
 import com.codereview.git.GitRepoRef;
 import com.codereview.git.GitTreeEntry;
 import com.codereview.mapper.IssueMarkMapper;
@@ -40,18 +40,18 @@ import java.util.Map;
 public class ProjectService {
 
     private final ProjectMapper projectMapper;
-    private final GitHostClient gitHostClient;
+    private final GitHostClientRegistry gitHostClients;
     private final ReviewProperties props;
     private final ReviewRecordMapper reviewRecordMapper;
     private final ReportMapper reportMapper;
     private final ReportRecordMapper reportRecordMapper;
     private final IssueMarkMapper issueMarkMapper;
 
-    public ProjectService(ProjectMapper projectMapper, GitHostClient gitHostClient, ReviewProperties props,
+    public ProjectService(ProjectMapper projectMapper, GitHostClientRegistry gitHostClients, ReviewProperties props,
                           ReviewRecordMapper reviewRecordMapper, ReportMapper reportMapper,
                           ReportRecordMapper reportRecordMapper, IssueMarkMapper issueMarkMapper) {
         this.projectMapper = projectMapper;
-        this.gitHostClient = gitHostClient;
+        this.gitHostClients = gitHostClients;
         this.props = props;
         this.reviewRecordMapper = reviewRecordMapper;
         this.reportMapper = reportMapper;
@@ -64,7 +64,7 @@ public class ProjectService {
         int credentialType = req.credentialType() == null ? 1 : req.credentialType();
         ensureUrlAvailable(req.giteaUrl());
         try {
-            gitHostClient.branches(req.credential(), credentialType, ref.owner(), ref.repo());
+            gitHostClients.forRepo(ref).branches(req.credential(), credentialType, ref.owner(), ref.repo());
         } catch (Exception e) {
             throw new BusinessException(ResultCode.GIT_CONNECT_FAILED.getCode(), "仓库连通验证失败: " + e.getMessage());
         }
@@ -237,33 +237,34 @@ public class ProjectService {
     public List<TreeNodeResp> tree(Long projectId, String branch) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        List<GitTreeEntry> entries = gitHostClient.tree(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
+        List<GitTreeEntry> entries = gitHostClients.forRepo(ref)
+                .tree(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
         return buildTree(entries);
     }
 
     public List<String> branches(Long projectId) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClient.branches(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo());
+        return gitHostClients.forRepo(ref).branches(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo());
     }
 
     public List<CommitInfo> commits(Long projectId, String branch) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClient.commits(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
+        return gitHostClients.forRepo(ref).commits(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
     }
 
     public List<String> changedFiles(Long projectId, String base, String head) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClient.changedFiles(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), base, head);
+        return gitHostClients.forRepo(ref).changedFiles(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), base, head);
     }
 
     /** 提交列表（分页）：返回 hasMore 供前端滚动加载。 */
     public CommitPage commitPage(Long projectId, String branch, int page, int pageSize) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClient.commitPage(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(),
+        return gitHostClients.forRepo(ref).commitPage(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(),
                 branch, page, pageSize);
     }
 
@@ -291,7 +292,7 @@ public class ProjectService {
     private CommitDetail loadCommitDetail(Long projectId, String sha) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClient.commitDetail(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), sha);
+        return gitHostClients.forRepo(ref).commitDetail(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), sha);
     }
 
     private Project getOrThrow(Long projectId) {

@@ -3,7 +3,7 @@ package com.codereview.analyzer;
 import com.codereview.chunk.Chunker;
 import com.codereview.chunk.ReviewUnit;
 import com.codereview.config.ReviewProperties;
-import com.codereview.git.GitHostClient;
+import com.codereview.git.GitHostClientRegistry;
 import com.codereview.llm.LlmClient;
 import com.codereview.review.ReviewStatus;
 import com.codereview.review.RetryPolicy;
@@ -48,16 +48,16 @@ public class LlmReviewAnalyzer implements Analyzer {
                     + "\"title\":\"...\",\"description\":\"...\",\"suggestion\":\"...\"}],"
                     + "\"summary\":\"一句话概述\"}。\n\n共 %d 个文件。\n代码：\n%s";
 
-    private final GitHostClient gitHostClient;
+    private final GitHostClientRegistry gitHostClients;
     private final LlmClient llmClient;
     private final ThreadPoolTaskExecutor unitExecutor;
     private final ReviewProperties props;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public LlmReviewAnalyzer(GitHostClient gitHostClient, LlmClient llmClient,
+    public LlmReviewAnalyzer(GitHostClientRegistry gitHostClients, LlmClient llmClient,
                              @Qualifier("reviewUnitExecutor") ThreadPoolTaskExecutor unitExecutor,
                              ReviewProperties props) {
-        this.gitHostClient = gitHostClient;
+        this.gitHostClients = gitHostClients;
         this.llmClient = llmClient;
         this.unitExecutor = unitExecutor;
         this.props = props;
@@ -103,7 +103,9 @@ public class LlmReviewAnalyzer implements Analyzer {
         List<UnitTask> tasks = new ArrayList<>();
         for (String path : paths) {
             try {
-                String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(), ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
+                String code = gitHostClients.forRepo(ctx.ref())
+                        .rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
+                                ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
                 for (ReviewUnit u : Chunker.chunk(path, code, props.getChunkMaxChars())) {
                     tasks.add(UnitTask.of(u));
                 }
@@ -142,8 +144,9 @@ public class LlmReviewAnalyzer implements Analyzer {
         int totalLines = 0;
         for (String path : ctx.scope()) {
             try {
-                String code = gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                        ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
+                String code = gitHostClients.forRepo(ctx.ref())
+                        .rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
+                                ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
                 merged.append("==== 文件: ").append(path).append(" ====\n");
                 merged.append(code).append("\n\n");
                 fetched++;

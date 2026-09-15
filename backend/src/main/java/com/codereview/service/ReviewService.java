@@ -16,7 +16,7 @@ import com.codereview.entity.Prompt;
 import com.codereview.entity.PromptVersion;
 import com.codereview.entity.ReviewRecord;
 import com.codereview.entity.ReviewStrategy;
-import com.codereview.git.GitHostClient;
+import com.codereview.git.GitHostClientRegistry;
 import com.codereview.git.GitRepoRef;
 import com.codereview.mapper.ModelConfigMapper;
 import com.codereview.mapper.ProjectMapper;
@@ -44,7 +44,7 @@ public class ReviewService {
     private final ProjectMapper projectMapper;
     private final ReviewStrategyMapper strategyMapper;
     private final ModelConfigMapper modelConfigMapper;
-    private final GitHostClient gitHostClient;
+    private final GitHostClientRegistry gitHostClients;
     private final ReviewExecutor reviewExecutor;
     private final PromptMapper promptMapper;
     private final PromptVersionMapper promptVersionMapper;
@@ -52,13 +52,13 @@ public class ReviewService {
 
     public ReviewService(ReviewRecordMapper reviewRecordMapper, ProjectMapper projectMapper,
                          ReviewStrategyMapper strategyMapper, ModelConfigMapper modelConfigMapper,
-                         GitHostClient gitHostClient, ReviewExecutor reviewExecutor,
+                         GitHostClientRegistry gitHostClients, ReviewExecutor reviewExecutor,
                          PromptMapper promptMapper, PromptVersionMapper promptVersionMapper) {
         this.reviewRecordMapper = reviewRecordMapper;
         this.projectMapper = projectMapper;
         this.strategyMapper = strategyMapper;
         this.modelConfigMapper = modelConfigMapper;
-        this.gitHostClient = gitHostClient;
+        this.gitHostClients = gitHostClients;
         this.reviewExecutor = reviewExecutor;
         this.promptMapper = promptMapper;
         this.promptVersionMapper = promptVersionMapper;
@@ -229,7 +229,8 @@ public class ReviewService {
     private String resolveCommitSha(Project p, String branch) {
         try {
             GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-            return gitHostClient.headCommitSha(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
+            return gitHostClients.forRepo(ref)
+                    .headCommitSha(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
         } catch (Exception e) {
             log.warn("解析 HEAD commit sha 失败，降级留空: {}", e.getMessage());
             return null;

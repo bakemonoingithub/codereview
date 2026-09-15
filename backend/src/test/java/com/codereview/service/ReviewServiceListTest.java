@@ -8,7 +8,7 @@ import com.codereview.common.PageLimits;
 import com.codereview.dto.ReviewRecordRow;
 import com.codereview.entity.ReviewRecord;
 import com.codereview.entity.ReviewStrategy;
-import com.codereview.git.GitHostClient;
+import com.codereview.git.TestGitHostClients;
 import com.codereview.mapper.ModelConfigMapper;
 import com.codereview.mapper.ProjectMapper;
 import com.codereview.mapper.PromptMapper;
@@ -71,7 +71,7 @@ class ReviewServiceListTest {
         reviewRecordMapper = mock(ReviewRecordMapper.class);
         strategyMapper = mock(ReviewStrategyMapper.class);
         service = new ReviewService(reviewRecordMapper, mock(ProjectMapper.class), strategyMapper,
-                mock(ModelConfigMapper.class), mock(GitHostClient.class), mock(ReviewExecutor.class),
+                mock(ModelConfigMapper.class), TestGitHostClients.withMockClient(), mock(ReviewExecutor.class),
                 mock(PromptMapper.class), mock(PromptVersionMapper.class));
     }
 

@@ -1,6 +1,6 @@
 package com.codereview.material;
 
-import com.codereview.git.GitHostClient;
+import com.codereview.git.GitHostClientRegistry;
 import com.codereview.git.GitRepoRef;
 import org.springframework.stereotype.Component;
 
@@ -11,12 +11,12 @@ import java.util.List;
 @Component
 public class MaterialService {
 
-    private final GitHostClient gitHostClient;
+    private final GitHostClientRegistry gitHostClients;
     private final StructureExtractor extractor = new StructureExtractor();
     private final MaterialCache cache;
 
-    public MaterialService(GitHostClient gitHostClient, MaterialCache cache) {
-        this.gitHostClient = gitHostClient;
+    public MaterialService(GitHostClientRegistry gitHostClients, MaterialCache cache) {
+        this.gitHostClients = gitHostClients;
         this.cache = cache;
     }
 
@@ -27,7 +27,8 @@ public class MaterialService {
             List<SourceFile> files = new ArrayList<>();
             for (String path : scope) {
                 try {
-                    files.add(new SourceFile(path, gitHostClient.rawFile(token, credentialType, ref.owner(), ref.repo(), contentRef, path)));
+                    files.add(new SourceFile(path, gitHostClients.forRepo(ref)
+                            .rawFile(token, credentialType, ref.owner(), ref.repo(), contentRef, path)));
                 } catch (Exception ignored) {
                     // 单文件拉取失败跳过
                 }

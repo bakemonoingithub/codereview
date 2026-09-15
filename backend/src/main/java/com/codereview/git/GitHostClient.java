@@ -1,6 +1,7 @@
 package com.codereview.git;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Git 宿主客户端抽象（GitHub 与 Gitea 的 REST API 高度兼容，故抽一层适配）。
@@ -8,8 +9,28 @@ import java.util.List;
  * <p>
  * 接口按「最小公共能力」设计：不暴露任何宿主专有字段，{@link ChangedFile#patch()} 允许为空，
  * 重命名信息允许缺失，{@code files} 保证已稳定排序 —— 以便后续接入 Gitea 时无需改动上层。
+ * <p>
+ * <b>多宿主的选法是显式的</b>：每个实现用 {@link #hosts()} 声明它服务哪些 host，
+ * 调用方通过 {@link GitHostClientRegistry#forRepo} 取到对应实现。**没有**"默认实现"这一说 ——
+ * 未命中的 host 会显式报 {@code GIT_HOST_UNSUPPORTED}，绝不悄悄去查别的站点
+ * （历史上正是"填了内网地址却去查 api.github.com"这种静默回落，把问题藏了很久）。
  */
 public interface GitHostClient {
+
+    /**
+     * 本实现服务的仓库 host（大小写不敏感、精确匹配，如 {@code github.com}）。
+     *
+     * @see GitRepoRef#host()
+     */
+    Set<String> hosts();
+
+    /** 是否服务这个仓库地址；匹配规则集中在这里，避免各实现各写一套。 */
+    default boolean supports(GitRepoRef ref) {
+        if (ref == null || ref.host() == null || hosts() == null) {
+            return false;
+        }
+        return hosts().stream().anyMatch(host -> host.equalsIgnoreCase(ref.host().trim()));
+    }
 
     /** 递归文件树（扁平条目） */
     List<GitTreeEntry> tree(String token, Integer credentialType, String owner, String repo, String branch);

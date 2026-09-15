@@ -6,7 +6,7 @@ import com.codereview.dto.DeleteImpactResp;
 import com.codereview.entity.Project;
 import com.codereview.entity.Report;
 import com.codereview.entity.ReviewRecord;
-import com.codereview.git.GitHostClient;
+import com.codereview.git.TestGitHostClients;
 import com.codereview.mapper.IssueMarkMapper;
 import com.codereview.mapper.ProjectMapper;
 import com.codereview.mapper.ReportMapper;
@@ -58,7 +58,7 @@ class ProjectServiceDeleteTest {
         reportRecordMapper = mock(ReportRecordMapper.class);
         issueMarkMapper = mock(IssueMarkMapper.class);
         props = new ReviewProperties();
-        service = new ProjectService(projectMapper, mock(GitHostClient.class), props,
+        service = new ProjectService(projectMapper, TestGitHostClients.withMockClient(), props,
                 reviewRecordMapper, reportMapper, reportRecordMapper, issueMarkMapper);
     }
 

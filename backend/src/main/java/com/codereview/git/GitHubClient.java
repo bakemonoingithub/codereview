@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 
 /**
  * GitHub 实现；token 可空（项目级 credential 为空时回退 github.token 兜底认证，
@@ -42,6 +43,11 @@ public class GitHubClient implements GitHostClient {
         this.rawBase = gitProperties.normalizedRawBase();
         this.cache = cache;
         this.restClient = restClient();
+    }
+
+    @Override
+    public Set<String> hosts() {
+        return Set.of("github.com");
     }
 
     @Override

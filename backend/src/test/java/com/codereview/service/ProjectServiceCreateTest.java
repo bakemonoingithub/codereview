@@ -5,6 +5,7 @@ import com.codereview.config.ReviewProperties;
 import com.codereview.dto.ProjectCreateReq;
 import com.codereview.entity.Project;
 import com.codereview.git.GitHostClient;
+import com.codereview.git.TestGitHostClients;
 import com.codereview.mapper.IssueMarkMapper;
 import com.codereview.mapper.ProjectMapper;
 import com.codereview.mapper.ReportMapper;
@@ -44,7 +45,7 @@ class ProjectServiceCreateTest {
     void setUp() {
         projectMapper = mock(ProjectMapper.class);
         gitHostClient = mock(GitHostClient.class);
-        service = new ProjectService(projectMapper, gitHostClient, new ReviewProperties(),
+        service = new ProjectService(projectMapper, TestGitHostClients.routingTo(gitHostClient), new ReviewProperties(),
                 mock(ReviewRecordMapper.class), mock(ReportMapper.class),
                 mock(ReportRecordMapper.class), mock(IssueMarkMapper.class));
     }

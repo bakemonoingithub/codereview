@@ -3,7 +3,7 @@ package com.codereview.service;
 import com.codereview.common.BusinessException;
 import com.codereview.config.ReviewProperties;
 import com.codereview.entity.Project;
-import com.codereview.git.GitHostClient;
+import com.codereview.git.TestGitHostClients;
 import com.codereview.mapper.IssueMarkMapper;
 import com.codereview.mapper.ProjectMapper;
 import com.codereview.mapper.ReportMapper;
@@ -31,7 +31,7 @@ class ProjectServiceDetailTest {
     @BeforeEach
     void setUp() {
         projectMapper = mock(ProjectMapper.class);
-        service = new ProjectService(projectMapper, mock(GitHostClient.class), new ReviewProperties(),
+        service = new ProjectService(projectMapper, TestGitHostClients.withMockClient(), new ReviewProperties(),
                 mock(ReviewRecordMapper.class), mock(ReportMapper.class),
                 mock(ReportRecordMapper.class), mock(IssueMarkMapper.class));
     }

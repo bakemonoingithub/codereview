@@ -5,7 +5,7 @@ import com.codereview.diff.DiffReviewUnit;
 import com.codereview.diff.DiffUnitBuilder;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
-import com.codereview.git.GitHostClient;
+import com.codereview.git.GitHostClientRegistry;
 import com.codereview.llm.LlmClient;
 import com.codereview.review.RetryPolicy;
 import com.codereview.review.ReviewStatus;
@@ -66,16 +66,16 @@ public class DiffReviewAnalyzer implements Analyzer {
             代码（行首 + 为新增行，- 为删除行，数字为新文件行号）：
             %s""";
 
-    private final GitHostClient gitHostClient;
+    private final GitHostClientRegistry gitHostClients;
     private final LlmClient llmClient;
     private final ThreadPoolTaskExecutor unitExecutor;
     private final ReviewProperties props;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public DiffReviewAnalyzer(GitHostClient gitHostClient, LlmClient llmClient,
+    public DiffReviewAnalyzer(GitHostClientRegistry gitHostClients, LlmClient llmClient,
                               @Qualifier("reviewUnitExecutor") ThreadPoolTaskExecutor unitExecutor,
                               ReviewProperties props) {
-        this.gitHostClient = gitHostClient;
+        this.gitHostClients = gitHostClients;
         this.llmClient = llmClient;
         this.unitExecutor = unitExecutor;
         this.props = props;
@@ -94,8 +94,9 @@ public class DiffReviewAnalyzer implements Analyzer {
         }
         CommitDetail detail;
         try {
-            detail = gitHostClient.commitDetail(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                    ctx.ref().owner(), ctx.ref().repo(), sha);
+            detail = gitHostClients.forRepo(ctx.ref())
+                    .commitDetail(ctx.project().getCredential(), ctx.project().getCredentialType(),
+                            ctx.ref().owner(), ctx.ref().repo(), sha);
         } catch (Exception e) {
             return failure("拉取单提交详情失败: " + e.getMessage());
         }
@@ -191,8 +192,9 @@ public class DiffReviewAnalyzer implements Analyzer {
 
     private String tryRawFile(AnalysisContext ctx, String sha, String path) {
         try {
-            return gitHostClient.rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                    ctx.ref().owner(), ctx.ref().repo(), sha, path);
+            return gitHostClients.forRepo(ctx.ref())
+                    .rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
+                            ctx.ref().owner(), ctx.ref().repo(), sha, path);
         } catch (Exception e) {
             return null;
         }
