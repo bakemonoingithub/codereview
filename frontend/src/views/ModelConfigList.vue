@@ -28,7 +28,14 @@
       <a-table-column title="操作">
         <template #default="{ record }">
           <a-space>
-            <a-button size="small" @click="onVerify(record)">验证</a-button>
+            <a-button
+              size="small"
+              :loading="verifyingId === record.id"
+              :disabled="!!verifyingId"
+              @click="onVerify(record)"
+            >
+              验证
+            </a-button>
             <a-button size="small" @click="openEdit(record)">编辑</a-button>
             <a-popconfirm title="确认删除？" @confirm="onDelete(record.id)">
               <a-button size="small" danger>删除</a-button>
@@ -72,6 +79,8 @@ const loading = ref(false)
 const loadError = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
+/** 正在验证的模型 id：验证会外呼模型网关，必须防连点（此前可连点 N 次 = N 个并发外呼） */
+const verifyingId = ref('')
 const editingId = ref('')
 const tokenConfigured = ref(false)
 const clearToken = ref(false)
@@ -139,12 +148,17 @@ async function onSave() {
 }
 
 async function onVerify(record: any) {
+  if (verifyingId.value) return
+  verifyingId.value = record.id
   try {
     await verifyModel(record.id)
     message.success('验证完成')
-    await load()
   } catch (e: any) {
+    // 后端失败时返回 3002 + 原因（原先无论成败都回 200，这里拿到的是绿色"验证完成"）
     message.error(e?.message || '验证失败')
+  } finally {
+    verifyingId.value = ''
+    await load()
   }
 }
 

@@ -108,9 +108,25 @@ public class ModelConfigService {
             llmClient.ping(m.getBaseUrl(), m.getToken(), m.getModelName());
             m.setStatus(1); // 验证成功
         } catch (Exception e) {
-            m.setStatus(2); // 验证失败
+            // 失败仍要落 status=2（列表上能看到"验证失败"），但**必须报错**：
+            // 原先无论成功失败都返回 200 + status=2，前端 await 正常 resolve、
+            // 先弹一条绿色"验证完成"，刷新后才看到红色"验证失败"，且全程没有失败原因。
+            m.setStatus(2);
+            modelConfigMapper.updateById(m);
+            throw new BusinessException(ResultCode.MODEL_VERIFY_FAILED.getCode(),
+                    "连通验证失败：" + rootReason(e));
         }
         modelConfigMapper.updateById(m);
         return m;
+    }
+
+    /** 取最内层原因：RestClient 的异常外层往往只有一句笼统的 4xx/5xx 描述。 */
+    private static String rootReason(Throwable e) {
+        Throwable current = e;
+        for (int depth = 0; current.getCause() != null && current.getCause() != current && depth < 10; depth++) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return (message == null || message.isBlank()) ? current.getClass().getSimpleName() : message;
     }
 }

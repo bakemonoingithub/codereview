@@ -13,7 +13,9 @@ import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,12 +34,14 @@ import static org.mockito.Mockito.when;
 class ModelConfigServiceTest {
 
     private ModelConfigMapper modelConfigMapper;
+    private LlmClient llmClient;
     private ModelConfigService service;
 
     @BeforeEach
     void setUp() {
         modelConfigMapper = mock(ModelConfigMapper.class);
-        service = new ModelConfigService(modelConfigMapper, mock(LlmClient.class));
+        llmClient = mock(LlmClient.class);
+        service = new ModelConfigService(modelConfigMapper, llmClient);
     }
 
     @Test
@@ -102,5 +106,43 @@ class ModelConfigServiceTest {
         verify(modelConfigMapper).selectPage(captor.capture(), any());
         assertEquals(1, captor.getValue().getSize());
         assertEquals(1, captor.getValue().getCurrent());
+    }
+
+    // ---------------- 「验证」的失败语义（backlog ⑥） ----------------
+
+    private ModelConfig model() {
+        ModelConfig m = new ModelConfig();
+        m.setId(1L);
+        m.setName("deepseek");
+        m.setBaseUrl("http://llm.local");
+        m.setToken("sk-x");
+        m.setModelName("deepseek-chat");
+        when(modelConfigMapper.selectById(1L)).thenReturn(m);
+        return m;
+    }
+
+    @Test
+    void verifyFailureReportsAnErrorInsteadOfPretendingSuccess() {
+        model();
+        // ping 返回 void：只能用 doThrow 形式
+        doThrow(new IllegalStateException("connection refused")).when(llmClient).ping(any(), any(), any());
+
+        BusinessException e = assertThrows(BusinessException.class, () -> service.verify(1L));
+
+        assertEquals(3002, e.getCode(), "应使用既有的 MODEL_VERIFY_FAILED 错误码");
+        assertTrue(e.getMessage().contains("connection refused"), "失败原因要带出来：" + e.getMessage());
+        ArgumentCaptor<ModelConfig> captor = ArgumentCaptor.forClass(ModelConfig.class);
+        verify(modelConfigMapper).updateById(captor.capture());
+        assertEquals(2, captor.getValue().getStatus(), "失败仍要落库，列表上能看到「验证失败」");
+    }
+
+    @Test
+    void verifySuccessMarksTheModelAndReturnsIt() {
+        ModelConfig m = model();
+
+        ModelConfig verified = service.verify(1L);
+
+        assertEquals(1, verified.getStatus());
+        assertEquals(m.getId(), verified.getId());
     }
 }
