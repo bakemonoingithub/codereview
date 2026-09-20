@@ -98,8 +98,16 @@
       <a-space style="margin-bottom: 12px">
         <a-select v-model:value="fromVersion" style="width: 180px" :options="versionOptions" placeholder="旧版本" />
         <a-select v-model:value="toVersion" style="width: 180px" :options="versionOptions" placeholder="新版本" />
-        <a-button type="primary" :disabled="!fromVersion || !toVersion" @click="loadDiff">对比</a-button>
+        <a-button
+          type="primary"
+          :loading="diffLoading"
+          :disabled="!fromVersion || !toVersion || diffLoading || versionLoading"
+          @click="loadDiff"
+        >
+          对比
+        </a-button>
       </a-space>
+      <LoadErrorAlert :message="diffError" @retry="loadDiff" />
       <div class="diff-scroll">
         <a-empty v-if="!diffLines.length" style="margin: 24px 0" description="暂无对比内容" />
         <a-empty v-else-if="!hasAnyChange" style="margin: 24px 0" description="两版内容相同" />
@@ -147,6 +155,10 @@ const versionOptions = ref<{ value: string; label: string }[]>([])
 const fromVersion = ref('')
 const toVersion = ref('')
 const diffLines = ref<PromptDiffRow[]>([])
+const versionLoading = ref(false)
+const diffLoading = ref(false)
+/** 版本列表/对比失败的提示（原先失败被伪装成"暂无对比内容"） */
+const diffError = ref('')
 
 const oldLabel = computed(() => `旧版本 ${versionLabel(fromVersion.value)}`.trim())
 const newLabel = computed(() => `新版本 ${versionLabel(toVersion.value)}`.trim())
@@ -257,21 +269,44 @@ async function onDelete(id: string) {
 async function openVersions(record: any) {
   versionPromptId.value = record.id
   versionOpen.value = true
+  // 先清空上一次的选项与结果：失败时若残留上一条提示词的版本，
+  // 用户点「对比」会带着"新记录的 id + 旧记录的版本 id"发出**跨提示词**的请求，结果毫无意义
+  versionOptions.value = []
   diffLines.value = []
+  diffError.value = ''
   fromVersion.value = ''
   toVersion.value = ''
-  const d = (await getPrompt(record.id)) as any
-  versionOptions.value = (d.versions || []).map((v: any) => ({ value: v.id, label: `v${v.versionNo}` }))
-  if (versionOptions.value.length >= 2) {
-    fromVersion.value = versionOptions.value[versionOptions.value.length - 2].value
-    toVersion.value = versionOptions.value[versionOptions.value.length - 1].value
-    await loadDiff()
+  versionLoading.value = true
+  try {
+    const d = (await getPrompt(record.id)) as any
+    if (versionPromptId.value !== record.id) return // 期间切到了别的提示词/关了弹窗
+    versionOptions.value = (d.versions || []).map((v: any) => ({ value: v.id, label: `v${v.versionNo}` }))
+    if (versionOptions.value.length >= 2) {
+      fromVersion.value = versionOptions.value[versionOptions.value.length - 2].value
+      toVersion.value = versionOptions.value[versionOptions.value.length - 1].value
+      await loadDiff()
+    }
+  } catch (e: any) {
+    if (versionPromptId.value !== record.id) return
+    diffError.value = e?.message || '加载版本列表失败，请重试'
+  } finally {
+    if (versionPromptId.value === record.id) versionLoading.value = false
   }
 }
 
 async function loadDiff() {
   if (!fromVersion.value || !toVersion.value) return
-  diffLines.value = await diffPrompt(versionPromptId.value, fromVersion.value, toVersion.value)
+  diffLoading.value = true
+  diffError.value = ''
+  try {
+    diffLines.value = await diffPrompt(versionPromptId.value, fromVersion.value, toVersion.value)
+  } catch (e: any) {
+    // 失败不能伪装成"暂无对比内容"，也不能把上一对版本的 diff 留在屏幕上冒充结果
+    diffLines.value = []
+    diffError.value = e?.message || '对比失败，请重试'
+  } finally {
+    diffLoading.value = false
+  }
 }
 
 onMounted(load)
