@@ -3,9 +3,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, watch } from 'vue'
 import DOMPurify from 'dompurify'
-import { renderMarkdown } from '@/utils/markdown'
 
 /**
  * Markdown 渲染（marked + highlight.js + DOMPurify）。
@@ -16,20 +15,33 @@ import { renderMarkdown } from '@/utils/markdown'
  * 渲染器本身在 `utils/markdown.ts`（按需注册语言、接管代码块以做语法高亮）；
  * 这里只负责净化与展示。
  *
- * `html` 用 computed 而不是模板里直接调函数：模板里调用会在**每次渲染**都重跑
+ * **`utils/markdown` 改成动态 import**：它静态引入 highlight.js 核心 + 35 种语言
+ * （约 200 kB，gzip 60 kB），而它只被这里用到 —— 静态引入会把这份体积塞进
+ * `ProjectDetail`（审查详情页）的首屏 chunk，哪怕用户根本没打开报告。改成打开时才拉，
+ * 首屏只多一次按需请求。
+ *
+ * 渲染结果放 `ref` 而不是 computed：模板里调用会在**每次渲染**重跑
  * marked + highlight.js + DOMPurify，长报告/大文本上很浪费。
  */
 const props = defineProps<{
   text?: string | null
 }>()
 
-const html = computed(() => {
-  const raw = props.text ?? ''
-  if (!raw) {
-    return ''
-  }
-  return DOMPurify.sanitize(renderMarkdown(raw))
-})
+const html = ref('')
+
+watch(
+  () => props.text,
+  async (text) => {
+    const raw = text ?? ''
+    if (!raw) {
+      html.value = ''
+      return
+    }
+    const { renderMarkdown } = await import('@/utils/markdown')
+    html.value = DOMPurify.sanitize(renderMarkdown(raw))
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped lang="less">
