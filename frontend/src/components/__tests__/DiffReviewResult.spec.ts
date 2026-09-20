@@ -43,7 +43,11 @@ const options = {
       // stub 必须还原这一步，否则测的就不是真实渲染路径
       DiffViewer: {
         name: 'DiffViewer',
-        props: ['comments'],
+        // 用**对象形式**声明：数组形式的 prop 没有类型，裸属性 `highlight` 会拿到空字符串而不是 true
+        props: {
+          comments: { type: Array, default: () => [] },
+          highlight: { type: Boolean, default: false }
+        },
         computed: {
           extendItems(this: any) {
             return ((this.comments as any[]) || []).map((c: any) => c.data)
@@ -74,6 +78,13 @@ function buttonByText(wrapper: ReturnType<typeof mountResult>, text: string) {
 }
 
 describe('DiffReviewResult 行内标记的只读降级', () => {
+  it('审查结果页的 diff 也要开语法高亮（与新弹窗一致）', () => {
+    const wrapper = mountResult()
+
+    const viewer = wrapper.findComponent({ name: 'DiffViewer' })
+    expect(viewer.props('highlight'), '两处观感不能一个高亮一个不高亮').toBe(true)
+  })
+
   it('非只读：误报/已采纳可点，且不透传 disabled', () => {
     const wrapper = mountResult()
     expect(buttonByText(wrapper, '误报')!.attributes('disabled')).toBeUndefined()

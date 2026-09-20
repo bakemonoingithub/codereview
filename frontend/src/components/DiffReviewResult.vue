@@ -52,6 +52,7 @@
               :patch="patches[unit.path]"
               :status="unit.changeType"
               :comments="commentsOf(unit)"
+              highlight
               empty-text="该文件无可用 diff（二进制或改动过大）"
             >
               <template #extend="{ items }">
