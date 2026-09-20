@@ -30,6 +30,16 @@
       description="列表接口不返回完整结果（单条可达 MB 级），需要按 id 拉详情；请关闭后重试。"
     />
 
+    <!-- 标记加载失败与"本来没有标记"必须区分：否则界面上"一个标记都没有"看不出是接口挂了 -->
+    <a-alert
+      v-if="marksError"
+      type="warning"
+      show-icon
+      class="viewer-error"
+      message="标记（误报/已采纳）加载失败"
+      description="下面展示的是不含标记的结果；关闭弹窗后重开可重试。"
+    />
+
     <ReviewConfigSnapshot
       v-if="open && displayRecord"
       :record="displayRecord"
@@ -87,6 +97,8 @@ const record = ref<ReviewRecord | null>(null)
 const marks = ref<IssueMark[]>([])
 const loading = ref(false)
 const error = ref(false)
+/** 标记单独失败：与"记录本身没加载出来"区分开，也与"确实没有标记"区分开 */
+const marksError = ref(false)
 
 // 供测试断言内部状态：弹窗内容由 antd Modal 渲染在 body 上，
 // 用 wrapper.text() 断不到（Modal 在测试里被 stub 时插槽根本不渲染）
@@ -118,11 +130,16 @@ watch(
     record.value = null
     marks.value = []
     error.value = false
+    marksError.value = false
     loading.value = true
     try {
       const [full, recordMarks] = await Promise.all([
         getReview(id),
-        listMarks(id).catch(() => [] as IssueMark[])
+        // 只读弹窗：标记拉不到不该让整个详情失败，但也**不能当成"没有标记"**
+        listMarks(id).catch(() => {
+          marksError.value = true
+          return [] as IssueMark[]
+        })
       ])
       record.value = full
       marks.value = recordMarks

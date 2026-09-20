@@ -170,6 +170,7 @@
           </template>
 
           <template #right>
+            <LoadErrorAlert :message="marksError" @retry="retryMarks" />
             <ReviewResult
               :record="review"
               :project-id="projectId"
@@ -186,6 +187,7 @@
 
       <!-- ---------------- 审查记录（含准确率汇总） ---------------- -->
       <a-tab-pane key="records" tab="审查记录">
+        <LoadErrorAlert :message="accuracyError" @retry="loadAccuracy" />
         <AccuracyBar :stats="accuracy" :loading="accuracyLoading" />
         <a-divider style="margin: 12px 0" />
         <LoadErrorAlert :message="recordsError" @retry="retryRecords" />
@@ -532,6 +534,8 @@ const triggering = ref(false)
 const retrying = ref(false)
 const review = ref<ReviewRecord | null>(null)
 const marks = ref<IssueMark[]>([])
+/** 标记/准确率拉取失败的原因：失败时保留上一次的数据并显式提示，不再静默清空 */
+const marksError = ref('')
 let pollTimer: number | undefined
 /** 当前轮询的记录 id（供「继续等待」恢复用，不依赖 review 是否还在） */
 let polledId = ''
@@ -568,6 +572,7 @@ const confirmSkippedCount = computed(() => confirmScope.value.length - confirmRe
 // 分页状态由 useRecordPagination 持有（与"报告-选择审查记录"共用同一套分页语义）
 const accuracy = ref<AccuracyStat[]>([])
 const accuracyLoading = ref(false)
+const accuracyError = ref('')
 
 // ---------------- 记录只读查看（全屏模态框） ----------------
 // 只持有"看哪一条"：完整记录与标记由弹窗自己按 id 拉，不污染页签里正在进行的审查
@@ -877,6 +882,7 @@ async function doTrigger() {
     })
     review.value = record
     marks.value = []
+    marksError.value = ''
     confirmOpen.value = false
     if (record.status < 2) {
       startPoll(record.id)
@@ -1036,8 +1042,16 @@ function resumePoll() {
 async function loadMarks(recordId: string) {
   try {
     marks.value = await listMarks(recordId)
-  } catch {
-    marks.value = []
+    marksError.value = ''
+  } catch (e: any) {
+    // 失败**不清空**：已点的"误报/已采纳"会整批消失，看起来像从没标过（真缺陷）
+    marksError.value = e?.message || '标记加载失败'
+  }
+}
+
+function retryMarks() {
+  if (review.value) {
+    void loadMarks(review.value.id)
   }
 }
 
@@ -1056,8 +1070,11 @@ async function loadAccuracy() {
   accuracyLoading.value = true
   try {
     accuracy.value = await getAccuracy(projectId)
-  } catch {
-    accuracy.value = []
+    accuracyError.value = ''
+  } catch (e: any) {
+    // 失败不清空：AccuracyBar 会把空数组渲染成"暂无审查结果，无法统计准确率"，
+    // 于是**接口失败被误报成"本来就没有结果"**（指标 5 的口径会因此失真）
+    accuracyError.value = e?.message || '准确率加载失败'
   } finally {
     accuracyLoading.value = false
   }
@@ -1103,8 +1120,10 @@ onUnmounted(() => {
 })
 
 // 供测试驱动轮询：轮询是"失败不再永久停止"这条契约的唯一实现处，
-// 而它由 setInterval 驱动，只能通过实例入口配合假定时器验证
-defineExpose({ startPoll, resumePoll, pollError, stopPoll })
+// 而它由 setInterval 驱动，只能通过实例入口配合假定时器验证。
+// `loadMarks/marks/marksError` 同理：标记失败"不清空"这条契约藏在 async 分支里，
+// 没有别的可观察入口（右边栏只在触发审查后才渲染）。
+defineExpose({ startPoll, resumePoll, pollError, stopPoll, loadMarks, marks, marksError })
 </script>
 
 <style scoped lang="less">
