@@ -128,14 +128,38 @@ public class ReviewService {
 
     public void retry(Long reviewId) {
         ReviewRecord r = getOrThrow(reviewId);
-        if (r.getStatus() == null || r.getStatus() < 2) {
-            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "审查未结束，无法重审");
+        // 只有失败(3)与部分成功(4)可重审 —— 与前端 canRetry / 置灰按钮同口径。
+        // 原先的判据是 `status < 2`（未结束才拒），等于**允许对成功记录重审**：
+        // 前端按钮是灰的，这条路径只能被直接调 API 触发，而重审会覆盖已确认的结果资产
+        // （指标 5 的口径正是这些结果），成功率极低却代价明确。前后端口径不一致本身也是坑。
+        if (!isRetryable(r.getStatus())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(),
+                    "仅失败或部分成功的审查可重审（当前状态：" + statusText(r.getStatus()) + "）");
         }
         // 同步置为执行中，避免前端轮询竞态；成功单元结果仍保留在 result_json 中，仅失败部分重跑
         r.setStatus(ReviewStatus.RUNNING);
         r.setProgress(0);
         reviewRecordMapper.updateById(r);
         reviewExecutor.retry(reviewId);
+    }
+
+    /** 与前端 {@code canRetry} 一致：仅失败/部分成功可重审。 */
+    static boolean isRetryable(Integer status) {
+        return status != null && (status == ReviewStatus.FAILED || status == ReviewStatus.PARTIAL);
+    }
+
+    private static String statusText(Integer status) {
+        if (status == null) {
+            return "未知";
+        }
+        return switch (status) {
+            case ReviewStatus.QUEUED -> "排队中";
+            case ReviewStatus.RUNNING -> "执行中";
+            case ReviewStatus.SUCCESS -> "成功";
+            case ReviewStatus.FAILED -> "失败";
+            case ReviewStatus.PARTIAL -> "部分成功";
+            default -> String.valueOf(status);
+        };
     }
 
     public ReviewRecordResp detail(Long reviewId) {

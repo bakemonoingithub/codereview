@@ -220,13 +220,19 @@
             <template #default="{ record }">
               <a-space>
                 <a-button size="small" @click="viewRecord(record)">查看</a-button>
-                <a-button
-                  size="small"
-                  :disabled="record.status !== 3 && record.status !== 4"
-                  @click="askRetryRecord(record)"
-                >
-                  重审
-                </a-button>
+                <!-- 置灰要有解释：成功/执行中的记录为什么不能重审。tooltip 放在 span 上，
+                     因为禁用的 button 不触发鼠标事件（antd 的推荐写法）。 -->
+                <a-tooltip :title="canRetry(record.status) ? '' : '仅失败或部分成功的审查可重审'">
+                  <span>
+                    <a-button
+                      size="small"
+                      :disabled="!canRetry(record.status)"
+                      @click="askRetryRecord(record)"
+                    >
+                      重审
+                    </a-button>
+                  </span>
+                </a-tooltip>
               </a-space>
             </template>
           </a-table-column>
@@ -328,7 +334,7 @@ import {
 } from '@/api/review'
 import { listStrategies } from '@/api/strategy'
 import type { ChangedFile } from '@/utils/changedFiles'
-import { recordStatusColor, recordStatusText } from '@/utils/reviewResult'
+import { canRetry, recordStatusColor, recordStatusText } from '@/utils/reviewResult'
 import { formatDuration } from '@/utils/duration'
 import { useRecordPagination } from '@/utils/useRecordPagination'
 import type { AccuracyStat } from '@/utils/accuracy'
