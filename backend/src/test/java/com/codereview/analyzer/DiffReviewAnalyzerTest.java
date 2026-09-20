@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -230,6 +231,39 @@ class DiffReviewAnalyzerTest {
 
     private AnalysisContext ctx(String commitSha, List<String> scope) {
         return ctx(commitSha, scope, null);
+    }
+
+    @Test
+    void exceedingTheTaskDeadlineLeavesUnitsUnrunAndNeverCallsTheModel() {
+        String patch = "@@ -1,5 +1,6 @@\n"
+                + " public class A {\n"
+                + "+    int b = 2;\n"
+                + " }\n";
+        when(git.commitDetail(any(), any(), any(), any())).thenReturn(new CommitDetail(
+                "abc1234", List.of("p1"), "m", "a", "d", 1, 1, 2, false,
+                List.of(new ChangedFile("src/A.java", null, "modified", 1, 0, 1, patch))));
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn("public class A {}\n");
+
+        AnalyzeOutcome outcome = analyzer.analyze(ctxWithExpiredDeadline("abc1234", List.of("src/A.java")));
+
+        assertEquals(ReviewStatus.FAILED, outcome.status(), outcome.result().toString());
+        JsonNode unit = outcome.result().path("units").get(0);
+        assertTrue(unit.path("error").asText().contains("任务级超时"), unit.toString());
+        verify(llm, never()).chatJson(any(), any(), any(), any(), any());
+    }
+
+    private AnalysisContext ctxWithExpiredDeadline(String commitSha, List<String> scope) {
+        ReviewRecord record = new ReviewRecord();
+        record.setBranch("main");
+        record.setCommitSha(commitSha);
+        Project project = new Project();
+        project.setGiteaUrl("https://github.com/o/r");
+        project.setCredential("token");
+        project.setCredentialType(1);
+        return new AnalysisContext(record, project, GitRepoRef.parse("https://github.com/o/r"), scope,
+                "https://api.deepseek.com", "key", "deepseek-chat",
+                mapper.createObjectNode(), null, false, pct -> {
+        }, new AnalysisContext.Deadline(System.currentTimeMillis() - 1, 50));
     }
 
     private AnalysisContext ctxWithPrompt(String customPrompt) {

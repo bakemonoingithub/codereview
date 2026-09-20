@@ -117,14 +117,25 @@ public class LlmReviewAnalyzer implements Analyzer {
         if (tasks.isEmpty()) {
             return results;
         }
-        CompletionService<ObjectNode> cs = new ExecutorCompletionService<>(unitExecutor);
-        int submitted = 0;
+        // 任务级超时：提交前自检，超时就把剩余单元记为"未执行"（协作式停止，见 AnalysisContext.Deadline）
+        List<UnitTask> toSubmit = new ArrayList<>();
         for (UnitTask task : tasks) {
-            cs.submit(() -> executeUnit(ctx, task));
-            submitted++;
+            if (ctx.deadline().exceeded()) {
+                results.add(failedUnit(task, ctx.deadline().reason()));
+            } else {
+                toSubmit.add(task);
+            }
         }
-        int done = 0;
-        while (done < submitted) {
+        if (toSubmit.isEmpty()) {
+            return results;
+        }
+        CompletionService<ObjectNode> cs = new ExecutorCompletionService<>(unitExecutor);
+        for (UnitTask task : toSubmit) {
+            cs.submit(() -> executeUnit(ctx, task));
+        }
+        int total = tasks.size();
+        int done = total - toSubmit.size();
+        while (done < total) {
             try {
                 Future<ObjectNode> f = cs.take();
                 results.add(f.get());
@@ -132,7 +143,7 @@ public class LlmReviewAnalyzer implements Analyzer {
                 results.add(failedUnit(UnitTask.fallback(), "执行异常: " + e.getMessage()));
             }
             done++;
-            ctx.progress().accept(done * 100 / submitted);
+            ctx.progress().accept(done * 100 / total);
         }
         return results;
     }
@@ -161,6 +172,10 @@ public class LlmReviewAnalyzer implements Analyzer {
         if (merged.length() > props.getChunkMaxChars()) {
             return mergedFailed(fetched, totalLines,
                     "合并后内容超过阈值(" + props.getChunkMaxChars() + " 字符)，请减少文件数量或关闭多文件合并审查");
+        }
+        // 任务级超时：已经超过截止时间就不要再发起这次 LLM 调用
+        if (ctx.deadline().exceeded()) {
+            return mergedFailed(fetched, totalLines, ctx.deadline().reason());
         }
         Throwable last = null;
         for (int attempt = 0; attempt <= props.getRetryMax(); attempt++) {

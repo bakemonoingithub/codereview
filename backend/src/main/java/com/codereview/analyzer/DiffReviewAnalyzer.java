@@ -129,14 +129,22 @@ public class DiffReviewAnalyzer implements Analyzer {
 
         // 并行限流执行（单元级重试）
         ArrayNode results = objectMapper.createArrayNode();
-        CompletionService<ObjectNode> cs = new ExecutorCompletionService<>(unitExecutor);
-        int submitted = 0;
+        // 任务级超时：提交前自检，超时就把剩余单元记为"未执行"（协作式停止，见 AnalysisContext.Deadline）
+        List<UnitTask> toSubmit = new ArrayList<>();
         for (UnitTask task : tasks) {
-            cs.submit(() -> executeUnit(ctx, task));
-            submitted++;
+            if (ctx.deadline().exceeded()) {
+                results.add(failedUnit(task.unit(), ctx.deadline().reason()));
+            } else {
+                toSubmit.add(task);
+            }
         }
-        int done = 0;
-        while (done < submitted) {
+        CompletionService<ObjectNode> cs = new ExecutorCompletionService<>(unitExecutor);
+        for (UnitTask task : toSubmit) {
+            cs.submit(() -> executeUnit(ctx, task));
+        }
+        int total = tasks.size();
+        int done = total - toSubmit.size();
+        while (done < total) {
             try {
                 Future<ObjectNode> f = cs.take();
                 results.add(f.get());
@@ -144,7 +152,7 @@ public class DiffReviewAnalyzer implements Analyzer {
                 results.add(failedUnit(null, "执行异常: " + e.getMessage()));
             }
             done++;
-            ctx.progress().accept(done * 100 / submitted);
+            ctx.progress().accept(done * 100 / total);
         }
 
         int success = 0;

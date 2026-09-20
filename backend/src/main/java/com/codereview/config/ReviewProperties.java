@@ -20,6 +20,17 @@ public class ReviewProperties {
     /** 指数退避基数（毫秒）：1s→2s→4s */
     private long retryBaseMillis = 1000;
     /**
+     * 单条审查的**任务级超时**（分钟），默认 50。
+     *
+     * <p>单次 HTTP 调用有读超时（见 {@code deepseek.read-timeout-ms}），但一次审查由多个单元组成、
+     * 每单元最多重试 {@code retryMax} 次、并发 {@code concurrency} —— 极端情况下总时长会远超
+     * 验收指标 8 要求的 1 小时。这里给整条记录封顶：超时后分析器停止提交新单元，
+     * 剩余单元标为"未执行"，记录按 {@code ReviewStatus.resolve} 落成部分成功/失败。
+     *
+     * <p>默认 50 分钟是给"报告生成"留出余量（指标 8 算的是审查 + 报告的总时长）。
+     */
+    private int taskTimeoutMinutes = 50;
+    /**
      * 删除项目时的「执行中审查」阻塞窗口（分钟）。
      *
      * <p>存在**排队中或执行中**、且创建时间距现在不足该窗口的审查记录时，拒绝删除该项目；

@@ -4,6 +4,7 @@ import com.codereview.analyzer.AnalysisContext;
 import com.codereview.analyzer.AnalyzeOutcome;
 import com.codereview.analyzer.Analyzer;
 import com.codereview.common.ReviewableFiles;
+import com.codereview.config.ReviewProperties;
 import com.codereview.entity.Project;
 import com.codereview.entity.ReviewRecord;
 import com.codereview.git.GitRepoRef;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -43,13 +45,15 @@ public class ReviewExecutor {
 
     private final ReviewRecordMapper reviewRecordMapper;
     private final ProjectMapper projectMapper;
+    private final ReviewProperties props;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Map<Integer, Analyzer> analyzers;
 
     public ReviewExecutor(ReviewRecordMapper reviewRecordMapper, ProjectMapper projectMapper,
-                          List<Analyzer> analyzers) {
+                          List<Analyzer> analyzers, ReviewProperties props) {
         this.reviewRecordMapper = reviewRecordMapper;
         this.projectMapper = projectMapper;
+        this.props = props;
         this.analyzers = analyzers.stream().collect(Collectors.toMap(Analyzer::type, Function.identity()));
     }
 
@@ -137,7 +141,23 @@ public class ReviewExecutor {
                 pct -> {
                     record.setProgress(pct);
                     reviewRecordMapper.updateById(record);
-                });
+                },
+                deadlineOf(record));
+    }
+
+    /**
+     * 任务级 deadline：从**本次执行真正开始的时刻**（{@code started_at}）算起，排队时间不计。
+     *
+     * <p>为什么从 started_at 算而不是"现在"：重审复用同一行记录，若按"现在"算，
+     * 一条已经跑了 40 分钟的记录重审后又白拿满 50 分钟。缺失 started_at（历史数据）时才退回当前时刻。
+     */
+    private AnalysisContext.Deadline deadlineOf(ReviewRecord record) {
+        int minutes = Math.max(1, props.getTaskTimeoutMinutes());
+        long now = System.currentTimeMillis();
+        long startedAt = record.getStartedAt() == null
+                ? now
+                : record.getStartedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        return new AnalysisContext.Deadline(startedAt + minutes * 60_000L, minutes);
     }
 
     /**

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.codereview.analyzer.AnalyzeOutcome;
 import com.codereview.analyzer.Analyzer;
+import com.codereview.config.ReviewProperties;
 import com.codereview.entity.Project;
 import com.codereview.entity.ReviewRecord;
 import com.codereview.mapper.ProjectMapper;
@@ -59,7 +60,7 @@ class ReviewExecutorResilienceTest {
         projectMapper = mock(ProjectMapper.class);
         analyzer = mock(Analyzer.class);
         when(analyzer.type()).thenReturn(1);
-        executor = new ReviewExecutor(recordMapper, projectMapper, List.of(analyzer));
+        executor = new ReviewExecutor(recordMapper, projectMapper, List.of(analyzer), new ReviewProperties());
 
         Logger logger = (Logger) LoggerFactory.getLogger(ReviewExecutor.class);
         logs = new ListAppender<>();
