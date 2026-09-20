@@ -55,18 +55,46 @@ public class ApiReviewAnalyzer implements Analyzer {
         }
 
         ArrayNode issues = objectMapper.createArrayNode();
+        String queryError = null;
         if (!queryUrl.isBlank()) {
             try {
                 issues = normalize(fetch(queryUrl, token));
-            } catch (Exception ignored) {
-                // SonarQube 未就绪/接口失败时保留空结果
+            } catch (Exception e) {
+                // 不再静默：取结果失败必须体现在状态上（backlog ⑥「api-review 静默成功」）
+                queryError = e.getMessage();
             }
         }
         result.set("issues", issues);
-        result.put("summary", String.format("api-review：触发%s，结果见 %s%s",
-                triggered ? "成功" : "失败", resultUrl,
-                queryUrl.isBlank() ? "（未配置查询接口）" : ""));
-        return new AnalyzeOutcome(result, ReviewStatus.SUCCESS);
+        if (queryError != null) {
+            result.put("queryError", queryError);
+        }
+
+        // 配了触发接口却触发失败：抛异常 → ReviewExecutor 统一落到 FAILED + error_message
+        // （与 ④ 之后"失败原因统一走 error_message"的口径一致）
+        if (!apiUrl.isBlank() && !triggered) {
+            throw new IllegalStateException("api-review 触发失败："
+                    + (triggerError == null ? "未知错误" : triggerError));
+        }
+
+        StringBuilder summary = new StringBuilder("api-review：");
+        if (apiUrl.isBlank()) {
+            summary.append("未配置触发接口");
+        } else {
+            summary.append("触发成功");
+        }
+        summary.append("，结果见 ").append(resultUrl);
+        if (queryUrl.isBlank()) {
+            summary.append("（未配置查询接口）");
+        }
+        if (queryError != null) {
+            summary.append("；结果获取失败：").append(queryError);
+        }
+        result.put("summary", summary.toString());
+
+        // 触发成功但结果拿不到：流水线确实跑了、issue 却为空 —— 记 PARTIAL（可重审），
+        // 而不是 SUCCESS（原先"没结果也不报错"会让这条记录被当成有效结果参与准确率统计）
+        int status = queryError == null ? ReviewStatus.SUCCESS : ReviewStatus.PARTIAL;
+        return new AnalyzeOutcome(result, status);
     }
 
     private void post(String url, String token) {
