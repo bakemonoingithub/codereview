@@ -57,11 +57,24 @@ github:
 
 # Git 宿主接入（单实例；均有默认值，通常可省略）
 # api-base / raw-base 原先写死在 GitHubClient 里：部署到内网镜像站或自建企业版时，
-# 只能改代码。现在可用这两个键覆盖（不带尾斜杠）。接入 Gitea 时复用的也是它们。
+# 只能改代码。现在可用这两个键覆盖（不带尾斜杠）。
 git:
-  api-base: https://api.github.com             # REST API 根
+  api-base: https://api.github.com             # REST API 根（GitHub 用）
   raw-base: https://raw.githubusercontent.com  # 原始文件根（Contents API 不可用时兜底）
   cache:
     commit-detail-max-size: 200   # 单提交详情缓存条数上限
     raw-file-max-size: 500        # 文件内容缓存条数上限
     expire-minutes: 30            # 写入后过期时间（分钟）
+
+  # Gitea 1.16.1 接入。**API 根不用配**：按各项目的仓库地址推导
+  # （http://host/gitea/owner/repo → http://host/gitea/api/v1），内网子路径自动带上。
+  gitea:
+    hosts:                        # 哪些 host[:port] 归 Gitea 客户端（显式白名单，未命中显式报错）
+      - localhost:3000            # 本机开发
+      - 192.104.224.172           # 内网
+    api-base: ""                  # 可选覆盖（含 /api/v1）；仅 git@host:owner/repo 这类地址需要
+    token: ${GITEA_TOKEN:}        # 兜底令牌；项目里填了 credential 时以项目为准
+    local-clone-enabled: true     # Gitea 没有 compare 接口，靠本地 bare 镜像算三点差异；false 则 compare 直接报错
+    work-dir: ""                  # 本地镜像目录；留空用 ${java.io.tmpdir}/code-review-git-mirrors
+    mirror-timeout-seconds: 120   # 单次克隆/拉取超时
+    diff-max-bytes: 5242880       # 单个提交 .diff 文本上限；超限则整提交 patch 置空（走全文件兜底）
