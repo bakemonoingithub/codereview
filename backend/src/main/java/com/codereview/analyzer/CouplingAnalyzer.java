@@ -5,6 +5,7 @@ import com.codereview.material.DepEdge;
 import com.codereview.material.DepGraph;
 import com.codereview.material.Material;
 import com.codereview.material.MaterialService;
+import com.codereview.material.ModuleGraph;
 import com.codereview.review.ReviewStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,9 +77,17 @@ public class CouplingAnalyzer implements Analyzer {
         return new AnalyzeOutcome(result, ReviewStatus.SUCCESS);
     }
 
-    /** 确定性耦合结论（纯逻辑，可单测）。 */
+    /**
+     * 确定性耦合结论（纯逻辑，可单测）。
+     *
+     * <p>结果里**类级字段全部保留**（向后兼容：前端图、既有报告都还在读），T-03 只在后面追加模块级字段
+     * （{@code moduleSummary / modules / moduleEdges / moduleCycles / moduleMutualPairs}），
+     * 并把 {@code summary} 改成"模块在前、类级在后"。{@code moduleSummary} 是确定性的，
+     * 后面 LLM 返回 summary 时只会覆盖 {@code summary} 而碰不到它。
+     */
     static ObjectNode buildDeterministic(Material material, int threshold, ObjectMapper mapper) {
         DepGraph g = new DepGraph(material);
+        ModuleGraph modules = ModuleGraph.of(material);
         ObjectNode root = mapper.createObjectNode();
         ArrayNode nodes = root.putArray("nodes");
         for (String fqcn : g.nodes()) {
@@ -110,8 +119,39 @@ public class CouplingAnalyzer implements Analyzer {
         for (String fqcn : g.highCoupling(threshold)) {
             highArr.add(fqcn);
         }
-        root.put("summary", String.format("依赖图 %d 节点 / %d 边；高耦合 %d 个；循环依赖 %d 组",
-                g.nodes().size(), material.edges().size(), highArr.size(), cycles.size()));
+
+        // ---- T-03：模块级（包级）聚合，确定性结论 ----
+        root.put("moduleSummary", modules.summary());
+        ArrayNode moduleArr = root.putArray("modules");
+        for (ModuleGraph.Module m : modules.modules()) {
+            ObjectNode n = moduleArr.addObject();
+            n.put("name", m.name());
+            n.put("classCount", m.classCount());
+            n.put("ca", m.ca());
+            n.put("ce", m.ce());
+            n.put("instability", m.instability());
+            n.put("high", m.high());
+        }
+        ArrayNode moduleEdgeArr = root.putArray("moduleEdges");
+        for (ModuleGraph.ModuleEdge e : modules.edges()) {
+            ObjectNode edge = moduleEdgeArr.addObject();
+            edge.put("from", e.from());
+            edge.put("to", e.to());
+            edge.put("weight", e.weight());
+        }
+        ArrayNode moduleCycleArr = root.putArray("moduleCycles");
+        for (List<String> cyc : modules.cycles()) {
+            ArrayNode c = moduleCycleArr.addArray();
+            cyc.forEach(c::add);
+        }
+        ArrayNode mutualArr = root.putArray("moduleMutualPairs");
+        for (List<String> pair : modules.mutualPairs()) {
+            ArrayNode p = mutualArr.addArray();
+            pair.forEach(p::add);
+        }
+
+        root.put("summary", String.format("%s；类级：依赖图 %d 节点 / %d 边；高耦合 %d 个；循环依赖 %d 组",
+                modules.summary(), g.nodes().size(), material.edges().size(), highArr.size(), cycles.size()));
         return root;
     }
 

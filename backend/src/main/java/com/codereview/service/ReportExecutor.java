@@ -54,6 +54,8 @@ public class ReportExecutor {
             # 修复方案
             # 设计模式
             # 模块耦合度
+            其中「模块耦合度」一节请按**模块/包**维度陈述（数据在耦合度记录的 moduleSummary / modules /
+            moduleEdges / moduleCycles 字段里）：指出跨模块依赖、模块级循环依赖、以及最不稳定（Ce 大、I 高）的模块。
             只输出 Markdown 正文，不要输出任何其他文字。
             """;
 
