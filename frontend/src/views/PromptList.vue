@@ -80,6 +80,7 @@
         </a-form-item>
         <a-form-item label="正文" required>
           <a-textarea v-model:value="form.content" :auto-size="textareaAutoSize" show-count />
+          <div v-if="detailLoading" class="field-hint">正在加载当前正文…此时输入的内容不会被覆盖</div>
         </a-form-item>
         <a-form-item v-if="editingId">
           <a-checkbox v-model:checked="form.createNewVersion">保存为新版本（不勾选则覆盖当前版本）</a-checkbox>
@@ -133,6 +134,7 @@ const modalOpen = ref(false)
 const saving = ref(false)
 const maximized = ref(false)
 const editingId = ref('')
+const detailLoading = ref(false)
 const form = ref({ name: '', description: '', tags: [] as string[], content: '', createNewVersion: true })
 const textareaAutoSize = computed(() => ({
   minRows: maximized.value ? 20 : 12,
@@ -192,13 +194,30 @@ function openCreate() {
 }
 
 function openEdit(record: any) {
-  editingId.value = record.id
+  const id = record.id
+  const blank = ''
+  editingId.value = id
   maximized.value = false
-  form.value = { name: record.name, description: record.description || '', tags: parseTags(record.tags), content: '', createNewVersion: true }
-  getPrompt(record.id).then((d: any) => {
-    form.value.content = d.currentContent || ''
-  })
+  form.value = { name: record.name, description: record.description || '', tags: parseTags(record.tags), content: blank, createNewVersion: true }
   modalOpen.value = true
+  detailLoading.value = true
+  getPrompt(id)
+    .then((d: any) => {
+      // 只回填**仍是这条记录**且**用户还没动过正文**的表单：
+      // ① 慢响应期间用户可能已切到别的记录或点了"新建"（editingId 变了）—— 写进去会把另一条记录的正文搞坏；
+      // ② 用户可能已经开始输入 —— 覆盖就是静默丢数据（原先就是无条件回填，`|| ''` 连空响应也会清空）。
+      if (editingId.value !== id) return
+      if (form.value.content !== blank) return
+      form.value.content = d.currentContent || ''
+    })
+    .catch((e: any) => {
+      if (editingId.value !== id) return
+      // 原先没有 catch：失败时正文永久空着，用户点保存只会被告知"请填写名称与正文"
+      message.error(e?.message || '加载提示词正文失败，请重试')
+    })
+    .finally(() => {
+      if (editingId.value === id) detailLoading.value = false
+    })
 }
 
 async function onSave() {
@@ -268,6 +287,12 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
   padding-right: 24px;
+}
+
+.field-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgb(0 0 0 / 45%);
 }
 </style>
 
