@@ -65,6 +65,10 @@
                 生成报告
               </a-button>
             </a-tooltip>
+            <!-- 提示被"不再提示"关掉之后，必须留一个能找回来的入口 -->
+            <a-button v-if="tipDismissed" type="link" size="small" @click="restoreTip">
+              重新开启生成前提示
+            </a-button>
           </a-form>
         </a-card>
       </a-col>
@@ -87,6 +91,30 @@
         </a-table-column>
       </a-table>
     </a-card>
+
+    <!--
+      生成前提示（T-02）：不校验、不阻断判断，只把"容易勾错"的两点摆到眼前。
+      背景：报告章节（概述/问题/修复方案/设计模式/模块耦合度）全靠提示词一篇生成，
+      若所选记录里没有耦合度/设计模式/业务规则的审查结果，对应章节就只能由模型自由发挥；
+      而不同代码库的记录混在一起，结论也会互相打架。这两点是"提示"，不是"校验项"。
+    -->
+    <a-modal
+      v-model:open="tipOpen"
+      title="生成报告前，请确认勾选的审查记录"
+      ok-text="确认生成"
+      cancel-text="取消"
+      @ok="confirmGenerate"
+    >
+      <ol class="tip-list">
+        <li>所选审查记录涉及的代码<strong>最好是一致的</strong>（此项不校验，仅提醒）。</li>
+        <li>
+          所选审查记录<strong>应包含耦合度审查、设计模式审查、业务规则审查</strong> ——
+          否则提示词里要求的「设计模式」「模块耦合度」章节没有数据支撑，只能由模型自行发挥。
+        </li>
+      </ol>
+      <div class="tip-count">本次已选 {{ selectedIds.length }} 条审查记录</div>
+      <a-checkbox v-model:checked="tipMuted">不再提示（可在卡片上重新开启）</a-checkbox>
+    </a-modal>
 
     <a-modal
       v-model:open="reportOpen"
@@ -229,6 +257,39 @@ const generateDisabledReason = computed(() => {
   return ''
 })
 
+/**
+ * 生成前提示（T-02）的开关与"不再提示"偏好。
+ *
+ * 偏好存 localStorage（跨会话有效）。读写都包 try/catch：隐私模式/禁用存储时
+ * `localStorage` 会直接抛异常，不能因为一个"记住偏好"把生成流程带崩 ——
+ * 存不了就退化成"每次都提示"。
+ */
+const TIP_DISMISSED_KEY = 'report-generate-tip-dismissed'
+const tipOpen = ref(false)
+/** 弹窗里那个勾选框的当前状态（只在点「确认生成」时才会被记住） */
+const tipMuted = ref(false)
+const tipDismissed = ref(readTipDismissed())
+
+function readTipDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(TIP_DISMISSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeTipDismissed(dismissed: boolean) {
+  try {
+    if (dismissed) {
+      window.localStorage.setItem(TIP_DISMISSED_KEY, '1')
+    } else {
+      window.localStorage.removeItem(TIP_DISMISSED_KEY)
+    }
+  } catch {
+    // 存储不可用：本次会话内仍然生效（内存里的 tipDismissed 已改），下次进来会重新提示
+  }
+}
+
 const loadModels = async () => {
   const mp = (await listModels({ pageNum: 1, pageSize: 100 })) as any
   modelOptions.value = (mp?.records || []).map((m: any) => ({ value: m.id, label: m.name }))
@@ -268,6 +329,32 @@ const loadAll = async () => {
 }
 
 async function onGenerate() {
+  // 已经勾过"不再提示"就直接生成；否则先弹提示，确认后才发请求
+  if (tipDismissed.value) {
+    await submitGenerate()
+    return
+  }
+  tipMuted.value = false
+  tipOpen.value = true
+}
+
+/** 弹窗里点「确认生成」：记住偏好（如果勾了），然后真正提交。 */
+async function confirmGenerate() {
+  if (tipMuted.value) {
+    tipDismissed.value = true
+    writeTipDismissed(true)
+  }
+  tipOpen.value = false
+  await submitGenerate()
+}
+
+/** 「重新开启生成前提示」：把偏好清掉，下一次生成会再弹。 */
+function restoreTip() {
+  tipDismissed.value = false
+  writeTipDismissed(false)
+}
+
+async function submitGenerate() {
   generating.value = true
   try {
     await generateReport(props.projectId, {
@@ -403,6 +490,15 @@ defineExpose({ startReportPoll, stopReportPoll })
   }
 }
 .mb8 {
+  margin-bottom: 8px;
+}
+.tip-list {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+.tip-count {
+  color: #0958d9;
+  font-size: 12px;
   margin-bottom: 8px;
 }
 </style>
