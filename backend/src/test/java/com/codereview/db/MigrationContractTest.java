@@ -74,4 +74,14 @@ class MigrationContractTest {
         assertTrue(!v6.contains("error_message text"),
                 "error_message 不能用 TEXT —— 它存在的意义就是承载有界载荷");
     }
+
+    @Test
+    void promptContentIsRaisedToMediumtextWithoutLosingNotNull() throws IOException {
+        String v7 = effectiveSql(migration("V7__prompt_content_capacity.sql"));
+
+        assertTrue(v7.contains("alter table prompt_version modify content mediumtext"),
+                "prompt_version.content 必须升到 MEDIUMTEXT，实际：" + v7);
+        assertTrue(v7.contains("not null"),
+                "content 是 NOT NULL 列，扩容时不能把非空约束改丢");
+    }
 }
