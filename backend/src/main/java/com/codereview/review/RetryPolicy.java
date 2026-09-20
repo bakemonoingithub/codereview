@@ -7,8 +7,12 @@ import org.springframework.web.client.ResourceAccessException;
 import java.net.SocketTimeoutException;
 
 /**
- * 单元级重试策略：指数退避 1s→2s→4s；仅对可重试错误（网络/超时/5xx/限流 403·429）重试，
+ * 单元级重试策略：指数退避 base→2×base→4×base；仅对可重试错误（网络/超时/5xx/限流 403·429）重试，
  * 确定性错误（无 key、切分失败、非 JSON）直接失败，不浪费重试。
+ *
+ * <p>退避基数由调用方传入（`review.retry-base-millis`）：早先这里写死 1000ms，
+ * 而配置项 `retryBaseMillis` 全仓无人读取 —— 示例配置写着"指数退避基数"却改不动，
+ * 属于会误导现场调参的死配置。
  */
 public final class RetryPolicy {
 
@@ -18,9 +22,10 @@ public final class RetryPolicy {
     private RetryPolicy() {
     }
 
-    /** 第 attempt 次重试前的退避时长（attempt=0 → 1s）。 */
-    public static long backoffMillis(int attempt) {
-        return (1L << attempt) * 1000L;
+    /** 第 attempt 次重试前的退避时长（attempt=0 → base，base 无效时回落到 1000ms）。 */
+    public static long backoffMillis(int attempt, long baseMillis) {
+        long base = baseMillis > 0 ? baseMillis : 1000L;
+        return (1L << Math.max(0, attempt)) * base;
     }
 
     public static boolean isRetryable(Throwable e) {

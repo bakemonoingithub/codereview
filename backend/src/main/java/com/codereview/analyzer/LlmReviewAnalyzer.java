@@ -181,7 +181,7 @@ public class LlmReviewAnalyzer implements Analyzer {
         for (int attempt = 0; attempt <= props.getRetryMax(); attempt++) {
             if (attempt > 0) {
                 try {
-                    Thread.sleep(RetryPolicy.backoffMillis(attempt - 1));
+                    Thread.sleep(RetryPolicy.backoffMillis(attempt - 1, props.getRetryBaseMillis()));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     break;
@@ -300,7 +300,7 @@ public class LlmReviewAnalyzer implements Analyzer {
         for (int attempt = 0; attempt <= props.getRetryMax(); attempt++) {
             if (attempt > 0) {
                 try {
-                    Thread.sleep(RetryPolicy.backoffMillis(attempt - 1));
+                    Thread.sleep(RetryPolicy.backoffMillis(attempt - 1, props.getRetryBaseMillis()));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     break;

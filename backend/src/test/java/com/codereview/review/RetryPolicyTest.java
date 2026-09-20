@@ -17,9 +17,23 @@ class RetryPolicyTest {
 
     @Test
     void backoffExponential() {
-        assertEquals(1000L, RetryPolicy.backoffMillis(0));
-        assertEquals(2000L, RetryPolicy.backoffMillis(1));
-        assertEquals(4000L, RetryPolicy.backoffMillis(2));
+        assertEquals(1000L, RetryPolicy.backoffMillis(0, 1000));
+        assertEquals(2000L, RetryPolicy.backoffMillis(1, 1000));
+        assertEquals(4000L, RetryPolicy.backoffMillis(2, 1000));
+    }
+
+    @Test
+    void backoffUsesTheConfiguredBase() {
+        // review.retry-base-millis 必须真的生效（原先写死 1000ms，配置是死配置）
+        assertEquals(500L, RetryPolicy.backoffMillis(0, 500));
+        assertEquals(1000L, RetryPolicy.backoffMillis(1, 500));
+        assertEquals(2000L, RetryPolicy.backoffMillis(2, 500));
+    }
+
+    @Test
+    void backoffFallsBackWhenBaseIsNotPositive() {
+        assertEquals(1000L, RetryPolicy.backoffMillis(0, 0));
+        assertEquals(1000L, RetryPolicy.backoffMillis(0, -5));
     }
 
     @Test

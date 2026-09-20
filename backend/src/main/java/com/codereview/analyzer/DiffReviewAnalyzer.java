@@ -290,7 +290,7 @@ public class DiffReviewAnalyzer implements Analyzer {
                 if (attempt >= props.getRetryMax() || !RetryPolicy.isRetryable(e)) {
                     return failedUnit(task.unit(), e.getMessage());
                 }
-                sleep(RetryPolicy.backoffMillis(attempt));
+                sleep(RetryPolicy.backoffMillis(attempt, props.getRetryBaseMillis()));
                 attempt++;
             }
         }
