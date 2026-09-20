@@ -207,6 +207,68 @@ class GiteaClientTest {
         assertEquals("raw text body", text);
     }
 
+    // ---------------------------------------------------------------- 单提交详情
+
+    @Test
+    void commitDetailMergesDiffTextIntoPerFilePatches() {
+        stub.respond(exchange -> exchange.getRequestURI().getPath().endsWith(".diff")
+                ? StubResponse.ok("""
+                        diff --git a/src/A.java b/src/A.java
+                        index 1111111..2222222 100644
+                        --- a/src/A.java
+                        +++ b/src/A.java
+                        @@ -1 +1,2 @@
+                        -    int a = 1;
+                        +    int a = 2;
+                        +    int b = 3;
+                        """)
+                : StubResponse.ok("""
+                        {"sha":"abc1234","commit":{"message":"m","author":{"name":"n","date":"d"}},
+                         "parents":[{"sha":"p1"}],"files":[{"filename":"src/A.java"}]}
+                        """));
+
+        CommitDetail detail = newClient().commitDetail("", 1, repo("o", "r"), "abc1234");
+
+        assertEquals(2, stub.requestUris().size(), "元数据一次 + 原始 diff 一次");
+        assertEquals("/repos/o/r/git/commits/abc1234", stub.uri(0));
+        assertEquals("/repos/o/r/git/commits/abc1234.diff", stub.uri(1));
+        ChangedFile file = detail.files().get(0);
+        assertEquals("src/A.java", file.path());
+        assertTrue(file.patch().startsWith("@@ -1 +1,2 @@"), "patch 口径必须与 GitHub 一致：" + file.patch());
+        assertEquals(2, detail.additions(), "Gitea 不给统计，要自己数");
+        assertEquals(1, detail.deletions());
+        assertEquals(3, detail.totalChanges());
+        assertFalse(detail.truncated());
+    }
+
+    @Test
+    void oversizedDiffLeavesPatchesEmptyInsteadOfReturningHalfOfIt() {
+        GiteaProperties props = new GiteaProperties();
+        props.setApiBase(stub.base());
+        props.setDiffMaxBytes(16);
+        stub.respond(exchange -> exchange.getRequestURI().getPath().endsWith(".diff")
+                ? StubResponse.ok("diff --git a/src/A.java b/src/A.java\n@@ -1 +1 @@\n-a\n+b\n")
+                : StubResponse.ok("{\"sha\":\"s\",\"commit\":{\"message\":\"m\"},\"files\":[{\"filename\":\"src/A.java\"}]}"));
+
+        CommitDetail detail = new GiteaClient(props, new GitCache(16, 16, 30))
+                .commitDetail("", 1, repo("o", "r"), "s");
+
+        assertEquals(1, detail.files().size(), "文件清单仍要保留（上层会走全文件兜底）");
+        assertNull(detail.files().get(0).patch());
+    }
+
+    @Test
+    void commitDetailFailsLoudlyWhenDiffEndpointFails() {
+        stub.respond(exchange -> exchange.getRequestURI().getPath().endsWith(".diff")
+                ? new StubResponse(500, java.util.Map.of(), "boom")
+                : StubResponse.ok("{\"sha\":\"s\",\"commit\":{\"message\":\"m\"},\"files\":[]}"));
+
+        IllegalStateException e = assertThrows(IllegalStateException.class,
+                () -> newClient().commitDetail("", 1, repo("o", "r"), "s"));
+
+        assertTrue(e.getMessage().contains("diff"), "失败要显式报错，不能静默返回没有 patch 的结果：" + e.getMessage());
+    }
+
     // ---------------------------------------------------------------- API 根与认证
 
     @Test

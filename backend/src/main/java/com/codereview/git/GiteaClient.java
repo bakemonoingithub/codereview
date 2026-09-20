@@ -4,6 +4,8 @@ import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -42,6 +44,8 @@ import java.util.Set;
  */
 @Component
 public class GiteaClient implements GitHostClient {
+
+    private static final Logger LOG = LoggerFactory.getLogger(GiteaClient.class);
 
     /** Gitea 文件树单页上限（[api] DEFAULT_GIT_TREES_PER_PAGE） */
     private static final int TREE_PER_PAGE = 1000;
@@ -225,11 +229,50 @@ public class GiteaClient implements GitHostClient {
     }
 
     private CommitDetail fetchCommitDetail(String token, Integer credentialType, GitRepoRef repoRef, String sha) {
-        String url = apiBase(repoRef) + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/git/commits/"
+        String api = apiBase(repoRef);
+        String base = api + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/git/commits/"
                 + UriUtils.encodePathSegment(sha, StandardCharsets.UTF_8);
-        JsonNode root = getJson(url, token, credentialType);
-        // Gitea 的 files[] 只有 filename（没有 patch/status/统计），patch 由 .diff 文本接口另行切分。
-        return GitResponseParser.parseCommit(root, false);
+        JsonNode root = getJson(base, token, credentialType);
+        // Gitea 的 files[] 只有 filename（没有 patch/status/统计），patch 必须另取 .diff 文本
+        CommitDetail meta = GitResponseParser.parseCommit(root, false);
+        List<ChangedFile> files = meta.files();
+
+        String diffText;
+        try {
+            diffText = get(base + ".diff", token, credentialType);
+        } catch (Exception e) {
+            throw new IllegalStateException("Gitea 单提交 diff 获取失败（" + sha + "）：" + e.getMessage(), e);
+        }
+        if (diffText == null || diffText.isBlank()) {
+            return meta;
+        }
+        if (diffText.length() > properties.getDiffMaxBytes()) {
+            // 超限时保留文件清单、整提交 patch 置空：宁可让上层走"全文件兜底"，
+            // 也不能把半截 patch 当成完整 diff 交给审查链路
+            LOG.warn("Gitea 提交 {} 的 diff 文本 {} 字节超过上限 {}，本次全部 patch 置空",
+                    sha, diffText.length(), properties.getDiffMaxBytes());
+            return meta;
+        }
+        List<ChangedFile> parsed = GiteaDiffParser.parse(diffText);
+        if (!parsed.isEmpty()) {
+            files = parsed;
+        }
+        int additions = sum(files, true);
+        int deletions = sum(files, false);
+        return new CommitDetail(meta.sha(), meta.parents(), meta.message(), meta.author(), meta.date(),
+                additions, deletions, additions + deletions, false, files);
+    }
+
+    /** 汇总统计；Gitea 不提供，按逐文件自数的结果相加（二进制文件为 null，跳过）。 */
+    private static int sum(List<ChangedFile> files, boolean additions) {
+        int total = 0;
+        for (ChangedFile file : files) {
+            Integer value = additions ? file.additions() : file.deletions();
+            if (value != null) {
+                total += value;
+            }
+        }
+        return total;
     }
 
     // ---------------------------------------------------------------- 变更文件（compare）
