@@ -105,7 +105,7 @@ public class LlmReviewAnalyzer implements Analyzer {
             try {
                 String code = gitHostClients.forRepo(ctx.ref())
                         .rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                                ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
+                                ctx.ref(), ctx.contentRef(), path);
                 for (ReviewUnit u : Chunker.chunk(path, code, props.getChunkMaxChars())) {
                     tasks.add(UnitTask.of(u));
                 }
@@ -146,7 +146,7 @@ public class LlmReviewAnalyzer implements Analyzer {
             try {
                 String code = gitHostClients.forRepo(ctx.ref())
                         .rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                                ctx.ref().owner(), ctx.ref().repo(), ctx.contentRef(), path);
+                                ctx.ref(), ctx.contentRef(), path);
                 merged.append("==== 文件: ").append(path).append(" ====\n");
                 merged.append(code).append("\n\n");
                 fetched++;

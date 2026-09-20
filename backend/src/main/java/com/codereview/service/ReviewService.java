@@ -230,7 +230,7 @@ public class ReviewService {
         try {
             GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
             return gitHostClients.forRepo(ref)
-                    .headCommitSha(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
+                    .headCommitSha(p.getCredential(), p.getCredentialType(), ref, branch);
         } catch (Exception e) {
             log.warn("解析 HEAD commit sha 失败，降级留空: {}", e.getMessage());
             return null;

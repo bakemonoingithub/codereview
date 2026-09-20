@@ -33,42 +33,42 @@ class GitHostClientRegistryTest {
             }
 
             @Override
-            public List<GitTreeEntry> tree(String t, Integer c, String o, String r, String b) {
+            public List<GitTreeEntry> tree(String t, Integer c, GitRepoRef ref, String b) {
                 throw new UnsupportedOperationException(name);
             }
 
             @Override
-            public String rawFile(String t, Integer c, String o, String r, String ref, String p) {
+            public String rawFile(String t, Integer c, GitRepoRef ref, String r, String p) {
                 throw new UnsupportedOperationException(name);
             }
 
             @Override
-            public String headCommitSha(String t, Integer c, String o, String r, String b) {
+            public String headCommitSha(String t, Integer c, GitRepoRef ref, String b) {
                 throw new UnsupportedOperationException(name);
             }
 
             @Override
-            public List<String> branches(String t, Integer c, String o, String r) {
+            public List<String> branches(String t, Integer c, GitRepoRef ref) {
                 throw new UnsupportedOperationException(name);
             }
 
             @Override
-            public List<CommitInfo> commits(String t, Integer c, String o, String r, String b) {
+            public List<CommitInfo> commits(String t, Integer c, GitRepoRef ref, String b) {
                 throw new UnsupportedOperationException(name);
             }
 
             @Override
-            public CommitPage commitPage(String t, Integer c, String o, String r, String b, int page, int perPage) {
+            public CommitPage commitPage(String t, Integer c, GitRepoRef ref, String b, int page, int perPage) {
                 throw new UnsupportedOperationException(name);
             }
 
             @Override
-            public List<String> changedFiles(String t, Integer c, String o, String r, String base, String head) {
+            public List<String> changedFiles(String t, Integer c, GitRepoRef ref, String base, String head) {
                 throw new UnsupportedOperationException(name);
             }
 
             @Override
-            public CommitDetail commitDetail(String t, Integer c, String o, String r, String sha) {
+            public CommitDetail commitDetail(String t, Integer c, GitRepoRef ref, String sha) {
                 throw new UnsupportedOperationException(name);
             }
         };

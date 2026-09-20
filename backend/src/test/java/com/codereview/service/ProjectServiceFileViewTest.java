@@ -69,7 +69,7 @@ class ProjectServiceFileViewTest {
 
     @Test
     void readsTextFileAndReportsTotalLines() {
-        when(git.rawFile(any(), any(), eq("team"), eq("repo"), eq("main"), eq("src/A.java")))
+        when(git.rawFile(any(), any(), any(), eq("main"), eq("src/A.java")))
                 .thenReturn("class A {}\n");
 
         FileContentResp resp = service.fileView(9L, "main", "src/A.java", "content", false);
@@ -84,7 +84,7 @@ class ProjectServiceFileViewTest {
 
     @Test
     void truncatesAtThousandLinesByDefaultAndKeepsRealTotal() {
-        when(git.rawFile(any(), any(), any(), any(), any(), any())).thenReturn(lines(2500));
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn(lines(2500));
 
         FileContentResp resp = service.fileView(9L, "main", "src/A.java", "content", false);
 
@@ -95,7 +95,7 @@ class ProjectServiceFileViewTest {
 
     @Test
     void fullRelaxesLineLimitButStillRespectsByteCap() {
-        when(git.rawFile(any(), any(), any(), any(), any(), any())).thenReturn(lines(30_000));
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn(lines(30_000));
 
         FileContentResp resp = service.fileView(9L, "main", "src/A.java", "content", true);
 
@@ -107,7 +107,7 @@ class ProjectServiceFileViewTest {
 
     @Test
     void byteCapCutsASingleHugeLine() {
-        when(git.rawFile(any(), any(), any(), any(), any(), any())).thenReturn("x".repeat(5 * 1024 * 1024));
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn("x".repeat(5 * 1024 * 1024));
 
         FileContentResp resp = service.fileView(9L, "main", "src/A.java", "content", false);
 
@@ -121,7 +121,7 @@ class ProjectServiceFileViewTest {
                 1, 1, 2, false,
                 List.of(new com.codereview.git.ChangedFile("src/A.java", null, "modified", 1, 1, 1,
                         "@@ -1 +1 @@\n-a\n+b")));
-        when(git.commitDetail(any(), any(), any(), any(), eq(SHA))).thenReturn(detail);
+        when(git.commitDetail(any(), any(), any(), eq(SHA))).thenReturn(detail);
 
         FileContentResp resp = service.fileView(9L, SHA, "src/A.java", "diff", false);
 
@@ -135,7 +135,7 @@ class ProjectServiceFileViewTest {
         CommitDetail detail = new CommitDetail(SHA, List.of("p1"), "msg", "author", "2026-09-01",
                 0, 0, 0, false,
                 List.of(new com.codereview.git.ChangedFile("src/A.java", null, "modified", null, null, null, null)));
-        when(git.commitDetail(any(), any(), any(), any(), eq(SHA))).thenReturn(detail);
+        when(git.commitDetail(any(), any(), any(), eq(SHA))).thenReturn(detail);
 
         // 该文件在这份提交里没有 patch（宿主对过大差异会省略）⇒ 界面提示"无可显示差异"，而不是报错
         FileContentResp resp = service.fileView(9L, SHA, "src/Other.java", "diff", false);
@@ -152,7 +152,7 @@ class ProjectServiceFileViewTest {
 
         assertEquals(1001, e.getCode());
         assertTrue(e.getMessage().contains("sha"), "实际：" + e.getMessage());
-        verify(git, never()).commitDetail(any(), any(), any(), any(), any());
+        verify(git, never()).commitDetail(any(), any(), any(), any());
     }
 
     @Test
@@ -162,7 +162,7 @@ class ProjectServiceFileViewTest {
 
         assertEquals(5004, e.getCode());
         assertTrue(e.getMessage().contains("logo.png"));
-        verify(git, never()).rawFile(any(), any(), any(), any(), any(), any());
+        verify(git, never()).rawFile(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -181,7 +181,7 @@ class ProjectServiceFileViewTest {
                     () -> service.fileView(9L, "main", bad, "content", false), "应拒绝：" + bad);
             assertEquals(1001, e.getCode(), "应拒绝：" + bad);
         }
-        verify(git, never()).rawFile(any(), any(), any(), any(), any(), any());
+        verify(git, never()).rawFile(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -194,12 +194,12 @@ class ProjectServiceFileViewTest {
 
     @Test
     void refIsPassedThroughUntouchedSoShaPinnedContentStaysPinned() {
-        when(git.rawFile(any(), any(), any(), any(), eq(SHA), any())).thenReturn("x\n");
+        when(git.rawFile(any(), any(), any(), eq(SHA), any())).thenReturn("x\n");
 
         FileContentResp resp = service.fileView(9L, SHA, "src/A.java", "content", false);
 
         assertEquals(SHA, resp.ref());
-        verify(git).rawFile(any(), any(), eq("team"), eq("repo"), eq(SHA), eq("src/A.java"));
+        verify(git).rawFile(any(), any(), any(), eq(SHA), eq("src/A.java"));
     }
 
     /**
@@ -226,6 +226,6 @@ class ProjectServiceFileViewTest {
 
         assertEquals(5003, e.getCode());
         assertTrue(e.getMessage().contains("192.104.224.172"), "报错要点名 host：" + e.getMessage());
-        verify(unknownHost, never()).rawFile(any(), any(), any(), any(), any(), any());
+        verify(unknownHost, never()).rawFile(any(), any(), any(), any(), any());
     }
 }

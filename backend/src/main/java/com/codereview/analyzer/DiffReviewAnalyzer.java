@@ -96,7 +96,7 @@ public class DiffReviewAnalyzer implements Analyzer {
         try {
             detail = gitHostClients.forRepo(ctx.ref())
                     .commitDetail(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                            ctx.ref().owner(), ctx.ref().repo(), sha);
+                            ctx.ref(), sha);
         } catch (Exception e) {
             return failure("拉取单提交详情失败: " + e.getMessage());
         }
@@ -194,7 +194,7 @@ public class DiffReviewAnalyzer implements Analyzer {
         try {
             return gitHostClients.forRepo(ctx.ref())
                     .rawFile(ctx.project().getCredential(), ctx.project().getCredentialType(),
-                            ctx.ref().owner(), ctx.ref().repo(), sha, path);
+                            ctx.ref(), sha, path);
         } catch (Exception e) {
             return null;
         }

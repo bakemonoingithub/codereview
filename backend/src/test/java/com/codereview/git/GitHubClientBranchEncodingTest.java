@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
+import static com.codereview.git.GitStubServer.repo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -46,7 +47,7 @@ class GitHubClientBranchEncodingTest {
     void slashInBranchIsEncodedExactlyOnceForHeadCommitSha() {
         stub.respondWith("{\"commit\":{\"sha\":\"deadbeef\"}}");
 
-        stub.newClient().headCommitSha("", 1, "o", "r", "feature/x");
+        stub.newClient().headCommitSha("", 1, repo("o", "r"), "feature/x");
 
         assertEquals("/repos/o/r/branches/feature%2Fx", stub.uri(0),
                 "多编一层会变成 feature%252Fx，服务端会去找一个名叫 feature%2Fx 的分支");
@@ -56,7 +57,7 @@ class GitHubClientBranchEncodingTest {
     void slashInRefsIsEncodedExactlyOnceForCompare() {
         stub.respondWith("{\"files\":[]}");
 
-        stub.newClient().changedFiles("", 1, "o", "r", "release/1.0", "feature/x");
+        stub.newClient().changedFiles("", 1, repo("o", "r"), "release/1.0", "feature/x");
 
         assertEquals("/repos/o/r/compare/release%2F1.0...feature%2Fx", stub.uri(0));
     }
@@ -65,7 +66,7 @@ class GitHubClientBranchEncodingTest {
     void slashInRefIsKeptLegalInQueryButNeverDoubleEncoded() {
         stub.respondWith("{\"encoding\":\"base64\",\"content\":\"aGk=\"}");
 
-        stub.newClient().rawFile("", 1, "o", "r", "feature/x", "src/A.java");
+        stub.newClient().rawFile("", 1, repo("o", "r"), "feature/x", "src/A.java");
 
         // 查询值里的 / 是合法字符（encodeQueryParam 有意不编它），关键是不能出现 %25 这种二次编码；
         // 路径段里的 / 必须编成 %2F，否则会被当成多一层路径
@@ -77,7 +78,7 @@ class GitHubClientBranchEncodingTest {
     void plainNamesAndShasAreUnchanged() {
         stub.respondWith("{\"files\":[]}");
 
-        stub.newClient().changedFiles("", 1, "o", "r", "main", "abcdef1234567890");
+        stub.newClient().changedFiles("", 1, repo("o", "r"), "main", "abcdef1234567890");
 
         assertEquals("/repos/o/r/compare/main...abcdef1234567890", stub.uri(0),
                 "没有特殊字符时不该被编码成别的样子（防回归）");

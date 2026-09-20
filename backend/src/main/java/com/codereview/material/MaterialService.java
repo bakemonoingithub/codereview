@@ -28,7 +28,7 @@ public class MaterialService {
             for (String path : scope) {
                 try {
                     files.add(new SourceFile(path, gitHostClients.forRepo(ref)
-                            .rawFile(token, credentialType, ref.owner(), ref.repo(), contentRef, path)));
+                            .rawFile(token, credentialType, ref, contentRef, path)));
                 } catch (Exception ignored) {
                     // 单文件拉取失败跳过
                 }

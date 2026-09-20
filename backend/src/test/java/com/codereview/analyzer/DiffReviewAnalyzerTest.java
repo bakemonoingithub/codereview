@@ -72,7 +72,7 @@ class DiffReviewAnalyzerTest {
 
     @Test
     void commitDetailFailureIsReported() {
-        when(git.commitDetail(any(), any(), any(), any(), any()))
+        when(git.commitDetail(any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("远端 500"));
 
         AnalyzeOutcome outcome = analyzer.analyze(ctx("abc1234", List.of()));
@@ -83,7 +83,7 @@ class DiffReviewAnalyzerTest {
 
     @Test
     void commitWithoutChangedFilesFails() {
-        when(git.commitDetail(any(), any(), any(), any(), any()))
+        when(git.commitDetail(any(), any(), any(), any()))
                 .thenReturn(detail(List.of()));
 
         AnalyzeOutcome outcome = analyzer.analyze(ctx("abc1234", List.of()));
@@ -98,7 +98,7 @@ class DiffReviewAnalyzerTest {
         for (int i = 0; i <= DiffReviewAnalyzer.MAX_UNITS; i++) {
             files.add(new ChangedFile("db/f" + i + ".sql", null, "modified", 1, 1, 2, "@@ -1 +1 @@\n-a\n+b\n"));
         }
-        when(git.commitDetail(any(), any(), any(), any(), any())).thenReturn(detail(files));
+        when(git.commitDetail(any(), any(), any(), any())).thenReturn(detail(files));
 
         AnalyzeOutcome outcome = analyzer.analyze(ctx("abc1234", List.of()));
 
@@ -124,11 +124,11 @@ class DiffReviewAnalyzerTest {
                 + "+        int b = 2;\n"
                 + "     }\n"
                 + " }\n";
-        when(git.commitDetail(any(), any(), any(), any(), any())).thenReturn(new CommitDetail(
+        when(git.commitDetail(any(), any(), any(), any())).thenReturn(new CommitDetail(
                 "abc1234", List.of("p1"), "修复订单为空时的 NPE", "张三", "2026-09-03T21:00:00Z",
                 30, 10, 40, false,
                 List.of(new ChangedFile("src/A.java", null, "modified", 5, 1, 6, patch))));
-        when(git.rawFile(any(), any(), any(), any(), any(), any())).thenReturn(javaFile);
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn(javaFile);
         when(llm.chatJson(any(), any(), any(), any(), any())).thenReturn(
                 "{\"intentVerdict\":\"部分符合\",\"intentNote\":\"只处理了一处空值\","
                         + "\"issues\":[{\"severity\":\"MAJOR\",\"category\":\"缺陷\",\"newLine\":4,"
@@ -163,10 +163,10 @@ class DiffReviewAnalyzerTest {
 
     @Test
     void fileWithoutPatchFallsBackToFullFileAndDefaultsVerdict() {
-        when(git.commitDetail(any(), any(), any(), any(), any())).thenReturn(new CommitDetail(
+        when(git.commitDetail(any(), any(), any(), any())).thenReturn(new CommitDetail(
                 "abc1234", List.of("p1"), "m", "a", "d", 1, 1, 2, false,
                 List.of(new ChangedFile("logo.png", null, "modified", null, null, null, null))));
-        when(git.rawFile(any(), any(), any(), any(), any(), any())).thenReturn("binary-ish");
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn("binary-ish");
         when(llm.chatJson(any(), any(), any(), any(), any())).thenReturn("{\"issues\":[],\"summary\":\"ok\"}");
 
         AnalyzeOutcome outcome = analyzer.analyze(ctx("abc1234", List.of()));
@@ -192,10 +192,10 @@ class DiffReviewAnalyzerTest {
                 + "+        int b = 2;\n"
                 + "     }\n"
                 + " }\n";
-        when(git.commitDetail(any(), any(), any(), any(), any())).thenReturn(new CommitDetail(
+        when(git.commitDetail(any(), any(), any(), any())).thenReturn(new CommitDetail(
                 "abc1234", List.of("p1"), "msg", "author", "date", 1, 0, 1, false,
                 List.of(new ChangedFile("src/A.java", null, "modified", 1, 0, 1, patch))));
-        when(git.rawFile(any(), any(), any(), any(), any(), any())).thenReturn(javaFile);
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn(javaFile);
         when(llm.chatJson(any(), any(), any(), any(), any())).thenReturn("{\"issues\":[],\"summary\":\"ok\"}");
 
         analyzer.analyze(ctxWithPrompt("禁止使用魔法值，必须判空"));

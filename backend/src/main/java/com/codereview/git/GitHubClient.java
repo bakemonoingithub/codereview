@@ -51,8 +51,9 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
-    public List<GitTreeEntry> tree(String token, Integer credentialType, String owner, String repo, String branch) {
-        String url = apiBase + "/repos/" + owner + "/" + repo + "/git/trees/" + branch + "?recursive=1";
+    public List<GitTreeEntry> tree(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo()
+                + "/git/trees/" + branch + "?recursive=1";
         JsonNode root = getJson(url, token, credentialType);
         List<GitTreeEntry> entries = new ArrayList<>();
         for (JsonNode node : root.path("tree")) {
@@ -65,19 +66,19 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
-    public String rawFile(String token, Integer credentialType, String owner, String repo, String ref, String path) {
+    public String rawFile(String token, Integer credentialType, GitRepoRef repoRef, String ref, String path) {
         if (GitCache.isImmutableRef(ref)) {
-            String key = GitCache.key(owner, repo, ref) + ":" + path;
-            return cache.rawFile(key, () -> rawFileAtRef(token, credentialType, owner, repo, ref, path));
+            String key = GitCache.key(repoRef.owner(), repoRef.repo(), ref) + ":" + path;
+            return cache.rawFile(key, () -> rawFileAtRef(token, credentialType, repoRef, ref, path));
         }
-        return rawFileAtRef(token, credentialType, owner, repo, ref, path);
+        return rawFileAtRef(token, credentialType, repoRef, ref, path);
     }
 
-    private String rawFileAtRef(String token, Integer credentialType, String owner, String repo, String ref, String path) {
+    private String rawFileAtRef(String token, Integer credentialType, GitRepoRef repoRef, String ref, String path) {
         // 优先走 Contents API（与树接口同域 api.github.com），避免 raw.githubusercontent.com 直连被墙/超时。
         // Contents API 的 ref 接受分支名、标签或 commit sha。
-        String contentsUrl = apiBase + "/repos/" + owner + "/" + repo + "/contents/" + encodePathSegments(path)
-                + "?ref=" + UriUtils.encodeQueryParam(ref, StandardCharsets.UTF_8);
+        String contentsUrl = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/contents/"
+                + encodePathSegments(path) + "?ref=" + UriUtils.encodeQueryParam(ref, StandardCharsets.UTF_8);
         JsonNode root = getJson(contentsUrl, token, credentialType);
         String encoding = root.path("encoding").asText();
         String content = root.path("content").asText();
@@ -88,21 +89,22 @@ public class GitHubClient implements GitHostClient {
                 // 解码失败时回退 raw
             }
         }
-        String rawUrl = rawBase + "/" + owner + "/" + repo + "/" + encodePathSegments(ref) + "/" + encodePathSegments(path);
+        String rawUrl = rawBase + "/" + repoRef.owner() + "/" + repoRef.repo() + "/"
+                + encodePathSegments(ref) + "/" + encodePathSegments(path);
         return get(rawUrl, token, credentialType);
     }
 
     @Override
-    public String headCommitSha(String token, Integer credentialType, String owner, String repo, String branch) {
-        String url = apiBase + "/repos/" + owner + "/" + repo + "/branches/"
+    public String headCommitSha(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/branches/"
                 + UriUtils.encodePathSegment(branch, StandardCharsets.UTF_8);
         JsonNode root = getJson(url, token, credentialType);
         return root.path("commit").path("sha").asText();
     }
 
     @Override
-    public List<String> branches(String token, Integer credentialType, String owner, String repo) {
-        String url = apiBase + "/repos/" + owner + "/" + repo + "/branches";
+    public List<String> branches(String token, Integer credentialType, GitRepoRef repoRef) {
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/branches";
         JsonNode root = getJson(url, token, credentialType);
         List<String> names = new ArrayList<>();
         for (JsonNode node : root) {
@@ -112,16 +114,16 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
-    public List<CommitInfo> commits(String token, Integer credentialType, String owner, String repo, String branch) {
-        return commitPage(token, credentialType, owner, repo, branch, 1, LEGACY_COMMIT_PER_PAGE).commits();
+    public List<CommitInfo> commits(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        return commitPage(token, credentialType, repoRef, branch, 1, LEGACY_COMMIT_PER_PAGE).commits();
     }
 
     @Override
-    public CommitPage commitPage(String token, Integer credentialType, String owner, String repo,
+    public CommitPage commitPage(String token, Integer credentialType, GitRepoRef repoRef,
                                  String branch, int page, int perPage) {
         int safePage = Math.max(1, page);
         int safeSize = Math.min(Math.max(1, perPage), MAX_PER_PAGE);
-        String url = apiBase + "/repos/" + owner + "/" + repo + "/commits?sha="
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/commits?sha="
                 + UriUtils.encodeQueryParam(branch, StandardCharsets.UTF_8)
                 + "&page=" + safePage + "&per_page=" + safeSize;
         ResponseEntity<String> resp = getEntity(url, token, credentialType);
@@ -136,19 +138,19 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
-    public List<String> changedFiles(String token, Integer credentialType, String owner, String repo,
+    public List<String> changedFiles(String token, Integer credentialType, GitRepoRef repoRef,
                                      String base, String head) {
         // 仅当两端都是 commit sha 时才缓存（任一端是分支名就可能在移动）
         if (GitCache.isImmutableRef(base) && GitCache.isImmutableRef(head)) {
-            String key = GitCache.key(owner, repo, base + "..." + head);
-            return cache.changedFiles(key, () -> fetchChangedFiles(token, credentialType, owner, repo, base, head));
+            String key = GitCache.key(repoRef.owner(), repoRef.repo(), base + "..." + head);
+            return cache.changedFiles(key, () -> fetchChangedFiles(token, credentialType, repoRef, base, head));
         }
-        return fetchChangedFiles(token, credentialType, owner, repo, base, head);
+        return fetchChangedFiles(token, credentialType, repoRef, base, head);
     }
 
-    private List<String> fetchChangedFiles(String token, Integer credentialType, String owner, String repo,
+    private List<String> fetchChangedFiles(String token, Integer credentialType, GitRepoRef repoRef,
                                            String base, String head) {
-        String url = apiBase + "/repos/" + owner + "/" + repo + "/compare/"
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/compare/"
                 + UriUtils.encodePathSegment(base, StandardCharsets.UTF_8) + "..."
                 + UriUtils.encodePathSegment(head, StandardCharsets.UTF_8);
         JsonNode root = getJson(url, token, credentialType);
@@ -163,13 +165,13 @@ public class GitHubClient implements GitHostClient {
     }
 
     @Override
-    public CommitDetail commitDetail(String token, Integer credentialType, String owner, String repo, String sha) {
-        return cache.commitDetail(GitCache.key(owner, repo, sha),
-                () -> fetchCommitDetail(token, credentialType, owner, repo, sha));
+    public CommitDetail commitDetail(String token, Integer credentialType, GitRepoRef repoRef, String sha) {
+        return cache.commitDetail(GitCache.key(repoRef.owner(), repoRef.repo(), sha),
+                () -> fetchCommitDetail(token, credentialType, repoRef, sha));
     }
 
-    private CommitDetail fetchCommitDetail(String token, Integer credentialType, String owner, String repo, String sha) {
-        String url = apiBase + "/repos/" + owner + "/" + repo + "/commits/"
+    private CommitDetail fetchCommitDetail(String token, Integer credentialType, GitRepoRef repoRef, String sha) {
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/commits/"
                 + UriUtils.encodePathSegment(sha, StandardCharsets.UTF_8);
         ResponseEntity<String> resp = getEntity(url, token, credentialType);
         // GitHub 单提交接口每页最多 300 个文件，还有更多时通过 Link 头给出 rel="next"

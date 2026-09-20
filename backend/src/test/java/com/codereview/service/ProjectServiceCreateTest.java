@@ -63,13 +63,13 @@ class ProjectServiceCreateTest {
         assertEquals(1005, e.getCode());
         verify(projectMapper, never()).insert(any(Project.class));
         // 地址已被占用时不该再打一次远端：判重必须排在连通性验证之前
-        verify(gitHostClient, never()).branches(any(), any(), any(), any());
+        verify(gitHostClient, never()).branches(any(), any(), any());
     }
 
     @Test
     void createsWhenUrlFree() {
         when(projectMapper.selectCount(any())).thenReturn(0L);
-        when(gitHostClient.branches(any(), any(), any(), any())).thenReturn(List.of("main"));
+        when(gitHostClient.branches(any(), any(), any())).thenReturn(List.of("main"));
 
         Project created = service.create(req());
 
@@ -81,7 +81,7 @@ class ProjectServiceCreateTest {
     @Test
     void reportsConnectivityFailureWithoutInserting() {
         when(projectMapper.selectCount(any())).thenReturn(0L);
-        when(gitHostClient.branches(any(), any(), any(), any()))
+        when(gitHostClient.branches(any(), any(), any()))
                 .thenThrow(new RuntimeException("connection refused"));
 
         BusinessException e = assertThrows(BusinessException.class, () -> service.create(req()));

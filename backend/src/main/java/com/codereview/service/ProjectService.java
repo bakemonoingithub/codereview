@@ -67,7 +67,7 @@ public class ProjectService {
         int credentialType = req.credentialType() == null ? 1 : req.credentialType();
         ensureUrlAvailable(req.giteaUrl());
         try {
-            gitHostClients.forRepo(ref).branches(req.credential(), credentialType, ref.owner(), ref.repo());
+            gitHostClients.forRepo(ref).branches(req.credential(), credentialType, ref);
         } catch (Exception e) {
             throw new BusinessException(ResultCode.GIT_CONNECT_FAILED.getCode(), "仓库连通验证失败: " + e.getMessage());
         }
@@ -241,33 +241,33 @@ public class ProjectService {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
         List<GitTreeEntry> entries = gitHostClients.forRepo(ref)
-                .tree(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
+                .tree(p.getCredential(), p.getCredentialType(), ref, branch);
         return buildTree(entries);
     }
 
     public List<String> branches(Long projectId) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClients.forRepo(ref).branches(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo());
+        return gitHostClients.forRepo(ref).branches(p.getCredential(), p.getCredentialType(), ref);
     }
 
     public List<CommitInfo> commits(Long projectId, String branch) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClients.forRepo(ref).commits(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), branch);
+        return gitHostClients.forRepo(ref).commits(p.getCredential(), p.getCredentialType(), ref, branch);
     }
 
     public List<String> changedFiles(Long projectId, String base, String head) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClients.forRepo(ref).changedFiles(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), base, head);
+        return gitHostClients.forRepo(ref).changedFiles(p.getCredential(), p.getCredentialType(), ref, base, head);
     }
 
     /** 提交列表（分页）：返回 hasMore 供前端滚动加载。 */
     public CommitPage commitPage(Long projectId, String branch, int page, int pageSize) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClients.forRepo(ref).commitPage(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(),
+        return gitHostClients.forRepo(ref).commitPage(p.getCredential(), p.getCredentialType(), ref,
                 branch, page, pageSize);
     }
 
@@ -295,7 +295,7 @@ public class ProjectService {
     private CommitDetail loadCommitDetail(Long projectId, String sha) {
         Project p = getOrThrow(projectId);
         GitRepoRef ref = GitRepoRef.parse(p.getGiteaUrl());
-        return gitHostClients.forRepo(ref).commitDetail(p.getCredential(), p.getCredentialType(), ref.owner(), ref.repo(), sha);
+        return gitHostClients.forRepo(ref).commitDetail(p.getCredential(), p.getCredentialType(), ref, sha);
     }
 
     /** 文件查看：默认最多 1000 行；{@code full=true} 放宽到 20000 行。 */
@@ -344,7 +344,7 @@ public class ProjectService {
         Project p = getOrThrow(projectId);
         GitRepoRef gitRef = GitRepoRef.parse(p.getGiteaUrl());
         return gitHostClients.forRepo(gitRef)
-                .rawFile(p.getCredential(), p.getCredentialType(), gitRef.owner(), gitRef.repo(), ref, path);
+                .rawFile(p.getCredential(), p.getCredentialType(), gitRef, ref, path);
     }
 
     /** diff 模式必须锚定到提交：分支名会移动，而且 commitDetail 本来就按 sha 取。 */
