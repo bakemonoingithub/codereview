@@ -113,8 +113,8 @@ class GitStubServer {
         return new GitHubClient(new GitHubProperties(), gitProperties(), new GitCache(16, 16, 30));
     }
 
-    /** 测试用的仓库地址（GitHub 客户端不看 baseUrl，只取 owner/repo）。 */
+    /** 测试用的仓库地址（GitHub 客户端不看 baseUrl，Gitea 客户端用它推导站点根）。 */
     static GitRepoRef repo(String owner, String name) {
-        return new GitRepoRef("http://stub.invalid", owner, name);
+        return new GitRepoRef("http://stub.invalid", "stub.invalid", owner, name);
     }
 }

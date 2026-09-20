@@ -18,6 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Gitea 1.16.1 的 HTTP 契约测试。
@@ -55,11 +60,11 @@ class GiteaClientTest {
         GiteaProperties props = new GiteaProperties();
         props.setApiBase(apiBase);
         props.setHosts(List.of("127.0.0.1"));
-        return new GiteaClient(props, new GitCache(16, 16, 30));
+        return new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
     }
 
     private static GitRepoRef repo(String owner, String name) {
-        return new GitRepoRef("http://stub.invalid", owner, name);
+        return new GitRepoRef("http://stub.invalid", "stub.invalid", owner, name);
     }
 
     // ---------------------------------------------------------------- 文件树
@@ -250,7 +255,7 @@ class GiteaClientTest {
                 ? StubResponse.ok("diff --git a/src/A.java b/src/A.java\n@@ -1 +1 @@\n-a\n+b\n")
                 : StubResponse.ok("{\"sha\":\"s\",\"commit\":{\"message\":\"m\"},\"files\":[{\"filename\":\"src/A.java\"}]}"));
 
-        CommitDetail detail = new GiteaClient(props, new GitCache(16, 16, 30))
+        CommitDetail detail = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props))
                 .commitDetail("", 1, repo("o", "r"), "s");
 
         assertEquals(1, detail.files().size(), "文件清单仍要保留（上层会走全文件兜底）");
@@ -276,7 +281,7 @@ class GiteaClientTest {
         GiteaProperties props = new GiteaProperties();
         props.setHosts(List.of("127.0.0.1"));
         // apiBase 留空 → 按仓库地址推导
-        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30));
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
         GitRepoRef subPathRepo = GitRepoRef.parse(stub.base() + "/gitea/team/repo");
         stub.respondWith("{\"commit\":{\"id\":\"x\"}}");
 
@@ -299,7 +304,7 @@ class GiteaClientTest {
     void sshFormWithoutApiBaseFailsLoudlyInsteadOfGuessing() {
         GiteaProperties props = new GiteaProperties();
         props.setHosts(List.of("gitea.example.com"));
-        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30));
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
 
         BusinessException e = assertThrows(BusinessException.class,
                 () -> client.branches("", 1, GitRepoRef.parse("git@gitea.example.com:team/proj.git")));
@@ -326,14 +331,74 @@ class GiteaClientTest {
         props.setApiBase(stub.base());
         props.setToken("config-token");
 
-        new GiteaClient(props, new GitCache(16, 16, 30)).branches("", 1, repo("o", "r"));
+        new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props)).branches("", 1, repo("o", "r"));
         newClient().branches("", 1, repo("o", "r"));
 
         assertEquals("token config-token", stub.authHeaders().get(0));
         assertNull(stub.authHeaders().get(1), "两者都为空则匿名请求，不要发空 Authorization 头");
     }
 
+    // ---------------------------------------------------------------- 变更文件（本地镜像）
+
+    @Test
+    void changedFilesDelegatesToLocalMirrorWithDerivedCloneUrl() {
+        GiteaProperties props = new GiteaProperties();
+        props.setApiBase(stub.base());
+        GiteaGitMirror mirror = mock(GiteaGitMirror.class);
+        when(mirror.changedPaths(any(), any(), any(), any(), any())).thenReturn(List.of("src/A.java"));
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), mirror);
+
+        List<String> files = client.changedFiles("tok", 1, repo("o", "r"), SHA_A, SHA_B);
+
+        assertEquals(List.of("src/A.java"), files);
+        verify(mirror).changedPaths("http://stub.invalid/o/r.git", "tok", 1, SHA_A, SHA_B);
+    }
+
+    @Test
+    void changedFilesCachesOnlyImmutableRefPairs() {
+        GiteaProperties props = new GiteaProperties();
+        props.setApiBase(stub.base());
+        GiteaGitMirror mirror = mock(GiteaGitMirror.class);
+        when(mirror.changedPaths(any(), any(), any(), any(), any())).thenReturn(List.of("src/A.java"));
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), mirror);
+
+        client.changedFiles("", 1, repo("o", "r"), SHA_A, SHA_B);
+        client.changedFiles("", 1, repo("o", "r"), SHA_A, SHA_B);
+        client.changedFiles("", 1, repo("o", "r"), "dev", "main");
+
+        verify(mirror, times(2)).changedPaths(any(), any(), any(), any(), any());
+        // 两个 sha 的组合命中缓存，分支名的组合不能缓存（分支会移动）
+    }
+
+    @Test
+    void changedFilesFailsWhenLocalCloneIsDisabled() {
+        GiteaProperties props = new GiteaProperties();
+        props.setApiBase(stub.base());
+        props.setLocalCloneEnabled(false);
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> client.changedFiles("", 1, repo("o", "r"), "a", "b"));
+
+        assertEquals(5005, e.getCode());
+        assertTrue(e.getMessage().contains("compare"), e.getMessage());
+    }
+
+    @Test
+    void changedFilesWithoutSiteRootFailsLoudly() {
+        GiteaProperties props = new GiteaProperties();
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> client.changedFiles("", 1, GitRepoRef.parse("git@gitea.example.com:o/r.git"), "a", "b"));
+
+        assertTrue(e.getMessage().contains("git.gitea.api-base"), e.getMessage());
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    private static final String SHA_A = "1111111111111111111111111111111111111111";
+    private static final String SHA_B = "2222222222222222222222222222222222222222";
 
     private static String query(HttpExchange exchange, String name) {
         String q = exchange.getRequestURI().getQuery();

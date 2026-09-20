@@ -57,12 +57,14 @@ public class GiteaClient implements GitHostClient {
 
     private final GiteaProperties properties;
     private final GitCache cache;
+    private final GiteaGitMirror mirror;
     private final RestClient restClient;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public GiteaClient(GiteaProperties properties, GitCache cache) {
+    public GiteaClient(GiteaProperties properties, GitCache cache, GiteaGitMirror mirror) {
         this.properties = properties;
         this.cache = cache;
+        this.mirror = mirror;
         this.restClient = restClient();
     }
 
@@ -280,8 +282,37 @@ public class GiteaClient implements GitHostClient {
     @Override
     public List<String> changedFiles(String token, Integer credentialType, GitRepoRef repoRef,
                                      String base, String head) {
-        throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(),
-                "Gitea 1.16.1 没有 compare 接口，无法列出 " + base + "..." + head + " 的变更文件");
+        if (!properties.isLocalCloneEnabled()) {
+            throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(),
+                    "Gitea 1.16.1 没有 compare 接口，而本地镜像（git.gitea.local-clone-enabled）已关闭，"
+                            + "无法列出 " + base + "..." + head + " 的变更文件");
+        }
+        // 仅当两端都是 commit sha 时才缓存（任一端是分支名就可能在移动）
+        if (GitCache.isImmutableRef(base) && GitCache.isImmutableRef(head)) {
+            String key = GitCache.key(repoRef.owner(), repoRef.repo(), base + "..." + head);
+            return cache.changedFiles(key, () -> mirror.changedPaths(cloneUrl(repoRef), token, credentialType, base, head));
+        }
+        return mirror.changedPaths(cloneUrl(repoRef), token, credentialType, base, head);
+    }
+
+    /**
+     * 本地镜像用的克隆地址：{@code {站点根}/{owner}/{repo}.git}。
+     * 站点根优先取仓库地址里的（含子路径），其次从配置的 API 根去掉 {@code /api/v1} 反推。
+     */
+    private String cloneUrl(GitRepoRef repoRef) {
+        String siteRoot = repoRef.baseUrl();
+        if (siteRoot == null || siteRoot.isBlank()) {
+            String api = properties.normalizedApiBase();
+            if (api != null && api.endsWith("/api/v1")) {
+                siteRoot = api.substring(0, api.length() - "/api/v1".length());
+            }
+        }
+        if (siteRoot == null || siteRoot.isBlank()) {
+            throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(),
+                    "无法确定 Gitea 站点根以下载本地镜像（" + repoRef.host()
+                            + "）：请使用 http(s) 形式的仓库地址，或配置 git.gitea.api-base");
+        }
+        return siteRoot + "/" + repoRef.owner() + "/" + repoRef.repo() + ".git";
     }
 
     // ---------------------------------------------------------------- HTTP 基础设施
