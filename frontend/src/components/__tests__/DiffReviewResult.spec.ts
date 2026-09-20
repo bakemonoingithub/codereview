@@ -1,9 +1,17 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import DiffReviewResult from '@/components/DiffReviewResult.vue'
 import { antStubs } from '@/testUtils/antStubs'
 import { MARK_ACCEPTED, type IssueMark } from '@/api/review'
+
+vi.mock('@/api/project', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/project')>()
+  return { ...actual, getFilePatch: vi.fn() }
+})
+
+import { getFilePatch } from '@/api/project'
 
 /**
  * diff 结果的行内评论里带"误报/已采纳/撤销"三颗写库按钮。
@@ -173,5 +181,53 @@ describe('DiffReviewResult 问题行的 key', () => {
     const keys = wrapper.findAll('tr[data-row-key]').map((tr) => tr.attributes('data-row-key'))
     expect(keys.length, '两条问题都应渲染成行').toBe(2)
     expect(new Set(keys).size, '行 key 不能重复（否则控制台刷告警）').toBe(2)
+  })
+})
+
+// ---------------- patch 拉取失败（backlog ⑥：错误被伪装成"该文件无可用 diff"，且无法重试） ----------------
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('DiffReviewResult 的 patch 拉取失败', () => {
+  it('失败时给出错误与重试入口，而不是谎称"无可用 diff"', async () => {
+    ;(getFilePatch as any).mockRejectedValueOnce(new Error('接口 500'))
+    const wrapper = mountResult()
+    await flush()
+    await nextTick()
+
+    expect(wrapper.find('a-alert-stub').attributes('message')).toContain('接口 500')
+    expect(wrapper.find('.diff-viewer-stub').exists(), '不该再渲染 DiffViewer 的空态').toBe(false)
+  })
+
+  it('点重试会重新拉取，成功后渲染 diff（失败不再被当成"已加载"）', async () => {
+    ;(getFilePatch as any)
+      .mockRejectedValueOnce(new Error('接口 500'))
+      .mockResolvedValueOnce('@@ -1 +1 @@\n-a\n+b')
+    const wrapper = mountResult()
+    await flush()
+    await nextTick()
+
+    const retry = wrapper.findAll('a-button-stub').find((b) => b.text() === '重试')
+    expect(retry, '失败后必须给重试入口').toBeTruthy()
+    await retry!.trigger('click')
+    await flush()
+    await nextTick()
+
+    expect(getFilePatch).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('.diff-viewer-stub').exists()).toBe(true)
+  })
+
+  it('真正没有可用 diff（返回 null）时仍走 DiffViewer 的空态，不报错', async () => {
+    ;(getFilePatch as any).mockResolvedValueOnce(null)
+    const wrapper = mountResult()
+    await flush()
+    await nextTick()
+
+    expect(wrapper.find('.diff-viewer-stub').exists()).toBe(true)
+    expect(wrapper.find('a-alert-stub').exists()).toBe(false)
   })
 })

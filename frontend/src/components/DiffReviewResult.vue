@@ -46,7 +46,7 @@
           <p v-if="unit.intentNote" class="intent-note">意图判断：{{ unit.intentNote }}</p>
           <p v-if="unit.note" class="note">{{ unit.note }}</p>
 
-          <a-spin :spinning="loadingPatch[unit.path]">
+          <a-spin v-if="!patchErrors[unit.path]" :spinning="loadingPatch[unit.path]">
             <DiffViewer
               :path="unit.path"
               :patch="patches[unit.path]"
@@ -96,6 +96,7 @@
               </template>
             </DiffViewer>
           </a-spin>
+          <LoadErrorAlert v-else :message="patchErrors[unit.path]" @retry="ensurePatch(unit.path, true)" />
 
           <a-table
             v-if="unlocatedIssues(unit).length"
@@ -127,6 +128,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import DiffViewer from '@/components/DiffViewer.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import { getFilePatch } from '@/api/project'
 import { MARK_ACCEPTED, MARK_FALSE_POSITIVE, MARK_NONE, type IssueMark } from '@/api/review'
 import { changeTypeTip, severityTip } from '@/utils/enums'
@@ -148,6 +150,8 @@ defineEmits<{
 const activeKeys = ref<string[]>([])
 const patches = reactive<Record<string, string | null>>({})
 const loadingPatch = reactive<Record<string, boolean>>({})
+/** 拉取失败的原因：与"加载成功但没有可用 diff"（patches[path] === null）区分开 */
+const patchErrors = reactive<Record<string, string>>({})
 
 const units = computed<any[]>(() => (Array.isArray(props.result?.units) ? props.result.units : []))
 
@@ -202,15 +206,21 @@ function markOf(unitPath: string, issueIndex: number): number {
   return hit ? hit.markValue : MARK_NONE
 }
 
-async function ensurePatch(path: string) {
-  if (path in patches || loadingPatch[path]) {
+async function ensurePatch(path: string, force = false) {
+  if (!force && (path in patches || loadingPatch[path])) {
     return
   }
   loadingPatch[path] = true
+  delete patchErrors[path]
+  // force 时先清掉上次结果：否则重试期间旧 diff 还挂在屏幕上
+  delete patches[path]
   try {
     patches[path] = await getFilePatch(props.projectId, props.commitSha, path)
-  } catch {
-    patches[path] = null
+  } catch (e: any) {
+    // 原先写 `patches[path] = null`：null 的语义是"加载成功但该文件没有可用 diff（二进制/过大）"，
+    // 于是接口失败被 DiffViewer 的 empty-text 说成"该文件无可用 diff"；而且 null 也是有效缓存，
+    // 折叠再展开不会重试 —— 只能整页重载。现在失败**不写缓存**、只记错误，可随时重试。
+    patchErrors[path] = e?.message || '加载该文件差异失败'
   } finally {
     loadingPatch[path] = false
   }
