@@ -1,5 +1,51 @@
 <template>
   <div>
+    <!--
+      模块级（T-03）：**表看模块、图看类**。
+      旧审查记录里没有 modules（模块级是后加的），此时不渲染空表，只给一行提示 ——
+      空表会让人以为是"这个项目没有跨模块依赖"。
+    -->
+    <template v-if="hasModules">
+      <div class="sub-title">模块耦合度（按包聚合，表看模块 / 图看类）</div>
+      <div class="module-summary">{{ result.moduleSummary }}</div>
+      <a-table
+        :data-source="modules"
+        row-key="name"
+        size="small"
+        :pagination="false"
+        :scroll="{ x: 'max-content' }"
+      >
+        <a-table-column title="模块" data-index="name" width="180">
+          <template #default="{ record }">
+            <span>{{ record.name }}</span>
+            <a-tag v-if="record.high" color="orange" style="margin-left: 6px">高耦合</a-tag>
+          </template>
+        </a-table-column>
+        <a-table-column title="类数" data-index="classCount" width="70" />
+        <a-table-column title="Ca（被依赖）" data-index="ca" width="110" />
+        <a-table-column title="Ce（依赖）" data-index="ce" width="100" />
+        <a-table-column title="I（不稳定度）" data-index="instability" width="110">
+          <template #default="{ text }">{{ instabilityText(text) }}</template>
+        </a-table-column>
+      </a-table>
+      <div v-if="moduleCycles.length" class="block">
+        <div class="sub-title">模块级循环依赖</div>
+        <a-tooltip v-for="(cyc, i) in moduleCycles" :key="i" :title="cyc.join(' → ')">
+          <a-tag color="red">{{ renderCycle(cyc) }}</a-tag>
+        </a-tooltip>
+      </div>
+      <div class="scope-note">
+        依赖按 import 统计，不含继承 / 反射 / 同包引用；高耦合模块 = Ce &gt; 3 且 I ≥ 0.8
+      </div>
+    </template>
+    <a-alert
+      v-else
+      type="info"
+      show-icon
+      class="mb8"
+      message="该记录没有模块级数据"
+      description="模块级耦合是后加的，重新运行一次耦合度审查即可获得。"
+    />
     <div ref="chartRef" class="graph"></div>
     <div v-if="highCoupling.length" class="block">
       <div class="sub-title">高耦合类（扇出超阈值）</div>
@@ -51,6 +97,22 @@ let chart: echarts.ECharts | null = null
 const highCoupling = computed(() => props.result?.highCoupling || [])
 const cycles = computed(() => props.result?.cycles || [])
 const suggestions = computed(() => props.result?.suggestions || [])
+const modules = computed(() => props.result?.modules || [])
+const moduleCycles = computed(() => props.result?.moduleCycles || [])
+/** 只有真的拿到模块级数据才渲染这张表；旧记录走"提示 + 类级图" */
+const hasModules = computed(() => Array.isArray(props.result?.modules) && props.result.modules.length > 0)
+
+function instabilityText(value: unknown) {
+  return typeof value === 'number' ? value.toFixed(2) : '—'
+}
+
+/** 2 元环读起来就是"双向依赖"，用 ↔ 更直观；更长的环画成 a → b → c → a */
+function renderCycle(cycle: string[]) {
+  if (cycle.length === 2) {
+    return `${cycle[0]} ↔ ${cycle[1]}`
+  }
+  return `${cycle.join(' → ')} → ${cycle[0]}`
+}
 
 function render() {
   if (!chartRef.value) return
@@ -154,5 +216,18 @@ watch(() => props.result, render, { deep: true })
 .sub-title {
   color: #666;
   margin-bottom: 6px;
+}
+.module-summary {
+  color: #333;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.scope-note {
+  color: #999;
+  font-size: 12px;
+  margin: 8px 0 12px;
+}
+.mb8 {
+  margin-bottom: 8px;
 }
 </style>

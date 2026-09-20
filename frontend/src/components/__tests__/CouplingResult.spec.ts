@@ -175,3 +175,101 @@ describe('CouplingResult 图表', () => {
     expect((chartMock.setOption as any).mock.calls.length).toBeGreaterThan(1)
   })
 })
+
+/**
+ * T-03：模块级（包级）耦合。
+ *
+ * 两条硬契约：
+ * 1. **表看模块、图看类**，且模块表在类级图**上方**（与后端 summary"模块在前、类级在后"一致）；
+ * 2. 旧记录没有 `modules` 字段时**不渲染空表**，改为一行"重新审查即可获得"的提示 ——
+ *    空表会被读成"这个项目没有跨模块依赖"，与事实相反。
+ */
+describe('CouplingResult 模块级', () => {
+  // 这几条要断言真实表格的行内容，所以放开 a-table 的 stub（与 ReportPanel.spec 同一套做法）
+  const realTableOptions = {
+    global: {
+      stubs: { ...antStubs, 'a-table': false, 'a-table-column': false }
+    }
+  }
+
+  const multiPackage = {
+    ...result,
+    moduleSummary: '模块 3 个；跨模块依赖 3 对、共 24 处类级依赖；高耦合模块 1 个（web）；模块级循环 1 组（inventory ↔ order）',
+    modules: [
+      { name: 'web', classCount: 12, ca: 0, ce: 4, instability: 1, high: true },
+      { name: 'order', classCount: 30, ca: 2, ce: 1, instability: 0.33, high: false }
+    ],
+    moduleEdges: [{ from: 'order', to: 'inventory', weight: 12 }],
+    moduleCycles: [['inventory', 'order']],
+    moduleMutualPairs: [['inventory', 'order']]
+  }
+
+  function mountWith(props: any, options = realTableOptions) {
+    const wrapper = mount(CouplingResult, { props, ...options })
+    wrappers.push(wrapper)
+    return wrapper
+  }
+
+  beforeEach(() => {
+    observers = []
+    vi.clearAllMocks()
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver)
+  })
+
+  afterEach(() => {
+    wrappers.forEach((wrapper) => wrapper.unmount())
+    wrappers = []
+    vi.unstubAllGlobals()
+  })
+
+  it('渲染模块表：模块名、类数、Ca/Ce、两位小数的不稳定度', () => {
+    const wrapper = mountWith({ result: multiPackage })
+
+    expect(wrapper.text()).toContain('模块耦合度（按包聚合，表看模块 / 图看类）')
+    expect(wrapper.text()).toContain('模块 3 个；跨模块依赖 3 对、共 24 处类级依赖')
+    expect(wrapper.text()).toContain('web')
+    expect(wrapper.text()).toContain('order')
+    expect(wrapper.text()).toContain('1.00')
+    expect(wrapper.text()).toContain('0.33')
+  })
+
+  it('高耦合模块带标记，模块级循环按 2 元环渲染成双向箭头', () => {
+    const wrapper = mountWith({ result: multiPackage })
+
+    expect(wrapper.text()).toContain('高耦合')
+    expect(wrapper.text()).toContain('inventory ↔ order')
+  })
+
+  it('模块级循环超过两个模块时画成闭环，不写成双向', () => {
+    const wrapper = mountWith({
+      result: { ...multiPackage, moduleCycles: [['billing', 'inventory', 'order']] }
+    })
+
+    expect(wrapper.text()).toContain('billing → inventory → order → billing')
+  })
+
+  it('模块表排在类级图上方，并注明依赖口径', () => {
+    const wrapper = mountWith({ result: multiPackage })
+
+    const html = wrapper.html()
+    expect(html.indexOf('模块耦合度（按包聚合')).toBeLessThan(html.indexOf('class="graph"'))
+    expect(wrapper.text()).toContain('依赖按 import 统计，不含继承 / 反射 / 同包引用')
+    expect(wrapper.find('a-alert-stub').exists()).toBe(false)
+  })
+
+  it('旧记录（没有 modules）不渲染空表，只提示重新审查', () => {
+    const wrapper = mountWith({ result })
+
+    const alert = wrapper.find('a-alert-stub')
+    expect(alert.exists()).toBe(true)
+    expect(alert.attributes('message')).toContain('没有模块级数据')
+    expect(alert.attributes('description')).toContain('重新运行一次耦合度审查')
+    expect(wrapper.text()).not.toContain('模块耦合度（按包聚合')
+  })
+
+  it('空的 modules 数组同样按"没有模块级数据"处理', () => {
+    const wrapper = mountWith({ result: { ...result, modules: [], moduleSummary: '无模块数据（未解析到任何类）' } })
+
+    expect(wrapper.find('a-alert-stub').attributes('message')).toContain('没有模块级数据')
+  })
+})
