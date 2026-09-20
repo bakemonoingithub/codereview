@@ -27,7 +27,10 @@ public class IssueMarkController {
         this.issueMarkService = issueMarkService;
     }
 
-    /** 打标 / 改标；markValue: 0 未标记(撤销) / 1 误报 / 2 已采纳。 */
+    /**
+     * 打标 / 改标；markValue: 0 未标记(撤销，等价于 DELETE，且幂等) / 1 误报 / 2 已采纳。
+     * 撤销时返回 {@code null}（表示当前未标记）。
+     */
     @PostMapping("/reviews/{recordId}/marks")
     public Result<IssueMark> mark(@PathVariable Long recordId, @RequestBody IssueMarkReq req) {
         return Result.ok(issueMarkService.mark(recordId, req.unitPath(), req.issueIndex(), req.markValue()));

@@ -43,7 +43,12 @@ public class IssueMarkService {
         this.reviewRecordMapper = reviewRecordMapper;
     }
 
-    /** 打标 / 改标；{@code markValue=0} 表示撤销标记。 */
+    /**
+     * 打标 / 改标；{@code markValue=0} 表示撤销（= 真删除该行，且语义等幂）。
+     * <p>
+     * {@code markValue=0} 在"本来就没有标记"时是 no-op（以前会 insert 一行 {@code mark_value=0} 的占位行），
+     * 返回 {@code null} 表示当前处于"未标记"状态。
+     */
     public IssueMark mark(Long recordId, String unitPath, Integer issueIndex, Integer markValue) {
         if (recordId == null || unitPath == null || unitPath.isBlank() || issueIndex == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "缺少标记定位信息（记录/文件路径/issue 下标）");
@@ -54,6 +59,10 @@ public class IssueMarkService {
         }
         if (reviewRecordMapper.selectById(recordId) == null) {
             throw new BusinessException(ResultCode.REVIEW_NOT_FOUND);
+        }
+        if (markValue == MARK_NONE) {
+            unmark(recordId, unitPath, issueIndex);
+            return null;
         }
         IssueMark existing = find(recordId, unitPath, issueIndex);
         if (existing == null) {
@@ -70,14 +79,24 @@ public class IssueMarkService {
         return existing;
     }
 
-    /** 撤销标记：写回 0（不删行，避免逻辑删除占住唯一键导致无法重新标记）。 */
+    /**
+     * 撤销标记：**真删除**该行（不是写回 0）。
+     * <p>
+     * 写回 0 的旧做法是为了绕开唯一键 {@code uk_record_unit_issue}：实体带 {@code @TableLogic}，
+     * 逻辑删除的行仍然占着唯一键，同一条 issue 就再也标不上。改成真删除后，"占位"问题不存在，
+     * 唯一键反而成了"同一单元同一 issue 只有一行"的并发保护（应用层 {@link #find} 查重之外再兜一层）。
+     * <p>
+     * 本来没有标记时是 no-op（幂等）：重复点"撤销"不会报错，也不会产生垃圾行。
+     * <p>
+     * 历史说明：{@code V2__issue_mark.sql} 的注释仍写着"撤销写回 0 而不删行"，那是旧口径；
+     * 已应用的迁移不动（Flyway 校验 checksum），以本方法为准。
+     */
     public void unmark(Long recordId, String unitPath, Integer issueIndex) {
         IssueMark existing = find(recordId, unitPath, issueIndex);
         if (existing == null) {
             return;
         }
-        existing.setMarkValue(MARK_NONE);
-        issueMarkMapper.updateById(existing);
+        issueMarkMapper.deletePhysically(existing.getId());
     }
 
     /** 某条记录的标记清单（只返回有效标记）。 */

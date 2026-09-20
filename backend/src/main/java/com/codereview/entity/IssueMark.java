@@ -13,8 +13,12 @@ import java.time.LocalDateTime;
 /**
  * issue 标记（误报 / 已采纳），用于准确率复核。
  * <p>
- * {@code markValue}：0 未标记（撤销后的状态）/ 1 误报 / 2 已采纳。
- * 撤销标记写回 0 而非删行——逻辑删除会让唯一键仍被占用，导致同一条 issue 无法重新标记。
+ * {@code markValue}：0 未标记 / 1 误报 / 2 已采纳。撤销标记现在是**真删除该行**
+ * （{@link com.codereview.mapper.IssueMarkMapper#deletePhysically}），不再写回 0 留一行占位 ——
+ * 逻辑删除会让唯一键 {@code uk_record_unit_issue} 仍被占用，导致同一条 issue 无法重新标记。
+ * <p>
+ * {@code isDeleted} 与 {@code @TableLogic} 仍然保留：唯一键只被"撤销标记"这一条路径真删，
+ * 而 {@code ProjectService} 删项目时的级联清理依旧走逻辑删除。
  */
 @Data
 @TableName("issue_mark")
