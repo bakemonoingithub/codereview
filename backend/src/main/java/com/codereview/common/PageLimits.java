@@ -1,5 +1,7 @@
 package com.codereview.common;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
 /**
  * 分页参数约束。
  *
@@ -7,8 +9,12 @@ package com.codereview.common;
  * {@code PaginationInnerInterceptor} 并未设置 {@code maxLimit} —— 不在这里兜住，
  * 调用方给 {@code pageSize=100000} 就会真的去查十万行。
  *
- * 目前只有审查记录列表接了这个约束（本次需求范围内）；其余分页接口是否统一接入见
- * {@code dev/待办backlog.md}。
+ * <p><b>两道防线，一处口径</b>：
+ * <ol>
+ *   <li>各列表接口用 {@link #page(long, long)} 构造分页对象（显式、可单测）；</li>
+ *   <li>{@code MybatisPlusConfig} 给分页插件设 {@code maxLimit = }{@link #MAX_PAGE_SIZE}
+ *       —— 以后新增的接口即使忘了用 {@link #page(long, long)}，也钳得住。</li>
+ * </ol>
  */
 public final class PageLimits {
 
@@ -16,6 +22,16 @@ public final class PageLimits {
     public static final long MAX_PAGE_SIZE = 100;
 
     private PageLimits() {
+    }
+
+    /**
+     * 统一的分页对象工厂：六个列表接口都走它，避免"只 clamp 了其中一个参数"。
+     *
+     * <p>与分页插件的 {@code maxLimit} 用的是同一个上限常量（见 {@code MybatisPlusConfig}），
+     * 所以返回体里的 {@code size} 就是实际生效值，前端据此算总页数不会出现空页。
+     */
+    public static <T> Page<T> page(long pageNum, long pageSize) {
+        return new Page<>(clampPageNum(pageNum), clampPageSize(pageSize));
     }
 
     /** 超限截断到 {@link #MAX_PAGE_SIZE}，非正数回落到 1（避免 LIMIT 0 查不出数据） */

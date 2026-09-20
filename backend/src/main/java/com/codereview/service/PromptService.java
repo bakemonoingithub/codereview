@@ -3,6 +3,7 @@ package com.codereview.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
+import com.codereview.common.PageLimits;
 import com.codereview.common.ResultCode;
 import com.codereview.common.TextDiff;
 import com.codereview.dto.PromptContentUpdateReq;
@@ -127,7 +128,7 @@ public class PromptService {
                             "%" + keyword + "%"));
         }
         w.orderByDesc(Prompt::getUpdatedAt);
-        return promptMapper.selectPage(new Page<>(pageNum, pageSize), w);
+        return promptMapper.selectPage(PageLimits.page(pageNum, pageSize), w);
     }
 
     public PromptDetailResp detail(Long id) {

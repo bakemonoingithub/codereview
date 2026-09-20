@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
+import com.codereview.common.PageLimits;
 import com.codereview.common.ResultCode;
 import com.codereview.dto.StrategyReq;
 import com.codereview.dto.StrategyResp;
@@ -123,7 +124,7 @@ public class ReviewStrategyService {
             w.eq(ReviewStrategy::getAnalyzerType, analyzerType);
         }
         w.orderByDesc(ReviewStrategy::getUpdatedAt);
-        Page<ReviewStrategy> page = strategyMapper.selectPage(new Page<>(pageNum, pageSize), w);
+        Page<ReviewStrategy> page = strategyMapper.selectPage(PageLimits.page(pageNum, pageSize), w);
         Page<StrategyResp> rows = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         rows.setRecords(page.getRecords().stream().map(this::toResp).toList());
         return rows;

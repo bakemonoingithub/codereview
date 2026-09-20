@@ -1,7 +1,9 @@
 package com.codereview.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.AnalyzerTypes;
 import com.codereview.common.BusinessException;
+import com.codereview.common.PageLimits;
 import com.codereview.dto.StrategyReq;
 import com.codereview.dto.StrategyResp;
 import com.codereview.entity.ModelConfig;
@@ -9,6 +11,7 @@ import com.codereview.entity.ReviewStrategy;
 import com.codereview.mapper.ReviewStrategyMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -232,5 +235,17 @@ class ReviewStrategyServiceTest {
         StrategyResp resp = service.update(1L, new StrategyReq("原名", null, llmParams()));
 
         assertEquals("原名", resp.name());
+    }
+
+    @Test
+    void listClampsOversizedPageSizeToTheDocumentedCap() {
+        when(strategyMapper.selectPage(any(Page.class), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Page<StrategyResp> result = service.list(1, 100_000, null, null);
+
+        ArgumentCaptor<Page<ReviewStrategy>> captor = ArgumentCaptor.forClass(Page.class);
+        verify(strategyMapper).selectPage(captor.capture(), any());
+        assertEquals(PageLimits.MAX_PAGE_SIZE, captor.getValue().getSize(), "下传给 SQL 的页大小必须被截断");
+        assertEquals(PageLimits.MAX_PAGE_SIZE, result.getSize(), "返回体 size 必须是生效值，前端据此算总页数");
     }
 }

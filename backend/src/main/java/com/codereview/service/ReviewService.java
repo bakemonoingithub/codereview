@@ -177,7 +177,7 @@ public class ReviewService {
                 .orderByDesc(ReviewRecord::getCreatedAt);
 
         Page<ReviewRecord> page = reviewRecordMapper.selectPage(
-                new Page<>(PageLimits.clampPageNum(pageNum), PageLimits.clampPageSize(pageSize)), wrapper);
+                PageLimits.page(pageNum, pageSize), wrapper);
 
         Map<Long, String> strategyNames = loadStrategyNames(page.getRecords());
         Page<ReviewRecordRow> rows = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());

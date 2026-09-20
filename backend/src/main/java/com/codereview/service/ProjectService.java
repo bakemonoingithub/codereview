@@ -3,6 +3,7 @@ package com.codereview.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
+import com.codereview.common.PageLimits;
 import com.codereview.common.ResultCode;
 import com.codereview.common.ReviewableFiles;
 import com.codereview.common.TextWindow;
@@ -104,7 +105,7 @@ public class ProjectService {
     }
 
     public Page<Project> list(long pageNum, long pageSize) {
-        return projectMapper.selectPage(new Page<>(pageNum, pageSize), null);
+        return projectMapper.selectPage(PageLimits.page(pageNum, pageSize), null);
     }
 
     /**

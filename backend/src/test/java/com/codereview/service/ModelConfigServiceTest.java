@@ -1,12 +1,15 @@
 package com.codereview.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
+import com.codereview.common.PageLimits;
 import com.codereview.dto.ModelConfigReq;
 import com.codereview.entity.ModelConfig;
 import com.codereview.llm.LlmClient;
 import com.codereview.mapper.ModelConfigMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -75,5 +78,29 @@ class ModelConfigServiceTest {
         ModelConfig updated = service.update(1L, new ModelConfigReq("原名", "http://x", null, "m", null));
 
         assertEquals("原名", updated.getName());
+    }
+
+    @Test
+    void listClampsOversizedPageSizeToTheDocumentedCap() {
+        when(modelConfigMapper.selectPage(any(Page.class), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.list(1, 100_000);
+
+        ArgumentCaptor<Page<ModelConfig>> captor = ArgumentCaptor.forClass(Page.class);
+        verify(modelConfigMapper).selectPage(captor.capture(), any());
+        assertEquals(PageLimits.MAX_PAGE_SIZE, captor.getValue().getSize(),
+                "不截断就会真的去查十万行");
+    }
+
+    @Test
+    void listFallsBackToOneForNonPositivePageSizeAndPageNum() {
+        when(modelConfigMapper.selectPage(any(Page.class), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.list(0, 0);
+
+        ArgumentCaptor<Page<ModelConfig>> captor = ArgumentCaptor.forClass(Page.class);
+        verify(modelConfigMapper).selectPage(captor.capture(), any());
+        assertEquals(1, captor.getValue().getSize());
+        assertEquals(1, captor.getValue().getCurrent());
     }
 }

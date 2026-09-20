@@ -1,6 +1,8 @@
 package com.codereview.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.codereview.common.BusinessException;
+import com.codereview.common.PageLimits;
 import com.codereview.dto.PromptCreateReq;
 import com.codereview.dto.PromptUpdateReq;
 import com.codereview.entity.Prompt;
@@ -9,6 +11,7 @@ import com.codereview.mapper.PromptMapper;
 import com.codereview.mapper.PromptVersionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 
@@ -79,5 +82,29 @@ class PromptServiceTest {
         Prompt updated = service.update(1L, new PromptUpdateReq("原名", "描述", List.of()));
 
         assertEquals("原名", updated.getName());
+    }
+
+    @Test
+    void listClampsOversizedPageSizeToTheDocumentedCap() {
+        when(promptMapper.selectPage(any(Page.class), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.list(1, 100_000, null);
+
+        ArgumentCaptor<Page<Prompt>> captor = ArgumentCaptor.forClass(Page.class);
+        verify(promptMapper).selectPage(captor.capture(), any());
+        assertEquals(PageLimits.MAX_PAGE_SIZE, captor.getValue().getSize());
+        assertEquals(1, captor.getValue().getCurrent());
+    }
+
+    @Test
+    void listFallsBackToOneForNonPositivePageNum() {
+        when(promptMapper.selectPage(any(Page.class), any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.list(-5, 20, "关键字");
+
+        ArgumentCaptor<Page<Prompt>> captor = ArgumentCaptor.forClass(Page.class);
+        verify(promptMapper).selectPage(captor.capture(), any());
+        assertEquals(1, captor.getValue().getCurrent());
+        assertEquals(20, captor.getValue().getSize(), "合法页大小不该被改写");
     }
 }
