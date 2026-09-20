@@ -338,6 +338,38 @@ class GiteaClientTest {
         assertNull(stub.authHeaders().get(1), "两者都为空则匿名请求，不要发空 Authorization 头");
     }
 
+    @Test
+    void defaultHostsCoverTheInternalGiteaSiteOutOfTheBox() {
+        GiteaProperties props = new GiteaProperties();
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
+        GitRepoRef ref = GitRepoRef.parse("http://192.104.224.172/gitea/team/proj");
+
+        assertTrue(client.supports(ref), "内网站点应在默认白名单里（开箱可用）");
+        assertEquals("http://192.104.224.172/gitea/api/v1", ref.apiBase(),
+                "API 根 = 站点根（含 /gitea 子路径）+ /api/v1");
+    }
+
+    @Test
+    void whitelistEntryWithoutPortAlsoMatchesDefaultPortUrl() {
+        GiteaProperties props = new GiteaProperties();
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
+
+        assertTrue(client.supports(GitRepoRef.parse("http://192.104.224.172:80/gitea/team/proj")),
+                "白名单只写 host 时，URL 多写一个默认端口 :80 不该报「未接入」");
+        assertFalse(client.supports(GitRepoRef.parse("http://192.104.224.172:3000/team/proj")),
+                "非默认端口必须显式写进白名单");
+    }
+
+    @Test
+    void unlistedHostsAreNeverClaimedByGitea() {
+        GiteaProperties props = new GiteaProperties();
+        GiteaClient client = new GiteaClient(props, new GitCache(16, 16, 30), new GiteaGitMirror(props));
+
+        assertFalse(client.supports(GitRepoRef.parse("https://github.com/o/r")));
+        assertFalse(client.supports(GitRepoRef.parse("http://git.internal.corp/gitea/o/r")),
+                "未接入的 host 必须显式报错，绝不能猜（也绝不回落 GitHub）");
+    }
+
     // ---------------------------------------------------------------- 变更文件（本地镜像）
 
     @Test

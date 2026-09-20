@@ -68,13 +68,14 @@ git:
 
   # Gitea 1.16.1 接入。**API 根不用配**：按各项目的仓库地址推导
   # （http://host/gitea/owner/repo → http://host/gitea/api/v1），内网子路径自动带上。
+  # 内网站点（192.104.224.172/gitea）开箱可用：hosts 默认已含 localhost:3000 与 192.104.224.172。
   gitea:
-    hosts:                        # 哪些 host[:port] 归 Gitea 客户端（显式白名单，未命中显式报错）
-      - localhost:3000            # 本机开发
-      - 192.104.224.172           # 内网
+    hosts:                        # 哪些 host[:port] 归 Gitea 客户端（白名单，未命中显式报「未接入的仓库宿主」）
+      - localhost:3000            # 本机开发（默认值）
+      - 192.104.224.172           # 内网站点（默认值；只写 host 也能匹配 http://192.104.224.172:80/...）
     api-base: ""                  # 可选覆盖（含 /api/v1）；仅 git@host:owner/repo 这类地址需要
-    token: ${GITEA_TOKEN:}        # 兜底令牌；项目里填了 credential 时以项目为准
+    token: ${GITEA_TOKEN:}        # 兜底令牌；项目里填了 credential 时以项目为准（内网只申请了一个只读令牌时用它）
     local-clone-enabled: true     # Gitea 没有 compare 接口，靠本地 bare 镜像算三点差异；false 则 compare 直接报错
-    work-dir: ""                  # 本地镜像目录；留空用 ${java.io.tmpdir}/code-review-git-mirrors
-    mirror-timeout-seconds: 120   # 单次克隆/拉取超时
+    work-dir: ${GITEA_MIRROR_DIR:}          # 本地镜像目录；容器部署建议挂持久卷（如 /app/data/git-mirrors），留空用临时目录
+    mirror-timeout-seconds: 120   # 单次克隆/拉取超时（秒）；内网带宽小或仓库大可调大
     diff-max-bytes: 5242880       # 单个提交 .diff 文本上限；超限则整提交 patch 置空（走全文件兜底）

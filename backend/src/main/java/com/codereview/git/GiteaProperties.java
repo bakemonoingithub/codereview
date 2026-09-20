@@ -23,8 +23,16 @@ import java.util.List;
 @ConfigurationProperties(prefix = "git.gitea")
 public class GiteaProperties {
 
-    /** 哪些 host（{@code host[:port]}，精确匹配、大小写不敏感）归 Gitea 客户端。 */
-    private List<String> hosts = new ArrayList<>(List.of("localhost:3000"));
+    /**
+     * 哪些 host（{@code host[:port]}，大小写不敏感）归 Gitea 客户端。
+     *
+     * <p>默认含两个已知站点：本机开发 {@code localhost:3000} 与内网站点
+     * {@code 192.104.224.172}（内网站点挂在 {@code /gitea} 子路径下，API 根由各项目的
+     * 仓库地址推导，不需要在这里写地址）。条目只写 {@code host} 时也能命中带默认端口
+     * （80/443）的地址，见 {@link GiteaClient#supports}。**未命中的 host 仍显式报
+     * {@code GIT_HOST_UNSUPPORTED}，绝不猜。**
+     */
+    private List<String> hosts = new ArrayList<>(List.of("localhost:3000", "192.104.224.172"));
 
     /**
      * 可选的 API 根覆盖（含 {@code /api/v1}）。留空时按仓库地址推导

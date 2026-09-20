@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -72,6 +73,48 @@ public class GiteaClient implements GitHostClient {
     public Set<String> hosts() {
         List<String> hosts = properties.getHosts();
         return hosts == null ? Set.of() : new LinkedHashSet<>(hosts);
+    }
+
+    /**
+     * 白名单匹配（大小写不敏感）。
+     *
+     * <p>两条刻意的规则：
+     * <ul>
+     *   <li>条目写 {@code host} 时也命中带<b>默认端口</b>的地址：白名单里的
+     *       {@code 192.104.224.172} 能匹配 {@code http://192.104.224.172:80/gitea/...}，
+     *       避免"URL 里多写一个 :80 就报未接入"这种纯配置摩擦；</li>
+     *   <li>不做后缀/泛域名匹配：未命中的 host 仍显式报 {@code GIT_HOST_UNSUPPORTED}，
+     *       绝不静默落到别的站点（本仓历史上正是"静默回落 GitHub"把问题藏了很久）。</li>
+     * </ul>
+     */
+    @Override
+    public boolean supports(GitRepoRef ref) {
+        if (ref == null || ref.host() == null || ref.host().isBlank()) {
+            return false;
+        }
+        String host = ref.host().trim().toLowerCase(Locale.ROOT);
+        String bareHost = stripDefaultPort(host);
+        for (String entry : hosts()) {
+            if (entry == null) {
+                continue;
+            }
+            String normalized = entry.trim().toLowerCase(Locale.ROOT);
+            if (normalized.equals(host) || normalized.equals(bareHost)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 去掉默认端口（80/443），用于"白名单只写 host"时的宽容匹配。 */
+    private static String stripDefaultPort(String host) {
+        if (host.endsWith(":80")) {
+            return host.substring(0, host.length() - 3);
+        }
+        if (host.endsWith(":443")) {
+            return host.substring(0, host.length() - 4);
+        }
+        return host;
     }
 
     // ---------------------------------------------------------------- 文件树
