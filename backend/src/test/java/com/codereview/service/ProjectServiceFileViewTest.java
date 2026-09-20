@@ -1,5 +1,9 @@
 package com.codereview.service;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.codereview.common.BusinessException;
 import com.codereview.config.ReviewProperties;
 import com.codereview.dto.FileContentResp;
@@ -15,6 +19,7 @@ import com.codereview.mapper.ReportRecordMapper;
 import com.codereview.mapper.ReviewRecordMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -43,6 +48,7 @@ class ProjectServiceFileViewTest {
     private ProjectMapper projectMapper;
     private GitHostClient git;
     private ProjectService service;
+    private ListAppender<ILoggingEvent> logs;
 
     @BeforeEach
     void setUp() {
@@ -52,11 +58,39 @@ class ProjectServiceFileViewTest {
                 mock(ReviewRecordMapper.class), mock(ReportMapper.class),
                 mock(ReportRecordMapper.class), mock(IssueMarkMapper.class));
 
+        Logger logger = (Logger) LoggerFactory.getLogger(ProjectService.class);
+        logs = new ListAppender<>();
+        logs.start();
+        logger.addAppender(logs);
+
         Project p = new Project();
         p.setId(9L);
         p.setGiteaUrl("https://github.com/team/repo");
         p.setCredential("tok");
         when(projectMapper.selectById(9L)).thenReturn(p);
+    }
+
+    /** 截断原本只在响应里回报，日志里查不到 —— 这里锁住"被截断要留痕"（backlog ⑥）。 */
+    @Test
+    void truncationIsLoggedForObservability() {
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn(lines(2500));
+
+        service.fileView(9L, "main", "src/A.java", "content", false);
+
+        assertTrue(logs.list.stream().anyMatch(e -> e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("文件内容被截断")
+                        && e.getFormattedMessage().contains("src/A.java")),
+                "被截断时必须留一条带路径的 WARN：" + logs.list);
+    }
+
+    @Test
+    void noWarningWhenNothingWasTruncated() {
+        when(git.rawFile(any(), any(), any(), any(), any())).thenReturn("class A {}\n");
+
+        service.fileView(9L, "main", "src/A.java", "content", false);
+
+        assertTrue(logs.list.stream().noneMatch(e -> e.getLevel() == Level.WARN),
+                "没截断就不该刷 WARN：" + logs.list);
     }
 
     private static String lines(int count) {

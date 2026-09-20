@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@lombok.extern.slf4j.Slf4j
 public class ProjectService {
 
     private final ProjectMapper projectMapper;
@@ -337,6 +338,12 @@ public class ProjectService {
                 ? readFileContent(projectId, ref.trim(), safePath)
                 : filePatch(projectId, requireSha(ref, normalizedMode), safePath);
         TextWindow window = TextWindow.of(text, maxLines, VIEW_MAX_BYTES);
+        if (window.truncated()) {
+            // 原先只在响应里回 truncated/totalLines：接口层面看得出来，日志里查不到。
+            // 一旦有人反馈"某些文件总是被截"，先得有可观测性（backlog ⑥）。
+            log.warn("文件内容被截断：projectId={} mode={} ref={} path={} 上限行数={} 上限字节={} full={} 总行数={}",
+                    projectId, normalizedMode, ref.trim(), safePath, maxLines, VIEW_MAX_BYTES, full, window.totalLines());
+        }
         return new FileContentResp(normalizedMode, safePath, ref.trim(),
                 window.content(), window.truncated(), window.totalLines());
     }
