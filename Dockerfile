@@ -18,7 +18,10 @@
 
 ARG NODE_IMAGE=node:22-bookworm-slim
 ARG MAVEN_IMAGE=maven:3.9.9-eclipse-temurin-17
-ARG RUNTIME_IMAGE=eclipse-temurin:17-jre
+# 运行时基础镜像刻意钉在 jammy（Ubuntu 22.04 LTS）：
+# 容器用户态最终跑在目标机的 3.10 内核上，22.04 的 glibc 与内核兼容性经过大量验证；
+# 而默认的 eclipse-temurin:17-jre 标签已经切到很新的 Ubuntu（26.04），没必要为它冒风险。
+ARG RUNTIME_IMAGE=eclipse-temurin:17-jre-jammy
 
 # -----------------------------------------------------------------------------
 # 阶段 1 / 3：构建前端
@@ -82,9 +85,13 @@ RUN apt-get update \
  && echo "$TZ" > /etc/timezone \
  && rm -rf /var/lib/apt/lists/*
 
-# 非 root 运行；uid/gid 固定 1000，部署脚本会把 data/git-mirrors 的属主改成 1000
-RUN groupadd -g 1000 appuser \
- && useradd -u 1000 -g 1000 -m -s /bin/bash appuser
+# 非 root 运行；uid/gid 固定 1000，部署脚本会把 data/git-mirrors 的属主改成 1000。
+# 注意：Ubuntu 基础镜像自带的 `ubuntu` 用户就占着 1000，所以这里必须写成幂等的
+#       （直接 groupadd -g 1000 会报 "GID '1000' already exists"）。
+RUN set -eux; \
+    if ! getent group 1000 >/dev/null; then groupadd -g 1000 appuser; fi; \
+    if ! getent passwd 1000 >/dev/null; then useradd -u 1000 -g 1000 -m -s /bin/bash appuser; fi; \
+    id 1000
 
 WORKDIR /app
 COPY --from=backend /repo/backend/target/app.jar /app/app.jar
