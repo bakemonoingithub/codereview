@@ -1,0 +1,179 @@
+name: 构建离线部署包
+
+# 触发方式：
+#   1) 打标签推送（推荐）：git tag v20261022-a1b2c3d && git push origin v20261022-a1b2c3d
+#   2) 手动触发：Actions 页面 -> 构建离线部署包 -> Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（留空则自动生成 日期-短SHA）'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*'
+
+# 需要写权限才能创建 Release
+permissions:
+  contents: write
+
+env:
+  MYSQL_IMAGE: mysql:8.0.36
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # 质量门 1：后端单测必须全过
+  # ---------------------------------------------------------------------------
+  backend-test:
+    name: 后端单测
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: mvnw test
+        working-directory: backend
+        run: bash mvnw -B test
+
+  # ---------------------------------------------------------------------------
+  # 质量门 2：前端单测必须全过
+  # ---------------------------------------------------------------------------
+  frontend-test:
+    name: 前端单测
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: 安装依赖
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: 单元测试
+        working-directory: frontend
+        run: pnpm test
+
+      # 类型检查暂不阻塞出包（存量类型问题不应挡住紧急发布）；需要卡严时去掉 continue-on-error
+      - name: 类型检查（不阻塞）
+        working-directory: frontend
+        continue-on-error: true
+        run: pnpm type-check
+
+  # ---------------------------------------------------------------------------
+  # 构建镜像 + 组装可直接拷 U 盘的离线包 + 发 Release
+  # ---------------------------------------------------------------------------
+  build-bundle:
+    name: 构建离线包
+    needs: [backend-test, frontend-test]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 计算版本号
+        id: ver
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            V="${{ github.event.inputs.version }}"
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            V="${GITHUB_REF_NAME#v}"
+          else
+            V="$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "版本号：$V"
+
+      - uses: docker/setup-buildx-action@v3
+
+      # 目标机是 Docker 20.10.24（classic image store）：
+      # 必须固定 amd64，并关掉 provenance / sbom，否则 load 时报 unsupported manifest media type
+      - name: 构建应用镜像
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false \
+            --sbom=false \
+            --output type=docker \
+            -t "codereview-app:${{ steps.ver.outputs.version }}" \
+            .
+
+      - name: 拉取 MySQL 基础镜像
+        run: docker pull --platform linux/amd64 "$MYSQL_IMAGE"
+
+      - name: 组装离线包
+        env:
+          V: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          B="codereview-offline-$V"
+          MYSQL_TAG="${MYSQL_IMAGE##*:}"
+          rm -rf "$B"
+          mkdir -p "$B/images"
+
+          # 1) 部署包本体（脚本 / compose / 配置模板 / 一页纸）
+          cp -r deploy/. "$B/"
+          cp -f deploy/scripts/env-check.sh "$B/env-check.sh"
+          rm -f "$B/scripts/_selftest.sh"          # 开发自测脚本，不进交付包
+          chmod +x "$B"/*.sh "$B"/scripts/*.sh || true
+
+          # 2) 换行符统一成 LF —— U 盘摆渡最容易踩的坑（CRLF 的 .sh 直接语法报错）
+          find "$B" -type f -name '*.sh' -exec sed -i 's/\r$//' {} +
+
+          # 3) 镜像（gzip 后约 500MB 上下，一个 U 盘一次搬完）
+          docker save "codereview-app:$V" | gzip -9 > "$B/images/codereview-app-$V.tar.gz"
+          docker save "$MYSQL_IMAGE"      | gzip -9 > "$B/images/mysql-$MYSQL_TAG.tar.gz"
+
+          # 4) 该提交的源码快照（含版本信息，便于回溯"这个包对应哪次提交"）
+          git archive --format=zip -o "$B/source-$V.zip" HEAD
+
+          # 5) 校验和（运维现场核对用）
+          ( cd "$B/images" && sha256sum ./*.tar.gz > SHA256SUMS.txt )
+
+          echo "===== 离线包内容 ====="
+          ls -lh "$B"
+          ls -lh "$B/images"
+          echo "===== 打包 ====="
+          tar czf "codereview-offline-$V.tar.gz" "$B"
+          ls -lh "codereview-offline-$V.tar.gz"
+
+      - name: 发布到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          V: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          NOTES="内网离线部署包 v$V
+
+          用法（详细见包内 00-先读我.md）：
+            1. 解压： tar xzf codereview-offline-$V.tar.gz && cd codereview-offline-$V
+            2. 体检： bash env-check.sh
+            3. 部署： bash scripts/deploy.sh
+            4. 访问： http://<目标机IP>:18080
+
+          包内包含：应用镜像 + mysql:8.0.36 镜像 + 部署脚本 + 配置模板 + 源码快照 + 校验和"
+          if gh release view "v$V" >/dev/null 2>&1; then
+            gh release upload "v$V" "codereview-offline-$V.tar.gz" --clobber
+          else
+            gh release create "v$V" "codereview-offline-$V.tar.gz" \
+              --title "离线部署包 v$V" \
+              --notes "$NOTES"
+          fi

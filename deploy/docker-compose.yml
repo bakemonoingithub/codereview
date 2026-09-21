@@ -1,0 +1,106 @@
+# =============================================================================
+#  「基于AI的智能代码分析工具」内网离线部署 —— Docker Compose（Compose v2）
+#
+#  正常不要手工调用本文件，请用部署脚本（它会自动体检、备份、失败回滚）：
+#      bash scripts/deploy.sh
+#  手工操作时的等价命令：
+#      docker compose -p codereview --env-file .env -f docker-compose.yml up -d
+#
+#  说明：
+#   - 所有相对路径都相对本文件所在目录（部署包根目录）解析
+#   - 数据库刻意不发布端口：只在 compose 网络内可见（app 通过服务名 mysql 访问）
+#   - 日志做了滚动限制，避免 json-file 日志撑爆磁盘
+# =============================================================================
+
+name: codereview
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # MySQL 8.0（仅内网可见，不对外暴露端口）
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:${MYSQL_IMAGE_TAG:-8.0.36}
+    container_name: codereview-mysql
+    restart: unless-stopped
+    mem_limit: ${MYSQL_MEM_LIMIT:-2g}
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-code_review}
+      MYSQL_USER: ${MYSQL_USER:-codereview}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+      - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL:-1G}
+      - --max-connections=200
+      - --skip-name-resolve
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks:
+      - codereview-net
+
+  # ---------------------------------------------------------------------------
+  # 应用（前端已打进 JAR，单进程单端口）
+  # ---------------------------------------------------------------------------
+  app:
+    image: codereview-app:${APP_TAG:-latest}
+    container_name: codereview-app
+    restart: unless-stopped
+    mem_limit: ${APP_MEM_LIMIT:-4g}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      # 目标机是共享机器：堆必须显式限制，不能让它按物理内存比例自动开
+      JAVA_TOOL_OPTIONS: "${JAVA_OPTS:--Xms1g -Xmx4g -XX:+UseG1GC -XX:-UseTransparentHugePages -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai}"
+      # Gitea 没有 compare 接口，靠本地 bare 镜像算差异 —— 这个目录必须持久化
+      GITEA_MIRROR_DIR: ${GITEA_MIRROR_DIR:-/app/data/git-mirrors}
+      # 令牌走环境变量注入，不写进配置文件、不进镜像（留空则由界面/数据库配置决定）
+      GITEA_TOKEN: ${GITEA_TOKEN:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    volumes:
+      # 外挂配置：改数据库/换 AI 网关只需改这个文件 + 重启容器，不用重建镜像
+      - ./config/application.yml:/app/config/application.yml:ro
+      - ./data/git-mirrors:/app/data/git-mirrors
+    ports:
+      # 默认绑 0.0.0.0；若要只对内网某块网卡开放，把 APP_BIND_IP 改成对应内网 IP
+      - "${APP_BIND_IP:-0.0.0.0}:${APP_PORT:-18080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks:
+      - codereview-net
+
+networks:
+  codereview-net:
+    name: codereview-net
+    driver: bridge
+    ipam:
+      config:
+        # 用 /24 而不是默认的 /16，给这台机器上已有的 20 多个容器项目留着网段。
+        # deploy.sh 会在启动前自动挑一个没被占用的网段并改掉这里。
+        - subnet: ${CR_SUBNET:-172.31.250.0/24}

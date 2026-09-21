@@ -1,3 +1,6 @@
 # 批处理脚本强制 CRLF（否则 Windows 上 LF 的 mvnw.cmd 会出问题）
 *.cmd text eol=crlf
 *.bat text eol=crlf
+
+# 部署脚本强制 LF：带 CRLF 的 .sh 在 Linux 上会直接报语法错（U 盘摆渡最容易踩）
+*.sh text eol=lf
