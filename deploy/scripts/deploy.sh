@@ -167,7 +167,20 @@ confirm "即将启动/更新容器：
 是否继续？" || die "已取消，未做任何改动"
 hr
 
-compose up -d || die "启动失败，请查看上面的报错"
+if ! compose up -d; then
+  hr
+  err "compose up 失败 —— 下面是相关容器日志（最后 40 行），方便直接定位："
+  hr
+  compose logs --tail=40 mysql 2>/dev/null || true
+  hr
+  compose logs --tail=40 app 2>/dev/null || true
+  hr
+  info "常见原因："
+  info "  1) 部署目录在 Windows 盘挂载点（/mnt/x）下 -> MySQL 无法初始化数据目录，请移到 ~ 下"
+  info "  2) 内存不足被 OOM -> 调小 .env 里的 JAVA_OPTS / MYSQL_BUFFER_POOL"
+  info "  3) 端口被占 -> 改 .env 里的 APP_PORT"
+  die "启动失败（若存在上一版本，可执行 bash scripts/rollback.sh 手工回滚）"
+fi
 ok "容器已提交启动"
 
 # ── 步骤 9：等健康，失败自动回滚 ────────────────────────────────────────────

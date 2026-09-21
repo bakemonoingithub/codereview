@@ -31,6 +31,21 @@ chk "set_env 覆盖含空格与 = 的值" "$(get_env JAVA_OPTS)" "-Xms1g -Xmx4g 
 chk "set_env 幂等（重复设置不新增行）" "$(grep -c '^NEWVAL=' .env)" "1"
 chk ".env 总行数未膨胀" "$(wc -l < .env | tr -d ' ')" "4"
 
+say "== 1b. load_env 对带空格的值（曾经的 bug：被 shell 当成命令执行）=="
+cat > .env <<'ENVEOF'
+A=1
+APP_PORT=18080
+MYSQL_ROOT_PASSWORD="pw with space"
+JAVA_OPTS=-Xms1g -Xmx4g -XX:+UseG1GC -Duser.timezone=Asia/Shanghai
+ENVEOF
+load_env 2>/tmp/cr_loaderr
+chk "load_env 不向 stderr 输出任何东西" "$([ -s /tmp/cr_loaderr ] && echo 有输出 || echo 干净)" "干净"
+chk "带空格的 JAVA_OPTS 完整保留" "$JAVA_OPTS" "-Xms1g -Xmx4g -XX:+UseG1GC -Duser.timezone=Asia/Shanghai"
+chk "手写双引号的值会去掉引号" "$MYSQL_ROOT_PASSWORD" "pw with space"
+chk "普通值照常读到" "$APP_PORT" "18080"
+chk "白名单外的键不会被导出（防止退回 source .env）" "${A:-未导出}" "未导出"
+unset JAVA_OPTS MYSQL_ROOT_PASSWORD APP_PORT
+
 say "== 2. 随机密码 =="
 P1="$(gen_password)"; P2="$(gen_password)"
 chk "密码长度 24" "${#P1}" "24"

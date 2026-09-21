@@ -19,6 +19,27 @@ hr
 init_bundle
 info "部署包目录：$BUNDLE"
 
+# ── 0. 部署目录所在文件系统 ─────────────────────────────────────────────────
+# MySQL 容器要在 ./data/mysql 上 chown/chmod 自己的数据目录。Windows 共享挂载
+# （WSL 的 /mnt/c、/mnt/h，或 cifs/ntfs/vboxsf）不支持这些操作，MySQL 会直接崩溃，
+# 而报错发生在容器日志里、不看日志很难猜。这里提前拦住，把话说明白。
+_FSTYPE="$(df -PT "$BUNDLE" 2>/dev/null | awk 'NR==2 {print $2}')"
+case "$_FSTYPE" in
+  drvfs|9p|cifs|ntfs|ntfs3|vboxsf)
+    fail "部署目录位于 Windows/网络共享文件系统（$_FSTYPE）上，MySQL 无法在那里初始化数据目录。
+       请把整个部署包移到 Linux 原生目录再执行，例如：
+           mv \"$BUNDLE\" ~/ && cd ~/$(basename "$BUNDLE")" ;;
+  fuse.*)
+    warn "部署目录所在文件系统是 $_FSTYPE（FUSE），历史上出现过 MySQL 数据目录权限问题，请留意容器日志" ;;
+  *)
+    case "$BUNDLE" in
+      /mnt/[a-zA-Z]/*)
+        fail "部署目录在 Windows 盘挂载点下（$BUNDLE），MySQL 无法初始化数据目录。
+       请移到 Linux 原生目录再执行，例如： mv \"$BUNDLE\" ~/ && cd ~/$(basename "$BUNDLE")" ;;
+      *) pass "部署目录在 Linux 原生文件系统上（${_FSTYPE:-未知}）" ;;
+    esac ;;
+esac
+
 # ── 1. Docker ───────────────────────────────────────────────────────────────
 if docker info >/dev/null 2>&1; then
   pass "Docker 守护进程可访问"

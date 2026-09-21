@@ -37,15 +37,33 @@ init_bundle() {
 # ---------------------------------------------------------------------------
 #  .env
 # ---------------------------------------------------------------------------
+# tr -d '\r' 是防御：若有人用 Windows 记事本编辑过 .env（CRLF），
+# 值尾部会多一个 \r，密码会静默错误。
+get_env() { grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r'; }
+
+# .env 里允许出现的键（逐个取值后 export）。
+# 为什么不用 `set -a; . ./.env`：形如
+#     JAVA_OPTS=-Xms1g -Xmx4g -XX:+UseG1GC
+# 的值会被 shell 解析成「以 JAVA_OPTS=-Xms1g 为环境前缀去执行命令 -Xmx4g」，
+# 结果是既打印 "command not found"，又让 JAVA_OPTS 根本没被设置。
+# 改成显式按行取值，既不受空格影响，也避免把 .env 当成可执行脚本（更安全）。
+ENV_KEYS="APP_PORT APP_BIND_IP APP_TAG CR_SUBNET \
+MYSQL_ROOT_PASSWORD MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_IMAGE_TAG MYSQL_BUFFER_POOL \
+APP_MEM_LIMIT MYSQL_MEM_LIMIT JAVA_OPTS GITEA_MIRROR_DIR GITEA_TOKEN GITHUB_TOKEN DEEPSEEK_API_KEY \
+AI_BASE_URL AI_MODEL"
+
 load_env() {
   [ -f .env ] || die "缺少 .env（应位于 $BUNDLE/.env）。首次部署直接运行 deploy.sh，它会自动生成。"
-  set -a
-  # shellcheck disable=SC1091
-  . ./.env
-  set +a
+  for _k in $ENV_KEYS; do
+    _v="$(get_env "$_k")"
+    # 容忍用户手写成 KEY="带空格的值" 的形式
+    case "$_v" in
+      \"*\") _v="${_v#\"}"; _v="${_v%\"}" ;;
+      \'*\') _v="${_v#\'}"; _v="${_v%\'}" ;;
+    esac
+    export "$_k=$_v"
+  done
 }
-
-get_env() { grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2-; }
 
 set_env() {
   _k="$1"; _v="$2"
