@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1650" viewBox="0 0 1600 1650"><rect width="1600" height="1650" fill="white"/>
+<text x="800" y="64" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="44" font-weight="700" fill="#263238" text-anchor="middle">系统整体架构</text>
+<text x="800" y="106" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#65737B" text-anchor="middle">dev 基线  单镜像提供同源前端与后端服务</text>
+<rect x="435" y="145" width="730" height="120" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
+<text x="800.0" y="196.45" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">PC 浏览器</text>
+<text x="800.0" y="239.95" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">Vue 3 + Ant Design Vue</text>
+<rect x="55" y="320" width="1490" height="955" rx="18" fill="#FFFFFF" stroke="#1A703A" stroke-width="3"/>
+<rect x="435.5703125" y="306" width="728.859375" height="46" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
+<text x="800" y="340" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="34" font-weight="400" fill="#1A703A" text-anchor="middle">Spring Boot 3.3.5  /  Java 17  /  单进程单端口</text>
+<rect x="100" y="385" width="500" height="115" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="350.0" y="433.95" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">JAR 内 static 前端</text>
+<text x="350.0" y="477.45" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">页面与静态资源</text>
+<rect x="915" y="385" width="575" height="115" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="1202.5" y="433.95" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">Controller</text>
+<text x="1202.5" y="477.45" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">项目  配置  审查  报告  人工复核</text>
+<path d="M800,265 L800,290 L350,290 L350,385" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="350,385 357.8,370.0 342.2,370.0" fill="#1A703A"/>
+<path d="M800,290 L1200,290 L1200,385" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="1200,385 1207.8,370.0 1192.2,370.0" fill="#1A703A"/>
+<rect x="713.1171875" y="278" width="153.765625" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
+<text x="790" y="306" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">同源 HTTP</text>
+<rect x="380" y="555" width="870" height="120" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="815.0" y="606.45" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">Service</text>
+<text x="815.0" y="649.95" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">业务配置  审查记录  报告  issueMark</text>
+<path d="M1200,500 L1200,528 L815,528 L815,555" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="815,555 822.8,540.0 807.2,540.0" fill="#1A703A"/>
+<rect x="170" y="730" width="470" height="110" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="405.0" y="776.45" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">ReviewExecutor</text>
+<text x="405.0" y="819.95" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">异步审查  生命周期与结果落库</text>
+<rect x="850" y="730" width="480" height="110" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="1090.0" y="776.45" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">ReportExecutor</text>
+<text x="1090.0" y="819.95" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">聚合审查结果  生成报告</text>
+<path d="M815,675 L815,700 L405,700 L405,730" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="405,730 412.8,715.0 397.2,715.0" fill="#1A703A"/>
+<path d="M815,700 L1090,700 L1090,730" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="1090,730 1097.8,715.0 1082.2,715.0" fill="#1A703A"/>
+<rect x="100" y="900" width="875" height="155" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="537.5" y="947.2" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">Analyzer 注册表  按类型分发</text>
+<text x="537.5" y="990.7" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">1 全文 LLM   2 耦合度   3 设计模式</text>
+<text x="537.5" y="1034.2" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">4 API 审查   5 diff 变更审查</text>
+<path d="M405,840 L405,900" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="405,900 412.8,885.0 397.2,885.0" fill="#1A703A"/>
+<rect x="100" y="1110" width="500" height="130" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="350.0" y="1146.4" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="700" fill="#263238" text-anchor="middle">GitHostClientRegistry</text>
+<text x="350.0" y="1187.0" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">GitHubClient / GiteaClient</text>
+<text x="350.0" y="1227.6" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">Gitea 含 JGit bare 本地镜像</text>
+<rect x="665" y="1110" width="335" height="130" rx="13" fill="#EFF5FA" stroke="#245E8D" stroke-width="3"/>
+<text x="832.5" y="1146.8" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="31" font-weight="700" fill="#263238" text-anchor="middle">MyBatis Plus</text>
+<text x="832.5" y="1187.3999999999999" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">业务数据读写</text>
+<text x="832.5" y="1227.9999999999998" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">Flyway 启动迁移</text>
+<rect x="1060" y="1110" width="430" height="130" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
+<text x="1275.0" y="1167.9" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">LlmClient</text>
+<text x="1275.0" y="1208.5" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">OpenAI 兼容 HTTP 客户端</text>
+<path d="M350,1055 L350,1110" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="350,1110 357.8,1095.0 342.2,1095.0" fill="#1A703A"/>
+<rect x="372.0" y="1062" width="186.0" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
+<text x="465" y="1090" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">仓库素材读取</text>
+<path d="M975,975 L1020,975 L1020,1175 L1060,1175" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="1060,1175 1045.0,1167.2 1045.0,1182.8" fill="#1A703A"/>
+<rect x="964.64453125" y="928" width="210.7109375" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
+<text x="1070" y="956" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">4 类模型分析器</text>
+<path d="M1090,840 L1275,840 L1275,1110" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="1275,1110 1282.8,1095.0 1267.2,1095.0" fill="#1A703A"/>
+<rect x="1182.0" y="865" width="186.0" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
+<text x="1275" y="893" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">报告调用模型</text>
+<path d="M1250,615 L1520,615 L1520,1260 L835,1260 L835,1240" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
+<polygon points="835,1240 827.2,1255.0 842.8,1255.0" fill="#245E8D"/>
+<rect x="1305.0" y="1042" width="130.0" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
+<text x="1370" y="1070" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#245E8D" text-anchor="middle">业务数据</text>
+<rect x="55" y="1355" width="325" height="135" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
+<text x="217.5" y="1413.95" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">GitHub</text>
+<text x="217.5" y="1457.45" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">REST API</text>
+<rect x="420" y="1355" width="385" height="135" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
+<text x="612.5" y="1415.4" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">Gitea 宿主</text>
+<text x="612.5" y="1456.0" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">REST / .diff / Git 传输</text>
+<rect x="850" y="1355" width="305" height="135" rx="13" fill="#EFF5FA" stroke="#245E8D" stroke-width="3"/>
+<text x="1002.5" y="1395.1" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">MySQL</text>
+<text x="1002.5" y="1435.6999999999998" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">配置  记录  报告</text>
+<text x="1002.5" y="1476.2999999999997" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">人工复核标注</text>
+<rect x="1200" y="1355" width="345" height="135" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
+<text x="1372.5" y="1415.4" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">内网 AI 网关</text>
+<text x="1372.5" y="1456.0" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">/chat/completions</text>
+<path d="M350,1240 L350,1310 L217,1310 L217,1355" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="217,1355 224.8,1340.0 209.2,1340.0" fill="#1A703A"/>
+<path d="M350,1310 L612,1310 L612,1355" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="612,1355 619.8,1340.0 604.2,1340.0" fill="#1A703A"/>
+<path d="M835,1240 L835,1330 L1002,1330 L1002,1355" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
+<polygon points="1002,1355 1009.8,1340.0 994.2,1340.0" fill="#245E8D"/>
+<path d="M1275,1240 L1275,1305 L1372,1305 L1372,1355" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="1372,1355 1379.8,1340.0 1364.2,1340.0" fill="#1A703A"/>
+<path d="M60,1555 L145,1555" fill="none" stroke="#1A703A" stroke-width="4"/>
+<polygon points="145,1555 130.0,1547.2 130.0,1562.8" fill="#1A703A"/>
+<text x="165" y="1565" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="start">调用 / 控制</text>
+<path d="M425,1555 L510,1555" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
+<polygon points="510,1555 495.0,1547.2 495.0,1562.8" fill="#245E8D"/>
+<text x="530" y="1565" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="start">读写 / 持久化</text>
+<text x="800" y="1611" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#65737B" text-anchor="middle">API 审查按配置调用外部接口  不经 LlmClient ；图中未展开该可选接口</text>
+</svg>
