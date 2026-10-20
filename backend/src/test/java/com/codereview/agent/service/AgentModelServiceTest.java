@@ -9,8 +9,7 @@ import com.codereview.agent.entity.AgentModelValidation;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentModelValidationMapper;
 import com.codereview.agent.mapper.AgentReviewStrategyMapper;
-import com.codereview.agent.model.ModelProbe;
-import com.codereview.agent.model.ModelProbeOutcome;
+import com.codereview.agent.invocation.ModelInvocationService;
 import com.codereview.agent.support.AgentIds;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +45,7 @@ class AgentModelServiceTest {
     @Mock
     private AgentReviewStrategyMapper strategyMapper;
     @Mock
-    private ModelProbe probe;
+    private ModelInvocationService invocation;
 
     private AgentModelService service;
 
@@ -55,7 +54,7 @@ class AgentModelServiceTest {
         com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
                 new org.apache.ibatis.builder.MapperBuilderAssistant(
                         new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentModelConfig.class);
-        service = new AgentModelService(db, probe, new ObjectMapper());
+        service = new AgentModelService(db, invocation, new ObjectMapper());
         when(db.mapper(AgentModelConfigMapper.class)).thenReturn(mapper);
         when(db.mapper(AgentModelValidationMapper.class)).thenReturn(validationMapper);
         when(db.mapper(AgentReviewStrategyMapper.class)).thenReturn(strategyMapper);
@@ -85,7 +84,8 @@ class AgentModelServiceTest {
     void validateStoresTheResultAgainstTheCurrentRevision() {
         AgentModelConfig model = model(4);
         when(mapper.selectById(any())).thenReturn(model);
-        when(probe.probe(any())).thenReturn(new ModelProbeOutcome(true, "连通成功"));
+        when(invocation.validate(any())).thenReturn(
+                new ModelInvocationService.ValidationOutcome(true, "连通成功", "call-1"));
 
         ModelDtos.ValidationResult result = service.validate(model.getId());
 
@@ -119,7 +119,8 @@ class AgentModelServiceTest {
     void failedProbeIsRecordedRatherThanThrown() {
         AgentModelConfig model = model(0);
         when(mapper.selectById(any())).thenReturn(model);
-        when(probe.probe(any())).thenReturn(new ModelProbeOutcome(false, "网关返回 HTTP 401"));
+        when(invocation.validate(any())).thenReturn(
+                new ModelInvocationService.ValidationOutcome(false, "网关返回 HTTP 401", null));
 
         ModelDtos.ValidationResult result = service.validate(model.getId());
 

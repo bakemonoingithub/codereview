@@ -13,9 +13,8 @@ import com.codereview.agent.entity.AgentReviewStrategy;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentModelValidationMapper;
 import com.codereview.agent.mapper.AgentReviewStrategyMapper;
-import com.codereview.agent.model.ModelProbe;
-import com.codereview.agent.model.ModelProbeOutcome;
-import com.codereview.agent.model.ModelProbeRequest;
+import com.codereview.agent.invocation.ModelInvocationService;
+import com.codereview.agent.invocation.ModelSnapshot;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
@@ -38,12 +37,13 @@ import java.util.Map;
 public class AgentModelService {
 
     private final AgentDatabase db;
-    private final ModelProbe probe;
+    private final ModelInvocationService invocation;
     private final ObjectMapper objectMapper;
 
-    public AgentModelService(AgentDatabase db, ModelProbe probe, ObjectMapper objectMapper) {
+    public AgentModelService(AgentDatabase db, ModelInvocationService invocation,
+                             ObjectMapper objectMapper) {
         this.db = db;
-        this.probe = probe;
+        this.invocation = invocation;
         this.objectMapper = objectMapper;
     }
 
@@ -132,15 +132,21 @@ public class AgentModelService {
      */
     public ModelDtos.ValidationResult validate(String id) {
         AgentModelConfig model = require(id);
-        ModelProbeOutcome outcome = probe.probe(new ModelProbeRequest(
-                model.getBaseUrl(), model.getModelName(), model.getCredential()));
+        // 验证与业务调用共用组装、计量、请求落盘和传输入口，不另建一套探针模板。
+        ModelInvocationService.ValidationOutcome outcome =
+                invocation.validate(ModelSnapshot.from(model));
         AgentModelValidation record = new AgentModelValidation();
         record.setId(AgentIds.next());
         record.setModelConfigId(model.getId());
         record.setConfigRevision(model.getRevision());
         record.setScope("CONNECTIVITY");
         record.setResult(outcome.passed() ? "PASSED" : "FAILED");
-        record.setDetailJson(toJson(Map.of("detail", outcome.detail())));
+        Map<String, Object> detail = new java.util.LinkedHashMap<>();
+        detail.put("detail", outcome.detail());
+        if (outcome.callId() != null) {
+            detail.put("callId", outcome.callId());
+        }
+        record.setDetailJson(toJson(detail));
         record.setCreatedAt(AgentTime.now());
         db.mapper(AgentModelValidationMapper.class).insert(record);
         return new ModelDtos.ValidationResult(record.getResult(), record.getConfigRevision(),

@@ -16,6 +16,7 @@ import com.codereview.agent.mapper.AgentReportSourceMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
+import com.codereview.agent.mapper.AgentTaskQuotaMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -43,6 +44,7 @@ public class AgentDataSourceConfig {
             AgentReviewStrategyMapper.class,
             AgentReviewTaskMapper.class,
             AgentTaskTargetMapper.class,
+            AgentTaskQuotaMapper.class,
             AgentExecutionUnitMapper.class,
             AgentModelCallMapper.class,
             AgentMaterialMapper.class,
