@@ -24,7 +24,7 @@ public final class RepositorySnapshots {
      * 差异的一侧。
      *
      * <p>{@code status} 只有三种：PRESENT、MISSING（确实不存在）、UNREADABLE（存在但读不到）。
-     * UNREADABLE 的 {@code reason} 说明原因（BINARY / TOO_LARGE / READ_FAILED），
+     * UNREADABLE 的 {@code reason} 说明原因（BINARY / TOO_LARGE / READ_FAILED 或宿主错误码），
      * 不再把所有读取失败都当成二进制。
      */
     public record Side(String content, String status, String reason) {

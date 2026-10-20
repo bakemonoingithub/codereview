@@ -294,6 +294,9 @@ public class GiteaClient implements GitHostClient {
         String diffText;
         try {
             diffText = get(base + ".diff", token, credentialType);
+        } catch (HostHttpException e) {
+            // 由公共读取层按真实状态分类，不能在此丢失 HTTP 状态或重试信息。
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Gitea 单提交 diff 获取失败（" + sha + "）：" + e.getMessage(), e);
         }

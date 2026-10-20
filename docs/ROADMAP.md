@@ -4,7 +4,7 @@
 
 最近更新：2026-10-20（Asia/Taipei）。会话从[工作区规则](../AGENTS.md)和[STATE](STATE.md)接续；本文件是新路线的行动来源。
 
-工作树为 `H:\myProjects\aiCodeReview\agent`，分支为 `refactor/agent`。负责人已按业务契约 D-88 批准 P29 共用设计及本轮专项 HTML 原型，并要求细化实施 ROADMAP；P29 为 done，P31–P33 为 todo。2026-10-20 负责人要求先提交 P29 成果、清理工作区，再启动 P30.1；P30.1 已完成并交付[复用与功能差异](work/agent-redesign/p30/p30-1-reuse-diff.md)，P30 保持 active，P30.2 待负责人启动。
+工作树为 `H:\myProjects\aiCodeReview\agent`，分支为 `refactor/agent`。负责人已按业务契约 D-88 批准 P29 共用设计及本轮专项 HTML 原型，并要求细化实施 ROADMAP；P29 为 done，P31–P33 为 todo。P30.1–P30.4 已交付；审查后的 R01、R07、R09 二次复验遗漏已按负责人要求补修，定向 55 项全部通过，全量 409 项、0 失败、7 跳过，详见[修复与复验记录](work/agent-redesign/p30/p30-review-fixes.md)。P30 保持 active，P30.5 待负责人启动。
 
 ## 1. 实施依据与批准边界
 

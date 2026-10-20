@@ -164,7 +164,8 @@ public class RepositoryReadService {
     /**
      * 读取差异的一侧：把"不存在"与"存在但读不到"分开。
      *
-     * <p>任一错误都不影响另一侧：before 读不到时 after 照常返回，反之亦然。
+     * <p>任一侧的宿主读取失败都不影响另一侧，保留具体错误码作为不可读原因；
+     * 参数校验等程序入口错误仍由接口返回失败。
      */
     private RepositorySnapshots.Side readSide(String projectId, String sha, String path) {
         try {
@@ -176,7 +177,11 @@ public class RepositoryReadService {
             if (e.errorCode() == ErrorCode.FILE_NOT_READABLE) {
                 return RepositorySnapshots.Side.unreadable(reasonOf(e));
             }
-            throw e;
+            return switch (e.errorCode()) {
+                case UPSTREAM_TIMEOUT, REPO_UNAUTHORIZED, RATE_LIMITED, REPO_UNAVAILABLE, REPO_UNREACHABLE ->
+                        RepositorySnapshots.Side.unreadable(e.errorCode().code());
+                default -> throw e;
+            };
         }
     }
 

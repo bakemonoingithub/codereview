@@ -234,6 +234,52 @@ class RepositoryReadServiceTest {
     }
 
     @Test
+    void hostFailureOnBeforeSideKeepsAfterAndAllowsRereading() {
+        for (int status : new int[]{HostHttpException.TIMEOUT, 401, 403, 429, 503}) {
+            assertHostFailureKeepsOtherSide(status, true);
+        }
+    }
+
+    @Test
+    void hostFailureOnAfterSideKeepsBeforeAndAllowsRereading() {
+        for (int status : new int[]{HostHttpException.TIMEOUT, 401, 403, 429, 503}) {
+            assertHostFailureKeepsOtherSide(status, false);
+        }
+    }
+
+    private void assertHostFailureKeepsOtherSide(int status, boolean beforeFails) {
+        String path = "src/Status" + status + ".java";
+        when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
+                HEAD, List.of(PARENT), "msg", "a", "2026-10-20", 1, 1, 2, false,
+                List.of(new ChangedFile(path, null, ChangedFile.MODIFIED, 1, 1, 2, "@@"))));
+        String failedSha = beforeFails ? PARENT : HEAD;
+        String readableSha = beforeFails ? HEAD : PARENT;
+        when(client.rawFile(any(), any(), any(), eq(readableSha), eq(path))).thenReturn("readable\n");
+        when(client.rawFile(any(), any(), any(), eq(failedSha), eq(path)))
+                .thenThrow(new HostHttpException(status, "host failure", "30", null));
+
+        RepositorySnapshots.DiffSides sides = service.diff(PROJECT_ID, HEAD, path);
+        RepositorySnapshots.Side failed = beforeFails ? sides.before() : sides.after();
+        RepositorySnapshots.Side readable = beforeFails ? sides.after() : sides.before();
+        String reason = switch (status) {
+            case HostHttpException.TIMEOUT -> "UPSTREAM_TIMEOUT";
+            case 401, 403 -> "REPO_UNAUTHORIZED";
+            case 429 -> "RATE_LIMITED";
+            default -> "REPO_UNAVAILABLE";
+        };
+        assertEquals(RepositorySnapshots.Side.UNREADABLE, failed.status());
+        assertEquals(reason, failed.reason());
+        assertEquals("readable\n", readable.content());
+        assertFalse(sides.binary());
+
+        when(client.rawFile(any(), any(), any(), eq(failedSha), eq(path))).thenReturn("recovered\n");
+        RepositorySnapshots.DiffSides retried = service.diff(PROJECT_ID, HEAD, path);
+        RepositorySnapshots.Side recovered = beforeFails ? retried.before() : retried.after();
+        assertEquals(RepositorySnapshots.Side.PRESENT, recovered.status());
+        assertEquals("recovered\n", recovered.content(), "暂态失败不能被缓存成永久缺失");
+    }
+
+    @Test
     void addedFileHasNoBeforeSideAndRootCommitIsExplicit() {
         when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
                 HEAD, List.of(), "root", "a", "2026-10-20", 3, 0, 3, false,

@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  * Git 侧内存缓存（单实例；对应技术选型的 Caffeine）。
  * <p>
  * <b>只缓存不可变引用（commit sha）下的内容</b>——分支名会移动，按分支缓存会读到过期数据。
- * 键包含宿主、{@code owner/repo}、凭据指纹与 ref：同名仓库放在不同宿主、或换了令牌之后，
+ * 键包含完整站点根（协议、宿主及子路径）、{@code owner/repo}、凭据指纹与 ref：同名仓库放在不同站点、或换了令牌之后，
  * 都不会命中彼此的内容。凭据只以 SHA-256 前缀出现在键里，不保存原文。
  * 容量与 TTL 可配：
  * {@code git.cache.commit-detail-max-size} / {@code git.cache.raw-file-max-size} / {@code git.cache.expire-minutes}。
@@ -57,14 +57,15 @@ public class GitCache {
     }
 
     /**
-     * 缓存键：{@code host/owner/repo#<凭据指纹>@ref}。
+     * 缓存键：{@code siteRoot/owner/repo#<凭据指纹>@ref}。
      *
-     * <p>凭据指纹让"换令牌后仍读到旧内容"不可能发生；宿主参与键计算，
-     * 避免内网 Gitea 与同名的其他站点互相串用。
+     * <p>凭据指纹隔离不同令牌；站点根保留协议及子路径，避免同一宿主下的
+     * 多个 Gitea 站点串用缓存。SSH 形式没有站点根时，以其宿主区分。
      */
     public static String key(GitRepoRef repo, String credential, String ref) {
         String token = credential == null || credential.isBlank() ? "<none>" : credential;
-        return repo.host() + "/" + repo.owner() + "/" + repo.repo() + "#" + fingerprint(token) + "@" + ref;
+        String siteRoot = repo.baseUrl() == null || repo.baseUrl().isBlank() ? repo.host() : repo.baseUrl();
+        return siteRoot + "/" + repo.owner() + "/" + repo.repo() + "#" + fingerprint(token) + "@" + ref;
     }
 
     /** 凭据指纹：SHA-256 前 16 位十六进制；空白凭据固定为 anon。 */
