@@ -5,11 +5,15 @@ import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.entity.AgentProject;
 import com.codereview.agent.mapper.AgentProjectMapper;
+import com.codereview.common.BusinessException;
+import com.codereview.common.ResultCode;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitHostClientRegistry;
+import com.codereview.git.GitTree;
 import com.codereview.git.GitTreeEntry;
+import com.codereview.git.HostHttpException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +26,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -58,7 +61,7 @@ class RepositoryReadServiceTest {
         project = new AgentProject();
         project.setId(PROJECT_ID);
         project.setRepoUrl("https://github.com/acme/order-service");
-        project.setCredentialRef("token");
+        project.setCredential("token");
         project.setCredentialType(1);
         project.setRevision(3);
         when(db.mapper(AgentProjectMapper.class)).thenReturn(projectMapper);
@@ -89,7 +92,7 @@ class RepositoryReadServiceTest {
     }
 
     @Test
-    void replacingTheTokenInvalidatesTheCacheNamespace() {
+    void replacingTheTokenInvalidatesTheOuterCacheNamespace() {
         project.setRevision(4);
         when(client.rawFile(any(), any(), any(), eq(HEAD), eq("A.java"))).thenReturn("content");
         service.readFile(PROJECT_ID, HEAD, "A.java");
@@ -97,7 +100,7 @@ class RepositoryReadServiceTest {
         AgentProject updated = new AgentProject();
         updated.setId(PROJECT_ID);
         updated.setRepoUrl(project.getRepoUrl());
-        updated.setCredentialRef("new-token");
+        updated.setCredential("new-token");
         updated.setCredentialType(1);
         updated.setRevision(5);
         when(projectMapper.selectById(any())).thenReturn(updated);
@@ -121,30 +124,32 @@ class RepositoryReadServiceTest {
     }
 
     @Test
-    void binaryAndOversizedFilesAreRejectedInsteadOfTruncated() {
+    void binaryAndOversizedFilesAreRejectedWithDistinctReasons() {
         when(client.rawFile(any(), any(), any(), eq(HEAD), eq("image.bin"))).thenReturn("a\u0000b");
         ApiException binary = assertThrows(ApiException.class,
                 () -> service.readFile(PROJECT_ID, HEAD, "image.bin"));
         assertEquals(ErrorCode.FILE_NOT_READABLE, binary.errorCode());
+        assertEquals("BINARY", ((java.util.Map<?, ?>) binary.details()).get("reason"));
 
         when(client.rawFile(any(), any(), any(), eq(HEAD), eq("huge.txt")))
                 .thenReturn("x".repeat(RepositoryReadService.MAX_TARGET_BYTES + 1));
         ApiException huge = assertThrows(ApiException.class,
                 () -> service.readFile(PROJECT_ID, HEAD, "huge.txt"));
         assertEquals(ErrorCode.FILE_NOT_READABLE, huge.errorCode());
+        assertEquals("TOO_LARGE", ((java.util.Map<?, ?>) huge.details()).get("reason"));
     }
 
     @Test
-    void listsPathsSortedAndMarksReviewableFiles() {
-        when(client.tree(any(), any(), any(), eq(HEAD))).thenReturn(List.of(
+    void listsPathsSortedAndCarriesHostTruncation() {
+        when(client.treeWithMeta(any(), any(), any(), eq(HEAD))).thenReturn(new GitTree(List.of(
                 new GitTreeEntry("src/b/B.java", "blob"),
                 new GitTreeEntry("src", "tree"),
                 new GitTreeEntry("README.md", "blob"),
-                new GitTreeEntry("photo.png", "blob")));
+                new GitTreeEntry("photo.png", "blob")), true));
 
         RepositorySnapshots.PathList list = service.listPaths(PROJECT_ID, HEAD);
 
-        assertEquals(HEAD, list.sha());
+        assertTrue(list.truncated(), "宿主明确截断时必须保留，不能标为完整");
         assertEquals(List.of("README.md", "photo.png", "src", "src/b/B.java"),
                 list.entries().stream().map(RepositorySnapshots.PathEntry::path).toList());
         assertTrue(list.entries().stream().anyMatch(e -> e.path().equals("src/b/B.java") && e.reviewable()));
@@ -152,14 +157,14 @@ class RepositoryReadServiceTest {
     }
 
     @Test
-    void readsAnInclusiveLineRangeAndReportsMoreContent() {
+    void readsAnInclusiveLineRangeAndKeepsLeadingBlankLines() {
         when(client.rawFile(any(), any(), any(), eq(HEAD), eq("A.java")))
-                .thenReturn("one\ntwo\nthree\nfour\n");
+                .thenReturn("\nalpha\nbeta\n");
 
-        RepositorySnapshots.RangeSnapshot range = service.readRange(PROJECT_ID, HEAD, "A.java", 2, 3);
+        RepositorySnapshots.RangeSnapshot range = service.readRange(PROJECT_ID, HEAD, "A.java", 1, 2);
 
-        assertEquals("two\nthree", range.content());
-        assertEquals(3, range.endLine());
+        assertEquals("\nalpha", range.content(), "首行空行不能被吞掉");
+        assertEquals(2, range.endLine());
         assertTrue(range.hasMore());
     }
 
@@ -173,28 +178,59 @@ class RepositoryReadServiceTest {
 
         RepositorySnapshots.DiffSides sides = service.diff(PROJECT_ID, HEAD, "src/Order.java");
 
-        assertEquals("before\n", sides.before());
-        assertEquals("after\n", sides.after());
+        assertEquals("before\n", sides.before().content());
+        assertEquals("after\n", sides.after().content());
         assertEquals(PARENT, sides.baseSha());
-        assertFalse(sides.beforeMissing());
         assertEquals("@@", sides.patch());
     }
 
     @Test
-    void diffMarksAMissingBeforeSideWhenTheParentCannotBeRead() {
+    void renameReadsAfterFromTheNewPathAndBeforeFromTheOldPath() {
+        when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
+                HEAD, List.of(PARENT), "rename", "a", "2026-10-20", 0, 0, 0, false,
+                List.of(new ChangedFile("src/New.java", "src/Old.java", ChangedFile.RENAMED, 0, 0, 0, "@@"))));
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("src/New.java"))).thenReturn("new body\n");
+        when(client.rawFile(any(), any(), any(), eq(PARENT), eq("src/Old.java"))).thenReturn("old body\n");
+
+        RepositorySnapshots.DiffSides sides = service.diff(PROJECT_ID, HEAD, "src/Old.java");
+
+        assertEquals("src/New.java", sides.path(), "返回的应是规范新路径");
+        assertEquals("src/Old.java", sides.oldPath());
+        assertEquals("new body\n", sides.after().content());
+        assertEquals("old body\n", sides.before().content());
+    }
+
+    @Test
+    void missingBeforeSideIsMarkedMissingRatherThanFailingTheWholeDiff() {
         when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
                 HEAD, List.of(PARENT), "msg", "a", "2026-10-20", 1, 0, 1, false,
                 List.of(new ChangedFile("src/Order.java", null, ChangedFile.MODIFIED, 1, 0, 1, "@@"))));
         when(client.rawFile(any(), any(), any(), eq(HEAD), eq("src/Order.java"))).thenReturn("after\n");
         when(client.rawFile(any(), any(), any(), eq(PARENT), eq("src/Order.java")))
-                .thenThrow(new com.codereview.common.BusinessException(
-                        com.codereview.common.ResultCode.GIT_FILE_NOT_VIEWABLE.getCode(), "父版本不可读"));
+                .thenThrow(new HostHttpException(404, "宿主返回 HTTP 404", null, null));
 
         RepositorySnapshots.DiffSides sides = service.diff(PROJECT_ID, HEAD, "src/Order.java");
 
-        assertTrue(sides.beforeMissing());
-        assertNull(sides.before());
-        assertEquals("after\n", sides.after());
+        assertEquals(RepositorySnapshots.Side.MISSING, sides.before().status());
+        assertEquals("NOT_AVAILABLE", sides.before().reason());
+        assertEquals("after\n", sides.after().content());
+    }
+
+    @Test
+    void unreadableAfterSideKeepsItsReasonAndTheBeforeSide() {
+        when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
+                HEAD, List.of(PARENT), "msg", "a", "2026-10-20", 1, 1, 1, false,
+                List.of(new ChangedFile("src/Huge.java", null, ChangedFile.MODIFIED, 1, 1, 1, "@@"))));
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("src/Huge.java")))
+                .thenReturn("x".repeat(RepositoryReadService.MAX_TARGET_BYTES + 1));
+        when(client.rawFile(any(), any(), any(), eq(PARENT), eq("src/Huge.java"))).thenReturn("small\n");
+
+        RepositorySnapshots.DiffSides sides = service.diff(PROJECT_ID, HEAD, "src/Huge.java");
+
+        assertEquals(RepositorySnapshots.Side.UNREADABLE, sides.after().status());
+        assertEquals("TOO_LARGE", sides.after().reason(), "超限不能被说成二进制");
+        assertEquals("small\n", sides.before().content(), "另一侧仍应可读");
+        assertFalse(sides.binary());
     }
 
     @Test
@@ -206,9 +242,23 @@ class RepositoryReadServiceTest {
 
         RepositorySnapshots.DiffSides sides = service.diff(PROJECT_ID, HEAD, "src/New.java");
 
-        assertNull(sides.before());
-        assertFalse(sides.beforeMissing());
-        assertEquals("new\n", sides.after());
+        assertEquals(RepositorySnapshots.Side.MISSING, sides.before().status());
+        assertEquals("ADDED", sides.before().reason());
+        assertEquals("new\n", sides.after().content());
+    }
+
+    @Test
+    void removedFileHasAfterSideMarkedMissing() {
+        when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
+                HEAD, List.of(PARENT), "delete", "a", "2026-10-20", 0, 2, 2, false,
+                List.of(new ChangedFile("src/Removed.java", null, ChangedFile.REMOVED, 0, 2, 2, "@@"))));
+        when(client.rawFile(any(), any(), any(), eq(PARENT), eq("src/Removed.java"))).thenReturn("gone\n");
+
+        RepositorySnapshots.DiffSides sides = service.diff(PROJECT_ID, HEAD, "src/Removed.java");
+
+        assertEquals(RepositorySnapshots.Side.MISSING, sides.after().status());
+        assertEquals("REMOVED", sides.after().reason());
+        assertEquals("gone\n", sides.before().content());
     }
 
     @Test
@@ -220,5 +270,57 @@ class RepositoryReadServiceTest {
                 () -> service.diff(PROJECT_ID, HEAD, "src/Other.java"));
 
         assertEquals(ErrorCode.NOT_FOUND, error.errorCode());
+    }
+
+    @Test
+    void truncatedCommitListNeverClaimsAFileIsAbsent() {
+        when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
+                HEAD, List.of(PARENT), "msg", "a", "2026-10-20", 0, 0, 0, true, List.of()));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.diff(PROJECT_ID, HEAD, "src/Other.java"));
+
+        assertEquals(ErrorCode.SNAPSHOT_INCOMPLETE, error.errorCode());
+    }
+
+    @Test
+    void hostHttpStatusesAreMappedToTheirOwnErrors() {
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("A.java")))
+                .thenThrow(new HostHttpException(404, "not found", null, null));
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.readFile(PROJECT_ID, HEAD, "A.java")).errorCode());
+
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("B.java")))
+                .thenThrow(new HostHttpException(401, "unauthorized", null, null));
+        assertEquals(ErrorCode.REPO_UNAUTHORIZED, assertThrows(ApiException.class,
+                () -> service.readFile(PROJECT_ID, HEAD, "B.java")).errorCode());
+
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("C.java")))
+                .thenThrow(new HostHttpException(429, "slow down", "30", null));
+        ApiException limited = assertThrows(ApiException.class,
+                () -> service.readFile(PROJECT_ID, HEAD, "C.java"));
+        assertEquals(ErrorCode.RATE_LIMITED, limited.errorCode());
+        assertTrue(limited.errorCode().retryable());
+
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("D.java")))
+                .thenThrow(new HostHttpException(HostHttpException.TIMEOUT, "timeout", null, null));
+        assertEquals(ErrorCode.UPSTREAM_TIMEOUT, assertThrows(ApiException.class,
+                () -> service.readFile(PROJECT_ID, HEAD, "D.java")).errorCode());
+
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("E.java")))
+                .thenThrow(new HostHttpException(503, "unavailable", null, null));
+        assertEquals(ErrorCode.REPO_UNAVAILABLE, assertThrows(ApiException.class,
+                () -> service.readFile(PROJECT_ID, HEAD, "E.java")).errorCode());
+    }
+
+    @Test
+    void businessFileNotViewableIsClassifiedAsFileNotReadable() {
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("F.java")))
+                .thenThrow(new BusinessException(ResultCode.GIT_FILE_NOT_VIEWABLE.getCode(), "不可查看"));
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.readFile(PROJECT_ID, HEAD, "F.java"));
+
+        assertEquals(ErrorCode.FILE_NOT_READABLE, error.errorCode());
     }
 }

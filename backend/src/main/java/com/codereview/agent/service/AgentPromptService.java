@@ -95,19 +95,19 @@ public class AgentPromptService {
         if (current.getRevision() != req.expectedRevision()) {
             throw conflict(current.getRevision());
         }
-        AgentPrompt patch = new AgentPrompt();
-        patch.setName(req.name().trim());
-        patch.setDescription(blankToNull(req.description()));
-        patch.setTags(joinTags(req.tags()));
+        // 用 UpdateWrapper 显式 set：描述与标签允许清空，实体更新会忽略 null 而保留旧值。
+        LambdaUpdateWrapper<AgentPrompt> where = new LambdaUpdateWrapper<AgentPrompt>()
+                .eq(AgentPrompt::getId, id)
+                .eq(AgentPrompt::getRevision, req.expectedRevision())
+                .set(AgentPrompt::getName, req.name().trim())
+                .set(AgentPrompt::getDescription, blankToNull(req.description()))
+                .set(AgentPrompt::getTags, joinTags(req.tags()))
+                .set(AgentPrompt::getRevision, req.expectedRevision() + 1)
+                .set(AgentPrompt::getUpdatedAt, AgentTime.now());
         if (req.purpose() != null) {
-            patch.setPurpose(req.purpose());
+            where.set(AgentPrompt::getPurpose, req.purpose());
         }
-        patch.setRevision(req.expectedRevision() + 1);
-        patch.setUpdatedAt(AgentTime.now());
-        int affected = db.mapper(AgentPromptMapper.class).update(patch,
-                new LambdaUpdateWrapper<AgentPrompt>()
-                        .eq(AgentPrompt::getId, id)
-                        .eq(AgentPrompt::getRevision, req.expectedRevision()));
+        int affected = db.mapper(AgentPromptMapper.class).update(null, where);
         if (affected == 0) {
             throw conflict(require(id).getRevision());
         }

@@ -14,6 +14,8 @@ import com.codereview.git.CommitDetail;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitHostClientRegistry;
 import com.codereview.git.GitRepoRef;
+import com.codereview.git.GitTree;
+import com.codereview.git.HostHttpException;
 import com.codereview.git.GitTreeEntry;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -76,16 +78,16 @@ public class RepositoryReadService {
         String fixedSha = RepositoryPaths.requireFixedSha(sha);
         String key = context.namespace + "|tree|" + fixedSha;
         return treeCache.get(key, ignored -> {
-            List<GitTreeEntry> entries = call("读取路径清单",
-                    () -> client(context).tree(context.credential(), context.credentialType(),
+            GitTree tree = call("读取路径清单",
+                    () -> client(context).treeWithMeta(context.credential(), context.credentialType(),
                             context.ref, fixedSha));
             List<RepositorySnapshots.PathEntry> paths = new ArrayList<>();
-            for (GitTreeEntry entry : entries) {
+            for (GitTreeEntry entry : tree.entries()) {
                 paths.add(new RepositorySnapshots.PathEntry(entry.path(), entry.type(),
                         "blob".equals(entry.type()) && ReviewableFiles.isReviewable(entry.path())));
             }
             paths.sort(Comparator.comparing(RepositorySnapshots.PathEntry::path));
-            return new RepositorySnapshots.PathList(paths, fixedSha, false);
+            return new RepositorySnapshots.PathList(paths, fixedSha, tree.truncated());
         });
     }
 
@@ -109,7 +111,7 @@ public class RepositoryReadService {
         int to = Math.min(endLine, lines.length);
         StringBuilder text = new StringBuilder();
         for (int i = from; i <= to; i++) {
-            if (text.length() > 0) {
+            if (i > from) {
                 text.append('\n');
             }
             text.append(lines[i - 1]);
@@ -132,41 +134,57 @@ public class RepositoryReadService {
                         context.ref, head));
         ChangedFile file = findChanged(detail, safePath);
         if (file == null) {
+            if (detail.truncated()) {
+                throw new ApiException(ErrorCode.SNAPSHOT_INCOMPLETE,
+                        "宿主返回的提交文件清单不完整，无法判断该文件是否变更：" + safePath);
+            }
             throw new ApiException(ErrorCode.NOT_FOUND, "该提交没有变更此文件：" + safePath);
         }
 
-        String note = null;
-        boolean binary = false;
-        String after = null;
-        if (!file.removed()) {
-            try {
-                after = readFile(projectId, head, safePath).content();
-            } catch (ApiException e) {
-                if (e.errorCode() != ErrorCode.FILE_NOT_READABLE) {
-                    throw e;
-                }
-                binary = true;
-                note = e.getMessage();
-            }
-        }
-
+        String canonicalPath = file.path();
         String base = detail.baseSha();
         String beforePath = file.previousPath() != null && !file.previousPath().isBlank()
-                ? file.previousPath() : safePath;
-        String before = null;
-        boolean beforeMissing = base == null && !file.added();
-        if (base != null && !file.added()) {
-            try {
-                before = readFile(projectId, base, beforePath).content();
-            } catch (ApiException e) {
-                beforeMissing = true;
-                if (note == null) {
-                    note = e.getMessage();
-                }
-            }
+                ? file.previousPath() : canonicalPath;
+
+        RepositorySnapshots.Side after = file.removed()
+                ? RepositorySnapshots.Side.missing("REMOVED")
+                : readSide(projectId, head, canonicalPath);
+        RepositorySnapshots.Side before;
+        if (file.added()) {
+            before = RepositorySnapshots.Side.missing("ADDED");
+        } else if (base == null) {
+            before = RepositorySnapshots.Side.missing("ROOT_COMMIT");
+        } else {
+            before = readSide(projectId, base, beforePath);
         }
-        return new RepositorySnapshots.DiffSides(head, base, safePath, file.previousPath(), file.status(),
-                before, after, file.patch(), beforeMissing, file.removed(), binary, note);
+        return new RepositorySnapshots.DiffSides(head, base, canonicalPath, file.previousPath(),
+                file.status(), file.patch(), before, after);
+    }
+
+    /**
+     * 读取差异的一侧：把"不存在"与"存在但读不到"分开。
+     *
+     * <p>任一错误都不影响另一侧：before 读不到时 after 照常返回，反之亦然。
+     */
+    private RepositorySnapshots.Side readSide(String projectId, String sha, String path) {
+        try {
+            return RepositorySnapshots.Side.present(readFile(projectId, sha, path).content());
+        } catch (ApiException e) {
+            if (e.errorCode() == ErrorCode.NOT_FOUND) {
+                return RepositorySnapshots.Side.missing("NOT_AVAILABLE");
+            }
+            if (e.errorCode() == ErrorCode.FILE_NOT_READABLE) {
+                return RepositorySnapshots.Side.unreadable(reasonOf(e));
+            }
+            throw e;
+        }
+    }
+
+    private static String reasonOf(ApiException e) {
+        if (e.details() instanceof Map<?, ?> details && details.get("reason") instanceof String reason) {
+            return reason;
+        }
+        return "READ_FAILED";
     }
 
     private RepositorySnapshots.FileSnapshot loadFile(ProjectContext context, String sha, String path) {
@@ -177,12 +195,13 @@ public class RepositoryReadService {
         }
         int bytes = content.getBytes(StandardCharsets.UTF_8).length;
         if (content.indexOf('\u0000') >= 0) {
-            throw new ApiException(ErrorCode.FILE_NOT_READABLE, "二进制文件不可作为审查材料：" + path);
+            throw new ApiException(ErrorCode.FILE_NOT_READABLE, "二进制文件不可作为审查材料：" + path,
+                    Map.of("reason", "BINARY"));
         }
         if (bytes > MAX_TARGET_BYTES) {
             throw new ApiException(ErrorCode.FILE_NOT_READABLE,
                     "文件超过目标读取上限 " + (MAX_TARGET_BYTES / 1024 / 1024) + " MiB：" + path,
-                    Map.of("byteSize", bytes));
+                    Map.of("reason", "TOO_LARGE", "byteSize", bytes));
         }
         return new RepositorySnapshots.FileSnapshot(sha, path, content, sha256(content), bytes,
                 countLines(content));
@@ -218,6 +237,8 @@ public class RepositoryReadService {
             return work.get();
         } catch (ApiException e) {
             throw e;
+        } catch (HostHttpException e) {
+            throw mapHostFailure(action, e);
         } catch (BusinessException e) {
             if (e.getCode() == ResultCode.GIT_FILE_NOT_VIEWABLE.getCode()) {
                 throw new ApiException(ErrorCode.FILE_NOT_READABLE, e.getMessage());
@@ -227,6 +248,36 @@ public class RepositoryReadService {
             throw new ApiException(ErrorCode.REPO_UNREACHABLE,
                     action + "失败：" + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
         }
+    }
+
+    /**
+     * 把宿主错误还原成各自的语义：404 是"确实没有"，401/403 是凭据问题，
+     * 429 可等待重试，5xx 是宿主暂时不可用；超时不伪造 HTTP 状态。
+     */
+    private static ApiException mapHostFailure(String action, HostHttpException e) {
+        if (e.timeout()) {
+            return new ApiException(ErrorCode.UPSTREAM_TIMEOUT, action + "超时或连接失败");
+        }
+        int status = e.statusCode();
+        if (status == 404) {
+            return new ApiException(ErrorCode.NOT_FOUND, action + "：资源不存在或无权访问",
+                    Map.of("status", status));
+        }
+        if (status == 401 || status == 403) {
+            return new ApiException(ErrorCode.REPO_UNAUTHORIZED, action + "：仓库凭据被拒绝",
+                    Map.of("status", status));
+        }
+        if (status == 429) {
+            return new ApiException(ErrorCode.RATE_LIMITED, action + "：宿主限流",
+                    e.retryAfter() == null ? Map.of("status", status)
+                            : Map.of("status", status, "retryAfter", e.retryAfter()));
+        }
+        if (status >= 500) {
+            return new ApiException(ErrorCode.REPO_UNAVAILABLE, action + "：宿主暂时不可用",
+                    Map.of("status", status));
+        }
+        return new ApiException(ErrorCode.REPO_UNREACHABLE, action + "失败：HTTP " + status,
+                Map.of("status", status));
     }
 
     private static ChangedFile findChanged(CommitDetail detail, String path) {

@@ -83,19 +83,25 @@ public class AgentModelService {
         if (current.getRevision() != req.expectedRevision()) {
             throw conflict(current.getRevision());
         }
-        AgentModelConfig patch = new AgentModelConfig();
-        applyFields(patch, req.name(), req.baseUrl(), req.modelName(), req.contextWindow(),
-                req.maxOutput(), req.tokenizer(), req.protocol());
+        // 可空字段（tokenizer、窗口、输出）允许被清空，必须显式 set；实体更新会忽略 null。
+        LambdaUpdateWrapper<AgentModelConfig> where = new LambdaUpdateWrapper<AgentModelConfig>()
+                .eq(AgentModelConfig::getId, id)
+                .eq(AgentModelConfig::getRevision, req.expectedRevision())
+                .set(AgentModelConfig::getName, req.name().trim())
+                .set(AgentModelConfig::getBaseUrl, req.baseUrl().trim())
+                .set(AgentModelConfig::getModelName, req.modelName().trim())
+                .set(AgentModelConfig::getContextWindow, req.contextWindow())
+                .set(AgentModelConfig::getMaxOutput, req.maxOutput())
+                .set(AgentModelConfig::getTokenizer, blankToNull(req.tokenizer()))
+                .set(AgentModelConfig::getProtocol,
+                        req.protocol() == null || req.protocol().isBlank() ? "OPENAI_CHAT" : req.protocol())
+                .set(AgentModelConfig::getRevision, req.expectedRevision() + 1)
+                .set(AgentModelConfig::getUpdatedAt, AgentTime.now());
         String credential = blankToNull(req.credential());
         if (credential != null) {
-            patch.setCredential(credential);
+            where.set(AgentModelConfig::getCredential, credential);
         }
-        patch.setRevision(req.expectedRevision() + 1);
-        patch.setUpdatedAt(AgentTime.now());
-        int affected = db.mapper(AgentModelConfigMapper.class).update(patch,
-                new LambdaUpdateWrapper<AgentModelConfig>()
-                        .eq(AgentModelConfig::getId, id)
-                        .eq(AgentModelConfig::getRevision, req.expectedRevision()));
+        int affected = db.mapper(AgentModelConfigMapper.class).update(null, where);
         if (affected == 0) {
             throw conflict(require(id).getRevision());
         }

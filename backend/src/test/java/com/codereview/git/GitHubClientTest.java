@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>前置改动：`api-base` / `raw-base` 由 `private static final` 改为构造注入 + `git.*` 配置项，
  * 否则客户端无法指向本地桩 —— 典型的"可测"倒逼"可配"。
  *
- * <p>范围：这里**只锁当前行为，不为已知缺陷背书**；已知待修项（如 branches 缺翻页、
- * tree 忽略 `truncated`）在 `dev/待办backlog.md` 登记，不在此处用断言固定下来。
+ * <p>范围：这里**只锁当前行为，不为已知缺陷背书**；`tree` 的截断信息与 HTTP 错误分类
+ * 已按 P30 审查修复，并由下面的用例固定下来。
  */
 class GitHubClientTest {
 
@@ -57,6 +57,31 @@ class GitHubClientTest {
 
         assertEquals("/repos/o/r/git/trees/main?recursive=1", stub.uri(0));
         assertEquals(List.of(new GitTreeEntry("src", "tree"), new GitTreeEntry("src/A.java", "blob")), entries);
+    }
+
+    @Test
+    void treeCarriesHostTruncationInsteadOfDroppingIt() {
+        stub.respondWith("""
+                {"sha":"t1","truncated":true,"tree":[
+                  {"path":"src/A.java","type":"blob","sha":"b"}
+                ]}
+                """);
+
+        GitTree tree = stub.newClient().treeWithMeta("token", 1, repo("o", "r"), "main");
+
+        assertEquals(List.of(new GitTreeEntry("src/A.java", "blob")), tree.entries());
+        assertTrue(tree.truncated(), "宿主声明截断时必须保留");
+    }
+
+    @Test
+    void hostHttpStatusIsPreservedForTheReadLayerToClassify() {
+        stub.respond(exchange -> new GitStubServer.StubResponse(404,
+                java.util.Map.of(), "{\"message\":\"Not Found\"}"));
+
+        HostHttpException error = assertThrows(HostHttpException.class,
+                () -> stub.newClient().rawFile("token", 1, repo("o", "r"), "a".repeat(40), "src/A.java"));
+
+        assertEquals(404, error.statusCode());
     }
 
     @Test

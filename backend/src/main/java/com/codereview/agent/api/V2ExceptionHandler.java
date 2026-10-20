@@ -6,9 +6,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -41,6 +44,25 @@ public class V2ExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorBody> handleIllegalArgument(IllegalArgumentException e) {
         return response(ErrorCode.VALIDATION_FAILED, e.getMessage(), null);
+    }
+
+    /** 缺少查询参数属于用户可修正的输入错误，不能落到 500。 */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiErrorBody> handleMissingParameter(MissingServletRequestParameterException e) {
+        return response(ErrorCode.VALIDATION_FAILED, "缺少必需的查询参数：" + e.getParameterName(),
+                Map.of("fields", Map.of(e.getParameterName(), "required")));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorBody> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        return response(ErrorCode.VALIDATION_FAILED, "参数类型不正确：" + e.getName(),
+                Map.of("fields", Map.of(e.getName(), "type")));
+    }
+
+    /** 请求体不是合法 JSON、字段类型不符或未知枚举值，同样是 400。 */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorBody> handleUnreadable(HttpMessageNotReadableException e) {
+        return response(ErrorCode.VALIDATION_FAILED, "请求体不是合法 JSON 或字段类型不符", null);
     }
 
     @ExceptionHandler(Exception.class)

@@ -160,11 +160,15 @@
 | `SOURCE_MOVED` | 409 | false | 分支已移动，`details.observedSha/currentSha` |
 | `REVISION_CONFLICT` | 409 | false | 乐观并发失败，`details.currentRevision` |
 | `CONFIG_IN_USE` | 409 | false | 删除被策略或任务引用的配置 |
-| `REPO_UNREACHABLE` | 422 | false | 仓库地址或令牌不可用，`details` 给出原因 |
+| `REPO_UNREACHABLE` | 422 | false | 仓库地址不可解析或宿主未接入 |
+| `REPO_UNAUTHORIZED` | 403 | false | 仓库凭据被拒绝（HTTP 401/403） |
+| `FILE_NOT_READABLE` | 422 | false | 二进制、超限或不可读的固定版本文件，`details.reason` |
+| `SNAPSHOT_INCOMPLETE` | 422 | false | 宿主清单被截断，不能断言文件不存在 |
 | `UNSUPPORTED_LANGUAGE` | 422 | false | 耦合专项遇到非 Java 目标 |
 | `CONTEXT_LIMIT` | 422 | false | 模型结构化上下文超限 |
 | `QUOTA_EXCEEDED` | 429 | false | 任务请求或期限额度耗尽 |
-| `RATE_LIMITED` | 429 | true | 上游限流，`details.retryAfterSeconds` |
+| `RATE_LIMITED` | 429 | true | 上游限流，`details.retryAfter` |
+| `REPO_UNAVAILABLE` | 503 | true | 宿主 5xx，可稍后重试 |
 | `NOT_READY` | 503 | true | 新库或 schema 标记未就绪 |
 | `INTERNAL_ERROR` | 500 | false | 未分类错误，只在服务端记细节 |
 

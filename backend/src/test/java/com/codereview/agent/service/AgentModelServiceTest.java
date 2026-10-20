@@ -52,6 +52,9 @@ class AgentModelServiceTest {
 
     @BeforeEach
     void setUp() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentModelConfig.class);
         service = new AgentModelService(db, probe, new ObjectMapper());
         when(db.mapper(AgentModelConfigMapper.class)).thenReturn(mapper);
         when(db.mapper(AgentModelValidationMapper.class)).thenReturn(validationMapper);
@@ -95,6 +98,24 @@ class AgentModelServiceTest {
     }
 
     @Test
+    void clearingOptionalFieldsIsWrittenExplicitly() {
+        AgentModelConfig model = model(1);
+        when(mapper.selectById(any())).thenReturn(model);
+        when(mapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
+
+        service.update(model.getId(), new ModelDtos.Update("默认模型", "https://gateway.local/v1",
+                "deepseek-chat", "", null, null, "", "OPENAI_CHAT", 1));
+
+        org.mockito.ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AgentModelConfig>> captor =
+                org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(mapper).update(org.mockito.ArgumentMatchers.isNull(), captor.capture());
+        String set = captor.getValue().getSqlSet();
+        assertTrue(set.contains("tokenizer"), "清空 tokenizer 必须出现在 SET 里：" + set);
+        assertTrue(set.contains("context_window"), "清空窗口必须出现在 SET 里：" + set);
+        assertTrue(set.contains("max_output"), "清空输出上限必须出现在 SET 里：" + set);
+    }
+
+    @Test
     void failedProbeIsRecordedRatherThanThrown() {
         AgentModelConfig model = model(0);
         when(mapper.selectById(any())).thenReturn(model);
@@ -121,7 +142,7 @@ class AgentModelServiceTest {
     @Test
     void credentialIsNeverPartOfTheView() {
         AgentModelConfig model = model(0);
-        model.setCredentialRef("secret");
+        model.setCredential("secret");
         when(mapper.selectById(any())).thenReturn(model);
         when(validationMapper.selectList(any())).thenReturn(List.of());
 

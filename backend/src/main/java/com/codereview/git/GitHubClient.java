@@ -6,7 +6,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
@@ -52,6 +54,12 @@ public class GitHubClient implements GitHostClient {
 
     @Override
     public List<GitTreeEntry> tree(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        return treeWithMeta(token, credentialType, repoRef, branch).entries();
+    }
+
+    /** GitHub 的 trees 接口用 {@code truncated} 明示"还有条目没有返回"，必须原样带出。 */
+    @Override
+    public GitTree treeWithMeta(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
         String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo()
                 + "/git/trees/" + branch + "?recursive=1";
         JsonNode root = getJson(url, token, credentialType);
@@ -62,7 +70,7 @@ public class GitHubClient implements GitHostClient {
                 entries.add(new GitTreeEntry(node.path("path").asText(), type));
             }
         }
-        return entries;
+        return new GitTree(entries, root.path("truncated").asBoolean(false));
     }
 
     @Override
@@ -202,17 +210,29 @@ public class GitHubClient implements GitHostClient {
         if (auth != null) {
             spec = spec.header(HttpHeaders.AUTHORIZATION, auth);
         }
-        return spec.retrieve().toEntity(String.class);
+        try {
+            return spec.retrieve().toEntity(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
+        }
     }
 
     private String get(String url, String token, Integer credentialType) {
         String auth = authHeader(token, credentialType);
-        if (auth == null) {
-            return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+        try {
+            if (auth == null) {
+                return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+            }
+            return restClient.get().uri(encodedUri(url))
+                    .header(HttpHeaders.AUTHORIZATION, auth)
+                    .retrieve().body(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
         }
-        return restClient.get().uri(encodedUri(url))
-                .header(HttpHeaders.AUTHORIZATION, auth)
-                .retrieve().body(String.class);
     }
 
     /**

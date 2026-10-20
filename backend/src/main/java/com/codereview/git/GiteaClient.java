@@ -10,7 +10,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
@@ -121,10 +123,17 @@ public class GiteaClient implements GitHostClient {
 
     @Override
     public List<GitTreeEntry> tree(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        return treeWithMeta(token, credentialType, repoRef, branch).entries();
+    }
+
+    /** Gitea 由客户端翻页；翻到页数上限仍未结束时必须标记截断，不能当作完整清单。 */
+    @Override
+    public GitTree treeWithMeta(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
         String api = apiBase(repoRef);
         String ref = resolvePathRef(token, credentialType, repoRef, branch);
         List<GitTreeEntry> entries = new ArrayList<>();
-        for (int page = 1; page <= MAX_TREE_PAGES; page++) {
+        int page = 1;
+        for (; page <= MAX_TREE_PAGES; page++) {
             String url = api + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/git/trees/"
                     + UriUtils.encodePathSegment(ref, StandardCharsets.UTF_8)
                     + "?recursive=true&per_page=" + TREE_PER_PAGE + "&page=" + page;
@@ -146,7 +155,7 @@ public class GiteaClient implements GitHostClient {
                 break;
             }
         }
-        return entries;
+        return new GitTree(entries, page > MAX_TREE_PAGES);
     }
 
     // ---------------------------------------------------------------- 文件内容
@@ -413,17 +422,29 @@ public class GiteaClient implements GitHostClient {
         if (auth != null) {
             spec = spec.header(HttpHeaders.AUTHORIZATION, auth);
         }
-        return spec.retrieve().toEntity(String.class);
+        try {
+            return spec.retrieve().toEntity(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
+        }
     }
 
     private String get(String url, String token, Integer credentialType) {
         String auth = authHeader(token, credentialType);
-        if (auth == null) {
-            return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+        try {
+            if (auth == null) {
+                return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+            }
+            return restClient.get().uri(encodedUri(url))
+                    .header(HttpHeaders.AUTHORIZATION, auth)
+                    .retrieve().body(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
         }
-        return restClient.get().uri(encodedUri(url))
-                .header(HttpHeaders.AUTHORIZATION, auth)
-                .retrieve().body(String.class);
     }
 
     /**

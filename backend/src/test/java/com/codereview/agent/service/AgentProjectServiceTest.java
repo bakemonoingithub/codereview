@@ -67,7 +67,7 @@ class AgentProjectServiceTest {
         verify(client).branches(eq("secret-token"), eq(1), any(GitRepoRef.class));
         ArgumentCaptor<AgentProject> inserted = ArgumentCaptor.forClass(AgentProject.class);
         verify(mapper).insert(inserted.capture());
-        assertTrue("secret-token".equals(inserted.getValue().getCredentialRef()));
+        assertTrue("secret-token".equals(inserted.getValue().getCredential()));
         assertEquals(0, inserted.getValue().getRevision());
     }
 
@@ -103,7 +103,7 @@ class AgentProjectServiceTest {
         service.update(current.getId(), new ProjectDtos.Update("新名称", "   ", 3));
 
         verify(mapper).update(org.mockito.ArgumentMatchers.argThat(patch ->
-                patch.getCredentialRef() == null && patch.getRevision() == 4), any());
+                patch.getCredential() == null && patch.getRevision() == 4), any());
         verify(client, never()).branches(any(), any(), any());
     }
 
@@ -118,7 +118,7 @@ class AgentProjectServiceTest {
 
         verify(client).branches(eq("new-token"), eq(1), any(GitRepoRef.class));
         verify(mapper).update(org.mockito.ArgumentMatchers.argThat(patch ->
-                "new-token".equals(patch.getCredentialRef())), any());
+                "new-token".equals(patch.getCredential())), any());
     }
 
     @Test
@@ -138,7 +138,7 @@ class AgentProjectServiceTest {
         project.setId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E2");
         project.setName("订单服务");
         project.setRepoUrl(REPO);
-        project.setCredentialRef("old-token");
+        project.setCredential("old-token");
         project.setCredentialType(1);
         project.setCurrentBranch("main");
         project.setRevision(revision);

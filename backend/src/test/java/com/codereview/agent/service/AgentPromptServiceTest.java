@@ -47,6 +47,9 @@ class AgentPromptServiceTest {
 
     @BeforeEach
     void setUp() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentPrompt.class);
         service = new AgentPromptService(db);
         when(db.mapper(AgentPromptMapper.class)).thenReturn(promptMapper);
         when(db.mapper(AgentPromptVersionMapper.class)).thenReturn(versionMapper);
@@ -95,6 +98,22 @@ class AgentPromptServiceTest {
 
         assertEquals(ErrorCode.REVISION_CONFLICT, error.errorCode());
         verify(versionMapper, never()).insert(any(AgentPromptVersion.class));
+    }
+
+    @Test
+    void clearingDescriptionAndTagsUpdatesThemToNull() {
+        AgentPrompt prompt = prompt(0);
+        when(promptMapper.selectById(any())).thenReturn(prompt);
+        when(promptMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
+
+        service.update(prompt.getId(), new PromptDtos.Update("新名称", "", List.of(), "SPECIALIST", 0));
+
+        ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AgentPrompt>> captor =
+                ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(promptMapper).update(org.mockito.ArgumentMatchers.isNull(), captor.capture());
+        String set = captor.getValue().getSqlSet();
+        assertTrue(set.contains("description"), "清空描述必须出现在 SET 里：" + set);
+        assertTrue(set.contains("tags"), "清空标签必须出现在 SET 里：" + set);
     }
 
     @Test
