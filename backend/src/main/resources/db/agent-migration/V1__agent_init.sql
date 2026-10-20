@@ -17,12 +17,12 @@ CREATE TABLE agent_schema_identity (
 INSERT INTO agent_schema_identity (schema_name, schema_version, installed_at, app_version)
 VALUES ('ai_code_review_agent', '1', UTC_TIMESTAMP(3), 'p30.2');
 
--- 项目。credential_ref 只写不读：只保存既有维护层给出的凭据引用，接口永不回传。
+-- 项目。credential 为凭据本体，只写不读：沿用既有维护层存于该列，接口、日志与快照都不回传。
 CREATE TABLE project (
     id              CHAR(26)     NOT NULL,
     name            VARCHAR(100) NOT NULL,
     repo_url        VARCHAR(500) NOT NULL,
-    credential_ref  VARCHAR(1024) NULL,
+    credential  VARCHAR(1024) NULL,
     credential_type TINYINT      NOT NULL DEFAULT 1,
     current_branch  VARCHAR(200) NOT NULL DEFAULT 'main',
     revision        INT          NOT NULL DEFAULT 0,
@@ -37,12 +37,13 @@ CREATE TABLE project (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 -- 模型配置。窗口、输出、tokenizer 与协议是发起任务与容量判断的输入，不能只存在 JSON 档案里。
+-- credential 与项目同口径：凭据本体只写不读，不进入任何响应。
 CREATE TABLE model_config (
     id            CHAR(26)     NOT NULL,
     name          VARCHAR(100) NOT NULL,
     base_url      VARCHAR(500) NOT NULL,
     model_name    VARCHAR(200) NOT NULL,
-    credential_ref VARCHAR(1024) NULL,
+    credential VARCHAR(1024) NULL,
     context_window INT         NULL,
     max_output     INT         NULL,
     tokenizer      VARCHAR(100) NULL,

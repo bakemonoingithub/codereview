@@ -18,7 +18,7 @@ public class AgentModelConfig {
     private String name;
     private String baseUrl;
     private String modelName;
-    private String credentialRef;
+    private String credential;
     private Integer contextWindow;
     private Integer maxOutput;
     private String tokenizer;

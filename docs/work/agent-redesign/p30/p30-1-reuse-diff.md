@@ -126,8 +126,8 @@
 
 | 旧表 | 处理 | 新位置 |
 | --- | --- | --- |
-| `project` | 改造复用字段 | 新 `project`（补 `revision`、`credential_ref`） |
-| `model_config` | 拆分 | `model_config`（补窗口、最大输出、tokenizer、协议、`credential_ref`、`revision`）+ `model_validation` |
+| `project` | 改造复用字段 | 新 `project`（补 `revision`、`credential`） |
+| `model_config` | 拆分 | `model_config`（补窗口、最大输出、tokenizer、协议、`credential`、`revision`）+ `model_validation` |
 | `prompt`、`prompt_version` | 保留结构，补字段 | `prompt`（补 `purpose`、`revision`）+ `prompt_version` |
 | `review_strategy` | 重构 | `review_strategy`（`specialist_type`、`model_config_id`、`prompt_id?`、`revision`） |
 | `review_record` | 拆分 | `review_task`、`task_target`、`review_result` |
@@ -194,7 +194,7 @@
 
 ### 6.7 凭据与快照
 
-- 凭据只保存引用（`credential_ref`），接口只写不读；令牌留空保留、新值验证成功后原子替换。
+- 凭据沿用既有维护层：明文保存在写保护列 `credential`，接口只写不读，日志、快照与错误信息都不回传；令牌留空保留、新值验证成功后原子替换。加密或密钥服务不在本期引入（负责人 2026-10-20 决定），风险由数据库访问控制与只写约束承担。
 - 配置修订使对应 `model_validation` 过期；任务保存配置与提示词版本快照，历史任务不重新读取当前配置。
 
 ## 7. 差异处理结论（原型未覆盖或来源已有）

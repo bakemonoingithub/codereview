@@ -8,7 +8,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/** 新库项目。{@code credentialRef} 只写不读，接口不回传凭据。 */
+/** 新库项目。{@code credential} 只写不读，接口不回传凭据。 */
 @Data
 @TableName("project")
 public class AgentProject {
@@ -17,7 +17,7 @@ public class AgentProject {
     private String id;
     private String name;
     private String repoUrl;
-    private String credentialRef;
+    private String credential;
     private Integer credentialType;
     private String currentBranch;
     private Integer revision;

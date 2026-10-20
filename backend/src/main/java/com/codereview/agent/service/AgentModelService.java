@@ -69,7 +69,7 @@ public class AgentModelService {
         model.setId(AgentIds.next());
         applyFields(model, req.name(), req.baseUrl(), req.modelName(), req.contextWindow(),
                 req.maxOutput(), req.tokenizer(), req.protocol());
-        model.setCredentialRef(blankToNull(req.credential()));
+        model.setCredential(blankToNull(req.credential()));
         model.setRevision(0);
         model.setCreatedAt(AgentTime.now());
         model.setUpdatedAt(AgentTime.now());
@@ -88,7 +88,7 @@ public class AgentModelService {
                 req.maxOutput(), req.tokenizer(), req.protocol());
         String credential = blankToNull(req.credential());
         if (credential != null) {
-            patch.setCredentialRef(credential);
+            patch.setCredential(credential);
         }
         patch.setRevision(req.expectedRevision() + 1);
         patch.setUpdatedAt(AgentTime.now());
@@ -127,7 +127,7 @@ public class AgentModelService {
     public ModelDtos.ValidationResult validate(String id) {
         AgentModelConfig model = require(id);
         ModelProbeOutcome outcome = probe.probe(new ModelProbeRequest(
-                model.getBaseUrl(), model.getModelName(), model.getCredentialRef()));
+                model.getBaseUrl(), model.getModelName(), model.getCredential()));
         AgentModelValidation record = new AgentModelValidation();
         record.setId(AgentIds.next());
         record.setModelConfigId(model.getId());
@@ -153,7 +153,7 @@ public class AgentModelService {
     private ModelDtos.View toView(AgentModelConfig model) {
         AgentModelValidation latest = latestValidation(model.getId());
         return new ModelDtos.View(model.getId(), model.getName(), model.getBaseUrl(), model.getModelName(),
-                model.getCredentialRef() != null && !model.getCredentialRef().isBlank(),
+                model.getCredential() != null && !model.getCredential().isBlank(),
                 model.getContextWindow(), model.getMaxOutput(), model.getTokenizer(), model.getProtocol(),
                 validationStatus(model, latest), model.getRevision(), model.getCreatedAt(), model.getUpdatedAt());
     }

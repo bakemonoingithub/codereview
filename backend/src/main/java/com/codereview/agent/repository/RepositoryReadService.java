@@ -264,7 +264,7 @@ public class RepositoryReadService {
 
     private record ProjectContext(AgentProject project, GitRepoRef ref, String namespace) {
         String credential() {
-            return project.getCredentialRef();
+            return project.getCredential();
         }
 
         int credentialType() {

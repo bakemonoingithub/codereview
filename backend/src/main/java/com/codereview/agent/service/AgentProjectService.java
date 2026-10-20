@@ -65,7 +65,7 @@ public class AgentProjectService {
         project.setId(AgentIds.next());
         project.setName(req.name().trim());
         project.setRepoUrl(req.repoUrl().trim());
-        project.setCredentialRef(blankToNull(req.credential()));
+        project.setCredential(blankToNull(req.credential()));
         project.setCredentialType(credentialType);
         project.setCurrentBranch(req.currentBranch() == null || req.currentBranch().isBlank()
                 ? "main" : req.currentBranch().trim());
@@ -92,7 +92,7 @@ public class AgentProjectService {
         patch.setUpdatedAt(AgentTime.now());
         patch.setRevision(req.expectedRevision() + 1);
         if (newCredential != null) {
-            patch.setCredentialRef(newCredential);
+            patch.setCredential(newCredential);
         }
         int affected = db.mapper(AgentProjectMapper.class).update(patch,
                 new LambdaUpdateWrapper<AgentProject>()
@@ -159,7 +159,7 @@ public class AgentProjectService {
     private ProjectDtos.View toView(AgentProject project) {
         return new ProjectDtos.View(project.getId(), project.getName(), project.getRepoUrl(),
                 project.getCurrentBranch(),
-                project.getCredentialRef() != null && !project.getCredentialRef().isBlank(),
+                project.getCredential() != null && !project.getCredential().isBlank(),
                 project.getRevision(), project.getCreatedAt(), project.getUpdatedAt());
     }
 }

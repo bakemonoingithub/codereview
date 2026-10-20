@@ -68,7 +68,7 @@ public class GitHubClient implements GitHostClient {
     @Override
     public String rawFile(String token, Integer credentialType, GitRepoRef repoRef, String ref, String path) {
         if (GitCache.isImmutableRef(ref)) {
-            String key = GitCache.key(repoRef.owner(), repoRef.repo(), ref) + ":" + path;
+            String key = GitCache.key(repoRef, effectiveCredential(token), ref) + ":" + path;
             return cache.rawFile(key, () -> rawFileAtRef(token, credentialType, repoRef, ref, path));
         }
         return rawFileAtRef(token, credentialType, repoRef, ref, path);
@@ -142,7 +142,7 @@ public class GitHubClient implements GitHostClient {
                                      String base, String head) {
         // 仅当两端都是 commit sha 时才缓存（任一端是分支名就可能在移动）
         if (GitCache.isImmutableRef(base) && GitCache.isImmutableRef(head)) {
-            String key = GitCache.key(repoRef.owner(), repoRef.repo(), base + "..." + head);
+            String key = GitCache.key(repoRef, effectiveCredential(token), base + "..." + head);
             return cache.changedFiles(key, () -> fetchChangedFiles(token, credentialType, repoRef, base, head));
         }
         return fetchChangedFiles(token, credentialType, repoRef, base, head);
@@ -166,7 +166,7 @@ public class GitHubClient implements GitHostClient {
 
     @Override
     public CommitDetail commitDetail(String token, Integer credentialType, GitRepoRef repoRef, String sha) {
-        return cache.commitDetail(GitCache.key(repoRef.owner(), repoRef.repo(), sha),
+        return cache.commitDetail(GitCache.key(repoRef, effectiveCredential(token), sha),
                 () -> fetchCommitDetail(token, credentialType, repoRef, sha));
     }
 
@@ -230,6 +230,11 @@ public class GitHubClient implements GitHostClient {
      */
     private static URI encodedUri(String url) {
         return URI.create(url);
+    }
+
+    /** 缓存身份用的有效凭据：项目凭据优先，未配置时用全局兜底令牌。 */
+    private String effectiveCredential(String token) {
+        return token != null && !token.isBlank() ? token : properties.getToken();
     }
 
     /** 项目级 credential 优先（token→Bearer / 密码→Basic），其次全局兜底 token。 */

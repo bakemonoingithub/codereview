@@ -29,6 +29,7 @@
 | --- | --- | --- |
 | `feedback(issue_id?, result_id?)` | `feedback(subject_kind, subject_id)` + 唯一键 | MySQL 唯一索引对可空列不生效；用主体类型加稳定 ID 能真正保证"一个主体一条当前反馈" |
 | `agent_schema_identity(..., checksum)` | `(schema_name, schema_version, installed_at, app_version)` | 迁移内容校验由 Flyway 的 `agent_schema_history.checksum` 负责，再存一份哈希会出现两套真相 |
+| `credential_ref`（P29 草案字段名） | `credential`（明文列，只写不读） | 负责人 2026-10-20 决定沿用既有明文凭据层；字段名如实反映内容，避免"引用"的误导。接口、日志与快照不回传凭据；加密或密钥服务不在本期引入 |
 
 ## 3. 独立数据源与启动顺序
 
