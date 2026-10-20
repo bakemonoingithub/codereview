@@ -73,8 +73,7 @@ public class RepositoryReadService {
                 .build();
     }
 
-    public RepositorySnapshots.PathList listPaths(String projectId, String sha) {
-        ProjectContext context = context(projectId);
+    public RepositorySnapshots.PathList listPaths(String projectId, String sha) {        ProjectContext context = context(projectId);
         String fixedSha = RepositoryPaths.requireFixedSha(sha);
         String key = context.namespace + "|tree|" + fixedSha;
         return treeCache.get(key, ignored -> {
@@ -89,6 +88,18 @@ public class RepositoryReadService {
             paths.sort(Comparator.comparing(RepositorySnapshots.PathEntry::path));
             return new RepositorySnapshots.PathList(paths, fixedSha, tree.truncated());
         });
+    }
+
+    /**
+     * 分支当前 HEAD。只用于发起任务时确认观察到的版本是否移动；读取材料仍必须使用固定 SHA。
+     */
+    public String resolveBranchHead(String projectId, String branch) {
+        if (branch == null || branch.isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "缺少分支名");
+        }
+        ProjectContext context = context(projectId);
+        return call("解析分支 HEAD", () -> client(context).headCommitSha(context.credential(),
+                context.credentialType(), context.ref, branch.trim()));
     }
 
     public RepositorySnapshots.FileSnapshot readFile(String projectId, String sha, String path) {

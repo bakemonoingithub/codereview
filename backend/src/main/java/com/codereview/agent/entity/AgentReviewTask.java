@@ -21,6 +21,8 @@ public class AgentReviewTask {
     private String stopReason;
     private String inputSnapshot;
     private String configSnapshot;
+    private String idempotencyKey;
+    private String requestHash;
     private Integer revision;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
