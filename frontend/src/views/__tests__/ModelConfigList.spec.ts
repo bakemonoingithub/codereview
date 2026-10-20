@@ -6,26 +6,33 @@ import { message } from 'ant-design-vue'
 import ModelConfigList from '@/views/ModelConfigList.vue'
 import { attrsStub, namedAntStubs } from '@/testUtils/antStubs'
 
-/**
- * 「验证」按钮的防连点与失败提示（backlog ⑥）。
- *
- * 回归背景：`verifyModel` 会真实外呼模型网关，而按钮既无 loading 也不禁用 ——
- * 等待期间可连点 N 次 = N 个并发外呼 + N 次状态写库；而且（后端当时无论成败都回 200）
- * 失败时先弹一条绿色"验证完成"，刷新后才看到红色"验证失败"，全程没有失败原因。
- * 后端已改为失败返回 3002 + 原因（见 ModelConfigService），这里锁住前端这一侧。
- */
-vi.mock('@/api/model', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/api/model')>()
-  return {
-    ...actual,
-    listModels: vi.fn(),
-    verifyModel: vi.fn()
+vi.mock('@/api/v2', () => ({
+  modelsApi: {
+    list: vi.fn(),
+    validate: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn()
   }
-})
+}))
 
-import { listModels, verifyModel } from '@/api/model'
+import { modelsApi } from '@/api/v2'
 
-const row = { id: '5', name: 'deepseek', baseUrl: 'https://api.deepseek.com', modelName: 'deepseek-chat' }
+const row = {
+  id: 'm1',
+  name: '默认模型',
+  baseUrl: 'https://gateway.local/v1',
+  modelName: 'deepseek-chat',
+  credentialConfigured: true,
+  contextWindow: 32768,
+  maxOutput: 4096,
+  tokenizer: null,
+  protocol: 'OPENAI_CHAT',
+  validationStatus: 'NONE',
+  revision: 1,
+  createdAt: '2026-10-20T10:00:00',
+  updatedAt: '2026-10-20T10:00:00'
+}
 
 const options = {
   global: {
@@ -42,48 +49,61 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 beforeEach(() => {
   vi.clearAllMocks()
-  ;(listModels as any).mockResolvedValue({ records: [row] })
+  ;(modelsApi.list as any).mockResolvedValue({ items: [row], nextCursor: null, hasMore: false })
 })
-
-async function mountList() {
-  const wrapper = mount(ModelConfigList, options)
-  await flush()
-  await nextTick()
-  return wrapper
-}
 
 function verifyButton(wrapper: any) {
   return wrapper.findAll('a-button-stub').find((b: any) => b.text() === '验证')!
 }
 
-describe('模型配置的「验证」按钮', () => {
-  it('验证进行中按钮禁用，避免连点重复外呼', async () => {
+describe('ModelConfigList', () => {
+  it('未验证与过期状态使用不同文案', async () => {
+    const wrapper = mount(ModelConfigList, options)
+    await flush()
+    expect(wrapper.text()).toContain('未验证')
+
+    ;(modelsApi.list as any).mockResolvedValue({
+      items: [{ ...row, validationStatus: 'EXPIRED' }],
+      nextCursor: null,
+      hasMore: false
+    })
+    const second = mount(ModelConfigList, options)
+    await flush()
+    expect(second.text()).toContain('配置已变更，验证过期')
+  })
+
+  it('验证进行中禁用按钮，避免连点重复外呼', async () => {
     let resolveVerify: (value: unknown) => void = () => {}
-    ;(verifyModel as any).mockReturnValue(
+    ;(modelsApi.validate as any).mockReturnValue(
       new Promise((resolve) => {
         resolveVerify = resolve
       })
     )
-    const wrapper = await mountList()
+    const wrapper = mount(ModelConfigList, options)
+    await flush()
 
     await verifyButton(wrapper).trigger('click')
     await nextTick()
-
     expect(verifyButton(wrapper).attributes('disabled')).toBeTruthy()
     await verifyButton(wrapper).trigger('click')
-    expect(verifyModel).toHaveBeenCalledTimes(1)
+    expect(modelsApi.validate).toHaveBeenCalledTimes(1)
 
-    resolveVerify({})
+    resolveVerify({ result: 'PASSED', configRevision: 1, detail: 'ok' })
     await flush()
     await nextTick()
     expect(verifyButton(wrapper).attributes('disabled')).toBeUndefined()
   })
 
-  it('验证失败时提示原因，不弹"验证完成"', async () => {
+  it('验证失败时提示原因，不弹“验证完成”', async () => {
     const errorSpy = vi.spyOn(message, 'error').mockImplementation(() => ({}) as any)
     const successSpy = vi.spyOn(message, 'success').mockImplementation(() => ({}) as any)
-    ;(verifyModel as any).mockRejectedValue(new Error('连通验证失败：connection refused'))
-    const wrapper = await mountList()
+    ;(modelsApi.validate as any).mockResolvedValue({
+      result: 'FAILED',
+      configRevision: 1,
+      detail: 'connection refused'
+    })
+    const wrapper = mount(ModelConfigList, options)
+    await flush()
 
     await verifyButton(wrapper).trigger('click')
     await flush()
@@ -94,15 +114,15 @@ describe('模型配置的「验证」按钮', () => {
     expect(successSpy).not.toHaveBeenCalled()
   })
 
-  it('验证失败后按钮恢复可用（不留死锁）', async () => {
-    vi.spyOn(message, 'error').mockImplementation(() => ({}) as any)
-    ;(verifyModel as any).mockRejectedValue(new Error('boom'))
-    const wrapper = await mountList()
-
-    await verifyButton(wrapper).trigger('click')
+  it('编辑时凭据留空且不回显', async () => {
+    const wrapper = mount(ModelConfigList, options)
     await flush()
-    await nextTick()
+    const edit = wrapper.findAll('a-button-stub').find((b) => b.text() === '编辑')!
+    await edit.trigger('click')
+    await flush()
 
-    expect(verifyButton(wrapper).attributes('disabled')).toBeUndefined()
+    const password = wrapper.find('a-input-password-stub')
+    expect(password.attributes('placeholder')).toContain('留空不修改')
+    expect((password.find('input').element as HTMLInputElement).value).toBe('')
   })
 })

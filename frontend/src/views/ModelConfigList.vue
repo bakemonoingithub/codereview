@@ -1,7 +1,20 @@
 <template>
-  <ListPageLayout title="模型接入" subtitle="配置内网 AI 网关（OpenAI 兼容）的地址、令牌与模型名；策略里选择模型即可">
+  <ListPageLayout
+    title="模型管理"
+    subtitle="维护 OpenAI 兼容接入地址、凭据与容量档案；验证只证明可达与简单 JSON，不证明完整上下文窗口"
+  >
     <template #actions>
       <a-button type="primary" @click="openCreate">新建模型</a-button>
+    </template>
+
+    <template #filters>
+      <a-input-search
+        v-model:value="keyword"
+        placeholder="搜索名称或模型名"
+        style="width: 280px"
+        allow-clear
+        @search="reload"
+      />
     </template>
 
     <LoadErrorAlert :message="loadError" @retry="load" />
@@ -9,35 +22,53 @@
     <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
       <template #emptyText>
         <EmptyGuide
-          title="还没有接入模型"
-          hint="审查策略要绑定模型才能工作；先填内网 AI 网关的地址与令牌"
-          action-text="新建模型"
+          :title="keyword ? '没有匹配的模型' : '还没有接入模型'"
+          :hint="keyword ? '换个关键词，或清空搜索看全部' : '填入模型网关地址、模型名与凭据后，才能在策略里选用'"
+          :action-text="keyword ? '' : '新建模型'"
           @action="openCreate"
         />
       </template>
-      <a-table-column title="名称" data-index="name" />
-      <a-table-column title="接口地址" data-index="baseUrl" ellipsis />
-      <a-table-column title="模型名" data-index="modelName" width="160" />
-      <a-table-column title="状态" data-index="status">
-        <template #default="{ text }">
-          <a-tag :color="text === 1 ? 'green' : text === 2 ? 'red' : 'default'">
-            {{ text === 1 ? '验证成功' : text === 2 ? '验证失败' : '未验证' }}
-          </a-tag>
+      <a-table-column title="名称 / 模型名">
+        <template #default="{ record }">
+          <strong>{{ record.name }}</strong>
+          <div class="cell-sub">{{ record.modelName }}</div>
         </template>
       </a-table-column>
-      <a-table-column title="操作">
+      <a-table-column title="接口地址" ellipsis>
+        <template #default="{ record }">
+          {{ record.baseUrl }}
+          <div class="cell-sub">凭据：{{ record.credentialConfigured ? '已配置' : '未配置' }}</div>
+        </template>
+      </a-table-column>
+      <a-table-column title="容量依据" width="210">
+        <template #default="{ record }">
+          {{ formatNumber(record.contextWindow) }} / {{ formatNumber(record.maxOutput) }}
+          <div class="cell-sub">
+            窗口 / 最大输出 tokens · {{ record.tokenizer || '保守估算' }}
+          </div>
+        </template>
+      </a-table-column>
+      <a-table-column title="验证状态" width="170">
+        <template #default="{ record }">
+          <a-tag :color="validationColor(record.validationStatus)">
+            {{ validationLabel(record.validationStatus) }}
+          </a-tag>
+          <div class="cell-sub">可达性与简单 JSON；未验证完整窗口</div>
+        </template>
+      </a-table-column>
+      <a-table-column title="操作" width="210">
         <template #default="{ record }">
           <a-space>
             <a-button
               size="small"
-              :loading="verifyingId === record.id"
-              :disabled="!!verifyingId"
-              @click="onVerify(record)"
+              :loading="validatingId === record.id"
+              :disabled="!!validatingId"
+              @click="onValidate(record)"
             >
               验证
             </a-button>
             <a-button size="small" @click="openEdit(record)">编辑</a-button>
-            <a-popconfirm title="确认删除？" @confirm="onDelete(record.id)">
+            <a-popconfirm title="删除后历史调用与任务快照不受影响，确认删除？" @confirm="onDelete(record.id)">
               <a-button size="small" danger>删除</a-button>
             </a-popconfirm>
           </a-space>
@@ -45,20 +76,49 @@
       </a-table-column>
     </a-table>
 
-    <a-modal v-model:open="modalOpen" :title="editingId ? '编辑模型' : '新建模型'" :confirm-loading="saving" @ok="onSave">
+    <div v-if="hasMore" class="load-more">
+      <a-button :loading="loading" @click="loadMore">加载更多</a-button>
+    </div>
+
+    <a-modal
+      v-model:open="modalOpen"
+      :title="editing ? '编辑模型' : '新建模型'"
+      :confirm-loading="saving"
+      @ok="onSave"
+    >
       <a-form layout="vertical">
         <a-form-item label="名称" required>
-          <a-input v-model:value="form.name" placeholder="如 DeepSeek(默认)" />
+          <a-input v-model:value="form.name" placeholder="如 默认模型" />
         </a-form-item>
-        <a-form-item label="接口地址">
-          <a-input v-model:value="form.baseUrl" placeholder="https://api.deepseek.com" />
-        </a-form-item>
-        <a-form-item label="Token">
-          <a-input-password v-model:value="form.token" :placeholder="tokenConfigured ? '••••••••（已配置，留空不修改）' : 'sk-...'" :disabled="clearToken" />
-          <a-checkbox v-if="editingId && tokenConfigured" v-model:checked="clearToken" style="margin-top: 6px">清除 token</a-checkbox>
-        </a-form-item>
-        <a-form-item label="模型名">
+        <a-form-item label="模型名" required>
           <a-input v-model:value="form.modelName" placeholder="deepseek-chat" />
+        </a-form-item>
+        <a-form-item label="接口地址" required>
+          <a-input v-model:value="form.baseUrl" placeholder="https://gateway.example.com/v1" />
+        </a-form-item>
+        <a-form-item label="凭据">
+          <a-input-password
+            v-model:value="form.credential"
+            :placeholder="editing && credentialConfigured ? '已配置，留空不修改' : '只写入，不回显'"
+            autocomplete="new-password"
+          />
+        </a-form-item>
+        <a-form-item label="上下文窗口（tokens）">
+          <a-input v-model:value="form.contextWindow" placeholder="如 32768" />
+        </a-form-item>
+        <a-form-item label="最大输出（tokens）">
+          <a-input v-model:value="form.maxOutput" placeholder="如 4096" />
+        </a-form-item>
+        <a-form-item label="计量方式">
+          <a-input v-model:value="form.tokenizer" placeholder="留空使用保守估算" />
+          <div class="field-hint">未适配 tokenizer 时按 UTF-8 字节上界估算，界面记为估算值。</div>
+        </a-form-item>
+        <a-form-item label="协议">
+          <a-select v-model:value="form.protocol" :options="protocolOptions" />
+          <div class="field-hint">当前公共调用只接入 OpenAI Chat 兼容协议。</div>
+        </a-form-item>
+        <a-form-item v-if="editing">
+          <span class="field-hint">保存后配置修订号增加，旧的验证记录自动过期。</span>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -66,32 +126,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { listModels, createModel, updateModel, deleteModel, verifyModel } from '@/api/model'
-import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import { modelsApi, type ModelView } from '@/api/v2'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
-const records = ref<any[]>([])
+const records = ref<ModelView[]>([])
 const loading = ref(false)
-// 原先 load 没有 catch：请求失败时表格永远空着，且不给任何提示与重试入口
 const loadError = ref('')
+const keyword = ref('')
+const nextCursor = ref<string | null>(null)
 const modalOpen = ref(false)
 const saving = ref(false)
-/** 正在验证的模型 id：验证会外呼模型网关，必须防连点（此前可连点 N 次 = N 个并发外呼） */
-const verifyingId = ref('')
-const editingId = ref('')
-const tokenConfigured = ref(false)
-const clearToken = ref(false)
-const form = ref({ name: '', baseUrl: 'https://api.deepseek.com', token: '', modelName: 'deepseek-chat' })
+const validatingId = ref('')
+const editing = ref<ModelView | null>(null)
+const credentialConfigured = ref(false)
+const form = ref({
+  name: '',
+  baseUrl: 'https://api.deepseek.com',
+  modelName: 'deepseek-chat',
+  credential: '',
+  contextWindow: '',
+  maxOutput: '',
+  tokenizer: '',
+  protocol: 'OPENAI_CHAT'
+})
+const protocolOptions = [{ value: 'OPENAI_CHAT', label: 'OpenAI Chat 兼容' }]
+const hasMore = computed(() => !!nextCursor.value)
 
-async function load() {
+const validationLabels: Record<string, { label: string; color: string }> = {
+  PASSED: { label: '验证通过', color: 'green' },
+  FAILED: { label: '验证失败', color: 'red' },
+  EXPIRED: { label: '配置已变更，验证过期', color: 'orange' },
+  NONE: { label: '未验证', color: 'default' }
+}
+
+function validationLabel(status: string) {
+  return validationLabels[status]?.label || status
+}
+
+function validationColor(status: string) {
+  return validationLabels[status]?.color || 'default'
+}
+
+function formatNumber(value: number | null) {
+  return value == null ? '未填写' : value.toLocaleString()
+}
+
+async function load(cursor?: string) {
   loading.value = true
   loadError.value = ''
   try {
-    const page = (await listModels({ pageNum: 1, pageSize: 100 })) as any
-    records.value = page?.records || []
+    const page = await modelsApi.list({
+      q: keyword.value.trim() || undefined,
+      cursor,
+      limit: 100
+    })
+    records.value = cursor ? [...records.value, ...page.items] : page.items
+    nextCursor.value = page.nextCursor
   } catch (e: any) {
     loadError.value = e?.message || '模型列表加载失败'
   } finally {
@@ -99,45 +193,78 @@ async function load() {
   }
 }
 
+function reload() { return load() }
+
+function loadMore() {
+  if (nextCursor.value) load(nextCursor.value)
+}
+
 function openCreate() {
-  editingId.value = ''
-  tokenConfigured.value = false
-  clearToken.value = false
-  form.value = { name: '', baseUrl: 'https://api.deepseek.com', token: '', modelName: 'deepseek-chat' }
+  editing.value = null
+  credentialConfigured.value = false
+  form.value = {
+    name: '',
+    baseUrl: 'https://api.deepseek.com',
+    modelName: 'deepseek-chat',
+    credential: '',
+    contextWindow: '',
+    maxOutput: '',
+    tokenizer: '',
+    protocol: 'OPENAI_CHAT'
+  }
   modalOpen.value = true
 }
 
-function openEdit(record: any) {
-  editingId.value = record.id
-  tokenConfigured.value = !!record.hasToken
-  clearToken.value = false
-  form.value = { name: record.name, baseUrl: record.baseUrl || '', token: '', modelName: record.modelName || '' }
+function openEdit(record: ModelView) {
+  editing.value = record
+  credentialConfigured.value = record.credentialConfigured
+  form.value = {
+    name: record.name,
+    baseUrl: record.baseUrl,
+    modelName: record.modelName,
+    credential: '',
+    contextWindow: record.contextWindow == null ? '' : String(record.contextWindow),
+    maxOutput: record.maxOutput == null ? '' : String(record.maxOutput),
+    tokenizer: record.tokenizer || '',
+    protocol: record.protocol || 'OPENAI_CHAT'
+  }
   modalOpen.value = true
+}
+
+function optionalNumber(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 async function onSave() {
-  if (!form.value.name) {
-    message.warning('请填写名称')
+  if (!form.value.name.trim() || !form.value.baseUrl.trim() || !form.value.modelName.trim()) {
+    message.warning('请填写名称、模型名和接口地址')
     return
   }
   saving.value = true
   try {
-    if (editingId.value) {
-      const payload: Record<string, any> = {
-        name: form.value.name,
-        baseUrl: form.value.baseUrl,
-        modelName: form.value.modelName
-      }
-      if (clearToken.value) {
-        payload.clearToken = true
-      } else if (form.value.token && form.value.token.trim()) {
-        payload.token = form.value.token
-      }
-      await updateModel(editingId.value, payload)
-    } else {
-      await createModel(form.value)
+    const payload = {
+      name: form.value.name.trim(),
+      baseUrl: form.value.baseUrl.trim(),
+      modelName: form.value.modelName.trim(),
+      credential: form.value.credential.trim() || undefined,
+      contextWindow: optionalNumber(form.value.contextWindow),
+      maxOutput: optionalNumber(form.value.maxOutput),
+      tokenizer: form.value.tokenizer.trim() || undefined,
+      protocol: form.value.protocol
     }
-    message.success('保存成功')
+    if (editing.value) {
+      await modelsApi.update(editing.value.id, {
+        ...payload,
+        expectedRevision: editing.value.revision
+      })
+      message.success('保存成功')
+    } else {
+      await modelsApi.create(payload)
+      message.success('创建成功')
+    }
     modalOpen.value = false
     await load()
   } catch (e: any) {
@@ -147,24 +274,27 @@ async function onSave() {
   }
 }
 
-async function onVerify(record: any) {
-  if (verifyingId.value) return
-  verifyingId.value = record.id
+async function onValidate(record: ModelView) {
+  if (validatingId.value) return
+  validatingId.value = record.id
   try {
-    await verifyModel(record.id)
-    message.success('验证完成')
+    const result = await modelsApi.validate(record.id)
+    if (result.result === 'PASSED') {
+      message.success(`验证通过（配置修订 ${result.configRevision}）：${result.detail}`)
+    } else {
+      message.error(`验证失败：${result.detail}`)
+    }
   } catch (e: any) {
-    // 后端失败时返回 3002 + 原因（原先无论成败都回 200，这里拿到的是绿色"验证完成"）
     message.error(e?.message || '验证失败')
   } finally {
-    verifyingId.value = ''
+    validatingId.value = ''
     await load()
   }
 }
 
 async function onDelete(id: string) {
   try {
-    await deleteModel(id)
+    await modelsApi.remove(id)
     message.success('删除成功')
     await load()
   } catch (e: any) {
@@ -174,3 +304,21 @@ async function onDelete(id: string) {
 
 onMounted(load)
 </script>
+
+<style scoped lang="less">
+.cell-sub {
+  margin-top: 2px;
+  color: rgb(0 0 0 / 45%);
+  font-size: 12px;
+}
+.field-hint {
+  margin-top: 4px;
+  color: rgb(0 0 0 / 45%);
+  font-size: 12px;
+}
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+</style>

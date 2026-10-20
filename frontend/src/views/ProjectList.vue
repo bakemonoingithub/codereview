@@ -1,45 +1,74 @@
 <template>
-  <ListPageLayout title="项目管理" subtitle="维护要审查的代码仓库；审查入口在项目详情页">
+  <ListPageLayout title="项目管理" subtitle="维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读">
     <template #actions>
       <a-button type="primary" @click="openCreate">新建项目</a-button>
     </template>
 
+    <template #filters>
+      <a-input-search
+        v-model:value="keyword"
+        placeholder="搜索项目名称"
+        style="width: 280px"
+        allow-clear
+        @search="reload"
+      />
+    </template>
+
     <LoadErrorAlert :message="loadError" @retry="load" />
+
     <a-table :data-source="projects" row-key="id" :loading="loading" :pagination="false">
       <template #emptyText>
         <EmptyGuide
-          title="还没有项目"
-          hint="创建一个项目，把内网 Gitea 的仓库接进来，之后就能对它做审查"
-          action-text="新建项目"
+          :title="keyword ? '没有匹配的项目' : '还没有项目'"
+          :hint="keyword ? '换个关键词，或清空搜索看全部' : '创建一个项目，把代码仓库接进来，之后才能发起专项审查'"
+          :action-text="keyword ? '' : '新建项目'"
           @action="openCreate"
         />
       </template>
-      <a-table-column title="名称" data-index="name">
+      <a-table-column title="名称" data-index="name" />
+      <a-table-column title="仓库地址" data-index="repoUrl" ellipsis />
+      <a-table-column title="当前分支" data-index="currentBranch" width="140" />
+      <a-table-column title="访问令牌" width="120">
         <template #default="{ record }">
-          <router-link :to="`/projects/${record.id}`">{{ record.name }}</router-link>
+          <a-tag :color="record.credentialConfigured ? 'green' : 'default'">
+            {{ record.credentialConfigured ? '已配置' : '未配置' }}
+          </a-tag>
         </template>
       </a-table-column>
-      <a-table-column title="仓库地址" data-index="giteaUrl" ellipsis />
-      <a-table-column title="当前分支" data-index="currentBranch" width="140" />
-      <a-table-column title="操作" width="80">
+      <a-table-column title="操作" width="100">
         <template #default="{ record }">
-          <a-button type="link" danger size="small" @click="onDelete(record)">删除</a-button>
+          <a-button size="small" @click="openEdit(record)">编辑</a-button>
         </template>
       </a-table-column>
     </a-table>
 
-    <a-modal v-model:open="showCreate" title="新建项目" :confirm-loading="saving" @ok="onCreate">
+    <div v-if="hasMore" class="load-more">
+      <a-button :loading="loading" @click="loadMore">加载更多</a-button>
+    </div>
+
+    <a-modal
+      v-model:open="modalOpen"
+      :title="editing ? '编辑项目' : '新建项目'"
+      :confirm-loading="saving"
+      @ok="onSave"
+    >
       <a-form layout="vertical">
         <a-form-item label="名称" required>
-          <a-input v-model:value="form.name" placeholder="项目名" />
+          <a-input v-model:value="form.name" placeholder="如 订单服务" />
         </a-form-item>
         <a-form-item label="仓库地址" required>
-          <a-input v-model:value="form.giteaUrl" placeholder="https://gitea.内网/owner/repo" />
+          <a-input v-model:value="form.repoUrl" :disabled="!!editing" placeholder="https://git.example.com/owner/repo" />
+          <div v-if="editing" class="field-hint">仓库地址创建后锁定；如需更换地址，请新建项目。</div>
         </a-form-item>
-        <a-form-item label="访问令牌（可选）">
-          <a-input-password v-model:value="form.credential"
-                            placeholder="仓库访问令牌；填了可避免 API 限流，私有仓库必填"
-                            autocomplete="new-password" />
+        <a-form-item label="访问令牌">
+          <a-input-password
+            v-model:value="form.credential"
+            :placeholder="editing && credentialConfigured ? '已配置，留空不修改' : '可选；私有仓库必填'"
+            autocomplete="new-password"
+          />
+        </a-form-item>
+        <a-form-item v-if="!editing" label="当前分支">
+          <a-input v-model:value="form.currentBranch" placeholder="main" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -47,27 +76,36 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { message, Modal } from 'ant-design-vue'
-import { listProjects, createProject, getDeleteImpact, deleteProject } from '@/api/project'
-import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import { computed, onMounted, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { projectsApi, type ProjectView } from '@/api/v2'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 
-const projects = ref<any[]>([])
+const projects = ref<ProjectView[]>([])
 const loading = ref(false)
-// 原先 load 没有 catch：请求失败时表格永远空着，且不给任何提示与重试入口
 const loadError = ref('')
-const showCreate = ref(false)
+const keyword = ref('')
+const nextCursor = ref<string | null>(null)
+const hasMore = computed(() => !!nextCursor.value)
+const modalOpen = ref(false)
 const saving = ref(false)
-const form = ref({ name: '', giteaUrl: '', credential: '' })
+const editing = ref<ProjectView | null>(null)
+const credentialConfigured = ref(false)
+const form = ref({ name: '', repoUrl: '', credential: '', currentBranch: 'main' })
 
-async function load() {
+async function load(cursor?: string) {
   loading.value = true
   loadError.value = ''
   try {
-    const page = await listProjects({ pageNum: 1, pageSize: 100 })
-    projects.value = page.records || []
+    const page = await projectsApi.list({
+      q: keyword.value.trim() || undefined,
+      cursor,
+      limit: 100
+    })
+    projects.value = cursor ? [...projects.value, ...page.items] : page.items
+    nextCursor.value = page.nextCursor
   } catch (e: any) {
     loadError.value = e?.message || '项目列表加载失败'
   } finally {
@@ -75,75 +113,75 @@ async function load() {
   }
 }
 
-function openCreate() {
-  form.value = { name: '', giteaUrl: '', credential: '' }
-  showCreate.value = true
+function reload() { return load() }
+
+function loadMore() {
+  if (nextCursor.value) load(nextCursor.value)
 }
 
-async function onCreate() {
-  if (!form.value.name || !form.value.giteaUrl) {
+function openCreate() {
+  editing.value = null
+  credentialConfigured.value = false
+  form.value = { name: '', repoUrl: '', credential: '', currentBranch: 'main' }
+  modalOpen.value = true
+}
+
+function openEdit(record: ProjectView) {
+  editing.value = record
+  credentialConfigured.value = record.credentialConfigured
+  form.value = {
+    name: record.name,
+    repoUrl: record.repoUrl,
+    credential: '',
+    currentBranch: record.currentBranch
+  }
+  modalOpen.value = true
+}
+
+async function onSave() {
+  if (!form.value.name.trim() || !form.value.repoUrl.trim()) {
     message.warning('请填写名称和仓库地址')
     return
   }
   saving.value = true
   try {
-    await createProject({
-      name: form.value.name,
-      giteaUrl: form.value.giteaUrl,
-      credential: form.value.credential?.trim() || undefined
-    })
-    message.success('创建成功')
-    showCreate.value = false
-    load()
+    if (editing.value) {
+      await projectsApi.update(editing.value.id, {
+        name: form.value.name.trim(),
+        credential: form.value.credential.trim() || undefined,
+        expectedRevision: editing.value.revision
+      })
+      message.success('保存成功')
+    } else {
+      await projectsApi.create({
+        name: form.value.name.trim(),
+        repoUrl: form.value.repoUrl.trim(),
+        credential: form.value.credential.trim() || undefined,
+        currentBranch: form.value.currentBranch.trim() || 'main'
+      })
+      message.success('创建成功')
+    }
+    modalOpen.value = false
+    await load()
   } catch (e: any) {
-    message.error(e?.message || '创建失败')
+    message.error(e?.message || '保存失败')
   } finally {
     saving.value = false
   }
 }
 
-/**
- * 删除项目：**先查影响范围、再弹确认**。
- *
- * 不用 a-popconfirm：它放不下"将一并删除 N 条审查记录、M 份报告"这句关键信息，
- * 而报告是能下载成 Markdown 沉淀的资产 —— 让用户在不知道会销毁什么的前提下点"确认"，
- * 是删除功能最不该有的体验。
- */
-async function onDelete(record: any) {
-  let impact
-  try {
-    impact = await getDeleteImpact(record.id)
-  } catch (e: any) {
-    message.error(e?.message || '无法获取删除影响范围')
-    return
-  }
-  // 有正在进行的审查时后端会拒绝，没必要让用户白点一次确认
-  if (impact.blocked) {
-    message.warning(impact.blockReason || '该项目有正在进行的审查，暂时无法删除')
-    return
-  }
-  let content = `确定删除项目「${record.name}」？`
-  if (impact.recordCount > 0 || impact.reportCount > 0) {
-    content += `同时会删除该项目下的 ${impact.recordCount} 条审查记录和 ${impact.reportCount} 份报告，删除后界面上无法恢复。`
-  }
-  Modal.confirm({
-    title: '删除项目',
-    content,
-    okText: '删除',
-    okType: 'danger',
-    cancelText: '取消',
-    async onOk() {
-      try {
-        await deleteProject(record.id)
-      } catch (e: any) {
-        message.error(e?.message || '删除失败')
-        throw e // 抛出让弹窗保持打开，便于重试
-      }
-      message.success('已删除')
-      load()
-    }
-  })
-}
-
 onMounted(load)
 </script>
+
+<style scoped lang="less">
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+.field-hint {
+  margin-top: 4px;
+  color: rgb(0 0 0 / 45%);
+  font-size: 12px;
+}
+</style>
