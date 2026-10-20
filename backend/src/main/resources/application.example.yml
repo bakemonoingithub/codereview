@@ -34,6 +34,17 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+# 新路线独立新库（P30.2）。默认不启用：未配置 url 时不创建新库组件，/api/v2 也不注册，
+# 旧功能照常启动。启用时必须指向与 spring.datasource 不同的库；启动会校验库名、
+# 旧链历史（flyway_schema_history）与身份标记（agent_schema_identity），任一项不符即拒绝启动。
+# agent:
+#   datasource:
+#     url: jdbc:mysql://localhost:3306/ai_code_review_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+#     username: codereview_agent
+#     password: <新库账号密码>
+#     expected-database: ai_code_review_agent
+#     migration-location: classpath:db/agent-migration
+
 deepseek:
   base-url: https://api.deepseek.com
   api-key: ${DEEPSEEK_API_KEY:}

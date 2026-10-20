@@ -188,7 +188,7 @@
 ### 6.6 schema 版本与迁移身份
 
 - 新库名、账号、数据源独立配置；`spring.flyway.locations=classpath:db/agent-migration`。
-- 迁移身份检查：库名与配置一致、`flyway_schema_history` 中不存在旧 V1–V12 记录、非空库必须存在 `agent_schema_identity(schema_name,schema_version,installed_at,checksum)` 标记且版本匹配，否则拒绝启动迁移并返回 `NOT_READY`。
+- 迁移身份检查：库名与配置一致、`flyway_schema_history` 中不存在旧 V1–V12 记录、非空库必须存在 `agent_schema_identity(schema_name,schema_version,installed_at,app_version)` 标记且版本匹配；不符时启动期直接失败，不带着可疑的库继续运行。
 - 内容协议版本：`review_result.schema_version` 取 `issue/1`、`pattern/1`、`coupling/1`；任务输入快照为 `task-input/1`；报告为 `report/1`。版本随协议变化递增，历史结果按自身版本阅读，不按最新解析器重写。
 
 ### 6.7 凭据与快照
