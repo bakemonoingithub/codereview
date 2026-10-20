@@ -1,5 +1,8 @@
 <template>
-  <ListPageLayout title="项目管理" subtitle="维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读">
+  <ListPageLayout
+    title="项目管理"
+    subtitle="维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读。代码浏览与任务执行在 P31 接入"
+  >
     <template #actions>
       <a-button type="primary" @click="openCreate">新建项目</a-button>
     </template>
@@ -20,7 +23,7 @@
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的项目' : '还没有项目'"
-          :hint="keyword ? '换个关键词，或清空搜索看全部' : '创建一个项目，把代码仓库接进来，之后才能发起专项审查'"
+          :hint="keyword ? '换个关键词，或清空搜索看全部' : '创建一个项目，把代码仓库接进来；代码浏览与任务执行在 P31 接入'"
           :action-text="keyword ? '' : '新建项目'"
           @action="openCreate"
         />
