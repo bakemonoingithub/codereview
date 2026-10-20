@@ -23,13 +23,15 @@
 - 无界模型输出固定在 `MEDIUMTEXT`／`LONGTEXT`：`model_call.request_body/response_body`、`review_result.body`、`prompt_version.content`、`report.frozen_input`（LONGTEXT）、`report.body`。
 - 索引覆盖分页与回读路径：`review_task(project_id, created_at, id)`、`model_call(task_id, target_id, unit_id, attempt)`、`material(project_id, sha, path)`、`feedback` 主体唯一键。
 
-### 2.1 与 P29 字段草案的两处收敛
+### 2.1 与 P29 字段草案的三处收敛
 
 | 设计草案 | 实现 | 原因 |
 | --- | --- | --- |
 | `feedback(issue_id?, result_id?)` | `feedback(subject_kind, subject_id)` + 唯一键 | MySQL 唯一索引对可空列不生效；用主体类型加稳定 ID 能真正保证"一个主体一条当前反馈" |
 | `agent_schema_identity(..., checksum)` | `(schema_name, schema_version, installed_at, app_version)` | 迁移内容校验由 Flyway 的 `agent_schema_history.checksum` 负责，再存一份哈希会出现两套真相 |
 | `credential_ref`（P29 草案字段名） | `credential`（明文列，只写不读） | 负责人 2026-10-20 决定沿用既有明文凭据层；字段名如实反映内容，避免"引用"的误导。接口、日志与快照不回传凭据；加密或密钥服务不在本期引入 |
+
+V1 尚未在任何环境执行过；`credential_ref` 改名发生在首次执行之前，因此不需要新增迁移，也不存在需要兼容的已应用 checksum。
 
 ## 3. 独立数据源与启动顺序
 

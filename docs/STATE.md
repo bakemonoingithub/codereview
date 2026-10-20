@@ -18,6 +18,8 @@ P30.3 已完成，交付[配置资源 v2 接口](work/agent-redesign/p30/p30-3-c
 
 P30.4 已完成，交付[固定版本读取与有界缓存](work/agent-redesign/p30/p30-4-fixed-version-read.md)：只认完整 40 位 SHA 的 `RepositoryReadService`，提供路径清单、正文、行范围与提交差异两侧，缓存按项目修订与 SHA 隔离；新增 11 项单元测试。实际建库、HTTP 调用、真实仓库与模型探针均未执行，留 P30.8。
 
+P30.1–P30.4 经[独立审查](work/agent-redesign/p30/p30-1-4-review.md)发现 11 项问题（P1 3 项），已全部[修复并复验](work/agent-redesign/p30/p30-review-fixes.md)：底层缓存按宿主与凭据隔离、建库脚本拒绝占位口令、清单截断贯通、行范围/重命名/差异两侧状态修正、请求绑定错误归 400、宿主 HTTP 状态保留、可空字段可清空、探针真解析 JSON。R02 按负责人决定沿用明文凭据层，字段改名为 `credential` 并如实记录。修复后全量 404 项通过；真实数据库、宿主与模型验证仍在 P30.8。
+
 ## 已批准基线与验证范围
 
 - [P29 工作记录](work/agent-redesign/p29/README.md)：共用数据／接口／新库设计、专项执行与三类结果方案及最终原型。
@@ -36,6 +38,7 @@ P30.4 已完成，交付[固定版本读取与有界缓存](work/agent-redesign/
 - [P30.2 新库结构与访问层](work/agent-redesign/p30/p30-2-schema.md)：18 张表的 V1 迁移、独立数据源、身份检查与建库脚本。
 - [P30.3 配置资源 v2 接口](work/agent-redesign/p30/p30-3-config-api.md)：项目、模型、提示词、策略的 `/api/v2` 接口与错误处理。
 - [P30.4 固定版本读取](work/agent-redesign/p30/p30-4-fixed-version-read.md)：完整 SHA 读取、差异两侧、行范围与按版本隔离的缓存。
+- [P30 审查与修复](work/agent-redesign/p30/p30-review-fixes.md)：11 项审查问题的处理、证据与复验范围。
 
 ## 下一步
 
