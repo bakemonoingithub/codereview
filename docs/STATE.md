@@ -14,7 +14,9 @@ P30 为 active。P30.1 已完成，交付[复用与功能差异](work/agent-rede
 
 P30.2 已完成，交付[新库结构与访问层](work/agent-redesign/p30/p30-2-schema.md)：`db/agent-migration/V1__agent_init.sql` 建 18 张表，独立数据源 `AgentDatabase` 与启动期身份检查，17 组实体/映射器、ULID 与游标工具、建库与检查脚本；新增 16 项单元测试通过。
 
-P30.3 已完成，交付[配置资源 v2 接口](work/agent-redesign/p30/p30-3-config-api.md)：`/api/v2` 下项目、模型、提示词、策略四组接口，令牌留空保留且新值先验证、模型验证随修订失效、提示词正文只经版本写入、删除被引用返回 409；新增 25 项单元测试，全量回归 376 项通过。实际建库、HTTP 调用与真实模型探针未执行，留 P30.8。
+P30.3 已完成，交付[配置资源 v2 接口](work/agent-redesign/p30/p30-3-config-api.md)：`/api/v2` 下项目、模型、提示词、策略四组接口，令牌留空保留且新值先验证、模型验证随修订失效、提示词正文只经版本写入、删除被引用返回 409；新增 25 项单元测试，全量回归 376 项通过。
+
+P30.4 已完成，交付[固定版本读取与有界缓存](work/agent-redesign/p30/p30-4-fixed-version-read.md)：只认完整 40 位 SHA 的 `RepositoryReadService`，提供路径清单、正文、行范围与提交差异两侧，缓存按项目修订与 SHA 隔离；新增 11 项单元测试。实际建库、HTTP 调用、真实仓库与模型探针均未执行，留 P30.8。
 
 ## 已批准基线与验证范围
 
@@ -33,10 +35,11 @@ P30.3 已完成，交付[配置资源 v2 接口](work/agent-redesign/p30/p30-3-c
 - [P30.1 复用与功能差异](work/agent-redesign/p30/p30-1-reuse-diff.md)：v2 接口、错误结构、稳定 ID、分页与迁移身份的当前实现契约。
 - [P30.2 新库结构与访问层](work/agent-redesign/p30/p30-2-schema.md)：18 张表的 V1 迁移、独立数据源、身份检查与建库脚本。
 - [P30.3 配置资源 v2 接口](work/agent-redesign/p30/p30-3-config-api.md)：项目、模型、提示词、策略的 `/api/v2` 接口与错误处理。
+- [P30.4 固定版本读取](work/agent-redesign/p30/p30-4-fixed-version-read.md)：完整 SHA 读取、差异两侧、行范围与按版本隔离的缓存。
 
 ## 下一步
 
-P30.4（本会话已授权，紧随 P30.3 执行）：把 `ProjectService` 的读取收敛为固定 SHA 的 `RepositoryReadService`，提供路径清单、修改前后侧与旧路径、完整性信息及按 `(project,sha,path,range)` 隔离的有界缓存；不实现 Agent 搜索工具。
+P30.5 待负责人启动：统一提示词组装、请求计量与公共模型调用（`/api/v2` 之外的执行基础）。P30.6 起仍未授权。
 
 原型简化或遗漏不自动构成删除已有功能的决定；已确认业务不重新开放，必要差异按 P30.1 第 7 节处理。
 
