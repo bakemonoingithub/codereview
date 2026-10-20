@@ -160,6 +160,7 @@
 | `SOURCE_MOVED` | 409 | false | 分支已移动，`details.observedSha/currentSha` |
 | `REVISION_CONFLICT` | 409 | false | 乐观并发失败，`details.currentRevision` |
 | `CONFIG_IN_USE` | 409 | false | 删除被策略或任务引用的配置 |
+| `REPO_UNREACHABLE` | 422 | false | 仓库地址或令牌不可用，`details` 给出原因 |
 | `UNSUPPORTED_LANGUAGE` | 422 | false | 耦合专项遇到非 Java 目标 |
 | `CONTEXT_LIMIT` | 422 | false | 模型结构化上下文超限 |
 | `QUOTA_EXCEEDED` | 429 | false | 任务请求或期限额度耗尽 |

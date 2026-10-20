@@ -12,7 +12,9 @@ P29 已于 2026-10-20 完成。负责人明确「我看完了，都批准通过�
 
 P30 为 active。P30.1 已完成，交付[复用与功能差异](work/agent-redesign/p30/p30-1-reuse-diff.md)：页面、接口、数据三层的 45 项结论，v2 路径、错误结构、稳定 ID、游标分页、schema 版本与迁移身份。
 
-P30.2 已完成，交付[新库结构与访问层](work/agent-redesign/p30/p30-2-schema.md)：`db/agent-migration/V1__agent_init.sql` 建 18 张表，独立数据源 `AgentDatabase` 与启动期身份检查，17 组实体/映射器、ULID 与游标工具、建库与检查脚本；新增 16 项单元测试通过，全量回归已跑。实际建库与迁移未执行（无 MySQL 实例），留 P30.8。
+P30.2 已完成，交付[新库结构与访问层](work/agent-redesign/p30/p30-2-schema.md)：`db/agent-migration/V1__agent_init.sql` 建 18 张表，独立数据源 `AgentDatabase` 与启动期身份检查，17 组实体/映射器、ULID 与游标工具、建库与检查脚本；新增 16 项单元测试通过。
+
+P30.3 已完成，交付[配置资源 v2 接口](work/agent-redesign/p30/p30-3-config-api.md)：`/api/v2` 下项目、模型、提示词、策略四组接口，令牌留空保留且新值先验证、模型验证随修订失效、提示词正文只经版本写入、删除被引用返回 409；新增 25 项单元测试，全量回归 376 项通过。实际建库、HTTP 调用与真实模型探针未执行，留 P30.8。
 
 ## 已批准基线与验证范围
 
@@ -30,10 +32,11 @@ P30.2 已完成，交付[新库结构与访问层](work/agent-redesign/p30/p30-2
 - [P29 验收清单](work/agent-redesign/p29/acceptance.md)：最终批准、31 组原型检查及 A01–A24 的后续验证索引。
 - [P30.1 复用与功能差异](work/agent-redesign/p30/p30-1-reuse-diff.md)：v2 接口、错误结构、稳定 ID、分页与迁移身份的当前实现契约。
 - [P30.2 新库结构与访问层](work/agent-redesign/p30/p30-2-schema.md)：18 张表的 V1 迁移、独立数据源、身份检查与建库脚本。
+- [P30.3 配置资源 v2 接口](work/agent-redesign/p30/p30-3-config-api.md)：项目、模型、提示词、策略的 `/api/v2` 接口与错误处理。
 
 ## 下一步
 
-P30.3（本会话已授权，紧随 P30.2 执行）：按 P30.1 第 6.2、6.3、6.7 节接入项目、模型、提示词、策略的 v2 接口（`/api/v2`），落实模型验证记录随配置修订失效、引用检查与凭据只写不读。P30.4 随后执行。
+P30.4（本会话已授权，紧随 P30.3 执行）：把 `ProjectService` 的读取收敛为固定 SHA 的 `RepositoryReadService`，提供路径清单、修改前后侧与旧路径、完整性信息及按 `(project,sha,path,range)` 隔离的有界缓存；不实现 Agent 搜索工具。
 
 原型简化或遗漏不自动构成删除已有功能的决定；已确认业务不重新开放，必要差异按 P30.1 第 7 节处理。
 
