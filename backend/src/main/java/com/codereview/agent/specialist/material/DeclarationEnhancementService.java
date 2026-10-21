@@ -185,6 +185,7 @@ public class DeclarationEnhancementService {
     private void collectDirect(Material targetMaterial, DeclarationResolver resolver,
                                Set<String> targetPaths, List<Candidate> out, List<Gap> gaps,
                                Set<String> seen, int[] budget) {
+        Set<String> missing = new LinkedHashSet<>();
         for (JavaSourceStructure.TypeDecl type : targetMaterial.structure().types()) {
             List<JavaSourceStructure.TypeRef> refs = new ArrayList<>();
             for (JavaSourceStructure.FieldDecl field : type.fields()) {
@@ -220,13 +221,21 @@ public class DeclarationEnhancementService {
                         }
                         budget[0]++;
                         out.add(new Candidate(resolved, targetMaterial.side()));
-                    } else if (resolved.actionableGap()
-                            && resolved.status() != Status.NOT_AVAILABLE) {
+                    } else if (resolved.status() == Status.NOT_AVAILABLE) {
+                        missing.add(TypeNames.erasure(name));
+                    } else if (resolved.actionableGap()) {
                         gaps.add(new Gap(resolved.status().name(), resolved.displayName(),
                                 resolved.diagnostic()));
                     }
                 }
             }
+        }
+        if (!missing.isEmpty()) {
+            List<String> names = missing.stream().limit(10).toList();
+            gaps.add(new Gap(Status.NOT_AVAILABLE.name(), targetMaterial.path(),
+                    "直接引用类型未在仓库版本中找到（可能为第三方或未提交源码）："
+                            + String.join(", ", names)
+                            + (missing.size() > names.size() ? " 等 " + missing.size() + " 个" : "")));
         }
     }
 

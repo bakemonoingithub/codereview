@@ -169,6 +169,19 @@ class DeclarationEnhancementServiceTest {
     }
 
     @Test
+    void unresolvedDirectTypeIsRecordedAsAGap() {
+        SpecialistMaterials.PreparedTarget enhanced = service.enhance(target("""
+                package app;
+                public class Child {
+                    private com.vendor.Missing missing;
+                }
+                """));
+
+        assertTrue(enhanced.gaps().stream().anyMatch(gap ->
+                gap.code().equals("NOT_AVAILABLE") && gap.detail().contains("Missing")));
+    }
+
+    @Test
     void targetFileIsNotAddedAgainAsAuxiliary() {
         SpecialistMaterials.PreparedTarget enhanced = service.enhance(target("""
                 package app;
