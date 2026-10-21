@@ -44,4 +44,15 @@ describe('审查中心列表', () => {
     const w = await start(); expect(state(w).tasks[0].id).toBe('first'); w.unmount(); spy.mockRestore()
   })
 
+  it('列表失败时显示带图标的错误条，重试是按钮而不是文字链接', async () => {
+    vi.mocked(tasksApi.list).mockRejectedValueOnce(new Error('服务器内部错误'))
+    const w = await start()
+    const alert = w.find('.page-notices .load-error')
+    expect(alert.exists()).toBe(true)
+    expect(alert.attributes('type')).toBe('error')
+    expect(alert.text()).toContain('服务器内部错误')
+    expect(w.findAll('a-button-stub').some((b) => b.text() === '重试')).toBe(true)
+    w.unmount()
+  })
+
 })

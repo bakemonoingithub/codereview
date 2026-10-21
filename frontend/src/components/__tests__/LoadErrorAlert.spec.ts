@@ -23,8 +23,8 @@ describe('LoadErrorAlert', () => {
 
     const alert = wrapper.find('.load-error')
     expect(alert.exists()).toBe(true)
+    expect(alert.attributes('type')).toBe('error')
     expect(alert.text()).toContain('无法连接服务器')
-    expect(alert.find('.is-red').exists()).toBe(true)
     expect(wrapper.findAll('a-button-stub').some((b) => b.text() === '重试')).toBe(true)
   })
 

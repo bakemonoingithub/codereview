@@ -98,7 +98,7 @@ withDefaults(
   margin-bottom: 16px;
 }
 
-.page-notices:not(:has(.page-notice)) {
+.page-notices:not(:has(.page-notice, .load-error)) {
   display: none;
 }
 

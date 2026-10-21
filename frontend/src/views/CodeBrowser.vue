@@ -10,9 +10,7 @@
       </a-button>
     </div>
 
-    <a-alert v-if="error" type="error" show-icon :message="error" class="mb16">
-      <template #action><a-button size="small" @click="retryBrowser">重试</a-button></template>
-    </a-alert>
+    <LoadErrorAlert :message="error" @retry="retryBrowser" />
 
     <a-alert v-if="truncated" type="warning" show-icon
       message="宿主返回的文件清单不完整，只能浏览和选择当前已列出的文件。" class="mb16" />
@@ -132,6 +130,7 @@ import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import CodeViewer from '@/components/CodeViewer.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import {
   projectsApi,
   repositoryApi,
