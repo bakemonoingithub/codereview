@@ -9,6 +9,7 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.ReportDtos;
 import com.codereview.agent.entity.AgentFeedback;
 import com.codereview.agent.entity.AgentIssue;
+import com.codereview.agent.entity.AgentMaterial;
 import com.codereview.agent.entity.AgentProject;
 import com.codereview.agent.entity.AgentReport;
 import com.codereview.agent.entity.AgentReportSource;
@@ -17,6 +18,7 @@ import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentTaskTarget;
 import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
+import com.codereview.agent.mapper.AgentMaterialMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
@@ -80,6 +82,8 @@ class ReportInputServiceTest {
     @Mock
     private AgentIssueMapper issueMapper;
     @Mock
+    private AgentMaterialMapper materialMapper;
+    @Mock
     private AgentFeedbackMapper feedbackMapper;
     @Mock
     private AgentReportMapper reportMapper;
@@ -92,7 +96,7 @@ class ReportInputServiceTest {
     void setUp() {
         for (Class<?> entity : List.of(AgentReviewResult.class, AgentReviewTask.class,
                 AgentTaskTarget.class, AgentProject.class, AgentIssue.class, AgentFeedback.class,
-                AgentReport.class, AgentReportSource.class)) {
+                AgentReport.class, AgentReportSource.class, AgentMaterial.class)) {
             TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), entity);
         }
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
@@ -100,6 +104,13 @@ class ReportInputServiceTest {
         when(db.mapper(AgentTaskTargetMapper.class)).thenReturn(targetMapper);
         when(db.mapper(AgentProjectMapper.class)).thenReturn(projectMapper);
         when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
+        when(db.mapper(AgentMaterialMapper.class)).thenReturn(materialMapper);
+        AgentMaterial material = new AgentMaterial();
+        material.setId("m1"); material.setProjectId(PROJECT_1); material.setPath("A.java");
+        material.setSha("abc123"); material.setSide("FILE"); material.setStartLine(10); material.setEndLine(12);
+        material.setContent("if (retry) charge();\n"); material.setContentHash("saved-hash");
+        material.setCompleteness("FRAGMENT"); material.setDiagnostic("saved fragment");
+        when(materialMapper.selectById("m1")).thenReturn(material);
         when(db.mapper(AgentFeedbackMapper.class)).thenReturn(feedbackMapper);
         when(db.mapper(AgentReportMapper.class)).thenReturn(reportMapper);
         when(db.mapper(AgentReportSourceMapper.class)).thenReturn(reportSourceMapper);
@@ -270,6 +281,73 @@ class ReportInputServiceTest {
         ApiException error = assertThrows(ApiException.class, () -> service.frozenInput(REPORT_ID));
 
         assertEquals(ErrorCode.NOT_FOUND, error.errorCode());
+    }
+
+    @Test
+    void freezeCopiesSavedCodeAndReadsAllInputsInsideTheWriteTransaction() {
+        java.util.concurrent.atomic.AtomicBoolean inside = new java.util.concurrent.atomic.AtomicBoolean();
+        org.mockito.Mockito.doAnswer(call -> {
+            inside.set(true);
+            try { return ((Supplier<?>) call.getArgument(0)).get(); }
+            finally { inside.set(false); }
+        }).when(db).inTransaction(any());
+        when(resultMapper.selectList(any())).thenAnswer(call -> {
+            assertTrue(inside.get(), "结果与反馈读取必须在冻结事务内");
+            return List.of(result(RESULT_1, TASK_1, TARGET_1, "ISSUE", "{\"summary\":\"saved\"}"));
+        });
+        when(taskMapper.selectList(any())).thenReturn(List.of(task(TASK_1, PROJECT_1, "PARTIAL", "FILES", "main")));
+        when(targetMapper.selectList(any())).thenReturn(List.of(target()));
+        when(projectMapper.selectList(any())).thenReturn(List.of(project()));
+        when(issueMapper.selectList(any())).thenReturn(List.of(issue()));
+        when(feedbackMapper.selectList(any())).thenAnswer(call -> {
+            assertTrue(inside.get(), "反馈读取必须在冻结事务内");
+            return List.of(feedback(ISSUE_1, "ISSUE", "ACCURATE", "当时评论"));
+        });
+
+        ReportDtos.FrozenInput frozen = service.freeze(new ReportDtos.FreezeRequest("证据报告", List.of(RESULT_1)));
+
+        JsonNode material = frozen.sources().get(0).snapshot().path("materials").get(0);
+        assertEquals("if (retry) charge();\n", material.path("content").asText());
+        assertEquals(10, material.path("startLine").asInt());
+        assertEquals("abc123", material.path("sha").asText());
+        assertEquals("saved-hash", material.path("contentHash").asText());
+        assertEquals("saved fragment", material.path("diagnostic").asText());
+        assertFalse(inside.get());
+    }
+
+    @Test
+    void jsonLookingAgentMarkdownIsPreservedByteForByte() {
+        when(resultMapper.selectList(any())).thenReturn(List.of(result(RESULT_2, TASK_2, null, "AGENT", "  123\n")));
+        when(taskMapper.selectList(any())).thenReturn(List.of(task(TASK_2, PROJECT_1, "SUCCEEDED", "FILES", "main")));
+        when(projectMapper.selectList(any())).thenReturn(List.of(project()));
+
+        JsonNode body = service.freeze(new ReportDtos.FreezeRequest("报告", List.of(RESULT_2)))
+                .sources().get(0).snapshot().path("result").path("body");
+
+        assertTrue(body.isTextual());
+        assertEquals("  123\n", body.asText());
+    }
+
+    @Test
+    void missingCodeOrCorruptStructuredDataCannotBeFrozenAsCompleteInputs() {
+        AgentReviewResult result = result(RESULT_1, TASK_1, TARGET_1, "ISSUE", "{\"summary\":\"saved\"}");
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+        when(taskMapper.selectList(any())).thenReturn(List.of(task(TASK_1, PROJECT_1, "SUCCEEDED", "FILES", "main")));
+        when(targetMapper.selectList(any())).thenReturn(List.of(target()));
+        when(projectMapper.selectList(any())).thenReturn(List.of(project()));
+        when(materialMapper.selectById("m1")).thenReturn(null);
+        ReportDtos.FreezeRequest request = new ReportDtos.FreezeRequest("报告", List.of(RESULT_1));
+
+        assertEquals(ErrorCode.CONFLICT, assertThrows(ApiException.class, () -> service.freeze(request)).errorCode());
+        result.setProvenance("broken");
+        assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class, () -> service.freeze(request)).errorCode());
+        result.setProvenance("{}"); result.setBody("broken");
+        assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class, () -> service.freeze(request)).errorCode());
+        result.setBody("{}");
+        AgentIssue issue = issue(); issue.setLocations("broken");
+        when(issueMapper.selectList(any())).thenReturn(List.of(issue));
+        assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class, () -> service.freeze(request)).errorCode());
+        verify(reportMapper, never()).insert(any(AgentReport.class));
     }
 
     private AgentReviewResult result(String id, String taskId, String targetId, String kind, String body) {

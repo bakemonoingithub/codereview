@@ -66,7 +66,7 @@
           :specialist-type="task.specialistType"
           :stats="stats"
         />
-        <p v-else-if="statsError" class="muted small mb16">{{ statsError }}</p>
+        <p v-if="statsError" class="muted small mb16">{{ statsError }}</p>
 
         <div class="detail-grid">
           <aside class="card targets">
@@ -114,7 +114,6 @@
                   :task-id="task.id"
                   :result="result"
                   @open-code="openMaterial"
-                  @feedback-saved="refreshStatistics"
                 />
                 <div v-else-if="!resultError" class="empty">该文件还没有已发布结果。</div>
               </template>
@@ -223,7 +222,7 @@ import SpecialistResultView from '@/components/SpecialistResultView.vue'
 import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
-import { discardFeedbackDrafts, hasDirtyFeedbackDrafts } from '@/components/feedbackDrafts'
+import { discardFeedbackDrafts, hasDirtyFeedbackDrafts, feedbackSaveVersion } from '@/components/feedbackDrafts'
 import {
   projectsApi,
   tasksApi,
@@ -469,6 +468,7 @@ async function loadStatistics(taskId: string) {
 function refreshStatistics() {
   if (task.value) void loadStatistics(task.value.id)
 }
+watch(() => task.value ? feedbackSaveVersion(task.value.id) : 0, refreshStatistics)
 
 async function loadTarget() {  const epoch = ++loadEpoch
   callsEpoch++

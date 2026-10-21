@@ -16,6 +16,9 @@ vi.mock('@/api/v2', () => ({ projectsApi: { detail: vi.fn() }, tasksApi: {
   detail: vi.fn(), statistics: vi.fn(), result: vi.fn(), materials: vi.fn(), calls: vi.fn(), cancel: vi.fn()
 } }))
 import { projectsApi, tasksApi } from '@/api/v2'
+import { recordFeedbackSave, feedbackDraftKey, storeFeedbackDraft, discardFeedbackDrafts } from '@/components/feedbackDrafts'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+import { Modal } from 'ant-design-vue'
 function deferred<T>() { let resolve!: (v: T) => void
   const promise = new Promise<T>(yes => { resolve = yes }); return { promise, resolve }
 }
@@ -36,6 +39,7 @@ async function start() { const w = mount(TaskDetail, { global: { stubs: { ...nam
 } } }); await flushPromises(); return w }
 beforeEach(() => {
   vi.useRealTimers(); vi.resetAllMocks(); sessionStorage.clear()
+  discardFeedbackDrafts('t1'); discardFeedbackDrafts('t2')
   context.route = reactive({ params: { id: 't1' }, query: {} })
   vi.mocked(tasksApi.detail).mockImplementation(async id => task(id) as any)
   vi.mocked(projectsApi.detail).mockResolvedValue({ name: '项目' } as any)
@@ -45,6 +49,49 @@ beforeEach(() => {
   vi.mocked(tasksApi.calls).mockImplementation(async (_id, params) => page('c-' + params?.targetId) as any)
 })
 describe('任务详情的轮询与目标隔离', () => {
+  it('保留旧统计时仍展示刷新失败提示', async () => {
+    const w = await start()
+    vi.mocked(tasksApi.statistics).mockRejectedValueOnce(new Error('统计失败'))
+    await state(w).loadStatistics('t1')
+    expect(w.text()).toContain('50%')
+    expect(w.text()).toContain('准确率统计读取失败：统计失败')
+    w.unmount()
+  })
+  it('保存原任务反馈时刷新统计，旧任务通知不会刷新当前任务', async () => {
+    const w = await start()
+    const count = vi.mocked(tasksApi.statistics).mock.calls.length
+    recordFeedbackSave('other'); await flushPromises()
+    expect(tasksApi.statistics).toHaveBeenCalledTimes(count)
+    recordFeedbackSave('t1'); await flushPromises()
+    expect(tasksApi.statistics).toHaveBeenCalledTimes(count + 1)
+    w.unmount()
+  })
+  it('旧任务统计迟到时不能覆盖新任务', async () => {
+    const w = await start(); const pending = deferred<any>()
+    vi.mocked(tasksApi.statistics).mockReturnValueOnce(pending.promise)
+    const old = state(w).loadStatistics('t1')
+    context.route.params.id = 't2'; await flushPromises()
+    pending.resolve(statistics('ISSUE', { issues: { total: 999 } })); await old
+    expect(state(w).stats.issues.total).toBe(2)
+    w.unmount()
+  })
+  it('离页及切换任务守卫保护草稿，取消保留，确认后才丢弃', async () => {
+    const w = await start()
+    const key = feedbackDraftKey('t1', 'ISSUE', 'issue-1')
+    storeFeedbackDraft(key, { assessment: null, comment: '草稿', revision: 1, dirty: true,
+      baseline: { assessment: null, comment: '' }, updatedAt: null })
+    const confirm = vi.spyOn(Modal, 'confirm').mockImplementation(() => ({ destroy: vi.fn(), update: vi.fn() }) as any)
+    const leave = vi.mocked(onBeforeRouteLeave).mock.calls[0][0] as any
+    const update = vi.mocked(onBeforeRouteUpdate).mock.calls[0][0] as any
+    expect(update({ params: { id: 't1' } }, { params: { id: 't1' } })).toBe(true)
+    const cancelled = leave()
+    ;(confirm.mock.calls[0][0] as any).onCancel()
+    expect(await cancelled).toBe(false)
+    const accepted = update({ params: { id: 't2' } }, { params: { id: 't1' } })
+    ;(confirm.mock.calls[1][0] as any).onOk()
+    expect(await accepted).toBe(true)
+    confirm.mockRestore(); w.unmount()
+  })
   it('旧目标的更多调用不能追加到新目标', async () => {
     const w = await start(); const s = state(w); s.callsHasMore = true; s.callsCursor = 'cursor-a'
     const pending = deferred<any>(); vi.mocked(tasksApi.calls).mockReturnValueOnce(pending.promise)

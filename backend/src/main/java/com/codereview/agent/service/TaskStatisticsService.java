@@ -48,7 +48,7 @@ public class TaskStatisticsService {
         }
         List<AgentReviewResult> results = db.mapper(AgentReviewResultMapper.class).selectList(
                 new LambdaQueryWrapper<AgentReviewResult>()
-                        .select(AgentReviewResult::getId, AgentReviewResult::getKind)
+                        .select(AgentReviewResult::getId, AgentReviewResult::getKind, AgentReviewResult::getCompleteness)
                         .eq(AgentReviewResult::getTaskId, id)
                         .eq(AgentReviewResult::getCompleteness, COMPLETE)
                         .orderByAsc(AgentReviewResult::getCreatedAt))

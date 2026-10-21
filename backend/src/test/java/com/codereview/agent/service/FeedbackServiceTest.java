@@ -225,6 +225,38 @@ class FeedbackServiceTest {
         assertTrue(error.getMessage().contains("expectedRevision"));
     }
 
+    @Test
+    void successfulUpdateReturnsItsOwnValuesEvenWhenAnotherPageWritesImmediatelyAfterward() {
+        givenIssueSubject();
+        when(feedbackMapper.selectOne(any())).thenReturn(
+                feedback("ACCURATE", "旧评论", 2), feedback("UNKNOWN", "另一页面随后保存", 4));
+        when(feedbackMapper.update(isNull(), any())).thenReturn(1);
+
+        FeedbackDtos.View saved = service.save("ISSUE", ISSUE_ID,
+                new FeedbackDtos.Update("INACCURATE", "本次保存", 2));
+
+        assertEquals(3, saved.revision());
+        assertEquals("INACCURATE", saved.assessment());
+        assertEquals("本次保存", saved.comment());
+        verify(feedbackMapper, org.mockito.Mockito.times(1)).selectOne(any());
+    }
+
+    @Test
+    void simultaneousFirstInsertReturnsConflictWithWinningRevision() {
+        givenIssueSubject();
+        when(feedbackMapper.selectOne(any())).thenReturn(null, feedback("UNKNOWN", "先保存者", 1));
+        when(feedbackMapper.insert(any(AgentFeedback.class)))
+                .thenThrow(new org.springframework.dao.DuplicateKeyException("same subject"));
+
+        ApiException error = assertThrows(ApiException.class, () -> service.save("ISSUE", ISSUE_ID,
+                new FeedbackDtos.Update("ACCURATE", "后保存者", 0)));
+
+        assertEquals(ErrorCode.REVISION_CONFLICT, error.errorCode());
+        FeedbackDtos.View latest = (FeedbackDtos.View) ((Map<?, ?>) error.details()).get("current");
+        assertEquals(1, latest.revision());
+        assertEquals("先保存者", latest.comment());
+    }
+
     private void givenIssueSubject() {
         AgentIssue issue = new AgentIssue();
         issue.setId(ISSUE_ID);

@@ -19,6 +19,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.time.LocalDateTime;
 
 /** 稳定问题或完整专项结果上的人工反馈。 */
 @Service
@@ -63,16 +64,20 @@ public class FeedbackService {
             }
         }
         if (current.getRevision() != expected) throw conflict(subject, current);
+        LocalDateTime savedAt = AgentTime.now();
+        String assessment = blankToNull(request.assessment());
         int changed = mapper.update(null, new LambdaUpdateWrapper<AgentFeedback>()
                 .eq(AgentFeedback::getSubjectKind, subject.kind())
                 .eq(AgentFeedback::getSubjectId, subject.id())
                 .eq(AgentFeedback::getRevision, expected)
-                .set(AgentFeedback::getAssessment, blankToNull(request.assessment()))
+                .set(AgentFeedback::getAssessment, assessment)
                 .set(AgentFeedback::getComment, request.comment())
                 .set(AgentFeedback::getRevision, expected + 1)
-                .set(AgentFeedback::getUpdatedAt, AgentTime.now()));
+                .set(AgentFeedback::getUpdatedAt, savedAt));
         if (changed == 0) throw conflict(subject, find(subject.kind(), subject.id()));
-        return view(subject, find(subject.kind(), subject.id()));
+        // 返回本次条件更新确认写入的值；再次查询可能读到另一页面随后保存的更高 revision。
+        return new FeedbackDtos.View(subject.kind(), subject.id(), assessment,
+                request.comment(), expected + 1, savedAt);
     }
 
     private Subject requireSubject(String kind, String id) {

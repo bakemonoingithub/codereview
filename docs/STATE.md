@@ -15,6 +15,8 @@ P32.1–P32.3 已完成本地工程实现与验证（2026-10-21），P32.4 未�
 - P32.2 统计：`GET /api/v2/review-tasks/{id}/statistics` 按 taskId 分开聚合问题级与结果级；未反馈、无法判断、空分母分别展示，空分母不显示 0%／100%。任务详情顶部展示准确率摘要，反馈保存后刷新。见 [P32.2](work/agent-redesign/p32/p32-2-statistics.md)。
 - P32.3 报告输入：完整结果候选查询、输入冻结与冻结来源读取；快照保存正文、问题、版本、材料引用与当时反馈，部分完成任务中的完整文件可选。见 [P32.3](work/agent-redesign/p32/p32-3-report-inputs.md)。
 
+2026-10-21 完成 P32.1–P32.3 的 R01–R11 审查修复，覆盖统计查询列、反馈保存竞争、清空草稿、冲突基线、卸载迟到响应、保存后统计刷新、读取失败重试、统计错误提示、冻结事务、代码证据及结构完整性。新增后端 6 项、前端 12 项正式回归；最终复验见[修复与复验记录](work/agent-redesign/p32/p32-1-3-review-fixes.md)。P32.4 未启动，P31.9 与 P32 保持 active。
+
 P31.1–P31.3 交付：
 - 材料准备与结构解析：固定版本整文件/差异两侧、JavaParser 声明事实、完整性/原始行号、`material` 来源记录；读取失败或必需 AST 缺失时该文件失败，不返回空成功。见 [P31.1](work/agent-redesign/p31/p31-1-materials.md)。
 - 有限声明增强：限定名/导入/同包定位、读取后核对声明、父类与接口广度优先、循环/菱形去重、声明摘要与直接类型补充，限额和缺口分别记录。见 [P31.2](work/agent-redesign/p31/p31-2-declarations.md)。
@@ -51,6 +53,7 @@ P30.5–P30.8 交付：
 - 2026-10-21 按负责人授权完成本机 `ai_code_review_agent` 建库、独立账号、V1–V3 迁移、前后端启动及基础只读列表验证，见[本机启停记录](work/agent-redesign/dev-launchers.md)；随后完成四类配置迁移与基础连通复验，见[配置迁移记录](work/agent-redesign/config-migration-20261021.md)。专项任务写入与完整访问层验收、Git 宿主、目标仓库、专项模型完整流程、PC 正式页面视觉仍未执行；P31.9 保持 active。
 - P31.7–P31.9 审查后复验为后端 603 项（9 跳过），前端 417 项，类型检查和构建通过；以[本轮记录](work/agent-redesign/p31/p31-7-9-review-fixes.md)为准。
 - 2026-10-21 P32.1–P32.3 复验为后端 626 项、0 失败、0 异常、9 跳过；前端 52 个测试文件、426 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。新增回归含反馈 10+4 项、统计 5+5 项、报告输入 7 项。真实 MySQL、真实模型／宿主、并发双页面与 PC 正式页面未执行，按 P32.6 记录。
+- P32.1–P32.3 审查修复后，后端 632 项（0 失败、0 异常、9 跳过）、前端 52 个文件 438 项通过；类型检查与生产构建通过，完整结论以[本轮记录](work/agent-redesign/p32/p32-1-3-review-fixes.md)为准。
 - 专项执行器已接入；`EXECUTOR_UNAVAILABLE` 不再是当前运行的预期行为。本轮仅做模型配置连通检查，专项真实模型调用、并发竞争和取消边界仍按 P31.9／P32.6 验证。
 
 ## 接续依据
@@ -81,6 +84,7 @@ P30.5–P30.8 交付：
 - 本轮 P31.7–P31.9 修复、正式回归及复验记录在当前分支本地提交，未 push；原型及开发启停脚本的会话前/会话中改动保留，不纳入修复。
 - 2026-10-21 会话前保留的模型验证修复（`fix(agent): accept plain-text model validation...`）与 GitHub 斜杠分支修复（`fix(git): fall back to commit query...`）已分别本地提交。
 - P32.1–P32.3 代码、前端、测试与工作记录在当前分支本地提交（`feat(agent): add feedback and task accuracy statistics`、`feat(agent): freeze report inputs from complete results`），未 push；提交前全量测试、类型检查和构建通过。
+- P32.1–P32.3 的 R01–R11 审查修复、正式回归与本轮记录在当前分支本地提交，未 push；详情见[修复与复验记录](work/agent-redesign/p32/p32-1-3-review-fixes.md)。
 - `../code` 工作树保留其原有 2 处未提交改动，不纳入本工作树。
 
 ## 已知坑

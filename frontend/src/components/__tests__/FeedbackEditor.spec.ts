@@ -6,9 +6,15 @@ import { namedAntStubs } from '@/testUtils/antStubs'
 
 vi.mock('@/api/v2', () => ({ feedbackApi: { get: vi.fn(), save: vi.fn() } }))
 import { feedbackApi } from '@/api/v2'
+import { discardFeedbackDrafts, feedbackDraftKey, hasDirtyFeedbackDrafts, readFeedbackDraft, feedbackSaveVersion } from '@/components/feedbackDrafts'
 
 let sequence = 0
 const nextId = () => `subject-${++sequence}`
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(yes => { resolve = yes })
+  return { promise, resolve }
+}
 
 function server(subjectId: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -37,7 +43,121 @@ const button = (wrapper: any, text: string) =>
 
 beforeEach(() => {
   vi.resetAllMocks()
+  discardFeedbackDrafts('task-1')
   document.body.innerHTML = ''
+})
+
+describe('反馈草稿、冲突及迟到响应回归', () => {
+  it('恢复非空草稿时仍显示读取失败原因', async () => {
+    const id = nextId()
+    vi.mocked(feedbackApi.get).mockResolvedValueOnce(server(id) as any)
+    const first = await start(id)
+    await textarea(first).setValue('待保存草稿'); first.unmount()
+    vi.mocked(feedbackApi.get).mockRejectedValueOnce(new Error('服务暂不可用'))
+    const restored = await start(id)
+    expect((textarea(restored).element as HTMLInputElement).value).toBe('待保存草稿')
+    expect(restored.find('a-alert-stub').attributes('message')).toBe('服务暂不可用')
+    restored.unmount()
+  })
+
+  it('重新挂载的旧读取不能回退在途保存的成功结果', async () => {
+    const id = nextId(); const saving = deferred<any>(); const reading = deferred<any>()
+    vi.mocked(feedbackApi.get).mockResolvedValueOnce(server(id) as any).mockReturnValueOnce(reading.promise)
+    vi.mocked(feedbackApi.save).mockReturnValueOnce(saving.promise)
+    const first = await start(id)
+    await textarea(first).setValue('保存后的新内容')
+    await button(first, '保存反馈').trigger('click'); first.unmount()
+    const restored = await start(id)
+    saving.resolve(server(id, { comment: '保存后的新内容', revision: 2 })); await flushPromises()
+    reading.resolve(server(id)); await flushPromises()
+    expect((textarea(restored).element as HTMLInputElement).value).toBe('保存后的新内容')
+    expect(readFeedbackDraft(feedbackDraftKey('task-1', 'ISSUE', id))?.revision).toBe(2)
+    restored.unmount()
+  })
+
+  it('清空反馈的草稿在重新读取失败后仍是未保存状态', async () => {
+    const id = nextId()
+    vi.mocked(feedbackApi.get).mockResolvedValue(server(id) as any)
+    const first = await start(id)
+    await button(first, '清除评价').trigger('click')
+    await textarea(first).setValue('')
+    first.unmount()
+    vi.mocked(feedbackApi.get).mockRejectedValue(new Error('读取失败'))
+
+    const restored = await start(id)
+    expect(restored.text()).toContain('尚未保存')
+    expect(button(restored, '保存反馈').attributes('disabled')).toBeUndefined()
+    expect(hasDirtyFeedbackDrafts('task-1')).toBe(true)
+    restored.unmount()
+  })
+
+  it('手工合并后以冲突的最新内容作为已保存基线', async () => {
+    const id = nextId()
+    vi.mocked(feedbackApi.get).mockResolvedValue(server(id) as any)
+    vi.mocked(feedbackApi.save).mockRejectedValueOnce(Object.assign(new Error('冲突'), {
+      code: 'REVISION_CONFLICT', details: { current: server(id, { comment: '远端改动', revision: 2 }) }
+    })).mockResolvedValueOnce(server(id, { revision: 3 }) as any)
+    const wrapper = await start(id)
+    await textarea(wrapper).setValue('临时编辑')
+    await button(wrapper, '保存反馈').trigger('click'); await flushPromises()
+    await textarea(wrapper).setValue('服务端评论')
+    await button(wrapper, '已核对，使用此版本号保存我的合并内容').trigger('click')
+
+    expect(wrapper.text()).toContain('尚未保存')
+    expect(button(wrapper, '保存反馈').attributes('disabled')).toBeUndefined()
+    await button(wrapper, '保存反馈').trigger('click'); await flushPromises()
+    expect(feedbackApi.save).toHaveBeenLastCalledWith('ISSUE', id, {
+      assessment: 'ACCURATE', comment: '服务端评论', expectedRevision: 2
+    })
+    wrapper.unmount()
+  })
+
+  it('未读取成功时禁止保存并提供读取重试', async () => {
+    const id = nextId()
+    vi.mocked(feedbackApi.get).mockRejectedValueOnce(new Error('读取失败')).mockResolvedValueOnce(server(id) as any)
+    const wrapper = await start(id)
+    expect(button(wrapper, '保存反馈').attributes('disabled')).toBeDefined()
+    await button(wrapper, '重试读取').trigger('click'); await flushPromises()
+    expect((textarea(wrapper).element as HTMLInputElement).value).toBe('服务端评论')
+    wrapper.unmount()
+  })
+
+  it('卸载后迟到读取不能覆盖新编辑器的草稿', async () => {
+    const id = nextId(); const pending = deferred<any>()
+    vi.mocked(feedbackApi.get).mockReturnValueOnce(pending.promise).mockResolvedValueOnce(server(id) as any)
+    const old = await start(id); old.unmount()
+    const current = await start(id)
+    await textarea(current).setValue('新的草稿')
+    pending.resolve(server(id, { comment: '迟到旧值' })); await flushPromises()
+    expect(readFeedbackDraft(feedbackDraftKey('task-1', 'ISSUE', id))?.comment).toBe('新的草稿')
+    current.unmount()
+  })
+
+  it('卸载后保存成功清理原主体草稿并通知任务刷新统计', async () => {
+    const id = nextId(); const pending = deferred<any>()
+    vi.mocked(feedbackApi.get).mockResolvedValue(server(id) as any)
+    vi.mocked(feedbackApi.save).mockReturnValueOnce(pending.promise)
+    const wrapper = await start(id)
+    await textarea(wrapper).setValue('本次保存')
+    await button(wrapper, '保存反馈').trigger('click')
+    const version = feedbackSaveVersion('task-1')
+    wrapper.unmount()
+    pending.resolve(server(id, { comment: '本次保存', revision: 2 })); await flushPromises()
+    expect(hasDirtyFeedbackDrafts('task-1')).toBe(false)
+    expect(feedbackSaveVersion('task-1')).toBe(version + 1)
+  })
+
+  it('确认丢弃后迟到保存不重新建立草稿', async () => {
+    const id = nextId(); const pending = deferred<any>()
+    vi.mocked(feedbackApi.get).mockResolvedValue(server(id) as any)
+    vi.mocked(feedbackApi.save).mockReturnValueOnce(pending.promise)
+    const wrapper = await start(id)
+    await textarea(wrapper).setValue('已提交')
+    await button(wrapper, '保存反馈').trigger('click'); wrapper.unmount()
+    discardFeedbackDrafts('task-1')
+    pending.resolve(server(id, { comment: '已提交', revision: 2 })); await flushPromises()
+    expect(readFeedbackDraft(feedbackDraftKey('task-1', 'ISSUE', id))).toBeUndefined()
+  })
 })
 
 describe('问题级／结果级反馈编辑器', () => {

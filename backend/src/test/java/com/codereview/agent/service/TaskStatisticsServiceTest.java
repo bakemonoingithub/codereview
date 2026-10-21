@@ -1,6 +1,7 @@
 package com.codereview.agent.service;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
@@ -156,6 +157,24 @@ class TaskStatisticsServiceTest {
         ApiException error = assertThrows(ApiException.class, () -> service.statistics(TASK_ID));
 
         assertEquals(ErrorCode.NOT_FOUND, error.errorCode());
+    }
+
+    @Test
+    void databaseProjectionRetainsCompletenessForThePostQueryFilter() {
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task("PATTERN"));
+        when(resultMapper.selectList(any())).thenAnswer(call -> {
+            LambdaQueryWrapper<AgentReviewResult> query = call.getArgument(0);
+            // 模拟数据库只回填 SELECT 中的列，避免实体桩掩盖漏选字段。
+            AgentReviewResult projected = result(R1, "PATTERN", null);
+            if (query.getSqlSelect().contains("completeness")) projected.setCompleteness("COMPLETE");
+            return List.of(projected);
+        });
+        when(feedbackMapper.selectList(any())).thenReturn(List.of(feedback(R1, "RESULT", "ACCURATE")));
+
+        TaskDtos.Statistics stats = service.statistics(TASK_ID);
+
+        assertEquals(1, stats.results().total());
+        assertEquals(100, stats.results().accuracyPercent());
     }
 
     private static AgentReviewTask task(String type) {

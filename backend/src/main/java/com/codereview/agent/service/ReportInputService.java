@@ -8,6 +8,7 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.ReportDtos;
 import com.codereview.agent.entity.AgentFeedback;
 import com.codereview.agent.entity.AgentIssue;
+import com.codereview.agent.entity.AgentMaterial;
 import com.codereview.agent.entity.AgentProject;
 import com.codereview.agent.entity.AgentReport;
 import com.codereview.agent.entity.AgentReportSource;
@@ -16,6 +17,7 @@ import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentTaskTarget;
 import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
+import com.codereview.agent.mapper.AgentMaterialMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
@@ -136,6 +138,11 @@ public class ReportInputService {
     }
 
     public ReportDtos.FrozenInput freeze(ReportDtos.FreezeRequest request) {
+        // 新库默认的可重复读事务覆盖读取及写入，避免问题级、结果级反馈来自不同的读取时刻。
+        return db.inTransaction(() -> freezeInTransaction(request));
+    }
+
+    private ReportDtos.FrozenInput freezeInTransaction(ReportDtos.FreezeRequest request) {
         String title = request.title().trim();
         List<String> ids = request.resultIds().stream().map(String::trim).toList();
         if (ids.isEmpty()) {
@@ -214,18 +221,15 @@ public class ReportInputService {
         report.setRevision(0);
         report.setCreatedAt(frozenAt);
         report.setUpdatedAt(frozenAt);
-        db.inTransaction(() -> {
-            db.mapper(AgentReportMapper.class).insert(report);
-            for (ReportDtos.FrozenSource source : sources) {
-                AgentReportSource row = new AgentReportSource();
-                row.setReportId(report.getId());
-                row.setResultId(source.resultId());
-                row.setSourceSnapshot(json(source.snapshot()));
-                row.setOrdinal(source.ordinal());
-                db.mapper(AgentReportSourceMapper.class).insert(row);
-            }
-            return null;
-        });
+        db.mapper(AgentReportMapper.class).insert(report);
+        for (ReportDtos.FrozenSource source : sources) {
+            AgentReportSource row = new AgentReportSource();
+            row.setReportId(report.getId());
+            row.setResultId(source.resultId());
+            row.setSourceSnapshot(json(source.snapshot()));
+            row.setOrdinal(source.ordinal());
+            db.mapper(AgentReportSourceMapper.class).insert(row);
+        }
         return new ReportDtos.FrozenInput(report.getId(), report.getTitle(), report.getState(),
                 report.getCreatedAt(), sources.size(), sources);
     }
@@ -287,8 +291,10 @@ public class ReportInputService {
         targetNode.put("baseSha", target == null ? null : target.getBaseSha());
 
         ObjectNode resultNode = node.putObject("result");
-        resultNode.set("body", bodyNode(result.getBody()));
-        resultNode.set("provenance", readJsonOrNull(result.getProvenance()));
+        resultNode.set("body", bodyNode(result));
+        JsonNode provenance = requiredJson(result.getProvenance(), true, "结果来源");
+        resultNode.set("provenance", provenance);
+        node.set("materials", frozenMaterials(provenance));
 
         ArrayNode issueNodes = node.putArray("issues");
         for (AgentIssue issue : issues) {
@@ -300,8 +306,8 @@ public class ReportInputService {
             issueNode.put("title", issue.getTitle());
             issueNode.put("reason", issue.getReason());
             issueNode.put("suggestion", issue.getSuggestion());
-            issueNode.set("locations", readJsonOrNull(issue.getLocations()));
-            issueNode.set("sourceUnits", readJsonOrNull(issue.getSourceUnits()));
+            issueNode.set("locations", requiredJson(issue.getLocations(), false, "问题位置"));
+            issueNode.set("sourceUnits", requiredJson(issue.getSourceUnits(), false, "问题来源单元"));
             FeedbackView feedback = feedback(issueFeedback.get(issue.getId()));
             if (feedback == null) {
                 issueNode.putNull("feedback");
@@ -409,16 +415,58 @@ public class ReportInputService {
         return node;
     }
 
-    private JsonNode bodyNode(String body) {
+    private JsonNode bodyNode(AgentReviewResult result) {
+        String body = result.getBody();
         if (body == null || body.isBlank()) {
             throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的结果正文缺失，不能冻结");
         }
-        try {
-            return mapper.readTree(body);
-        } catch (JsonProcessingException notJson) {
-            // Agent 结果为 Markdown 时按原文冻结，不因不是 JSON 而丢弃正文。
+        if ("AGENT".equals(result.getKind())) {
             return mapper.getNodeFactory().textNode(body);
         }
+        return requiredJson(body, true, "专项结果正文");
+    }
+
+    private JsonNode requiredJson(String value, boolean object, String label) {
+        JsonNode node = readJsonOrNull(value);
+        if (node == null || (object ? !node.isObject() : !node.isArray())) {
+            throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的" + label + "损坏，不能冻结");
+        }
+        return node;
+    }
+
+    private ArrayNode frozenMaterials(JsonNode provenance) {
+        ArrayNode snapshots = mapper.createArrayNode();
+        JsonNode references = provenance.path("materials");
+        if (references.isMissingNode()) return snapshots;
+        if (!references.isArray()) {
+            throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的材料引用损坏，不能冻结");
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        for (JsonNode reference : references) {
+            String id = reference.path("id").asText("");
+            if (id.isBlank()) {
+                throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的材料引用缺少 ID，不能冻结");
+            }
+            if (!seen.add(id)) continue;
+            AgentMaterial material = db.mapper(AgentMaterialMapper.class).selectById(id);
+            if (material == null) {
+                throw new ApiException(ErrorCode.CONFLICT, "来源代码材料缺失，不能冻结", Map.of("materialId", id));
+            }
+            // 从当时已保存的片段复制证据，不向仓库重新读取，也不把元数据引用当成代码快照。
+            ObjectNode node = snapshots.addObject();
+            node.put("id", material.getId());
+            node.put("projectId", material.getProjectId());
+            node.put("sha", material.getSha());
+            node.put("path", material.getPath());
+            node.put("side", material.getSide());
+            node.put("startLine", material.getStartLine());
+            node.put("endLine", material.getEndLine());
+            node.put("content", material.getContent());
+            node.put("contentHash", material.getContentHash());
+            node.put("completeness", material.getCompleteness());
+            node.put("diagnostic", material.getDiagnostic());
+        }
+        return snapshots;
     }
 
     private JsonNode readSnapshot(String snapshot) {

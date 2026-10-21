@@ -8,19 +8,21 @@
     </div>
     <div class="choices">
       <a-button v-for="choice in choices" :key="choice.value" size="small"
-        :type="assessment === choice.value ? 'primary' : 'default'" :disabled="loading || saving"
+        :type="assessment === choice.value ? 'primary' : 'default'" :disabled="loading || saving || !ready"
         @click="setAssessment(choice.value)">{{ choice.label }}</a-button>
-      <a-button size="small" type="link" :disabled="assessment === null || loading || saving"
+      <a-button size="small" type="link" :disabled="assessment === null || loading || saving || !ready"
         @click="setAssessment(null)">清除评价</a-button>
     </div>
-    <a-textarea v-model:value="comment" :maxlength="16000" :rows="3" :disabled="loading || saving"
+    <a-textarea v-model:value="comment" :maxlength="16000" :rows="3" :disabled="loading || saving || !ready"
       placeholder="可选评论，可不选择评价而单独保存" />
     <div class="feedback-foot">
       <span class="muted small">评论与评价分别保留；切换问题或文件时保留页面内输入。</span>
       <span class="spacer" />
-      <a-button size="small" type="primary" :loading="saving" :disabled="loading || !dirty" @click="save">保存反馈</a-button>
+      <a-button size="small" type="primary" :loading="saving" :disabled="loading || saving || !ready || !dirty || !!latest" @click="save">保存反馈</a-button>
     </div>
-    <a-alert v-if="error" type="error" show-icon :message="error" class="feedback-alert" />
+    <a-alert v-if="error" type="error" show-icon :message="error" class="feedback-alert">
+      <template v-if="!ready" #action><a-button size="small" @click="load">重试读取</a-button></template>
+    </a-alert>
     <div v-if="latest" class="conflict">
       <a-alert type="warning" show-icon message="其他页面已更新反馈。当前输入已保留，请核对最新内容并手动合并。" />
       <p class="small">最新评价：{{ assessmentText(latest.assessment) }} · 最新评论：{{ latest.comment || '无评论' }}</p>
@@ -30,9 +32,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { feedbackApi, type FeedbackView } from '@/api/v2'
-import { feedbackDraftKey, readFeedbackDraft, storeFeedbackDraft } from './feedbackDrafts'
+import { feedbackDraftKey, readFeedbackDraft, storeFeedbackDraft, recordFeedbackSave, settleFeedbackSave } from './feedbackDrafts'
 
 type Assessment = FeedbackView['assessment']
 
@@ -50,6 +52,7 @@ const baseline = ref<{ assessment: Assessment; comment: string }>({ assessment: 
 const dirty = computed(() =>
   assessment.value !== baseline.value.assessment || comment.value !== baseline.value.comment)
 const loading = ref(true)
+const ready = ref(false)
 const saving = ref(false)
 const error = ref('')
 const latest = ref<FeedbackView | null>(null)
@@ -58,23 +61,38 @@ let loadEpoch = 0
 let saveEpoch = 0
 const statusText = computed(() => dirty.value ? '尚未保存' : revision.value ? `已保存 · ${timeText(updatedAt.value)}` : '尚未反馈')
 
-function snapshot() { storeFeedbackDraft(key.value, { assessment: assessment.value, comment: comment.value, revision: revision.value, dirty: dirty.value }) }
+function snapshot() {
+  if (!ready.value) return
+  storeFeedbackDraft(key.value, { assessment: assessment.value, comment: comment.value, revision: revision.value,
+    dirty: dirty.value, baseline: { ...baseline.value }, updatedAt: updatedAt.value })
+}
 function setAssessment(value: Assessment) { assessment.value = value; error.value = ''; snapshot() }
-watch([assessment, comment], () => { if (!loading.value) { error.value = ''; snapshot() } })
+watch([assessment, comment], () => { if (!loading.value) { error.value = ''; snapshot() } }, { flush: 'sync' })
 watch(() => [props.taskId, props.subjectKind, props.subjectId], load)
 onMounted(load)
+onBeforeUnmount(() => { loadEpoch++; saveEpoch++ })
+watch(() => readFeedbackDraft(key.value), draft => {
+  if (!draft || loading.value || draft.revision <= revision.value) return
+  revision.value = draft.revision; baseline.value = { ...draft.baseline }; updatedAt.value = draft.updatedAt
+})
 
 async function load() {
   const epoch = ++loadEpoch
   saveEpoch++
   loading.value = true; saving.value = false; error.value = ''; latest.value = null
+  ready.value = false
   // 先清空再取数：新主体读取失败时不能把上一个主体的评价或评论留在表单里。
   assessment.value = null; comment.value = ''; revision.value = 0; updatedAt.value = null
   baseline.value = { assessment: null, comment: '' }
   try {
-    const server = await feedbackApi.get(props.subjectKind, props.subjectId)
+    let server = await feedbackApi.get(props.subjectKind, props.subjectId)
     if (epoch !== loadEpoch) return
     const draft = readFeedbackDraft(key.value)
+    // 读取在途时，旧编辑器可能已经保存成功；不能用较旧的读取响应回退已确认的保存。
+    if (draft && draft.revision > server.revision) {
+      server = { ...server, ...draft.baseline, revision: draft.revision, updatedAt: draft.updatedAt }
+    }
+    ready.value = true
     revision.value = server.revision
     updatedAt.value = server.updatedAt
     baseline.value = { assessment: server.assessment, comment: server.comment || '' }
@@ -89,26 +107,32 @@ async function load() {
     if (epoch === loadEpoch) {
       const draft = readFeedbackDraft(key.value)
       if (draft?.dirty) {
+        ready.value = true
+        baseline.value = { ...draft.baseline }; updatedAt.value = draft.updatedAt
         assessment.value = draft.assessment; comment.value = draft.comment
         revision.value = draft.revision
       }
       error.value = e instanceof Error ? e.message : '读取反馈失败'
     }
   }
-  finally { if (epoch === loadEpoch) loading.value = false }
+  finally { if (epoch === loadEpoch) { loading.value = false; snapshot() } }
 }
 
 async function save() {
+  if (!ready.value || loading.value || saving.value || !dirty.value || latest.value) return
   const epoch = ++saveEpoch
   const requestKey = key.value
   const subjectKind = props.subjectKind
   const subjectId = props.subjectId
+  const taskId = props.taskId
   const submitted = { assessment: assessment.value, comment: comment.value }
   saving.value = true; error.value = ''; latest.value = null
   try {
     const saved = await feedbackApi.save(subjectKind, subjectId, {
       assessment: submitted.assessment, comment: submitted.comment, expectedRevision: revision.value
     })
+    settleFeedbackSave(requestKey, saved)
+    recordFeedbackSave(taskId)
     if (epoch !== saveEpoch || requestKey !== key.value) return
     revision.value = saved.revision
     updatedAt.value = saved.updatedAt
@@ -130,7 +154,10 @@ async function save() {
 
 function adoptLatestRevision() {
   if (!latest.value) return
-  revision.value = latest.value.revision; latest.value = null; snapshot()
+  revision.value = latest.value.revision
+  baseline.value = { assessment: latest.value.assessment, comment: latest.value.comment || '' }
+  updatedAt.value = latest.value.updatedAt
+  latest.value = null; snapshot()
 }
 function assessmentText(value: Assessment): string {
   return ({ ACCURATE: '准确', INACCURATE: '不准确', UNKNOWN: '无法判断' } as Record<string, string>)[value || ''] || '未评价'
