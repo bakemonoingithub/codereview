@@ -14,8 +14,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.ObjectProvider;
+import java.util.function.Supplier;
+import org.mockito.ArgumentCaptor;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -23,6 +28,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -52,6 +58,7 @@ class TaskDispatchServiceTest {
         dispatcher = spy(new TaskDispatchService(db, workers, properties));
         when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
         when(db.mapper(AgentTaskTargetMapper.class)).thenReturn(targetMapper);
+        when(db.inTransaction(any())).thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
         when(taskMapper.selectById(any())).thenReturn(task());
         when(taskMapper.update(any(), any())).thenReturn(1);
         when(workers.getIfUnique()).thenReturn(worker);
@@ -121,6 +128,48 @@ class TaskDispatchServiceTest {
 
         verify(taskMapper).update(any(), any());
         verify(targetMapper).selectCount(any());
+        assertOpenTargetsClosedAs(TaskStates.CANCELLED);
+    }
+
+    @Test
+    void missingWorkerClosesOpenTargetsAndPreservesTerminalOnes() {
+        when(workers.getIfUnique()).thenReturn(null);
+        dispatcher.run("task-1");
+        assertOpenTargetsClosedAs(TaskStates.FAILED);
+        verify(db).inTransaction(any());
+    }
+
+    @Test
+    void deadlineWithoutSuccessStillClosesOpenTargets() {
+        when(targetMapper.selectCount(any())).thenReturn(0L);
+        dispatcher.finishForDeadline("task-1");
+        assertOpenTargetsClosedAs(TaskStates.CANCELLED);
+    }
+
+    @Test
+    void losingTerminalUpdateCannotRewriteTargets() {
+        when(taskMapper.update(any(), any())).thenReturn(0);
+        assertFalse(dispatcher.terminate("task-1", TaskStates.FAILED, "TASK_DEADLINE"));
+        verify(targetMapper, never()).update(any(), any());
+    }
+
+    @Test
+    void targetWriteFailurePropagatesOutOfTheTransaction() {
+        doThrow(new IllegalStateException("target write failed")).when(targetMapper).update(any(), any());
+        assertThrows(IllegalStateException.class,
+                () -> dispatcher.finish("task-1", TaskStates.FAILED, "EXECUTION_ERROR"));
+        verify(db).inTransaction(any());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void assertOpenTargetsClosedAs(String state) {
+        ArgumentCaptor<LambdaUpdateWrapper<AgentTaskTarget>> saved = ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
+        verify(targetMapper).update(any(), saved.capture());
+        LambdaUpdateWrapper<AgentTaskTarget> update = saved.getValue();
+        assertTrue(update.getSqlSegment().contains("NOT IN"), "已完成目标必须排除在更新之外");
+        assertTrue(update.getParamNameValuePairs().values().containsAll(TaskStates.TARGET_TERMINAL));
+        assertTrue(update.getParamNameValuePairs().values().contains("task-1"));
+        assertTrue(update.getParamNameValuePairs().values().contains(state));
     }
 
     private static AgentReviewTask task() {

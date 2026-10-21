@@ -71,6 +71,12 @@ class ModelCapacityServiceTest {
         assertEquals(64, estimate.outputReserve());
     }
 
+    @Test
+    void validationHonoursMaximumOutputWithOrWithoutADeclaredWindow() {
+        assertEquals(8, service.estimate(validationPrompt(), model(100_000, 8)).outputReserve());
+        assertEquals(8, service.estimate(validationPrompt(), model(null, 8)).outputReserve());
+    }
+
     private AssembledPrompt prompt(PromptPurpose purpose, int contentChars) {
         return assembly.assemble(new PromptInput(purpose, "1", null, null, null,
                 "FILES", "main", SHA, null,

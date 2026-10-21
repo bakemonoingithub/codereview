@@ -2,6 +2,8 @@
 
 状态：P30.6 完成（2026-10-20，Asia/Taipei）。依据 [ROADMAP](../../../ROADMAP.md) P30.6、[共用设计](../p29/shared-design.md) 第 3、4 节与 [业务契约](../business-contract.md) 的任务状态约定。真实数据库与真实宿主未连接。
 
+2026-10-21 审查修复与正式回归用例见[复验记录](p30-5-8-review-fixes.md)。
+
 ## 1. 交付
 
 | 交付 | 位置 |

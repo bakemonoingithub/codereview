@@ -2,9 +2,9 @@
 
 当前: -
 
-最近更新：2026-10-20（Asia/Taipei）。会话从[工作区规则](../AGENTS.md)和[STATE](STATE.md)接续；本文件是新路线的行动来源。
+最近更新：2026-10-21（Asia/Taipei）。会话从[工作区规则](../AGENTS.md)和[STATE](STATE.md)接续；本文件是新路线的行动来源。
 
-工作树为 `H:\myProjects\aiCodeReview\agent`，分支为 `refactor/agent`。负责人已按业务契约 D-88 批准 P29 共用设计及本轮专项 HTML 原型，并要求细化实施 ROADMAP；P29 为 done，P31–P33 为 todo。P30 已完成（2026-10-20）：P30.1–P30.4 交付后经独立审查与补修；P30.5–P30.8 已落地统一组装／计量调用、任务控制、四页管理与隔离验证。后端 461 项、前端 339 项及类型检查通过；真实数据库、宿主、模型与 PC 视觉验收未执行，清单见 [P30.8 验证](work/agent-redesign/p30/p30-8-validation.md)。P31 待负责人启动。
+工作树为 `H:\myProjects\aiCodeReview\agent`，分支为 `refactor/agent`。负责人已按业务契约 D-88 批准 P29 共用设计及本轮专项 HTML 原型，并要求细化实施 ROADMAP；P29 为 done，P31–P33 为 todo。P30 已完成（2026-10-20）：P30.1–P30.4 交付后经独立审查与补修；P30.5–P30.8 已落地统一组装／计量调用、任务控制、四页管理与隔离验证，2026-10-21 完成 9 项审查修复。后端本轮 474 项、0 失败、7 跳过，前端 360 项、类型检查与构建通过；完整结果见[本轮复验](work/agent-redesign/p30/p30-5-8-review-fixes.md)。真实数据库、宿主、模型与 PC 视觉验收未执行，清单见 [P30.8 验证](work/agent-redesign/p30/p30-8-validation.md)。P31 待负责人启动。
 
 ## 1. 实施依据与批准边界
 
@@ -63,7 +63,7 @@
 - P30.4：提供固定 SHA 读取、路径清单、修改前后侧与旧路径、完整性信息及有界缓存；拆取镜像、HTTP 错误处理和版本隔离，凭据不进入业务快照。此批不实现 Agent 专用搜索工具或开放工具接口。
 - P30.5：已完成（2026-10-20），交付[统一组装与计量](work/agent-redesign/p30/p30-5-assembly-invocation.md)：唯一提示词入口、UTF-8 字节上界估算、容量判断、请求先落盘、200 次原子额度、全局 4／单任务 2 并发及一次传输重试；验证调用同入口。
 - P30.6：已完成，交付[任务控制](work/agent-redesign/p30/p30-6-task-control.md)：幂等创建、固定来源与配置快照、取消、期限扫描、重启收敛及带条件的终态更新；P31 接入 `TaskWorker`。
-- P30.7：已完成，交付[四页接入](work/agent-redesign/p30/p30-7-admin-pages.md)：项目、模型、提示词、策略改用 `/api/v2`；设计基线见 [design.md](design.md)。前端全量 339 项与类型检查通过。
+- P30.7：已完成，交付[四页接入](work/agent-redesign/p30/p30-7-admin-pages.md)：项目、模型、提示词、策略改用 `/api/v2`；设计基线见 [design.md](design.md)。首轮前端全量 339 项与类型检查通过；本轮修复后 360 项通过，见[复验记录](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
 - P30.8：已完成，交付[隔离验证](work/agent-redesign/p30/p30-8-validation.md)：A01–A06、A22、A23 证据、迁移契约、初始计量样本及资源清单；真实数据库、宿主、模型与 PC 视觉未执行，转入 P31.9／P32.6。
 
 完成条件：公共接口、配置页面、执行控制及存储代码可支撑专项接入；上述必要工程检查通过，调用快照与凭据隔离有效，未实测配置有明确标记和后续任务。依据：UI-09、B-01、B-03 至 B-05、B-10、B-11、X-01、X-02、N-08。

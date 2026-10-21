@@ -26,17 +26,17 @@ public class ModelCapacityService {
 
     public CapacityEstimate estimate(AssembledPrompt prompt, ModelSnapshot model) {
         boolean validation = prompt.purpose() == PromptPurpose.VALIDATION;
+        int outputReserve = validation ? limitOutput(properties.getValidationOutputTokens(), model)
+                : outputReserve(model);
         if (model.contextWindow() == null || model.contextWindow() <= 0) {
             if (!validation) {
                 throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,
                         "模型未声明上下文窗口，无法判断容量", Map.of("modelId", model.id()));
             }
             return new CapacityEstimate(prompt.inputEstimate(),
-                    properties.getValidationOutputTokens(), 0, Integer.MAX_VALUE,
+                    outputReserve, 0, Integer.MAX_VALUE,
                     prompt.estimateMethod());
         }
-        int outputReserve = validation ? properties.getValidationOutputTokens()
-                : outputReserve(model);
         int safetyReserve = safetyReserve(model.contextWindow());
         return new CapacityEstimate(prompt.inputEstimate(), outputReserve, safetyReserve,
                 model.contextWindow(), prompt.estimateMethod());
@@ -58,7 +58,10 @@ public class ModelCapacityService {
     }
 
     public int outputReserve(ModelSnapshot model) {
-        int configured = properties.getOutputReserveTokens();
+        return limitOutput(properties.getOutputReserveTokens(), model);
+    }
+
+    private static int limitOutput(int configured, ModelSnapshot model) {
         if (model.maxOutput() != null && model.maxOutput() > 0) {
             return Math.min(configured, model.maxOutput());
         }

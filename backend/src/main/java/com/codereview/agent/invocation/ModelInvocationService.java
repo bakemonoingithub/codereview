@@ -6,6 +6,7 @@ import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.entity.AgentTaskQuota;
+import com.codereview.agent.execution.TaskExecutionGuard;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
 import com.codereview.agent.prompt.AssembledPrompt;
@@ -25,7 +26,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 
@@ -49,11 +49,12 @@ public class ModelInvocationService {
     private final PromptAssemblyService assembly;
     private final ModelInvocationProperties properties;
     private final ModelCallConcurrencyLimiter limiter;
+    private final TaskExecutionGuard guard;
 
     public ModelInvocationService(AgentDatabase db, ObjectMapper mapper, ModelTransport transport,
                                   ModelCapacityService capacity, PromptAssemblyService assembly,
                                   ModelCallConcurrencyLimiter limiter,
-                                  ModelInvocationProperties properties) {
+                                  ModelInvocationProperties properties, TaskExecutionGuard guard) {
         this.db = db;
         this.mapper = mapper;
         this.transport = transport;
@@ -61,6 +62,7 @@ public class ModelInvocationService {
         this.assembly = assembly;
         this.limiter = limiter;
         this.properties = properties;
+        this.guard = guard;
     }
 
     public InvocationResult invoke(InvocationRequest request) {
@@ -76,13 +78,25 @@ public class ModelInvocationService {
 
         for (int attempt = 1; attempt <= attempts; attempt++) {
             boolean last = attempt == attempts;
-            Duration timeout = timeoutFor(scope);
+            scope = activeScope(scope);
+            timeoutFor(scope);
             ModelCallConcurrencyLimiter.Permit permit = limiter.acquire(scope.taskId(), scope.deadlineAt());
             try {
+                scope = activeScope(scope);
+                timeoutFor(scope);
                 if (scope.taskId() != null) {
                     reserveQuota(scope.taskId());
                 }
                 AgentModelCall call = startCall(scope, prompt, body, attempt, estimate);
+                Duration timeout;
+                try {
+                    // 等待许可和请求落盘都可能跨过取消或期限；以真正发送前的状态为准。
+                    scope = activeScope(scope);
+                    timeout = timeoutFor(scope);
+                } catch (ApiException stopped) {
+                    finishFailure(call, stopped, null);
+                    throw stopped;
+                }
                 try {
                     ModelTransport.TransportResponse response = transport.post(endpoint(model),
                             model.credential(), body, timeout);
@@ -108,6 +122,7 @@ public class ModelInvocationService {
             } finally {
                 permit.close();
             }
+            scope = activeScope(scope);
             waitBeforeRetry(failureRetryAfter(lastFailure), scope);
         }
         throw lastFailure == null
@@ -240,8 +255,10 @@ public class ModelInvocationService {
                     Map.of("status", status));
         }
         if (status == 429) {
+            Long retryAfter = retryAfterSeconds(response);
             return new ApiException(ErrorCode.RATE_LIMITED, "模型网关限流",
-                    Map.of("status", status, "retryAfter", retryAfterSeconds(response)));
+                    retryAfter == null ? Map.of("status", status)
+                            : Map.of("status", status, "retryAfter", retryAfter));
         }
         if (status >= 500) {
             return new ApiException(ErrorCode.MODEL_UNAVAILABLE, "模型网关暂时不可用",
@@ -264,6 +281,18 @@ public class ModelInvocationService {
             }
         }
         return false;
+    }
+
+    private InvocationScope activeScope(InvocationScope scope) {
+        if (scope.taskId() == null) {
+            return scope;
+        }
+        var task = guard.requireActive(scope.taskId());
+        LocalDateTime deadline = scope.deadlineAt();
+        if (task.getDeadlineAt() != null && (deadline == null || task.getDeadlineAt().isBefore(deadline))) {
+            deadline = task.getDeadlineAt();
+        }
+        return new InvocationScope(scope.taskId(), scope.targetId(), scope.unitId(), deadline);
     }
 
     private Duration timeoutFor(InvocationScope scope) {

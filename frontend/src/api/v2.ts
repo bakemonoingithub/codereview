@@ -15,7 +15,7 @@ const v2 = axios.create({
 })
 
 v2.interceptors.response.use(
-  (response) => response.data,
+  (response) => response,
   (error) => {
     const body = error?.response?.data
     const message = body?.message || toReadableError(error)
@@ -187,8 +187,8 @@ export const promptsApi = {
 }
 
 export const strategiesApi = {
-  list: (params: { q?: string; specialistType?: string; cursor?: string; limit?: number } = {}) =>
-    v2.get<Page<StrategyView>>('/strategies', { params }).then((r) => r.data),
+  list: ({ specialistType, ...params }: { q?: string; specialistType?: string; cursor?: string; limit?: number } = {}) =>
+    v2.get<Page<StrategyView>>('/strategies', { params: { ...params, type: specialistType } }).then((r) => r.data),
   create: (body: {
     name: string
     specialistType: string

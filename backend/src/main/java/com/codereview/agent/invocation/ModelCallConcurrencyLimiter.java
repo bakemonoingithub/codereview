@@ -44,15 +44,19 @@ public class ModelCallConcurrencyLimiter {
             return new Permit(global, null);
         }
         Semaphore taskSemaphore = taskLimits.computeIfAbsent(taskId, ignored -> new Semaphore(perTask, true));
+        boolean taskAcquired = false;
         try {
-            if (!taskSemaphore.tryAcquire(waitMillis, TimeUnit.MILLISECONDS)) {
-                global.release();
+            taskAcquired = taskSemaphore.tryAcquire(waitMillis(deadlineAt), TimeUnit.MILLISECONDS);
+            if (!taskAcquired) {
                 throw busy(taskId);
             }
         } catch (InterruptedException e) {
-            global.release();
             Thread.currentThread().interrupt();
             throw new ApiException(ErrorCode.MODEL_UNAVAILABLE, "等待模型并发许可被中断");
+        } finally {
+            if (!taskAcquired) {
+                global.release();
+            }
         }
         return new Permit(global, taskSemaphore);
     }

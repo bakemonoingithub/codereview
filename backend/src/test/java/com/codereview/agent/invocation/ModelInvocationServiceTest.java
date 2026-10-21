@@ -4,20 +4,26 @@ import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.entity.AgentModelCall;
+import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentTaskQuota;
+import com.codereview.agent.execution.TaskExecutionGuard;
+import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.mapper.AgentModelCallMapper;
+import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
 import com.codereview.agent.prompt.AssembledPrompt;
 import com.codereview.agent.prompt.PromptAssemblyService;
 import com.codereview.agent.prompt.PromptInput;
 import com.codereview.agent.prompt.PromptMaterial;
 import com.codereview.agent.prompt.PromptPurpose;
+import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -26,6 +32,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,6 +42,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -54,9 +63,12 @@ class ModelInvocationServiceTest {
     private AgentTaskQuotaMapper quotaMapper;
     @Mock
     private ModelTransport transport;
+    @Mock
+    private AgentReviewTaskMapper taskMapper;
 
     private ModelInvocationService service;
     private ModelInvocationProperties properties;
+    private AgentReviewTask task;
     private final ObjectMapper mapper = new ObjectMapper();
     private final PromptAssemblyService assembly = new PromptAssemblyService();
 
@@ -72,7 +84,13 @@ class ModelInvocationServiceTest {
         properties.setRetryBaseMillis(1);
         service = new ModelInvocationService(db, mapper, transport,
                 new ModelCapacityService(properties), assembly,
-                new ModelCallConcurrencyLimiter(properties), properties);
+                new ModelCallConcurrencyLimiter(properties), properties, new TaskExecutionGuard(db));
+        task = new AgentReviewTask();
+        task.setId(TASK_ID);
+        task.setState(TaskStates.RUNNING);
+        task.setDeadlineAt(AgentTime.now().plusMinutes(5));
+        when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
         when(db.mapper(AgentModelCallMapper.class)).thenReturn(callMapper);
         when(db.mapper(AgentTaskQuotaMapper.class)).thenReturn(quotaMapper);
         when(callMapper.insert(any(AgentModelCall.class))).thenReturn(1);
@@ -221,6 +239,132 @@ class ModelInvocationServiceTest {
         ModelInvocationService.ValidationOutcome outcome = service.validate(model(null, null));
 
         assertFalse(outcome.passed());
+    }
+
+    @Test
+    void rateLimitWithoutRetryAfterRecordsFailureAndRetries() {
+        when(transport.post(any(), any(), any(), any())).thenReturn(
+                new ModelTransport.TransportResponse(429, "limited", Map.of(), 5), ok("{}"));
+
+        assertEquals(2, service.invoke(request(prompt(100), model(100_000, 8_000))).attempts());
+
+        ArgumentCaptor<AgentModelCall> saved = ArgumentCaptor.forClass(AgentModelCall.class);
+        verify(callMapper, times(2)).updateById(saved.capture());
+        assertEquals("FAILED", saved.getAllValues().get(0).getState());
+        assertEquals("RATE_LIMITED", saved.getAllValues().get(0).getErrorCode());
+        assertEquals("limited", saved.getAllValues().get(0).getResponseBody());
+        assertEquals("SUCCEEDED", saved.getAllValues().get(1).getState());
+    }
+
+    @Test
+    void malformedRetryAfterUsesDefaultBackoff() {
+        when(transport.post(any(), any(), any(), any())).thenReturn(
+                new ModelTransport.TransportResponse(429, "limited", Map.of("retry-after", "unknown"), 5),
+                ok("{}"));
+
+        assertEquals(2, service.invoke(request(prompt(100), model(100_000, 8_000))).attempts());
+        verify(quotaMapper, times(2)).update(isNull(), any());
+    }
+
+    @Test
+    void cancellationDuringTheFirstAttemptStopsRetries() {
+        when(transport.post(any(), any(), any(), any())).thenAnswer(invocation -> {
+            task.setState(TaskStates.CANCELLED);
+            task.setCancelRequestedAt(AgentTime.now());
+            return new ModelTransport.TransportResponse(503, "busy", Map.of(), 5);
+        });
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.invoke(request(prompt(100), model(100_000, 8_000))));
+
+        assertEquals(ErrorCode.TASK_CANCELLED, error.errorCode());
+        verify(transport).post(any(), any(), any(), any());
+        verify(quotaMapper).update(isNull(), any());
+        verify(callMapper).insert(any(AgentModelCall.class));
+        verify(callMapper).updateById(any(AgentModelCall.class));
+    }
+
+    @Test
+    void cancellationWhileWaitingReleasesPermitWithoutReservingQuota() {
+        ModelCallConcurrencyLimiter actual = new ModelCallConcurrencyLimiter(properties);
+        ModelCallConcurrencyLimiter delayed = mock(ModelCallConcurrencyLimiter.class);
+        when(delayed.acquire(any(), any())).thenAnswer(invocation -> {
+            task.setState(TaskStates.CANCELLED);
+            return actual.acquire(TASK_ID, null);
+        });
+        service = serviceWith(delayed);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.invoke(request(prompt(100), model(100_000, 8_000))));
+
+        assertEquals(ErrorCode.TASK_CANCELLED, error.errorCode());
+        verify(transport, never()).post(any(), any(), any(), any());
+        verify(quotaMapper, never()).update(isNull(), any());
+        assertEquals(properties.getGlobalConcurrency(), actual.availableGlobalPermits());
+    }
+
+    @Test
+    void deadlineExpiredWhileWaitingPreventsSendingAndReleasesPermit() {
+        AtomicReference<LocalDateTime> now = new AtomicReference<>(AgentTime.now());
+        LocalDateTime deadline = now.get().plusMinutes(1);
+        ModelCallConcurrencyLimiter actual = new ModelCallConcurrencyLimiter(properties);
+        ModelCallConcurrencyLimiter delayed = mock(ModelCallConcurrencyLimiter.class);
+        when(delayed.acquire(any(), any())).thenAnswer(invocation -> {
+            now.set(deadline.plusSeconds(1));
+            return actual.acquire(TASK_ID, null);
+        });
+        service = serviceWith(delayed);
+        try (MockedStatic<AgentTime> time = mockStatic(AgentTime.class)) {
+            time.when(AgentTime::now).thenAnswer(invocation -> now.get());
+            ApiException error = assertThrows(ApiException.class, () -> service.invoke(
+                    new InvocationRequest(model(100_000, 8_000), prompt(100),
+                            new InvocationScope(TASK_ID, null, null, deadline))));
+            assertEquals(ErrorCode.TASK_DEADLINE, error.errorCode());
+        }
+        verify(transport, never()).post(any(), any(), any(), any());
+        verify(quotaMapper, never()).update(isNull(), any());
+        assertEquals(properties.getGlobalConcurrency(), actual.availableGlobalPermits());
+    }
+
+    @Test
+    void timeoutIsRecalculatedAfterRequestPersistence() {
+        AtomicReference<LocalDateTime> now = new AtomicReference<>(AgentTime.now());
+        LocalDateTime deadline = now.get().plusMinutes(1);
+        when(callMapper.insert(any(AgentModelCall.class))).thenAnswer(invocation -> {
+            now.set(now.get().plusSeconds(30));
+            return 1;
+        });
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("{}"));
+        try (MockedStatic<AgentTime> time = mockStatic(AgentTime.class)) {
+            time.when(AgentTime::now).thenAnswer(invocation -> now.get());
+            service.invoke(new InvocationRequest(model(100_000, 8_000), prompt(100),
+                    new InvocationScope(TASK_ID, null, null, deadline)));
+        }
+        ArgumentCaptor<Duration> timeout = ArgumentCaptor.forClass(Duration.class);
+        verify(transport).post(any(), any(), any(), timeout.capture());
+        assertEquals(Duration.ofSeconds(29), timeout.getValue());
+    }
+
+    @Test
+    void cancellationDuringPersistenceClosesTheUnsentCall() {
+        when(callMapper.insert(any(AgentModelCall.class))).thenAnswer(invocation -> {
+            task.setCancelRequestedAt(AgentTime.now());
+            return 1;
+        });
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.invoke(request(prompt(100), model(100_000, 8_000))));
+
+        assertEquals(ErrorCode.TASK_CANCELLED, error.errorCode());
+        verify(transport, never()).post(any(), any(), any(), any());
+        ArgumentCaptor<AgentModelCall> saved = ArgumentCaptor.forClass(AgentModelCall.class);
+        verify(callMapper).updateById(saved.capture());
+        assertEquals("FAILED", saved.getValue().getState());
+        assertEquals("TASK_CANCELLED", saved.getValue().getErrorCode());
+    }
+
+    private ModelInvocationService serviceWith(ModelCallConcurrencyLimiter limiter) {
+        return new ModelInvocationService(db, mapper, transport, new ModelCapacityService(properties),
+                assembly, limiter, properties, new TaskExecutionGuard(db));
     }
 
     @Test

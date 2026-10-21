@@ -14,6 +14,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ModelCallConcurrencyLimiterTest {
 
     @Test
+    void deadlineBetweenGlobalAndTaskPermitsReleasesTheGlobalPermit() {
+        var now = AgentTime.now();
+        ModelCallConcurrencyLimiter limiter = new ModelCallConcurrencyLimiter(new ModelInvocationProperties());
+        try (var time = org.mockito.Mockito.mockStatic(AgentTime.class)) {
+            time.when(AgentTime::now).thenReturn(now, now.plusSeconds(2));
+            ApiException error = assertThrows(ApiException.class,
+                    () -> limiter.acquire("task-a", now.plusSeconds(1)));
+            assertEquals(ErrorCode.TASK_DEADLINE, error.errorCode());
+        }
+        assertEquals(4, limiter.availableGlobalPermits());
+    }
+
+    @Test
     void globalLimitIsFourAndPerTaskLimitIsTwo() throws Exception {
         ModelInvocationProperties properties = new ModelInvocationProperties();
         ModelCallConcurrencyLimiter limiter = new ModelCallConcurrencyLimiter(properties);

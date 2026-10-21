@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -58,11 +59,11 @@ class TaskDeadlineSweeperTest {
     }
 
     @Test
-    void expiredTaskWithoutSuccessBecomesFailedAndOpenTargetsAreCancelled() {
+    void expiredTaskDelegatesAtomicTaskAndTargetClosureToDispatcher() {
         int closed = sweeper.sweep();
 
         assertEquals(1, closed);
         verify(dispatcher).terminate("task-1", TaskStates.FAILED, TaskStates.STOP_TASK_DEADLINE);
-        verify(targetMapper).update(any(), any());
+        verify(targetMapper, never()).update(any(), any());
     }
 }

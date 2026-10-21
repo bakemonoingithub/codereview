@@ -121,11 +121,14 @@ public class TaskDispatchService {
         if (TaskStates.SUCCEEDED.equals(state)) {
             update.isNull(AgentReviewTask::getCancelRequestedAt);
         }
-        if (db.mapper(AgentReviewTaskMapper.class).update(null, update) > 0) {
-            return true;
-        }
-        log.info("任务 {} 的终态 {} 未被写入：任务已取消或已结束", taskId, state);
-        return false;
+        return db.inTransaction(() -> {
+            if (db.mapper(AgentReviewTaskMapper.class).update(null, update) > 0) {
+                closeOpenTargets(taskId, state, stopReason);
+                return true;
+            }
+            log.info("任务 {} 的终态 {} 未被写入：任务已取消或已结束", taskId, state);
+            return false;
+        });
     }
 
     public void finishForDeadline(String taskId) {
@@ -145,7 +148,8 @@ public class TaskDispatchService {
         if (!TaskStates.isTerminal(state)) {
             throw new IllegalArgumentException("终态不合法：" + state);
         }
-        return db.mapper(AgentReviewTaskMapper.class).update(null,
+        return db.inTransaction(() -> {
+            boolean changed = db.mapper(AgentReviewTaskMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentReviewTask>()
                         .eq(AgentReviewTask::getId, taskId)
                         .in(AgentReviewTask::getState, TaskStates.QUEUED, TaskStates.RUNNING)
@@ -154,10 +158,16 @@ public class TaskDispatchService {
                         .set(AgentReviewTask::getFinishedAt, AgentTime.now())
                         .set(AgentReviewTask::getUpdatedAt, AgentTime.now())
                         .setSql("revision = revision + 1")) > 0;
+            if (changed) {
+                closeOpenTargets(taskId, state, stopReason);
+            }
+            return changed;
+        });
     }
 
     private void terminateQueued(String taskId, String stopReason) {
-        db.mapper(AgentReviewTaskMapper.class).update(null,
+        db.inTransaction(() -> {
+            int changed = db.mapper(AgentReviewTaskMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentReviewTask>()
                         .eq(AgentReviewTask::getId, taskId)
                         .eq(AgentReviewTask::getState, TaskStates.QUEUED)
@@ -165,6 +175,29 @@ public class TaskDispatchService {
                         .set(AgentReviewTask::getStopReason, stopReason)
                         .set(AgentReviewTask::getFinishedAt, AgentTime.now())
                         .set(AgentReviewTask::getUpdatedAt, AgentTime.now())
+                        .setSql("revision = revision + 1"));
+            if (changed > 0) {
+                closeOpenTargets(taskId, TaskStates.FAILED, stopReason);
+            }
+            return null;
+        });
+    }
+
+    /** 仅收敛尚未完成的目标；已发布的成功或失败结果不会被重写。 */
+    private void closeOpenTargets(String taskId, String state, String stopReason) {
+        if (TaskStates.SUCCEEDED.equals(state)) {
+            return;
+        }
+        String targetState = TaskStates.CANCELLED.equals(state) || TaskStates.PARTIAL.equals(state)
+                || TaskStates.STOP_TASK_DEADLINE.equals(stopReason)
+                ? TaskStates.CANCELLED : TaskStates.FAILED;
+        db.mapper(AgentTaskTargetMapper.class).update(null,
+                new LambdaUpdateWrapper<AgentTaskTarget>()
+                        .eq(AgentTaskTarget::getTaskId, taskId)
+                        .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)
+                        .set(AgentTaskTarget::getState, targetState)
+                        .set(AgentTaskTarget::getErrorCode, stopReason)
+                        .set(AgentTaskTarget::getUpdatedAt, AgentTime.now())
                         .setSql("revision = revision + 1"));
     }
 

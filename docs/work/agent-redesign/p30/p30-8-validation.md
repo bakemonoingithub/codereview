@@ -4,11 +4,14 @@
 
 ## 1. 验证方法与结果
 
+2026-10-21 补齐 9 项审查修复及正式回归用例，详情见[修复与复验记录](p30-5-8-review-fixes.md)。下表工程检查结果更新为本轮输出。
+
 | 层次 | 状态 | 结果 |
 | --- | --- | --- |
-| 后端全量回归 | 通过 | 461 项，0 失败、0 异常、9 跳过；跳过项不计为执行通过 |
-| 前端全量回归 | 通过 | 39 个测试文件、339 项通过 |
+| 后端全量回归 | 通过 | 474 项，0 失败、0 异常、7 跳过；跳过项不计为执行通过 |
+| 前端全量回归 | 通过 | 41 个测试文件、360 项通过 |
 | 前端类型检查 | 通过 | `vue-tsc --noEmit` |
+| 前端生产构建 | 通过 | Vite 构建完成；存在超过 500 kB 的分块提示 |
 | 本地 HTTP 替身 | 通过 | 路径、Bearer 鉴权、请求正文、429 Retry-After、超时与非法地址 |
 | 迁移脚本契约 | 通过 | V2 允许独立调用并新增额度表；V3 增加幂等键与唯一索引 |
 | 真实迁移执行 | 未执行 | 无隔离新库与账户；不能由契约测试代替 |
@@ -22,7 +25,7 @@
 | --- | --- | --- |
 | A01 | 分支移动、同路径不同 SHA | `TaskServiceTest.sourceMovedIsRejectedBeforeAnyTaskIsWritten`；固定版本读取 19 项沿用 P30.4 |
 | A02 | 相同幂等键并发／不同正文 | `TaskServiceTest.sameIdempotencyKeyAndBodyReturnsTheOriginalTask`、`sameIdempotencyKeyWithDifferentBodyConflicts`、`concurrentDuplicateKeyReplaysTheExistingTask` |
-| A03 | 并发许可、格式与传输重试 | `ModelCallConcurrencyLimiterTest` 3 项；`ModelInvocationServiceTest.transientFailureRetriesOnceAndRecordsEveryAttempt` 断言两次尝试与两次额度预留 |
+| A03 | 并发许可、格式与传输重试 | `ModelCallConcurrencyLimiterTest` 4 项；`ModelInvocationServiceTest.transientFailureRetriesOnceAndRecordsEveryAttempt` 断言两次尝试与两次额度预留；新增取消、期限及缺失／非法 Retry-After 回归见修复记录 |
 | A04 | 请求正文持久化失败 | `ModelInvocationServiceTest.requestPersistenceFailureMeansNoNetworkRequest` |
 | A05 | 取消先成功／成功先成功 | `TaskServiceTest.cancelWritesTerminalStateAndClosesOpenTargets`、`cancelIsIdempotentForATerminalTask`；`TaskDispatchServiceTest.lateSuccessCannotOverwriteAnAlreadyTerminalTask` |
 | A06 | 重启时存在执行中任务 | `TaskRecoveryRunnerTest.restartClosesTasksTargetsAndCallsWithoutResuming` |

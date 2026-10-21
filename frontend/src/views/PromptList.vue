@@ -170,6 +170,7 @@ const purposeOptions = [
   { value: 'AGENT', label: 'Agent 指导（P33 接入）' }
 ]
 const hasMore = computed(() => !!nextCursor.value)
+let listGeneration = 0
 
 const versionOpen = ref(false)
 const versionPromptId = ref('')
@@ -204,6 +205,9 @@ function formatWhen(value: string) {
 }
 
 async function load(cursor?: string) {
+  if (cursor && loading.value) return
+  const generation = ++listGeneration
+  if (!cursor) nextCursor.value = null
   loading.value = true
   loadError.value = ''
   try {
@@ -212,12 +216,14 @@ async function load(cursor?: string) {
       cursor,
       limit: 100
     })
+    if (generation !== listGeneration) return
     records.value = cursor ? [...records.value, ...page.items] : page.items
     nextCursor.value = page.nextCursor
   } catch (e: any) {
+    if (generation !== listGeneration) return
     loadError.value = e?.message || '提示词列表加载失败'
   } finally {
-    loading.value = false
+    if (generation === listGeneration) loading.value = false
   }
 }
 
@@ -277,6 +283,7 @@ function openEdit(record: PromptSummary) {
 }
 
 async function onSave() {
+  if (saving.value) return
   if (!form.value.name.trim() || !form.value.content.trim()) {
     message.warning('请填写名称与正文')
     return
@@ -292,11 +299,15 @@ async function onSave() {
         purpose: form.value.purpose,
         expectedRevision: editingRevision.value
       })
+      // 元数据已提交；后续正文保存失败时，也必须以此修订号继续重试。
+      editingRevision.value = updated.revision
       if (form.value.content !== originalContent.value) {
-        await promptsApi.addVersion(editingId.value, {
+        const versioned = await promptsApi.addVersion(editingId.value, {
           content: form.value.content,
-          expectedRevision: updated.revision
+          expectedRevision: editingRevision.value
         })
+        editingRevision.value = versioned.revision
+        originalContent.value = versioned.currentVersion?.content || form.value.content
       }
       message.success('保存成功')
     } else {

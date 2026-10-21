@@ -162,6 +162,7 @@ const promptOptions = computed(() =>
     .map((p) => ({ value: p.id, label: p.name }))
 )
 const hasMore = computed(() => !!nextCursor.value)
+let listGeneration = 0
 
 function specialistLabel(value: string) {
   return specialistOptions.find((s) => s.value === value)?.label || value
@@ -178,6 +179,9 @@ function promptName(id: string | null) {
 }
 
 async function load(cursor?: string) {
+  if (cursor && loading.value) return
+  const generation = ++listGeneration
+  if (!cursor) nextCursor.value = null
   loading.value = true
   loadError.value = ''
   try {
@@ -187,12 +191,14 @@ async function load(cursor?: string) {
       cursor,
       limit: 100
     })
+    if (generation !== listGeneration) return
     records.value = cursor ? [...records.value, ...page.items] : page.items
     nextCursor.value = page.nextCursor
   } catch (e: any) {
+    if (generation !== listGeneration) return
     loadError.value = e?.message || '策略列表加载失败'
   } finally {
-    loading.value = false
+    if (generation === listGeneration) loading.value = false
   }
 }
 

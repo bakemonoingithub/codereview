@@ -97,8 +97,12 @@ const saving = ref(false)
 const editing = ref<ProjectView | null>(null)
 const credentialConfigured = ref(false)
 const form = ref({ name: '', repoUrl: '', credential: '', currentBranch: 'main' })
+let listGeneration = 0
 
 async function load(cursor?: string) {
+  if (cursor && loading.value) return
+  const generation = ++listGeneration
+  if (!cursor) nextCursor.value = null
   loading.value = true
   loadError.value = ''
   try {
@@ -107,12 +111,14 @@ async function load(cursor?: string) {
       cursor,
       limit: 100
     })
+    if (generation !== listGeneration) return
     projects.value = cursor ? [...projects.value, ...page.items] : page.items
     nextCursor.value = page.nextCursor
   } catch (e: any) {
+    if (generation !== listGeneration) return
     loadError.value = e?.message || '项目列表加载失败'
   } finally {
-    loading.value = false
+    if (generation === listGeneration) loading.value = false
   }
 }
 

@@ -155,6 +155,7 @@ const form = ref({
 })
 const protocolOptions = [{ value: 'OPENAI_CHAT', label: 'OpenAI Chat 兼容' }]
 const hasMore = computed(() => !!nextCursor.value)
+let listGeneration = 0
 
 const validationLabels: Record<string, { label: string; color: string }> = {
   PASSED: { label: '验证通过', color: 'green' },
@@ -176,6 +177,9 @@ function formatNumber(value: number | null) {
 }
 
 async function load(cursor?: string) {
+  if (cursor && loading.value) return
+  const generation = ++listGeneration
+  if (!cursor) nextCursor.value = null
   loading.value = true
   loadError.value = ''
   try {
@@ -184,12 +188,14 @@ async function load(cursor?: string) {
       cursor,
       limit: 100
     })
+    if (generation !== listGeneration) return
     records.value = cursor ? [...records.value, ...page.items] : page.items
     nextCursor.value = page.nextCursor
   } catch (e: any) {
+    if (generation !== listGeneration) return
     loadError.value = e?.message || '模型列表加载失败'
   } finally {
-    loading.value = false
+    if (generation === listGeneration) loading.value = false
   }
 }
 

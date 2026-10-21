@@ -1,7 +1,6 @@
 package com.codereview.agent.execution;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentTaskTarget;
@@ -53,7 +52,6 @@ public class TaskDeadlineSweeper {
             boolean partial = succeeded != null && succeeded > 0;
             if (dispatcher.terminate(task.getId(), partial ? TaskStates.PARTIAL : TaskStates.FAILED,
                     TaskStates.STOP_TASK_DEADLINE)) {
-                cancelOpenTargets(task.getId());
                 closed++;
                 log.info("任务 {} 到达期限，收敛为 {}", task.getId(), partial ? "PARTIAL" : "FAILED");
             }
@@ -61,14 +59,4 @@ public class TaskDeadlineSweeper {
         return closed;
     }
 
-    private void cancelOpenTargets(String taskId) {
-        db.mapper(AgentTaskTargetMapper.class).update(null,
-                new LambdaUpdateWrapper<AgentTaskTarget>()
-                        .eq(AgentTaskTarget::getTaskId, taskId)
-                        .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)
-                        .set(AgentTaskTarget::getState, TaskStates.CANCELLED)
-                        .set(AgentTaskTarget::getErrorCode, TaskStates.STOP_TASK_DEADLINE)
-                        .set(AgentTaskTarget::getUpdatedAt, AgentTime.now())
-                        .setSql("revision = revision + 1"));
-    }
 }

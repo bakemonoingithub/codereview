@@ -2,6 +2,8 @@
 
 状态：P30.7 完成（2026-10-20，Asia/Taipei）。依据 [ROADMAP](../../../ROADMAP.md) P30.7、[共用设计](../p29/shared-design.md) 第 8 节与已批准的 [P29 管理界面原型](../p29/prototype/index.html)。工程自查完成；正式 PC 用户视觉验收仍未执行。
 
+2026-10-21 审查修复与正式回归用例见[复验记录](p30-5-8-review-fixes.md)。
+
 ## 1. 交付
 
 | 页面 | 接入内容 |

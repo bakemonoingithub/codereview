@@ -56,7 +56,7 @@ const options = {
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   ;(promptsApi.list as any).mockResolvedValue({ items: [summary], nextCursor: null, hasMore: false })
   ;(promptsApi.detail as any).mockResolvedValue(detail)
 })
@@ -110,6 +110,41 @@ describe('PromptList 编辑与版本', () => {
       content: '新的规则正文',
       expectedRevision: 2
     })
+  })
+
+  it('元数据已保存而正文失败后，保留草稿并用最新修订号重试', async () => {
+    let serverRevision = 1
+    ;(promptsApi.update as any).mockImplementation((_id: string, request: { expectedRevision: number }) => {
+      if (request.expectedRevision !== serverRevision) return Promise.reject(new Error('REVISION_CONFLICT'))
+      return Promise.resolve({ ...detail, revision: ++serverRevision })
+    })
+    ;(promptsApi.addVersion as any).mockRejectedValueOnce(new Error('正文保存暂时失败'))
+      .mockImplementationOnce((_id: string, request: { content: string; expectedRevision: number }) => {
+        expect(request.expectedRevision).toBe(serverRevision)
+        return Promise.resolve({ ...detail, revision: ++serverRevision,
+          currentVersion: { ...detail.currentVersion, content: request.content } })
+      })
+    const wrapper = mount(PromptList, options)
+    await flush()
+    await button(wrapper, '编辑').trigger('click')
+    await flush()
+    await contentInput(wrapper).setValue('重试时保留的正文')
+    const modal = wrapper.findComponent({ name: 'AModal' })
+    modal.vm.$emit('ok')
+    await flush()
+    expect(modal.attributes('open')).toBe('true')
+    expect((contentInput(wrapper).element as HTMLInputElement).value).toBe('重试时保留的正文')
+    expect(serverRevision).toBe(2)
+
+    modal.vm.$emit('ok')
+    await flush()
+    expect(promptsApi.update).toHaveBeenNthCalledWith(2, 'p1', expect.objectContaining({ expectedRevision: 2 }))
+    expect(promptsApi.addVersion).toHaveBeenLastCalledWith('p1', {
+      content: '重试时保留的正文', expectedRevision: 3
+    })
+    expect(serverRevision).toBe(4)
+    expect(modal.attributes('open')).toBe('false')
+    wrapper.unmount()
   })
 
   it('版本对比失败时清空结果并给出错误，不残留旧内容', async () => {
