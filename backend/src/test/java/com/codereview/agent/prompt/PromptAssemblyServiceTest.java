@@ -95,12 +95,12 @@ class PromptAssemblyServiceTest {
     }
 
     @Test
-    void validationDoesNotNeedMaterialsAndUsesJsonMode() {
+    void validationDoesNotNeedMaterialsAndUsesPlainText() {
         AssembledPrompt prompt = service.assemble(new PromptInput(PromptPurpose.VALIDATION, "1",
                 null, null, null, "VALIDATION", null, null, null, List.of(), List.of(), List.of(),
                 List.of(), null));
 
-        assertTrue(prompt.jsonMode());
+        assertFalse(prompt.jsonMode());
         assertTrue(prompt.inputEstimate() > prompt.inputBytes());
         assertEquals(PromptAssemblyService.ESTIMATE_METHOD, prompt.estimateMethod());
         assertEquals("VALIDATION", prompt.purpose().wireName());

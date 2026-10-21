@@ -142,15 +142,12 @@ public class ModelInvocationService {
         try {
             InvocationResult result = invoke(new InvocationRequest(model, prompt,
                     InvocationScope.standalone(AgentTime.now().plusMinutes(1))));
-            JsonNode parsed = mapper.readTree(result.content());
-            if (parsed != null && parsed.isObject()) {
-                return new ValidationOutcome(true, "连通成功，返回 JSON 对象", result.callId());
+            if (result.content() != null && !result.content().isBlank()) {
+                return new ValidationOutcome(true, "连通成功，模型返回了正文", result.callId());
             }
-            return new ValidationOutcome(false, "返回内容不是 JSON 对象", result.callId());
+            return new ValidationOutcome(false, "模型返回正文为空", result.callId());
         } catch (ApiException e) {
             return new ValidationOutcome(false, e.getMessage(), null);
-        } catch (JsonProcessingException e) {
-            return new ValidationOutcome(false, "返回内容不是合法 JSON", null);
         }
     }
 
@@ -193,18 +190,18 @@ public class ModelInvocationService {
             throw failure;
         }
         JsonNode first = choices.get(0);
-        String content = textOf(first.path("message").path("content"));
-        if (content == null || content.isBlank()) {
-            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,
-                    "模型响应缺少正文", Map.of("callId", call.getId()));
-            finishFailure(call, failure, response.body());
-            throw failure;
-        }
         String finishReason = first.path("finish_reason").asText(null);
         if ("length".equals(finishReason)) {
             ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,
                     "模型输出因长度限制被截断", Map.of("callId", call.getId(),
                             "finishReason", finishReason));
+            finishFailure(call, failure, response.body());
+            throw failure;
+        }
+        String content = textOf(first.path("message").path("content"));
+        if (content == null || content.isBlank()) {
+            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,
+                    "模型响应缺少正文", Map.of("callId", call.getId()));
             finishFailure(call, failure, response.body());
             throw failure;
         }
@@ -234,6 +231,11 @@ public class ModelInvocationService {
         body.put("temperature", 0);
         body.put("max_tokens", outputReserve);
         body.put("stream", false);
+        if (prompt.jsonMode() && isDeepSeekModel(model)) {
+            // DeepSeek defaults to thinking mode; its reasoning tokens share max_tokens with
+            // the structured final answer and can consume the entire output budget.
+            body.put("reasoning_effort", "none");
+        }
         if (prompt.jsonMode()) {
             body.putObject("response_format").put("type", "json_object");
         }
@@ -409,6 +411,11 @@ public class ModelInvocationService {
             base = base.substring(0, base.length() - 1);
         }
         return base.endsWith("/chat/completions") ? base : base + "/chat/completions";
+    }
+
+    private static boolean isDeepSeekModel(ModelSnapshot model) {
+        return model.modelName() != null
+                && model.modelName().trim().toLowerCase(java.util.Locale.ROOT).startsWith("deepseek");
     }
 
     private static String textOf(JsonNode content) {

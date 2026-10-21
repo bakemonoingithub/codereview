@@ -250,12 +250,23 @@ class ModelInvocationServiceTest {
     }
 
     @Test
+    void validationAcceptsPlainTextReplyWithoutJson() {
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("pong"));
+
+        ModelInvocationService.ValidationOutcome outcome = service.validate(model(null, null));
+
+        assertTrue(outcome.passed(), outcome.detail());
+        assertEquals("连通成功，模型返回了正文", outcome.detail());
+    }
+
+    @Test
     void validationFailureIsReturnedAsAResultNotAnException() {
-        when(transport.post(any(), any(), any(), any())).thenReturn(ok("not-json"));
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("   "));
 
         ModelInvocationService.ValidationOutcome outcome = service.validate(model(null, null));
 
         assertFalse(outcome.passed());
+        assertEquals("模型响应缺少正文", outcome.detail());
     }
 
     @Test

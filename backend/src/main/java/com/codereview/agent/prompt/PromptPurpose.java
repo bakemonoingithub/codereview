@@ -36,9 +36,8 @@ public enum PromptPurpose {
             在只读工具范围内调查问题，输出少量固定信息与 Markdown 结论。
             不得声称执行了未实际调用的工具，也不得把计划写成已完成。"""),
 
-    VALIDATION("VALIDATION", true, """
-            这是一次连通性验证。只需返回一个包含 choices 的非空 JSON 对象，
-            不需要分析任何业务内容。""");
+    VALIDATION("VALIDATION", false, """
+            这是一次连通性验证。只需用普通文本回复 pong，不需要 JSON，也不需要分析任何业务内容。""");
 
     private final String wireName;
     private final boolean jsonMode;
