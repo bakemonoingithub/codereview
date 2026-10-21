@@ -113,4 +113,20 @@ public final class TaskDtos {
                                  LocalDateTime createdAt, LocalDateTime startedAt,
                                  LocalDateTime finishedAt) {
     }
+
+    /**
+     * 单个反馈对象的计数。准确率只统计明确判定项；分母为 0 时 accuracyPercent 为 null，
+     * 前端必须显示"暂无明确判定"而不是 0% 或 100%。
+     */
+    public record FeedbackCounts(int total, int accurate, int inaccurate, int unknown, int unassessed,
+                                 Integer accuracyPercent) {
+    }
+
+    /**
+     * 任务级统计。问题级与结果级分开聚合，不合成一个跨对象的准确率；
+     * 只统计本任务已完整发布的结果。
+     */
+    public record Statistics(String taskId, String specialistType,
+                             FeedbackCounts issues, FeedbackCounts results) {
+    }
 }

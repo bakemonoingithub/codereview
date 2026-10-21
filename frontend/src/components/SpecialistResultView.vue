@@ -58,6 +58,9 @@
             {{ modelLocationLabel(evidence) }}
           </a-button>
         </div>
+        <FeedbackEditor v-if="result.issues[index] && result.completeness === 'COMPLETE'"
+          :task-id="taskId" subject-kind="ISSUE" :subject-id="result.issues[index].id" subject-text="此问题"
+          @saved="emit('feedback-saved')" />
       </div>
     </template>
 
@@ -129,15 +132,17 @@
         <li v-for="(limitation, index) in limitations" :key="index">{{ limitation }}</li>
       </ul>
     </div>
-    <div class="feedback-placeholder">
-      <span class="muted small">反馈控件预留：问题级／结果级评价与评论在 P32 接入。</span>
-    </div>
+    <FeedbackEditor v-if="result.kind !== 'ISSUE' && result.completeness === 'COMPLETE'"
+      :task-id="taskId" subject-kind="RESULT" :subject-id="result.id"
+      :subject-text="result.kind === 'PATTERN' ? '整个模式审查结果' : '整个耦合度审查结果'"
+      @saved="emit('feedback-saved')" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ResultView } from '@/api/v2'
+import FeedbackEditor from '@/components/FeedbackEditor.vue'
 
 interface CodeRef {
   materialId?: string
@@ -148,8 +153,8 @@ interface CodeRef {
   endLine: number
 }
 
-const props = defineProps<{ result: ResultView }>()
-const emit = defineEmits<{ (event: 'open-code', value: CodeRef): void }>()
+const props = defineProps<{ result: ResultView; taskId: string }>()
+const emit = defineEmits<{ (event: 'open-code', value: CodeRef): void; (event: 'feedback-saved'): void }>()
 
 const kindText = computed(() => ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度' } as Record<string, string>)[props.result.kind] || props.result.kind)
 
@@ -280,10 +285,5 @@ function categoryText(category: string): string {
   margin: 8px 0 0;
   padding-left: 20px;
   font-size: 13px;
-}
-.feedback-placeholder {
-  margin-top: 18px;
-  padding-top: 12px;
-  border-top: 1px dashed #d3dce8;
 }
 </style>

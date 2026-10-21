@@ -5,9 +5,15 @@ import { reactive } from 'vue'
 import TaskDetail from '@/views/TaskDetail.vue'
 import { namedAntStubs } from '@/testUtils/antStubs'
 const context = vi.hoisted(() => ({ route: {} as any, push: vi.fn() }))
-vi.mock('vue-router', () => ({ useRoute: () => context.route, useRouter: () => ({ push: context.push }) }))
+// 组件用离开守卫保护未保存反馈；测试里只关心它们能被注册，不执行真实导航。
+vi.mock('vue-router', () => ({
+  useRoute: () => context.route,
+  useRouter: () => ({ push: context.push }),
+  onBeforeRouteLeave: vi.fn(),
+  onBeforeRouteUpdate: vi.fn()
+}))
 vi.mock('@/api/v2', () => ({ projectsApi: { detail: vi.fn() }, tasksApi: {
-  detail: vi.fn(), result: vi.fn(), materials: vi.fn(), calls: vi.fn(), cancel: vi.fn()
+  detail: vi.fn(), statistics: vi.fn(), result: vi.fn(), materials: vi.fn(), calls: vi.fn(), cancel: vi.fn()
 } }))
 import { projectsApi, tasksApi } from '@/api/v2'
 function deferred<T>() { let resolve!: (v: T) => void
@@ -17,6 +23,12 @@ const task = (id = 't1', status = 'SUCCEEDED') => ({ id, projectId: 'p1', state:
   sourceKind: 'FILES', headSha: 'fixed', revision: 1, targets: [{ id: 'a', path: 'A.java', state: status }, { id: 'b', path: 'B.java', state: status }] })
 const result = (id = 'a') => ({ id: 'r-' + id, targetId: id, body: { summary: id, issues: [] }, issues: [], provenance: {} })
 const page = (id: string, more = false) => ({ items: [{ id }], nextCursor: more ? 'cursor-' + id : null, hasMore: more })
+const statistics = (type = 'ISSUE', overrides: Record<string, unknown> = {}) => ({
+  taskId: 't1', specialistType: type,
+  issues: { total: 2, accurate: 1, inaccurate: 1, unknown: 0, unassessed: 0, accuracyPercent: 50 },
+  results: { total: 0, accurate: 0, inaccurate: 0, unknown: 0, unassessed: 0, accuracyPercent: null },
+  ...overrides
+})
 const state = (w: any) => w.vm.$.setupState as any
 async function start() { const w = mount(TaskDetail, { global: { stubs: { ...namedAntStubs,
   SpecialistResultView: { props: ['result'], template: '<div>{{ result.id }}</div>' },
@@ -28,6 +40,7 @@ beforeEach(() => {
   vi.mocked(tasksApi.detail).mockImplementation(async id => task(id) as any)
   vi.mocked(projectsApi.detail).mockResolvedValue({ name: '项目' } as any)
   vi.mocked(tasksApi.result).mockImplementation(async (_id, target) => result(target) as any)
+  vi.mocked(tasksApi.statistics).mockResolvedValue(statistics() as any)
   vi.mocked(tasksApi.materials).mockResolvedValue([])
   vi.mocked(tasksApi.calls).mockImplementation(async (_id, params) => page('c-' + params?.targetId) as any)
 })
@@ -79,5 +92,23 @@ describe('任务详情的轮询与目标隔离', () => {
     const w = await start(); const s = state(w); await s.selectTarget('b'); s.activeTab = 'materials'; w.unmount()
     const restored = await start(); expect(state(restored).selectedTargetId).toBe('b')
     expect(state(restored).activeTab).toBe('materials'); restored.unmount()
+  })
+  it('任务级准确率只展示问题级计数和明确判定比例', async () => {
+    const w = await start()
+    expect(w.text()).toContain('本任务问题判定准确率')
+    expect(w.text()).toContain('50%')
+    expect(w.text()).toContain('准确 1 · 不准确 1 · 无法判断 0 · 未反馈 0')
+    expect(w.text()).toContain('仅统计本任务已完成结果中的问题')
+    w.unmount()
+  })
+  it('没有明确判定时显示暂无判定，不显示 0% 或 100%', async () => {
+    vi.mocked(tasksApi.statistics).mockResolvedValue(statistics('ISSUE', {
+      issues: { total: 2, accurate: 0, inaccurate: 0, unknown: 1, unassessed: 1, accuracyPercent: null }
+    }) as any)
+    const w = await start()
+    expect(w.text()).toContain('— · 暂无明确判定')
+    expect(w.text()).not.toContain('0%')
+    expect(w.text()).not.toContain('100%')
+    w.unmount()
   })
 })

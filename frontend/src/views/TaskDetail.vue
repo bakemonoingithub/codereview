@@ -61,6 +61,13 @@
           class="mb16"
         />
 
+        <TaskAccuracySummary
+          v-if="stats && stats.issues.total + stats.results.total > 0"
+          :specialist-type="task.specialistType"
+          :stats="stats"
+        />
+        <p v-else-if="statsError" class="muted small mb16">{{ statsError }}</p>
+
         <div class="detail-grid">
           <aside class="card targets">
             <div class="section-head">
@@ -104,8 +111,10 @@
                 <a-alert v-if="resultError" type="warning" show-icon :message="resultError" />
                 <SpecialistResultView
                   v-if="result"
+                  :task-id="task.id"
                   :result="result"
                   @open-code="openMaterial"
+                  @feedback-saved="refreshStatistics"
                 />
                 <div v-else-if="!resultError" class="empty">该文件还没有已发布结果。</div>
               </template>
@@ -207,18 +216,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import SpecialistResultView from '@/components/SpecialistResultView.vue'
+import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
+import { discardFeedbackDrafts, hasDirtyFeedbackDrafts } from '@/components/feedbackDrafts'
 import {
   projectsApi,
   tasksApi,
   type CallSummary,
   type MaterialView,
   type ResultView,
+  type TaskStatistics,
   type TaskView
 } from '@/api/v2'
 
@@ -233,6 +245,8 @@ const selectedTargetId = ref('')
 const activeTab = ref<'result' | 'materials' | 'calls'>('result')
 const result = ref<ResultView | null>(null)
 const resultError = ref('')
+const stats = ref<TaskStatistics | null>(null)
+const statsError = ref('')
 const materials = ref<MaterialView[]>([])
 const materialError = ref('')
 const calls = ref<CallSummary[]>([])
@@ -248,9 +262,35 @@ const callId = ref('')
 let loadEpoch = 0
 let taskEpoch = 0
 let callsEpoch = 0
+let statsEpoch = 0
 let callsPages = 1
 let disposed = false
 let pollTimer: ReturnType<typeof setTimeout> | null = null
+
+function protectFeedbackDrafts(event: BeforeUnloadEvent) {
+  if (!task.value || !hasDirtyFeedbackDrafts(task.value.id)) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+onMounted(() => window.addEventListener('beforeunload', protectFeedbackDrafts))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', protectFeedbackDrafts))
+function confirmDiscardFeedback(taskId: string | undefined): boolean | Promise<boolean> {
+  if (!taskId || !hasDirtyFeedbackDrafts(taskId)) return true
+  return new Promise<boolean>((resolve) => {
+    Modal.confirm({
+      title: '反馈尚未保存',
+      content: '离开此页面将丢弃未保存的评价或评论。',
+      okText: '离开并丢弃',
+      cancelText: '继续编辑',
+      onOk: () => { discardFeedbackDrafts(taskId); resolve(true) },
+      onCancel: () => resolve(false)
+    })
+  })
+}
+onBeforeRouteLeave(() => confirmDiscardFeedback(task.value?.id))
+onBeforeRouteUpdate((to, from) => to.params.id === from.params.id
+  ? true
+  : confirmDiscardFeedback(task.value?.id))
 
 const tabs = [
   { key: 'result' as const, label: '审查结果' },
@@ -279,6 +319,7 @@ watch(() => route.params.id, () => {
   taskEpoch++
   loadEpoch++
   callsEpoch++
+  statsEpoch++
   task.value = null
   projectName.value = ''
   selectedTargetId.value = ''
@@ -286,6 +327,8 @@ watch(() => route.params.id, () => {
   result.value = null
   materials.value = []
   calls.value = []
+  stats.value = null
+  statsError.value = ''
   callsCursor.value = null
   callsHasMore.value = false
   callsPages = 1
@@ -307,6 +350,7 @@ onBeforeUnmount(() => {
   taskEpoch++
   loadEpoch++
   callsEpoch++
+  statsEpoch++
   stopPoll()
 })
 
@@ -330,6 +374,7 @@ async function loadTask() {
       callsCursor.value = null
       callsHasMore.value = false
     }
+    void loadStatistics(loaded.id)
     await loadTarget()
     if (epoch !== taskEpoch || disposed) return
     if (!projectName.value || projectName.value === loaded.projectId) {
@@ -404,8 +449,28 @@ async function readCallPages(taskId: string, targetId: string) {
   return { items, nextCursor: page?.nextCursor || null, hasMore: page?.hasMore || false }
 }
 
-async function loadTarget() {
-  const epoch = ++loadEpoch
+/**
+ * 任务级统计与目标选择无关，单独读取；失败时保留上一次结果，不把未知显示成 0%。
+ */
+async function loadStatistics(taskId: string) {
+  const epoch = ++statsEpoch
+  try {
+    const loaded = await tasksApi.statistics(taskId)
+    if (epoch !== statsEpoch || disposed) return
+    if (task.value?.id !== taskId) return
+    stats.value = loaded
+    statsError.value = ''
+  } catch (failure) {
+    if (epoch !== statsEpoch || disposed || task.value?.id !== taskId) return
+    statsError.value = `准确率统计读取失败：${(failure as Error).message || '请稍后重试'}`
+  }
+}
+
+function refreshStatistics() {
+  if (task.value) void loadStatistics(task.value.id)
+}
+
+async function loadTarget() {  const epoch = ++loadEpoch
   callsEpoch++
   callsLoadingMore.value = false
   if (!task.value || !selectedTargetId.value) {

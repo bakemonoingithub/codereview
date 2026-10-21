@@ -33,6 +33,25 @@ export interface Page<T> {
   hasMore: boolean
 }
 
+export interface FeedbackView {
+  subjectKind: 'ISSUE' | 'RESULT'
+  subjectId: string
+  assessment: 'ACCURATE' | 'INACCURATE' | 'UNKNOWN' | null
+  comment: string | null
+  revision: number
+  updatedAt: string | null
+}
+
+export const feedbackApi = {
+  get: (subjectKind: FeedbackView['subjectKind'], subjectId: string) =>
+    v2.get<FeedbackView>(`/feedback/${subjectKind}/${subjectId}`).then((r) => r.data),
+  save: (subjectKind: FeedbackView['subjectKind'], subjectId: string, body: {
+    assessment: FeedbackView['assessment']
+    comment: string
+    expectedRevision: number
+  }) => v2.put<FeedbackView>(`/feedback/${subjectKind}/${subjectId}`, body).then((r) => r.data)
+}
+
 export interface ProjectView {
   id: string
   name: string
@@ -299,8 +318,24 @@ export interface TaskSummary {
   queuedCount: number
 }
 
-export interface TaskCopyInput {
-  projectId: string
+export interface FeedbackCounts {
+  total: number
+  accurate: number
+  inaccurate: number
+  unknown: number
+  unassessed: number
+  /** 分母为 0 时为 null；界面必须显示“暂无明确判定”，不能显示 0% 或 100%。 */
+  accuracyPercent: number | null
+}
+
+export interface TaskStatistics {
+  taskId: string
+  specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
+  issues: FeedbackCounts
+  results: FeedbackCounts
+}
+
+export interface TaskCopyInput {  projectId: string
   route: string
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
   sourceKind: 'FILES' | 'DIFF'
@@ -455,6 +490,8 @@ export const tasksApi = {
     limit?: number
   } = {}) => v2.get<Page<TaskSummary>>('/review-tasks', { params }).then((r) => r.data),
   detail: (id: string) => v2.get<TaskView>(`/review-tasks/${id}`).then((r) => r.data),
+  statistics: (id: string) =>
+    v2.get<TaskStatistics>(`/review-tasks/${id}/statistics`).then((r) => r.data),
   copyInput: (id: string) => v2.get<TaskCopyInput>(`/review-tasks/${id}/copy-input`).then((r) => r.data),
   cancel: (id: string, expectedRevision: number) =>
     v2.post<TaskView>(`/review-tasks/${id}/cancel`, { expectedRevision }).then((r) => r.data),

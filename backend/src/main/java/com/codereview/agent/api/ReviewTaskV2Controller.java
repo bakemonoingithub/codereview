@@ -2,6 +2,7 @@ package com.codereview.agent.api;
 
 import com.codereview.agent.dto.TaskDtos;
 import com.codereview.agent.service.TaskService;
+import com.codereview.agent.service.TaskStatisticsService;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
@@ -28,9 +29,11 @@ import java.net.URI;
 public class ReviewTaskV2Controller {
 
     private final TaskService service;
+    private final TaskStatisticsService statisticsService;
 
-    public ReviewTaskV2Controller(TaskService service) {
+    public ReviewTaskV2Controller(TaskService service, TaskStatisticsService statisticsService) {
         this.service = service;
+        this.statisticsService = statisticsService;
     }
 
     @PostMapping
@@ -57,6 +60,12 @@ public class ReviewTaskV2Controller {
     @GetMapping("/{id}")
     public TaskDtos.View detail(@PathVariable String id) {
         return service.detail(id);
+    }
+
+    /** 任务级人工判定统计；问题级与结果级分别返回，不由前端把两者混成一个比率。 */
+    @GetMapping("/{id}/statistics")
+    public TaskDtos.Statistics statistics(@PathVariable String id) {
+        return statisticsService.statistics(id);
     }
 
     @PostMapping("/{id}/cancel")
