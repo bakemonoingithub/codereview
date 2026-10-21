@@ -4,9 +4,16 @@
 
 ## 当前状态
 
-当前: P31
+当前: P32
 
 P29 已完成并经负责人批准（D-88）。P30 于 2026-10-20 完成，P30.1–P30.8 全部交付。2026-10-21 负责人依次要求完成 P31.1–P31.3、P31.4–P31.6、P31.7–P31.9。P31.1–P31.8 已完成工程实现与本地测试；P31.9 工程交付完成但目标仓库校准与真实资源未执行，P31 保持 active。
+
+2026-10-21 负责人明确启动 P32，并要求先处理 P32.1–P32.3、测试无误后提交。P31.9 的目标仓库、真实宿主／模型和 PC 视觉验收仍未完成，P31.9 保持 active；不将未完成依赖记为通过。
+
+P32.1–P32.3 已完成本地工程实现与验证（2026-10-21），P32.4 未启动：
+- P32.1 反馈：问题级／结果级读写、稳定主体校验、revision 条件更新、结果页编辑器、跨主体草稿、离页提示与冲突手工合并。见 [P32.1](work/agent-redesign/p32/p32-1-feedback.md)。
+- P32.2 统计：`GET /api/v2/review-tasks/{id}/statistics` 按 taskId 分开聚合问题级与结果级；未反馈、无法判断、空分母分别展示，空分母不显示 0%／100%。任务详情顶部展示准确率摘要，反馈保存后刷新。见 [P32.2](work/agent-redesign/p32/p32-2-statistics.md)。
+- P32.3 报告输入：完整结果候选查询、输入冻结与冻结来源读取；快照保存正文、问题、版本、材料引用与当时反馈，部分完成任务中的完整文件可选。见 [P32.3](work/agent-redesign/p32/p32-3-report-inputs.md)。
 
 P31.1–P31.3 交付：
 - 材料准备与结构解析：固定版本整文件/差异两侧、JavaParser 声明事实、完整性/原始行号、`material` 来源记录；读取失败或必需 AST 缺失时该文件失败，不返回空成功。见 [P31.1](work/agent-redesign/p31/p31-1-materials.md)。
@@ -43,6 +50,7 @@ P30.5–P30.8 交付：
 - P31.7–P31.8 完成后 `mvn clean test` 为 597 项、0 失败、0 异常、9 跳过；前端 46 个测试文件、388 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。跳过项不计为执行通过，真实网关和宿主探针显式禁用。
 - 2026-10-21 按负责人授权完成本机 `ai_code_review_agent` 建库、独立账号、V1–V3 迁移、前后端启动及基础只读列表验证，见[本机启停记录](work/agent-redesign/dev-launchers.md)；随后完成四类配置迁移与基础连通复验，见[配置迁移记录](work/agent-redesign/config-migration-20261021.md)。专项任务写入与完整访问层验收、Git 宿主、目标仓库、专项模型完整流程、PC 正式页面视觉仍未执行；P31.9 保持 active。
 - P31.7–P31.9 审查后复验为后端 603 项（9 跳过），前端 417 项，类型检查和构建通过；以[本轮记录](work/agent-redesign/p31/p31-7-9-review-fixes.md)为准。
+- 2026-10-21 P32.1–P32.3 复验为后端 626 项、0 失败、0 异常、9 跳过；前端 52 个测试文件、426 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。新增回归含反馈 10+4 项、统计 5+5 项、报告输入 7 项。真实 MySQL、真实模型／宿主、并发双页面与 PC 正式页面未执行，按 P32.6 记录。
 - 专项执行器已接入；`EXECUTOR_UNAVAILABLE` 不再是当前运行的预期行为。本轮仅做模型配置连通检查，专项真实模型调用、并发竞争和取消边界仍按 P31.9／P32.6 验证。
 
 ## 接续依据
@@ -54,13 +62,14 @@ P30.5–P30.8 交付：
 - [P30.1 复用差异](work/agent-redesign/p30/p30-1-reuse-diff.md)、[P30.2 新库](work/agent-redesign/p30/p30-2-schema.md)、[P30.3 配置接口](work/agent-redesign/p30/p30-3-config-api.md)、[P30.4 固定读取](work/agent-redesign/p30/p30-4-fixed-version-read.md)。
 - [P30 审查修复](work/agent-redesign/p30/p30-review-fixes.md)、[P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)、[P30.6](work/agent-redesign/p30/p30-6-task-control.md)、[P30.7](work/agent-redesign/p30/p30-7-admin-pages.md)、[P30.8](work/agent-redesign/p30/p30-8-validation.md)。
 - [P31 总览](work/agent-redesign/p31/README.md)、[P31.1 材料](work/agent-redesign/p31/p31-1-materials.md)、[P31.2 声明](work/agent-redesign/p31/p31-2-declarations.md)、[P31.3 协议](work/agent-redesign/p31/p31-3-protocol.md)、[P31.4 容量](work/agent-redesign/p31/p31-4-capacity.md)、[P31.5 执行](work/agent-redesign/p31/p31-5-execution.md)、[P31.6 发起](work/agent-redesign/p31/p31-6-launch.md)、[P31.7 浏览](work/agent-redesign/p31/p31-7-browser.md)、[P31.8 详情](work/agent-redesign/p31/p31-8-detail.md)、[P31.9 验证](work/agent-redesign/p31/p31-9-validation.md)。
+- [P32 总览](work/agent-redesign/p32/README.md)、[P32.1 反馈](work/agent-redesign/p32/p32-1-feedback.md)、[P32.2 统计](work/agent-redesign/p32/p32-2-statistics.md)、[P32.3 报告输入](work/agent-redesign/p32/p32-3-report-inputs.md)。
 
 ## 下一步
 
 1. 等负责人提供目标仓库与只读令牌后补 P31.9 采样：小／普通／大文件、提交差异、材料量与 token 误差、并发与耗时，再校准 P29 候选参数。
 2. P31.6–P31.8 的 PC 页面截图、真实仓库读取与 P31.9 真实宿主／数据库／模型验收仍待执行；未执行前不记为视觉或真实联调通过。
 3. 本机新库迁移与只读列表已验证；P30.8 清单中的其余数据库访问、宿主、模型、目标仓库与 PC 视觉验收按 P31.9／P32.6 安排；未执行前保持未完成。
-4. 不自动启动 P32、P33；数据库与服务操作限于负责人已授权的本机新库和开发服务，不扩大到部署入口。
+4. P32.1–P32.3 已完成本地工程验证；下一步 P32.4 报告统一组装、生成及失败处理，启动前仍需负责人明确指定。P31.9 真实目标仓库与 PC 验收仍待补齐，P33 未启动；数据库与服务操作限于负责人已授权的本机新库和开发服务，不扩大到部署入口。
 
 ## 工作区保留
 
@@ -70,6 +79,8 @@ P30.5–P30.8 交付：
 - P31.4–P31.6 审查修复、正式回归及复验记录为 b9f56bb，未 push；详见[修复记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。
 - P31.7–P31.9 代码、前端与验证文档已本地提交（6e50f33、73bb55c）；P31.9 因目标仓库校准未完成仍为 active，未 push。
 - 本轮 P31.7–P31.9 修复、正式回归及复验记录在当前分支本地提交，未 push；原型及开发启停脚本的会话前/会话中改动保留，不纳入修复。
+- 2026-10-21 会话前保留的模型验证修复（`fix(agent): accept plain-text model validation...`）与 GitHub 斜杠分支修复（`fix(git): fall back to commit query...`）已分别本地提交。
+- P32.1–P32.3 代码、前端、测试与工作记录在当前分支本地提交（`feat(agent): add feedback and task accuracy statistics`、`feat(agent): freeze report inputs from complete results`），未 push；提交前全量测试、类型检查和构建通过。
 - `../code` 工作树保留其原有 2 处未提交改动，不纳入本工作树。
 
 ## 已知坑
@@ -79,4 +90,4 @@ P30.5–P30.8 交付：
 - 当前 pnpm 启动器引用的缓存脚本缺失；本轮通过 Node 直接调用现有依赖中的 Vitest、vue-tsc 和 Vite，没有重新安装依赖。
 - Vitest／Vite 会改写 `frontend/components.d.ts`，结束后恢复基线；本轮已恢复。
 - 本机 MySQL 新库已按负责人授权建立，V1–V3 迁移与健康检查通过；实际配置位于忽略的 `backend/src/main/resources/application.yml`，不得纳入提交。新库采用独立账号，不与旧库共用权限。
-- Surefire 报告目录会累积历史失败；统计全量结果前先 `mvn clean test`，否则旧 XML 会污染计数。
+- Surefire 报告目录会累积历史失败；统计全量结果前先 `mvn clean test`，否则旧 XML 会污染计数。不要把 `mvn` 输出重定向到 `target/` 内，`clean` 会尝试删除正在写入的日志而直接失败；日志放临时目录。
