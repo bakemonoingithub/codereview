@@ -77,6 +77,8 @@ public class ReportExecutionWorker {
         if (!markRunning(report)) {
             return;
         }
+        LocalDateTime deadline = AgentTime.now()
+                .plusMinutes(Math.max(1, properties.getGenerationTimeoutMinutes()));
         try {
             List<AgentReportSource> sources = db.mapper(AgentReportSourceMapper.class).selectList(
                     new LambdaQueryWrapper<AgentReportSource>()
@@ -88,8 +90,6 @@ public class ReportExecutionWorker {
                     null, null, null, null, null, null, null, List.of(), List.of(),
                     facts.missingNotes(), facts.facts(), null, report.getTitle(),
                     instruction(report)));
-            LocalDateTime deadline = AgentTime.now()
-                    .plusMinutes(Math.max(1, properties.getGenerationTimeoutMinutes()));
             InvocationResult result = invocation.invoke(new InvocationRequest(model, prompt,
                     InvocationScope.standalone(deadline), false, reportId,
                     properties.getOutputTokens()));
@@ -100,6 +100,9 @@ public class ReportExecutionWorker {
                         Map.of("length", body.length()));
             }
             ReportCitationValidator.validate(body, facts.sourceCount());
+            if (!AgentTime.now().isBefore(deadline)) {
+                throw new ApiException(ErrorCode.UPSTREAM_TIMEOUT, "报告生成超过总期限，迟到正文未发布");
+            }
             finishSuccess(reportId, body);
         } catch (ApiException e) {
             log.warn("报告 {} 生成失败：{} {}", reportId, e.errorCode().code(), e.getMessage());

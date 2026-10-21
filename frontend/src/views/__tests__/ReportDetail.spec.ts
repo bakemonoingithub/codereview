@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { reactive, nextTick } from 'vue'
 import ReportDetail from '@/views/ReportDetail.vue'
 import { namedAntStubs, silentStub } from '@/testUtils/antStubs'
 
@@ -57,13 +58,53 @@ function state(wrapper: any) {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  context.route = { params: { id: 'report-1' }, query: {} }
+  context.route = reactive({ params: { id: 'report-1' }, query: {} })
   vi.mocked(reportsApi.detail).mockResolvedValue(report as any)
   vi.mocked(reportsApi.download).mockResolvedValue(new Blob(['# 结论']))
   vi.mocked(modelsApi.list).mockResolvedValue({ items: [], nextCursor: null, hasMore: false })
 })
 
 describe('报告详情阅读', () => {
+  it('切换报告立即清空旧正文、来源与生成表单，失败不显示旧报告', async () => {
+    const wrapper = await start()
+    const s = state(wrapper)
+    s.openSource(1)
+    s.openCall('old-call')
+    s.generateOpen = true
+    s.generateForm.instruction = '旧要求'
+    vi.mocked(reportsApi.detail).mockRejectedValueOnce(new Error('新报告读取失败'))
+    context.route.params.id = 'report-2'
+    await nextTick()
+    expect(s.report).toBeNull()
+    expect(s.sourceOpen).toBe(false)
+    expect(s.callOpen).toBe(false)
+    expect(s.generateOpen).toBe(false)
+    expect(s.generateForm.instruction).toBe('')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('订单报告')
+    expect(s.error).toBe('新报告读取失败')
+    wrapper.unmount()
+  })
+
+  it('旧报告生成的迟到错误不污染新报告，重复点击只发起一次', async () => {
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, state: 'INPUT_FROZEN' } as any)
+    const wrapper = await start()
+    const s = state(wrapper)
+    s.generateForm.modelConfigId = 'model-1'
+    let reject!: (reason: Error) => void
+    vi.mocked(reportsApi.start).mockImplementationOnce(() => new Promise((_done, fail) => { reject = fail }))
+    const pending = s.startGeneration()
+    await s.startGeneration()
+    expect(reportsApi.start).toHaveBeenCalledTimes(1)
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, id: 'report-2' } as any)
+    context.route.params.id = 'report-2'
+    await flushPromises()
+    reject(new Error('旧报告错误'))
+    await pending
+    expect(s.generateError).toBe('')
+    expect(s.report.id).toBe('report-2')
+    wrapper.unmount()
+  })
   it('展示冻结来源与正文，引用可打开对应来源', async () => {
     const wrapper = await start()
     const s = state(wrapper)

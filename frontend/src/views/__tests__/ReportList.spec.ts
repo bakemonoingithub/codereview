@@ -30,6 +30,24 @@ beforeEach(() => {
 })
 
 describe('报告列表', () => {
+  it('刷新使旧分页失效，后续仍可加载更多', async () => {
+    const wrapper = mount(ReportList, { global: { stubs } })
+    await flushPromises()
+    const s = (wrapper.vm as any).$.setupState
+    s.nextCursor = 'old'
+    let resolve!: (value: any) => void
+    vi.mocked(reportsApi.list).mockImplementationOnce(() => new Promise((done) => { resolve = done }))
+    const pending = s.loadMore()
+    vi.mocked(reportsApi.list).mockResolvedValueOnce({ items: [summary], nextCursor: 'new', hasMore: true })
+    await s.load()
+    resolve({ items: [{ ...summary, id: 'stale' }], nextCursor: null, hasMore: false })
+    await pending
+    expect(s.loadingMore).toBe(false)
+    expect(s.reports).toHaveLength(1)
+    await s.loadMore()
+    expect(reportsApi.list).toHaveBeenLastCalledWith({ cursor: 'new', limit: 20 })
+    wrapper.unmount()
+  })
   it('展示来源、类型与状态，并可进入报告阅读', async () => {
     const wrapper = mount(ReportList, { global: { stubs } })
     await flushPromises()

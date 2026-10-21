@@ -23,6 +23,8 @@ import com.codereview.agent.prompt.PromptInput;
 import com.codereview.agent.prompt.PromptMessage;
 import com.codereview.agent.prompt.PromptPurpose;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.codereview.agent.support.AgentTime;
+import java.time.LocalDateTime;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +63,28 @@ class ReportExecutionWorkerTest {
 
     private final ObjectMapper json = new ObjectMapper();
     private ReportExecutionWorker worker;
+
+    @Test
+    void lateResponseCannotPublishSuccessfulReport() {
+        stubQueuedReport();
+        when(sourceMapper.selectList(any())).thenReturn(List.of(new AgentReportSource()));
+        when(factsBuilder.build(any())).thenReturn(facts());
+        when(assembly.assemble(any())).thenReturn(prompt());
+        when(modelMapper.selectById(MODEL_ID)).thenReturn(model());
+        try (var clock = org.mockito.Mockito.mockStatic(AgentTime.class)) {
+            LocalDateTime start = LocalDateTime.of(2026, 10, 21, 1, 0);
+            clock.when(AgentTime::now).thenReturn(start);
+            when(invocation.invoke(any())).thenAnswer(call -> {
+                clock.when(AgentTime::now).thenReturn(start.plusMinutes(11));
+                return new InvocationResult("call-1", "迟到正文 [S1]", null, "stop", 1, 1, 1, "m", "v");
+            });
+            worker.execute(REPORT_ID);
+        }
+        var finish = finishUpdate();
+        assertTrue(finish.getParamNameValuePairs().containsValue("FAILED"));
+        assertTrue(finish.getParamNameValuePairs().containsValue("UPSTREAM_TIMEOUT"));
+        assertTrue(!finish.getParamNameValuePairs().containsValue("迟到正文 [S1]"));
+    }
 
     @BeforeEach
     void setUp() {

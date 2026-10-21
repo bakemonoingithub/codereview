@@ -16,6 +16,8 @@ public class ReportGenerationProperties {
     private int generationTimeoutMinutes = 10;
     /** 同时执行的报告生成数；与专项模型并发共用公共调用许可。 */
     private int dispatchConcurrency = 2;
+    /** 等待执行的报告数量上限；队列满时明确失败，冻结来源保留。 */
+    private int dispatchQueueCapacity = 100;
     /** 报告正文的输出预留（token）；不超过模型声明的最大输出。 */
     private int outputTokens = 16384;
 }

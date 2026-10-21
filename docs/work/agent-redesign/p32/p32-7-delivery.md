@@ -11,7 +11,7 @@
 | 检查 | 后端全量测试、前端全量测试、类型检查、生产构建、本机真实库与真实模型单例 |
 | 文档 | P32.1–P32.7 记录、本交付页、STATE／ROADMAP 同步 |
 | 配置 | `agent.datasource.*` 独立配置样例；报告参数 `agent.report.*` |
-| 脚本 | 新库检查、初始化、本机启停；部署包的备份／回退脚本沿用现有 deploy 目录，本次未执行 |
+| 脚本 | 新库检查、初始化、本机启停；deploy 目录的旧备份／回退脚本仅作为参考，适用限制见下文，本次未执行 |
 
 ## 功能差异核对
 
@@ -49,11 +49,17 @@
 以下为准备步骤，本次均未执行。执行前须由负责人确认窗口、对象、备份位置和回退责任人。
 
 1. **清点**：记录旧库 `code_review`、旧报告文件、旧配置、旧应用版本与运行进程；确认新库 `ai_code_review_agent` 独立账号权限。
-2. **备份旧资料**：对旧库做一致性备份并校验（可沿用 `deploy/scripts/backup.sh`，或 `mysqldump --single-transaction --routines --triggers`）；复制旧报告文件与配置；生成 SHA256 清单。备份包含凭据时必须限制访问。
+2. **备份旧资料**：对明确指定的旧库做一致性备份并校验；复制旧报告文件与配置；生成 SHA256 清单，记录备份对象、版本和时间。封存副本放在独立保留目录，不放入旧脚本会自动清理的 `backups/`。备份包含凭据时必须限制访问。执行切换前，将副本恢复到独立临时库并核对；未完成恢复核对时停止切换。
 3. **封存**：停止旧应用写入，旧库切为只读或仅运维读取；保留恢复副本，不把旧记录迁入新库页面。
 4. **新服务演练**：使用独立配置与独立端口启动新应用；执行 `agent-db-check.ps1`、健康检查、一次真实审查／反馈／报告流程；记录版本、数据库迁移版本和结果。
 5. **切换入口**：确认新服务稳定后停止旧入口并指向新服务；保留旧应用与旧库备份，不删除任何资料。
-6. **回退**：停止新服务，恢复旧应用与原数据源配置；新库保留为独立快照，不把新记录倒灌旧库。回退后核对旧入口健康与数据完整性。
+6. **回退**：停止新服务，按清点记录恢复明确版本的旧应用、原数据源配置与入口；新库保留为独立快照，不把新记录倒灌旧库。需要恢复旧库时只使用已通过独立恢复核对的封存副本。回退后核对旧入口健康与数据完整性。
+
+### 旧脚本适用限制
+
+- `deploy/scripts/backup.sh` 依赖旧部署包、`.env` 和 `codereview-mysql` 容器，读取 `MYSQL_DATABASE`（默认 `code_review`），并自动清理 `backups/` 中超过 7 天的数据库与环境备份。不能将它当作长期封存脚本，也不能据此认定新库已备份。
+- `deploy/scripts/rollback.sh` 仅把 `APP_TAG` 改成 `previous` 并重启 Compose；不恢复数据库、数据源配置或入口，且回滚前备份失败仍继续。不能直接用于本次新旧库切换回退。
+- 本交付只提供操作准备。旧部署脚本尚未完成新路线适配与演练，独立恢复核对、生产切换和回退证据均未取得。
 
 ## 脚本与入口
 
@@ -63,8 +69,8 @@
 | 新库检查 | `pwsh scripts/agent-db-check.ps1 -MysqlExe <mysql> -User <user> -Password <pwd>` |
 | 本机启停 | `pwsh scripts/start-dev.ps1`、`pwsh scripts/stop-dev.ps1` |
 | 独立配置样例 | `backend/src/main/resources/application.example.yml` 的 `agent.datasource` 注释块；本机实际配置在忽略的 `application.yml` |
-| 报告参数 | `agent.report.output-tokens`、`max-body-chars`、`generation-timeout-minutes`、`dispatch-concurrency` |
-| 旧部署备份／回退 | `deploy/scripts/backup.sh`、`deploy/scripts/rollback.sh`（现有部署包脚本，本次未执行） |
+| 报告参数 | `agent.report.output-tokens`、`max-body-chars`、`generation-timeout-minutes`、`dispatch-concurrency`、`dispatch-queue-capacity` |
+| 旧部署备份／回退参考 | `deploy/scripts/backup.sh`、`deploy/scripts/rollback.sh`（受上述限制，不是新路线切换／恢复脚本，本次未执行） |
 
 ## 交付结论
 

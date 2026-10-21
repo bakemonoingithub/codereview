@@ -51,6 +51,7 @@ springdoc:
 #     max-body-chars: 1000000
 #     generation-timeout-minutes: 10
 #     dispatch-concurrency: 2
+#     dispatch-queue-capacity: 100
 
 deepseek:
   base-url: https://api.deepseek.com

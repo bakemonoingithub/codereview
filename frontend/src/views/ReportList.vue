@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { reportsApi, type ReportSummary } from '@/api/v2'
 
@@ -98,9 +98,11 @@ const hasMore = ref(false)
 let loadEpoch = 0
 
 onMounted(load)
+onBeforeUnmount(() => { loadEpoch++ })
 
 async function load() {
   const epoch = ++loadEpoch
+  loadingMore.value = false
   loading.value = true
   error.value = ''
   try {
@@ -117,7 +119,7 @@ async function load() {
 }
 
 async function loadMore() {
-  if (!nextCursor.value || loadingMore.value) return
+  if (!nextCursor.value || loading.value || loadingMore.value) return
   const epoch = loadEpoch
   loadingMore.value = true
   try {

@@ -180,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   modelsApi,
@@ -208,6 +208,8 @@ const candidatesError = ref('')
 const nextCursor = ref<string | null>(null)
 const candidatesHasMore = ref(false)
 let candidateEpoch = 0
+let disposed = false
+onBeforeUnmount(() => { disposed = true; candidateEpoch++ })
 
 const projectOptions = computed(() =>
   projects.value.map((project) => ({ value: project.id, label: project.name }))
@@ -262,6 +264,7 @@ async function resetCandidates() {
 
 async function loadCandidates() {
   const epoch = ++candidateEpoch
+  candidatesLoadingMore.value = false
   candidatesLoading.value = true
   candidatesError.value = ''
   try {
@@ -282,7 +285,7 @@ async function loadCandidates() {
 }
 
 async function loadMoreCandidates() {
-  if (!nextCursor.value || candidatesLoadingMore.value) return
+  if (!nextCursor.value || candidatesLoading.value || candidatesLoadingMore.value) return
   const epoch = candidateEpoch
   candidatesLoadingMore.value = true
   candidatesError.value = ''
@@ -317,6 +320,7 @@ function remove(resultId: string) {
 }
 
 async function submit() {
+  if (submitting.value || disposed) return
   formError.value = ''
   if (!form.title.trim()) {
     formError.value = '请填写报告名称。'
@@ -331,6 +335,10 @@ async function submit() {
     return
   }
   submitting.value = true
+  const generation = {
+    modelConfigId: form.modelConfigId,
+    instruction: form.instruction.trim() || undefined
+  }
   let reportId = ''
   try {
     const frozen = await reportsApi.freezeInputs({
@@ -338,12 +346,10 @@ async function submit() {
       resultIds: selectedList.value.map((item) => item.resultId)
     })
     reportId = frozen.reportId
-    await reportsApi.start(reportId, {
-      modelConfigId: form.modelConfigId,
-      instruction: form.instruction.trim() || undefined
-    })
-    router.push(`/reports/${reportId}`)
+    await reportsApi.start(reportId, generation)
+    if (!disposed) router.push(`/reports/${reportId}`)
   } catch (failure) {
+    if (disposed) return
     if (reportId) {
       router.push({ path: `/reports/${reportId}`, query: { startFailed: '1' } })
     } else {

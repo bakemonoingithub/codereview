@@ -50,6 +50,8 @@
               <p class="muted small">{{ locationsText(issue.locations) }}</p>
               <p><span class="label">原因：</span>{{ issue.reason || '—' }}</p>
               <p><span class="label">建议：</span>{{ issue.suggestion || '—' }}</p>
+              <p v-if="issueDetails(issue).changeRelation"><span class="label">变更关系：</span>{{ issueDetails(issue).changeRelation }}</p>
+              <p v-if="issueDetails(issue).evidence?.length" class="muted small">辅助证据：{{ locationsText(issueDetails(issue).evidence) }}</p>
               <p><span class="label">当时反馈：</span>{{ feedbackText(issue.feedback) }}</p>
             </div>
           </template>
@@ -60,6 +62,7 @@
               <strong>{{ pattern.name }}</strong>
               <span class="muted small"> · {{ pattern.family }} · {{ pattern.role }}</span>
               <p>{{ pattern.explanation }}</p>
+              <p class="muted small">代码依据：{{ locationsText(pattern.evidence) }}</p>
             </div>
           </template>
 
@@ -68,6 +71,8 @@
             <div v-for="(observation, index) in observations" :key="index" class="issue-card">
               <strong>{{ observation.title }}</strong>
               <p>{{ observation.explanation }}</p>
+              <p v-if="observation.suggestion">建议：{{ observation.suggestion }}</p>
+              <p class="muted small">代码依据：{{ locationsText(observation.evidence) }}</p>
               <p v-if="observation.dependencyIds?.length" class="muted small">
                 依赖：{{ observation.dependencyIds.join('、') }}
               </p>
@@ -96,6 +101,9 @@
         <p>{{ feedbackText(source.snapshot.resultFeedback) }}</p>
 
         <h3>冻结材料</h3>
+        <ul v-if="materialGaps.length" class="muted small">
+          <li v-for="(gap, index) in materialGaps" :key="index">{{ gap.code }}：{{ gap.subject }} {{ gap.detail }}</li>
+        </ul>
         <a-collapse v-if="materials.length" ghost>
           <a-collapse-panel
             v-for="(material, index) in materials"
@@ -119,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { reportsApi, type ReportSourceSnapshot } from '@/api/v2'
 import MarkdownView from '@/components/MarkdownView.vue'
 
@@ -130,12 +138,14 @@ const loading = ref(false)
 const error = ref('')
 const source = ref<ReportSourceSnapshot | null>(null)
 let loadEpoch = 0
+onBeforeUnmount(() => { loadEpoch++ })
 
 const issues = computed<any[]>(() => source.value?.snapshot?.issues || [])
 const patterns = computed<any[]>(() => source.value?.snapshot?.result?.body?.patterns || [])
 const observations = computed<any[]>(() => source.value?.snapshot?.result?.body?.observations || [])
 const couplingFacts = computed<any>(() => source.value?.snapshot?.result?.provenance?.couplingFacts || null)
 const materials = computed<any[]>(() => source.value?.snapshot?.materials || [])
+const materialGaps = computed<any[]>(() => source.value?.snapshot?.result?.provenance?.materialGaps || [])
 const limitations = computed<string[]>(() => {
   const body = source.value?.snapshot?.result?.body?.limitations || []
   const coupling = couplingFacts.value?.limitations || []
@@ -194,7 +204,14 @@ function feedbackText(feedback: any) {
 
 function locationsText(locations: any[]) {
   if (!locations?.length) return '位置未保存'
-  return locations.map((item) => `${item.path || ''}:${item.startLine}-${item.endLine}`).join('、')
+  return locations.map((item) => {
+    const material = materials.value.find((entry) => entry.id === item.materialId)
+    return `${item.path || material?.path || item.materialId}:${item.startLine}-${item.endLine}（${sideText(item.side || material?.side || '')} ${item.sha || material?.sha || ''}）`
+  }).join('、')
+}
+
+function issueDetails(issue: any) {
+  return source.value?.snapshot?.result?.body?.issues?.[issue.ordinal - 1] || {}
 }
 
 function sideText(side: string) {

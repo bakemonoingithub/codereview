@@ -89,11 +89,13 @@ public class ReportFactsBuilder {
         text.append("仓库版本分组：\n");
         Map<String, List<Integer>> groups = new LinkedHashMap<>();
         for (SourceFact source : sources) {
-            groups.computeIfAbsent(source.groupLabel(), ignored -> new ArrayList<>())
+            groups.computeIfAbsent(source.versionKey(), ignored -> new ArrayList<>())
                     .add(source.summary().ordinal());
         }
         for (Map.Entry<String, List<Integer>> entry : groups.entrySet()) {
-            text.append("- ").append(entry.getKey()).append("：")
+            String label = sources.stream().filter(source -> source.versionKey().equals(entry.getKey()))
+                    .findFirst().orElseThrow().groupLabel();
+            text.append("- ").append(label).append("：")
                     .append(entry.getValue().stream().map(ordinal -> "S" + ordinal)
                             .collect(Collectors.joining("、"))).append('\n');
         }
@@ -136,11 +138,12 @@ public class ReportFactsBuilder {
         String oldPath = text(target, "oldPath");
         String versionKey = projectId + "|" + nullToEmpty(headSha) + "|" + nullToEmpty(baseSha);
         String groupLabel = (blank(projectName) ? nullToUnknown(projectId) : projectName)
-                + "@" + shortSha(headSha)
-                + (blank(baseSha) ? "" : "（父 " + shortSha(baseSha) + "）");
+                + "（" + projectId + "）@" + nullToUnknown(headSha)
+                + (blank(baseSha) ? "" : "（父 " + baseSha + "）");
 
         String summary = summaryOf(kind, body);
         List<JsonNode> issues = array(snapshot.path("issues"));
+        List<JsonNode> bodyIssues = array(body.path("issues"));
         List<JsonNode> patterns = array(body.path("patterns"));
         List<JsonNode> observations = array(body.path("observations"));
         List<String> limitations = new ArrayList<>(strings(body.path("limitations")));
@@ -151,10 +154,17 @@ public class ReportFactsBuilder {
 
         FeedbackCounts issueFeedback = new FeedbackCounts();
         FeedbackCounts resultFeedback = new FeedbackCounts();
+        for (JsonNode gap : array(provenance.path("materialGaps"))) {
+            missing.add(nullToEmpty(text(gap, "code")) + "：" + nullToEmpty(text(gap, "subject"))
+                    + " " + nullToEmpty(text(gap, "detail")));
+        }
         if ("ISSUE".equals(kind)) {
             for (JsonNode issue : issues) {
                 issueFeedback.add(feedbackCount(issue.path("feedback")));
                 collectEvidence(issue.path("locations"), materials, evidenceKeys, evidence, missing);
+            }
+            for (JsonNode issue : bodyIssues) {
+                collectEvidence(issue.path("evidence"), materials, evidenceKeys, evidence, missing);
             }
         } else {
             resultFeedback = feedbackCount(snapshot.path("resultFeedback"));
@@ -166,14 +176,22 @@ public class ReportFactsBuilder {
             }
         }
 
+        FeedbackCounts sourceFeedback = "ISSUE".equals(kind) ? issueFeedback : resultFeedback;
         ReportDtos.SourceSummary sourceSummary = new ReportDtos.SourceSummary(
                 row.getOrdinal(), resultId, kind, projectId, projectName, taskId, text(task, "route"),
                 path, headSha, baseSha, displaySummary(summary), issues.size(),
-                issueFeedback.accurate, issueFeedback.inaccurate, issueFeedback.unknown,
-                issueFeedback.unassessed);
+                sourceFeedback.accurate, sourceFeedback.inaccurate, sourceFeedback.unknown,
+                sourceFeedback.unassessed);
         String facts = sourceText(projectName, repoUrl, task, path, oldPath, branch, commitSha,
                 baseSha, headSha, summary, issues, patterns, observations, limitations, couplingFacts,
                 resultFeedback, evidence, missing);
+        if (!"ISSUE".equals(kind)) {
+            facts += "当时结果级评价与评论：" + feedbackText(snapshot.path("resultFeedback")) + "\n";
+        }
+        for (int index = 0; index < bodyIssues.size(); index++) {
+            String relation = text(bodyIssues.get(index), "changeRelation");
+            if (!blank(relation)) facts += "问题 " + (index + 1) + " 变更关系：" + relation + "\n";
+        }
         return new SourceFact(kind, taskId, versionKey, groupLabel, sourceSummary, issueFeedback,
                 resultFeedback, issues.size(), facts, missing);
     }
@@ -187,9 +205,9 @@ public class ReportFactsBuilder {
                               List<String> missing) {
         StringBuilder text = new StringBuilder();
         text.append("项目：").append(nullToUnknown(projectName)).append("｜仓库：")
-                .append(nullToUnknown(repoUrl)).append("｜版本：").append(shortSha(headSha));
+                .append(nullToUnknown(repoUrl)).append("｜版本：").append(nullToUnknown(headSha));
         if (!blank(baseSha)) {
-            text.append("（父 ").append(shortSha(baseSha)).append("）");
+            text.append("（父 ").append(baseSha).append("）");
         }
         text.append('\n');
         text.append("任务：").append(text(task, "id")).append("｜状态：").append(text(task, "state"))
@@ -198,7 +216,7 @@ public class ReportFactsBuilder {
             text.append("｜分支：").append(branch);
         }
         if (!blank(commitSha)) {
-            text.append("｜提交：").append(shortSha(commitSha));
+            text.append("｜提交：").append(commitSha);
         }
         text.append('\n');
         text.append("文件：").append(nullToUnknown(path));
@@ -238,6 +256,9 @@ public class ReportFactsBuilder {
                     text.append("；依赖：").append(String.join("、", dependencyIds));
                 }
                 text.append('\n');
+                if (!blank(text(observation, "suggestion"))) {
+                    text.append("    建议：").append(text(observation, "suggestion")).append('\n');
+                }
             }
         }
         if (couplingFacts.isObject()) {
@@ -280,14 +301,10 @@ public class ReportFactsBuilder {
         for (JsonNode location : array(locations)) {
             String materialId = text(location, "materialId");
             JsonNode material = blank(materialId) ? null : materials.get(materialId);
-            String locationPath = text(location, "path");
-            if (material == null && !blank(locationPath)) {
-                material = materials.values().stream()
-                        .filter(item -> locationPath.equals(text(item, "path")))
-                        .findFirst().orElse(null);
-            }
             if (material == null) {
-                missing.add("位置 " + locations(location) + " 未关联保存材料，代码原文需在冻结来源中查看");
+                missing.add("材料 " + nullToUnknown(materialId) + " 行 "
+                        + location.path("startLine").asInt() + "-" + location.path("endLine").asInt()
+                        + " 未关联保存材料，代码原文需在冻结来源中查看");
                 continue;
             }
             int start = location.path("startLine").asInt(material.path("startLine").asInt(1));
@@ -303,7 +320,8 @@ public class ReportFactsBuilder {
                 continue;
             }
             evidence.add("  - " + text(material, "path") + " 行 " + start + "-" + end
-                    + "（材料 " + text(material, "id") + "，SHA " + shortSha(text(material, "sha"))
+                    + "（材料 " + text(material, "id") + "，" + text(material, "side")
+                    + "，SHA " + text(material, "sha")
                     + "）：\n" + excerpt);
         }
     }
@@ -317,10 +335,10 @@ public class ReportFactsBuilder {
         String[] lines = content.split("\n", -1);
         int from = start - materialStart;
         int to = end - materialStart;
-        if (from < 0 || to < from || from >= lines.length) {
+        if (from < 0 || to < from || to >= lines.length
+                || end > material.path("endLine").asInt(materialStart + lines.length - 1)) {
             return null;
         }
-        to = Math.min(to, lines.length - 1);
         StringBuilder text = new StringBuilder();
         for (int index = from; index <= to; index++) {
             text.append("    ").append(String.format("%6d | %s", materialStart + index, lines[index]))

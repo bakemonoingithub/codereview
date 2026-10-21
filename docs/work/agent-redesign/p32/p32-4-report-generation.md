@@ -52,6 +52,8 @@ INPUT_FROZEN -> QUEUED -> RUNNING -> SUCCEEDED
 
 ## 验证
 
+独立审查补修了冻结评论、辅助证据、变更关系、材料缺口、完整版本身份与范围校验；报告等待队列默认最多 100 项，worker 异常会结束活动报告，发布前再次检查总期限。新增回归与本轮复验见[修复与复验记录](p32-4-7-review-fixes.md)。
+
 - 后端新增 `ReportFactsBuilderTest`、`ReportCitationValidatorTest`、`ReportExecutionWorkerTest`、`ReportGenerationServiceTest` 及迁移契约检查；覆盖事实分组、证据复制、材料缺口、损坏快照、引用越界、空正文、失败不写正文、模型输出预算、下载状态与调用关联。
 - 真实本机：4 个完整结果冻结后，`deepseek-flash` 首次因公共输出默认 4096 被截断而失败；报告输出改为 16384 后第二次生成成功，正文 7264 字符，`finish_reason=stop`，4 个来源均被引用。详见 [P32.6](p32-6-validation.md)。
 - 未执行：PC 用户视觉确认、双页面并发生成、真实上下文超限注入、生产数据库与部署。

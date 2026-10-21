@@ -241,6 +241,7 @@ const generateForm = reactive({ modelConfigId: undefined as string | undefined, 
 let loadEpoch = 0
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let disposed = false
+let reportEpoch = 0
 
 const modelOptions = computed(() =>
   models.value.map((model) => ({
@@ -259,6 +260,18 @@ const kindSummary = computed(() => {
 watch(
   () => id.value,
   () => {
+    reportEpoch++
+    report.value = null
+    sourceOpen.value = false
+    sourceOrdinal.value = 0
+    callOpen.value = false
+    callId.value = ''
+    generateOpen.value = false
+    generating.value = false
+    downloading.value = false
+    generateError.value = ''
+    generateForm.modelConfigId = undefined
+    generateForm.instruction = ''
     startFailed.value = !!route.query.startFailed
     void load()
   },
@@ -299,38 +312,46 @@ async function load() {
 }
 
 async function download() {
-  if (!report.value) return
+  if (!report.value || downloading.value) return
+  const current = report.value
+  const epoch = reportEpoch
   downloading.value = true
   error.value = ''
   try {
-    const blob = await reportsApi.download(report.value.id)
+    const blob = await reportsApi.download(current.id)
+    if (disposed || epoch !== reportEpoch) return
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `${report.value.title || '审查报告'}.md`
+    anchor.download = `${current.title || '审查报告'}.md`
     anchor.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (failure) {
+    if (disposed || epoch !== reportEpoch) return
     error.value = (failure as Error).message || '报告下载失败'
   } finally {
-    downloading.value = false
+    if (!disposed && epoch === reportEpoch) downloading.value = false
   }
 }
 
 async function openGenerate() {
+  const epoch = reportEpoch
   generateOpen.value = true
   generateError.value = ''
   if (!models.value.length) {
     modelsLoading.value = true
     try {
       const page = await modelsApi.list({ limit: 100 })
+      if (disposed || epoch !== reportEpoch) return
       models.value = page.items
     } catch (failure) {
+      if (disposed || epoch !== reportEpoch) return
       generateError.value = (failure as Error).message || '模型列表读取失败'
     } finally {
       modelsLoading.value = false
     }
   }
+  if (disposed || epoch !== reportEpoch) return
   if (!generateForm.modelConfigId) {
     generateForm.modelConfigId = models.value.find((model) =>
       model.contextWindow && model.contextWindow > 0)?.id || models.value[0]?.id
@@ -338,7 +359,8 @@ async function openGenerate() {
 }
 
 async function startGeneration() {
-  if (!report.value) return
+  if (!report.value || report.value.id !== id.value || generating.value) return
+  const epoch = reportEpoch
   if (!generateForm.modelConfigId) {
     generateError.value = '请选择生成模型。'
     return
@@ -350,12 +372,14 @@ async function startGeneration() {
       modelConfigId: generateForm.modelConfigId,
       instruction: generateForm.instruction.trim() || undefined
     })
+    if (disposed || epoch !== reportEpoch) return
     generateOpen.value = false
     await load()
   } catch (failure) {
+    if (disposed || epoch !== reportEpoch) return
     generateError.value = (failure as Error).message || '生成请求失败'
   } finally {
-    generating.value = false
+    if (!disposed && epoch === reportEpoch) generating.value = false
   }
 }
 

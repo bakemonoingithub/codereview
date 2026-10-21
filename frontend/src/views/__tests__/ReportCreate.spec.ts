@@ -51,6 +51,56 @@ beforeEach(() => {
 })
 
 describe('报告生成表单', () => {
+  it('分页未结束时切换筛选，旧响应不追加且新分页仍可用', async () => {
+    const wrapper = await start()
+    const s = state(wrapper)
+    s.nextCursor = 'old'
+    let resolve!: (page: any) => void
+    vi.mocked(reportsApi.candidates).mockImplementationOnce(() => new Promise((done) => { resolve = done }))
+    const pending = s.loadMoreCandidates()
+    vi.mocked(reportsApi.candidates).mockResolvedValueOnce({ items: [candidate], nextCursor: 'new', hasMore: true })
+    await s.resetCandidates()
+    resolve({ items: [{ ...candidate, resultId: 'stale' }], nextCursor: null, hasMore: false })
+    await pending
+    expect(s.candidatesLoadingMore).toBe(false)
+    expect(s.candidates).toHaveLength(1)
+    await s.loadMoreCandidates()
+    expect(reportsApi.candidates).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 'new' }))
+    wrapper.unmount()
+  })
+
+  it('冻结期间重复提交只生成一次，模型和要求固定为提交时输入', async () => {
+    const wrapper = await start()
+    const s = state(wrapper)
+    s.selected.set(candidate.resultId, candidate)
+    s.form.modelConfigId = 'model-1'
+    s.form.instruction = '原始要求'
+    let resolve!: (value: any) => void
+    vi.mocked(reportsApi.freezeInputs).mockImplementationOnce(() => new Promise((done) => { resolve = done }))
+    const pending = s.submit()
+    s.form.modelConfigId = 'model-2'
+    s.form.instruction = '后续编辑'
+    await s.submit()
+    expect(reportsApi.freezeInputs).toHaveBeenCalledTimes(1)
+    resolve({ reportId: 'report-1' })
+    await pending
+    expect(reportsApi.start).toHaveBeenCalledWith('report-1', { modelConfigId: 'model-1', instruction: '原始要求' })
+    wrapper.unmount()
+  })
+
+  it('离开表单后迟到的受理响应不强行跳回报告页', async () => {
+    const wrapper = await start()
+    const s = state(wrapper)
+    s.selected.set(candidate.resultId, candidate)
+    let resolve!: (value: any) => void
+    vi.mocked(reportsApi.start).mockImplementationOnce(() => new Promise((done) => { resolve = done }))
+    const pending = s.submit()
+    await flushPromises()
+    wrapper.unmount()
+    resolve({ id: 'report-1' })
+    await pending
+    expect(context.push).not.toHaveBeenCalled()
+  })
   it('先冻结所选来源，再选择模型发起生成', async () => {
     const wrapper = await start()
     const s = state(wrapper)

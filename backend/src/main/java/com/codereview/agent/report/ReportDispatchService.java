@@ -13,7 +13,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,8 +40,10 @@ public class ReportDispatchService {
                                  ReportGenerationProperties properties) {
         this.db = db;
         this.worker = worker;
-        this.pool = Executors.newFixedThreadPool(Math.max(1, properties.getDispatchConcurrency()),
-                new NamedThreadFactory());
+        int concurrency = Math.max(1, properties.getDispatchConcurrency());
+        this.pool = new ThreadPoolExecutor(concurrency, concurrency, 0L, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(Math.max(1, properties.getDispatchQueueCapacity())),
+                new NamedThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
     }
 
     public void dispatch(String reportId) {
@@ -49,19 +53,20 @@ public class ReportDispatchService {
                     worker.execute(reportId);
                 } catch (RuntimeException e) {
                     log.error("报告 {} 调度执行异常", reportId, e);
+                    terminateActive(reportId, ErrorCode.INTERNAL_ERROR.code(), "报告后台执行异常");
                 }
             });
         } catch (RejectedExecutionException e) {
             log.warn("报告调度队列已满，报告 {} 标记失败", reportId);
-            terminateQueued(reportId, ErrorCode.INTERNAL_ERROR.code(), "报告调度队列已满");
+            terminateActive(reportId, ErrorCode.INTERNAL_ERROR.code(), "报告调度不可用或队列已满");
         }
     }
 
-    private void terminateQueued(String reportId, String code, String message) {
+    private void terminateActive(String reportId, String code, String message) {
         db.mapper(AgentReportMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentReport>()
                         .eq(AgentReport::getId, reportId)
-                        .eq(AgentReport::getState, ReportStates.QUEUED)
+                        .in(AgentReport::getState, ReportStates.QUEUED, ReportStates.RUNNING)
                         .set(AgentReport::getState, ReportStates.FAILED)
                         .set(AgentReport::getErrorCode, code)
                         .set(AgentReport::getErrorMessage, message)

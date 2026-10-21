@@ -5,6 +5,7 @@ import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.entity.AgentReportSource;
 import com.codereview.agent.prompt.PromptFact;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -18,6 +19,64 @@ class ReportFactsBuilderTest {
 
     private final ObjectMapper json = new ObjectMapper();
     private final ReportFactsBuilder builder = new ReportFactsBuilder(json);
+
+    @Test
+    void preservesResultCommentsIncludingUnassessedComments() throws Exception {
+        ObjectNode snapshot = (ObjectNode) json.readTree(patternSnapshot());
+        assertTrue(builder.build(List.of(source(1, "r2", "PATTERN", snapshot.toString())))
+                .facts().get(1).text().contains("需结合调用方确认"));
+        ((ObjectNode) snapshot.path("resultFeedback")).putNull("assessment");
+        var facts = builder.build(List.of(source(1, "r2", "PATTERN", snapshot.toString())));
+        assertEquals(1, facts.summaries().get(0).unassessed());
+        assertTrue(facts.facts().get(1).text().contains("未判定（需结合调用方确认）"));
+    }
+
+    @Test
+    void preservesAuxiliaryEvidenceChangeRelationAndMaterialGaps() throws Exception {
+        ObjectNode snapshot = (ObjectNode) json.readTree(issueSnapshot());
+        ((ObjectNode) snapshot.path("result").path("body")).putArray("issues").addObject()
+                .put("changeRelation", "本次删除幂等保护")
+                .putArray("evidence").addObject().put("materialId", "aux").put("startLine", 20).put("endLine", 20);
+        ((com.fasterxml.jackson.databind.node.ArrayNode) snapshot.path("materials")).addObject()
+                .put("id", "aux").put("path", "Guard.java").put("sha", "base-sha")
+                .put("side", "BEFORE").put("startLine", 20).put("endLine", 20).put("content", "guard();");
+        ((ObjectNode) snapshot.path("result").path("provenance")).putArray("materialGaps").addObject()
+                .put("code", "MISSING").put("subject", "Parent").put("detail", "父类源码未取得");
+        var facts = builder.build(List.of(source(1, "r1", "ISSUE", snapshot.toString())));
+        String text = facts.facts().get(1).text();
+        assertTrue(text.contains("本次删除幂等保护"), text);
+        assertTrue(text.contains("guard();"), text);
+        assertTrue(text.contains("BEFORE，SHA base-sha"), text);
+        assertTrue(facts.missingNotes().get(0).contains("父类源码未取得"));
+    }
+
+    @Test
+    void neverSubstitutesSamePathForMissingMaterialOrTruncatesEvidence() throws Exception {
+        ObjectNode snapshot = (ObjectNode) json.readTree(issueSnapshot());
+        ObjectNode location = (ObjectNode) snapshot.path("issues").get(0).path("locations").get(0);
+        location.put("materialId", "missing-before");
+        var facts = builder.build(List.of(source(1, "r1", "ISSUE", snapshot.toString())));
+        assertTrue(!facts.facts().get(1).text().contains("if (retry) charge();"));
+        assertTrue(facts.missingNotes().get(0).contains("missing-before"));
+        location.put("materialId", "m1").put("endLine", 99);
+        facts = builder.build(List.of(source(1, "r1", "ISSUE", snapshot.toString())));
+        assertTrue(!facts.facts().get(1).text().contains("if (retry) charge();"));
+        assertTrue(facts.missingNotes().get(0).contains("10-99"));
+    }
+
+    @Test
+    void retainsFullVersionIdentityAndSeparatesSameNamedProjects() throws Exception {
+        ObjectNode first = (ObjectNode) json.readTree(patternSnapshot());
+        ObjectNode second = first.deepCopy();
+        ((ObjectNode) first.path("target")).put("headSha", "123456789012aaaaaaaa");
+        ((ObjectNode) second.path("target")).put("headSha", "123456789012bbbbbbbb");
+        var facts = builder.build(List.of(source(1, "r2", "PATTERN", first.toString()),
+                source(2, "r2", "PATTERN", second.toString())));
+        String summary = facts.facts().get(0).text();
+        assertTrue(summary.contains("123456789012aaaaaaaa：S1"), summary);
+        assertTrue(summary.contains("123456789012bbbbbbbb：S2"), summary);
+        assertTrue(facts.facts().get(1).text().contains("123456789012aaaaaaaa"));
+    }
 
     @Test
     void organizesSourcesVersionsFeedbackAndSavedEvidence() throws Exception {
