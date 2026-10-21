@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import type { Component } from 'vue'
 import {
+  AuditOutlined,
   FileTextOutlined,
   FolderOutlined,
   RobotOutlined,
@@ -24,6 +25,18 @@ export interface MenuItem {
 }
 
 const appRoutes: RouteRecordRaw[] = [
+  {
+    path: 'reviews',
+    name: 'reviews',
+    component: () => import('@/views/ReviewCenter.vue'),
+    meta: { title: '审查', icon: AuditOutlined }
+  },
+  {
+    path: 'reviews/new',
+    name: 'review-launch',
+    component: () => import('@/views/ReviewLaunch.vue'),
+    meta: { title: '发起审查', hideMenu: true }
+  },
   {
     path: 'projects',
     name: 'projects',
@@ -86,7 +99,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/layouts/BasicLayout.vue'),
-    redirect: '/projects',
+    redirect: '/reviews',
     children: appRoutes
   }
 ]

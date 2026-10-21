@@ -25,6 +25,26 @@ public class RepositoryV2Controller {
         this.service = service;
     }
 
+    @GetMapping("/head")
+    public java.util.Map<String, String> head(@PathVariable String projectId,
+                                              @RequestParam String branch) {
+        return java.util.Map.of("sha", service.resolveBranchHead(projectId, branch));
+    }
+
+    @GetMapping("/commits")
+    public com.codereview.git.CommitPage commits(@PathVariable String projectId,
+                                                 @RequestParam String branch,
+                                                 @RequestParam(defaultValue = "1") int page,
+                                                 @RequestParam(defaultValue = "30") int perPage) {
+        return service.commits(projectId, branch, page, perPage);
+    }
+
+    @GetMapping("/commit")
+    public com.codereview.git.CommitDetail commit(@PathVariable String projectId,
+                                                  @RequestParam String sha) {
+        return service.commit(projectId, sha);
+    }
+
     @GetMapping("/paths")
     public RepositorySnapshots.PathList paths(@PathVariable String projectId, @RequestParam String sha) {
         return service.listPaths(projectId, sha);

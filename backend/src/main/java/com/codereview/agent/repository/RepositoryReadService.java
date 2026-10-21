@@ -102,6 +102,27 @@ public class RepositoryReadService {
                 context.credentialType(), context.ref, branch.trim()));
     }
 
+    /** 提交列表分页；只用于发起表单选择固定提交，不改变任务读取的 SHA 语义。 */
+    public com.codereview.git.CommitPage commits(String projectId, String branch, int page,
+                                                 int perPage) {
+        if (branch == null || branch.isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "缺少分支名");
+        }
+        ProjectContext context = context(projectId);
+        return call("读取提交列表", () -> client(context).commitPage(context.credential(),
+                context.credentialType(), context.ref, branch.trim(), Math.max(1, page),
+                Math.max(1, Math.min(perPage, 100))));
+    }
+
+    /** 单提交详情；返回时去掉 patch，差异正文仍按路径走 {@link #diff}。 */
+    public CommitDetail commit(String projectId, String sha) {
+        ProjectContext context = context(projectId);
+        String fixedSha = RepositoryPaths.requireFixedSha(sha);
+        return call("读取提交详情",
+                () -> client(context).commitDetail(context.credential(), context.credentialType(),
+                        context.ref, fixedSha)).withoutPatches();
+    }
+
     public RepositorySnapshots.FileSnapshot readFile(String projectId, String sha, String path) {
         ProjectContext context = context(projectId);
         String fixedSha = RepositoryPaths.requireFixedSha(sha);

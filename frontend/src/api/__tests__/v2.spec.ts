@@ -10,7 +10,7 @@ axios.defaults.adapter = async (config) => {
   if (failure) throw failure
   return { data: payload, status: 200, statusText: 'OK', headers: {}, config }
 }
-const { projectsApi, modelsApi, promptsApi, strategiesApi } = await import('@/api/v2')
+const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, repositoryApi } = await import('@/api/v2')
 afterAll(() => { axios.defaults.adapter = originalAdapter })
 beforeEach(() => { failure = undefined })
 
@@ -45,6 +45,32 @@ describe('v2 客户端的真实响应链', () => {
     payload = { items: [], nextCursor: null, hasMore: false }
     await strategiesApi.list({ specialistType: 'PATTERN', q: '规则', cursor: 'next', limit: 20 })
     expect(sent.params).toEqual({ type: 'PATTERN', q: '规则', cursor: 'next', limit: 20 })
+  })
+
+  it('创建任务把幂等键放在请求头，并保留固定版本参数', async () => {
+    payload = { id: 't1', state: 'QUEUED' }
+    const body = {
+      projectId: 'p1',
+      specialistType: 'ISSUE' as const,
+      source: { kind: 'FILES' as const, branch: 'main', observedSha: 'a'.repeat(40) },
+      targets: [{ path: 'src/A.java', note: '说明' }],
+      smartSplit: true
+    }
+    expect(await tasksApi.create(body, 'idem-1')).toEqual(payload)
+    expect(sent.headers?.['Idempotency-Key']).toBe('idem-1')
+    expect(JSON.parse(String(sent.data))).toMatchObject(body)
+  })
+
+  it('仓库读取走项目下的固定版本接口', async () => {
+    payload = { sha: 'a'.repeat(40), entries: [], truncated: false }
+    await repositoryApi.paths('p1', 'a'.repeat(40))
+    expect(sent.url).toBe('/projects/p1/paths')
+    expect(sent.params).toEqual({ sha: 'a'.repeat(40) })
+
+    payload = { sha: 'a'.repeat(40), path: 'src/A.java', content: 'class A {}' }
+    await repositoryApi.file('p1', 'a'.repeat(40), 'src/A.java')
+    expect(sent.url).toBe('/projects/p1/files')
+    expect(sent.params).toEqual({ sha: 'a'.repeat(40), path: 'src/A.java' })
   })
 
   it('保留结构化错误，便于页面展示与重试', async () => {

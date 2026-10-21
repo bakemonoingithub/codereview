@@ -114,6 +114,222 @@ export interface StrategyView {
   updatedAt: string
 }
 
+export interface RepositoryPath {
+  path: string
+  type: string
+  reviewable: boolean
+}
+
+export interface PathList {
+  entries: RepositoryPath[]
+  sha: string
+  truncated: boolean
+}
+
+export interface FileSnapshot {
+  sha: string
+  path: string
+  content: string
+  contentHash: string
+  byteSize: number
+  lineCount: number
+}
+
+export interface DiffSide {
+  content: string | null
+  status: 'PRESENT' | 'MISSING' | 'UNREADABLE'
+  reason: string | null
+}
+
+export interface DiffSides {
+  headSha: string
+  baseSha: string | null
+  path: string
+  oldPath: string | null
+  status: string
+  patch: string | null
+  before: DiffSide
+  after: DiffSide
+}
+
+export interface CommitInfo {
+  sha: string
+  message: string
+  author: string
+  date: string
+}
+
+export interface CommitPage {
+  commits: CommitInfo[]
+  hasMore: boolean
+}
+
+export interface ChangedFile {
+  path: string
+  previousPath: string | null
+  status: string
+  additions: number | null
+  deletions: number | null
+  changes: number | null
+  patch: string | null
+  reviewable: boolean
+}
+
+export interface CommitDetail {
+  sha: string
+  parents: string[]
+  message: string
+  author: string
+  date: string
+  additions: number | null
+  deletions: number | null
+  totalChanges: number | null
+  truncated: boolean
+  files: ChangedFile[]
+}
+
+export const repositoryApi = {
+  head: (projectId: string, branch: string) =>
+    v2
+      .get<{ sha: string }>(`/projects/${projectId}/head`, { params: { branch } })
+      .then((r) => r.data.sha),
+  commits: (projectId: string, branch: string, page = 1, perPage = 30) =>
+    v2
+      .get<CommitPage>(`/projects/${projectId}/commits`, { params: { branch, page, perPage } })
+      .then((r) => r.data),
+  commit: (projectId: string, sha: string) =>
+    v2.get<CommitDetail>(`/projects/${projectId}/commit`, { params: { sha } }).then((r) => r.data),
+  paths: (projectId: string, sha: string) =>
+    v2.get<PathList>(`/projects/${projectId}/paths`, { params: { sha } }).then((r) => r.data),
+  file: (projectId: string, sha: string, path: string) =>
+    v2
+      .get<FileSnapshot>(`/projects/${projectId}/files`, { params: { sha, path } })
+      .then((r) => r.data),
+  diff: (projectId: string, sha: string, path: string) =>
+    v2
+      .get<DiffSides>(`/projects/${projectId}/diff`, { params: { sha, path } })
+      .then((r) => r.data)
+}
+
+export interface TaskTargetInput {
+  path: string
+  oldPath?: string | null
+  note?: string | null
+}
+
+export interface TaskCreateInput {
+  projectId: string
+  route?: string
+  specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
+  source: {
+    kind: 'FILES' | 'DIFF'
+    branch?: string
+    observedSha?: string
+    commitSha?: string
+    baseSha?: string
+  }
+  targets: TaskTargetInput[]
+  strategyId?: string
+  modelConfigId?: string
+  smartSplit?: boolean
+}
+
+export interface TaskTargetView {
+  id: string
+  ordinal: number
+  path: string
+  oldPath: string | null
+  baseSha: string | null
+  headSha: string
+  note: string | null
+  state: string
+  errorCode: string | null
+  revision: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TaskView {
+  id: string
+  projectId: string
+  route: string
+  specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
+  state: string
+  stopReason: string | null
+  sourceKind: 'FILES' | 'DIFF'
+  branch: string | null
+  headSha: string | null
+  baseSha: string | null
+  smartSplit: boolean
+  revision: number
+  createdAt: string
+  updatedAt: string
+  startedAt: string | null
+  finishedAt: string | null
+  deadlineAt: string | null
+  cancelRequestedAt: string | null
+  targets: TaskTargetView[]
+  config: {
+    modelConfigId: string | null
+    modelName: string | null
+    modelRevision: number | null
+    strategyId: string | null
+    strategyName: string | null
+    strategyRevision: number | null
+    promptId: string | null
+    promptVersionNo: number | null
+  }
+}
+
+export interface TaskSummary {
+  id: string
+  projectId: string
+  route: string
+  specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
+  state: string
+  stopReason: string | null
+  createdAt: string
+  deadlineAt: string | null
+  targetCount: number
+  succeededCount: number
+  failedCount: number
+  runningCount: number
+  queuedCount: number
+}
+
+export interface TaskCopyInput {
+  projectId: string
+  route: string
+  specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
+  sourceKind: 'FILES' | 'DIFF'
+  branch: string | null
+  commitSha: string | null
+  baseSha: string | null
+  targets: { path: string; oldPath: string | null; note: string | null }[]
+  strategyId: string | null
+  modelConfigId: string | null
+  smartSplit: boolean
+  reobserveHead: boolean
+}
+
+export const tasksApi = {
+  create: (body: TaskCreateInput, idempotencyKey: string) =>
+    v2
+      .post<TaskView>('/review-tasks', body, { headers: { 'Idempotency-Key': idempotencyKey } })
+      .then((r) => r.data),
+  list: (params: {
+    projectId?: string
+    type?: string
+    state?: string
+    cursor?: string
+    limit?: number
+  } = {}) => v2.get<Page<TaskSummary>>('/review-tasks', { params }).then((r) => r.data),
+  detail: (id: string) => v2.get<TaskView>(`/review-tasks/${id}`).then((r) => r.data),
+  copyInput: (id: string) => v2.get<TaskCopyInput>(`/review-tasks/${id}/copy-input`).then((r) => r.data),
+  cancel: (id: string, expectedRevision: number) =>
+    v2.post<TaskView>(`/review-tasks/${id}/cancel`, { expectedRevision }).then((r) => r.data)
+}
+
 export const projectsApi = {
   list: (params: { q?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ProjectView>>('/projects', { params }).then((r) => r.data),

@@ -13,12 +13,12 @@ describe('侧边栏菜单', () => {
   it('由路由表生成，且排除 hideMenu 的项（项目详情不进菜单）', () => {
     const paths = menuItems.map((m) => m.path)
 
-    expect(paths).toEqual(['/projects', '/models', '/strategies', '/prompts'])
+    expect(paths).toEqual(['/reviews', '/projects', '/models', '/strategies', '/prompts'])
     expect(paths).not.toContain('/projects/:id')
   })
 
   it('菜单标题取自路由 meta.title（不再是另写一份硬编码）', () => {
-    expect(menuItems.map((m) => m.title)).toEqual(['项目', '模型', '策略', '提示词'])
+    expect(menuItems.map((m) => m.title)).toEqual(['审查', '项目', '模型', '策略', '提示词'])
   })
 
   /**
@@ -36,6 +36,7 @@ describe('菜单高亮归属', () => {
   it('列表页精确匹配', () => {
     expect(activeMenuKey('/projects')).toBe('/projects')
     expect(activeMenuKey('/strategies')).toBe('/strategies')
+    expect(activeMenuKey('/reviews/new')).toBe('/reviews')
   })
 
   it('详情页归到它的上一级 —— 这是原先缺失的行为', () => {

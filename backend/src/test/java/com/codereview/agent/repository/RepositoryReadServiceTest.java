@@ -9,6 +9,8 @@ import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
+import com.codereview.git.CommitInfo;
+import com.codereview.git.CommitPage;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitHostClientRegistry;
 import com.codereview.git.GitTree;
@@ -368,5 +370,21 @@ class RepositoryReadServiceTest {
                 () -> service.readFile(PROJECT_ID, HEAD, "F.java"));
 
         assertEquals(ErrorCode.FILE_NOT_READABLE, error.errorCode());
+    }
+
+    @Test
+    void commitListPassesPagingAndCommitDetailDropsPatches() {
+        when(client.commitPage(any(), any(), any(), eq("main"), eq(2), eq(20)))
+                .thenReturn(new CommitPage(List.of(new CommitInfo(HEAD, "消息", "作者", "date")), true));
+        CommitPage page = service.commits(PROJECT_ID, "main", 2, 20);
+        assertEquals(HEAD, page.commits().get(0).sha());
+        assertTrue(page.hasMore());
+
+        when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(new CommitDetail(
+                HEAD, List.of(PARENT), "消息", "作者", "date", 1, 2, 3, false,
+                List.of(new ChangedFile("src/A.java", null, "modified", 1, 2, 3, "patch"))));
+        CommitDetail detail = service.commit(PROJECT_ID, HEAD);
+        assertEquals("src/A.java", detail.files().get(0).path());
+        assertEquals(null, detail.files().get(0).patch());
     }
 }
