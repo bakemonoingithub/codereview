@@ -20,6 +20,7 @@ public record PromptInput(PromptPurpose purpose,
                           List<PromptMaterial> targets,
                           List<PromptMaterial> auxiliary,
                           List<String> missingNotes,
+                          List<PromptFact> facts,
                           FormatRetry formatRetry) {
 
     public PromptInput {
@@ -29,6 +30,7 @@ public record PromptInput(PromptPurpose purpose,
         targets = targets == null ? List.of() : List.copyOf(targets);
         auxiliary = auxiliary == null ? List.of() : List.copyOf(auxiliary);
         missingNotes = missingNotes == null ? List.of() : List.copyOf(missingNotes);
+        facts = facts == null ? List.of() : List.copyOf(facts);
         if (protocolVersion == null || protocolVersion.isBlank()) {
             protocolVersion = "1";
         }

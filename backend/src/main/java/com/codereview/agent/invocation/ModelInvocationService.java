@@ -137,7 +137,7 @@ public class ModelInvocationService {
     public ValidationOutcome validate(ModelSnapshot model) {
         AssembledPrompt prompt = assembly.assemble(new PromptInput(PromptPurpose.VALIDATION, "1",
                 null, null, null, "VALIDATION", null, null, null,
-                List.of(), List.of(), List.of(), null));
+                List.of(), List.of(), List.of(), List.of(), null));
         try {
             InvocationResult result = invoke(new InvocationRequest(model, prompt,
                     InvocationScope.standalone(AgentTime.now().plusMinutes(1))));

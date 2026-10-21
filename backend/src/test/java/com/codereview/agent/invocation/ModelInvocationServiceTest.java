@@ -390,7 +390,7 @@ class ModelInvocationServiceTest {
                 "FILES", "main", SHA, null,
                 List.of(new PromptMaterial("target-1", "src/Big.java", SHA, "FILE", 1, 1,
                         "x".repeat(contentChars), "COMPLETE", null)),
-                List.of(), List.of(), null));
+                List.of(), List.of(), List.of(), null));
     }
 
     private static ModelSnapshot model(Integer window, Integer maxOutput) {

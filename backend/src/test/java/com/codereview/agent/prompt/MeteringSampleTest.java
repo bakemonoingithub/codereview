@@ -23,7 +23,7 @@ class PromptMeteringSampleTest {
                 PromptPurpose.ISSUE_FILE, "1", null, null, null, "FILES", "main", SHA, null,
                 List.of(new PromptMaterial("target-1", "src/Sample.java", SHA, "FILE", 1, 1,
                         "x".repeat(4096), "COMPLETE", null)),
-                List.of(), List.of(), null));
+                List.of(), List.of(), List.of(), null));
 
         assertEquals(6229, prompt.inputBytes());
         assertEquals(6325, prompt.inputEstimate());
