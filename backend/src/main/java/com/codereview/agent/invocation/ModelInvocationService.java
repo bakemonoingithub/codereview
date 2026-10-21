@@ -143,10 +143,18 @@ public class ModelInvocationService {
         try {
             InvocationResult result = invoke(new InvocationRequest(model, prompt,
                     InvocationScope.standalone(AgentTime.now().plusMinutes(1))));
-            if (result.content() != null && !result.content().isBlank()) {
-                return new ValidationOutcome(true, "连通成功，模型返回了正文", result.callId());
+            if (result.content() == null || result.content().isBlank()) {
+                return new ValidationOutcome(false, "模型返回正文为空", result.callId());
             }
-            return new ValidationOutcome(false, "模型返回正文为空", result.callId());
+            try {
+                JsonNode root = mapper.readTree(result.content());
+                if (root.isObject() && root.path("ok").isBoolean() && root.path("ok").booleanValue()) {
+                    return new ValidationOutcome(true, "连通成功，模型返回了最小 JSON", result.callId());
+                }
+                return new ValidationOutcome(false, "模型返回的 JSON 缺少 ok=true", result.callId());
+            } catch (JsonProcessingException e) {
+                return new ValidationOutcome(false, "模型返回的不是合法 JSON", result.callId());
+            }
         } catch (ApiException e) {
             return new ValidationOutcome(false, e.getMessage(), null);
         }
@@ -233,9 +241,10 @@ public class ModelInvocationService {
         body.put("temperature", 0);
         body.put("max_tokens", outputReserve);
         body.put("stream", false);
-        if (prompt.jsonMode() && isDeepSeekModel(model)) {
+        if (requiresPlainOutputBudget(model, prompt)) {
             // DeepSeek defaults to thinking mode; its reasoning tokens share max_tokens with
-            // the structured final answer and can consume the entire output budget.
+            // the final answer and can consume the entire output budget. Validation uses the
+            // same small budget as its JSON answer, so thinking must be off there as well.
             body.put("reasoning_effort", "none");
         }
         if (prompt.jsonMode()) {
@@ -418,6 +427,16 @@ public class ModelInvocationService {
     private static boolean isDeepSeekModel(ModelSnapshot model) {
         return model.modelName() != null
                 && model.modelName().trim().toLowerCase(java.util.Locale.ROOT).startsWith("deepseek");
+    }
+
+    /**
+     * 结构化调用和验证调用都要求模型直接给出最终答案；这两类调用必须关闭 DeepSeek 的
+     * 默认思考模式，否则推理 token 会吃掉本就不大的输出预算。报告和 Agent 调用不在此列，
+     * 保留其按需思考的行为。
+     */
+    private static boolean requiresPlainOutputBudget(ModelSnapshot model, AssembledPrompt prompt) {
+        return isDeepSeekModel(model)
+                && (prompt.jsonMode() || prompt.purpose() == PromptPurpose.VALIDATION);
     }
 
     private static String textOf(JsonNode content) {

@@ -37,7 +37,7 @@ public enum PromptPurpose {
             不得声称执行了未实际调用的工具，也不得把计划写成已完成。"""),
 
     VALIDATION("VALIDATION", false, """
-            这是一次连通性验证。只需用普通文本回复 pong，不需要 JSON，也不需要分析任何业务内容。""");
+            这是一次连通性验证。只输出一个最小 JSON 对象 {"ok":true}，不分析任何业务内容。""");
 
     private final String wireName;
     private final boolean jsonMode;

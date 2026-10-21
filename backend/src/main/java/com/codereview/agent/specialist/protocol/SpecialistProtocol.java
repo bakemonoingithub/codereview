@@ -42,7 +42,8 @@ public final class SpecialistProtocol {
                     输出 Markdown 正文。引用使用 [S1] 形式且只能指向给定来源；
                     事实、数字和位置必须来自输入；缺失写在正文对应章节，不静默省略。""";
             case VALIDATION -> """
-                    只输出一个 JSON 对象，例如 {"ok":true}。不要输出 Markdown 或额外说明。""";
+                    只输出一个 JSON 对象，例如 {"ok":true}；必须包含布尔字段 ok 且为 true。
+                    不要输出 Markdown、代码围栏或额外说明。""";
         };
     }
 

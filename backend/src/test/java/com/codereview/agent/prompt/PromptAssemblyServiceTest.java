@@ -95,12 +95,14 @@ class PromptAssemblyServiceTest {
     }
 
     @Test
-    void validationDoesNotNeedMaterialsAndUsesPlainText() {
+    void validationRequestsMinimalJsonWithoutStructuredOutputMode() {
         AssembledPrompt prompt = service.assemble(new PromptInput(PromptPurpose.VALIDATION, "1",
                 null, null, null, "VALIDATION", null, null, null, List.of(), List.of(), List.of(),
                 List.of(), null));
 
         assertFalse(prompt.jsonMode());
+        assertTrue(prompt.systemPrompt().contains("{\"ok\":true}"));
+        assertFalse(prompt.systemPrompt().contains("pong"), "验证提示词不能同时要求纯文本和 JSON");
         assertTrue(prompt.inputEstimate() > prompt.inputBytes());
         assertEquals(PromptAssemblyService.ESTIMATE_METHOD, prompt.estimateMethod());
         assertEquals("VALIDATION", prompt.purpose().wireName());

@@ -34,9 +34,9 @@
 - 暂态传输失败（429、5xx、连接失败、超时）最多额外重试一次；鉴权、请求格式和上下文超限不重试。429 的 `Retry-After` 最多等待 3 秒，且受任务剩余期限约束。每次重试都重新预留额度并新写一条调用记录。
 - 公共并发为全局 4、单任务 2；等待计入任务期限，期限不足时返回 `TASK_DEADLINE`，不无限排队。
 - 响应缺少 `choices`、正文为空、`finish_reason=length` 或不是 JSON 时记为 `MODEL_OUTPUT_INVALID`，不把截断内容当成功；协议格式重试由专项执行层负责。
-- DeepSeek 结构化调用显式发送 `reasoning_effort=none`，避免默认思考 token 耗尽与最终 JSON 共用的 `max_tokens` 额度；若仍返回 `finish_reason=length`，错误优先标记为输出截断。
+- DeepSeek 结构化调用和验证调用显式发送 `reasoning_effort=none`，避免默认思考 token 耗尽与最终答案共用的 `max_tokens` 额度；若仍返回 `finish_reason=length`，错误优先标记为输出截断。
 - 错误分类：401/403 `MODEL_UNAUTHORIZED`、429 `RATE_LIMITED`、5xx/连接失败 `MODEL_UNAVAILABLE`、超时 `UPSTREAM_TIMEOUT`、400 且命中上下文关键词 `CONTEXT_LIMIT`、其他 400 `MODEL_BAD_REQUEST`。
-- 模型验证也走同一入口：组装 VALIDATION 普通文本提示、保存请求、计量并记录调用；只判断返回正文非空，不证明完整窗口或工具协议。验证不启用 JSON 模式，避免 DeepSeek JSON 输出偶发空正文导致误报失败。
+- 模型验证也走同一入口：组装 VALIDATION 最小 JSON 提示、保存请求、计量并记录调用；解析返回的 `{"ok":true}` 并校验 `ok=true`，不证明完整窗口或工具协议。验证不发送 `response_format`，避免网关 JSON 模式差异；DeepSeek 验证调用同样关闭思考，防止推理 token 耗尽 64 个输出 token 后正文为空。2026-10-21 修复了 `deepseek-flash` 因该原因被误报失败的问题。
 
 ## 4. 验证记录
 

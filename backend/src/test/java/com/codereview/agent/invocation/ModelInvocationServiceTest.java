@@ -247,16 +247,45 @@ class ModelInvocationServiceTest {
         assertEquals("VALIDATION", inserted.getValue().getPurpose());
         assertEquals(null, inserted.getValue().getTaskId());
         assertTrue(inserted.getValue().getRequestBody().contains("\"max_tokens\":64"));
+        assertTrue(inserted.getValue().getRequestBody().contains("\"reasoning_effort\":\"none\""),
+                "验证也要关闭 DeepSeek 思考，否则 64 token 会被推理耗尽");
+        assertFalse(inserted.getValue().getRequestBody().contains("response_format"),
+                "验证只要求最小 JSON，不强制结构化输出参数");
     }
 
     @Test
-    void validationAcceptsPlainTextReplyWithoutJson() {
+    void validationRejectsPlainTextReply() {
         when(transport.post(any(), any(), any(), any())).thenReturn(ok("pong"));
 
         ModelInvocationService.ValidationOutcome outcome = service.validate(model(null, null));
 
+        assertFalse(outcome.passed());
+        assertEquals("模型返回的不是合法 JSON", outcome.detail());
+    }
+
+    @Test
+    void validationRejectsJsonWithoutOkTrue() {
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("{\"ok\":false}"));
+
+        ModelInvocationService.ValidationOutcome outcome = service.validate(model(null, null));
+
+        assertFalse(outcome.passed());
+        assertEquals("模型返回的 JSON 缺少 ok=true", outcome.detail());
+    }
+
+    @Test
+    void validationKeepsThinkingForNonDeepSeekModels() {
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("{\"ok\":true}"));
+        ModelSnapshot qwen = new ModelSnapshot("01J9Z6Q3W4X5Y6Z7A8B9C0D1E4", "千问",
+                "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen3.6-flash",
+                "secret", null, null, null, "OPENAI_CHAT", 0);
+
+        ModelInvocationService.ValidationOutcome outcome = service.validate(qwen);
+
         assertTrue(outcome.passed(), outcome.detail());
-        assertEquals("连通成功，模型返回了正文", outcome.detail());
+        ArgumentCaptor<AgentModelCall> inserted = ArgumentCaptor.forClass(AgentModelCall.class);
+        verify(callMapper).insert(inserted.capture());
+        assertFalse(inserted.getValue().getRequestBody().contains("reasoning_effort"));
     }
 
     @Test
