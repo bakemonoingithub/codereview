@@ -9,10 +9,11 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: context.push }) }))
 vi.mock('@/api/v2', () => ({
   projectsApi: { list: vi.fn() },
   modelsApi: { list: vi.fn() },
-  reportsApi: { candidates: vi.fn(), freezeInputs: vi.fn(), start: vi.fn() }
+  reportsApi: { candidates: vi.fn(), freezeInputs: vi.fn(), start: vi.fn() },
+  tasksApi: { result: vi.fn() }
 }))
 
-import { modelsApi, projectsApi, reportsApi } from '@/api/v2'
+import { modelsApi, projectsApi, reportsApi, tasksApi } from '@/api/v2'
 
 const candidate = {
   resultId: 'result-1', taskId: 'task-1', targetId: 'target-1', kind: 'ISSUE' as const,
@@ -28,7 +29,9 @@ const stubs = {
   'a-table-column': { name: 'ATableColumn', template: '<div />' },
   'a-card': silentStub('a-card-stub'),
   'a-breadcrumb': silentStub('a-breadcrumb-stub'),
-  'a-breadcrumb-item': silentStub('a-breadcrumb-item-stub')
+  'a-breadcrumb-item': silentStub('a-breadcrumb-item-stub'),
+  'a-modal': { name: 'AModal', template: '<div class="modal-stub"><slot /></div>' },
+  SpecialistResultView: true
 }
 
 async function start() {
@@ -144,6 +147,20 @@ describe('报告生成表单', () => {
     await flushPromises()
 
     expect(context.push).toHaveBeenCalledWith({ path: '/reports/report-1', query: { startFailed: '1' } })
+    wrapper.unmount()
+  })
+
+  it('目标只显示文件名，查看结果走已有结果接口', async () => {
+    const wrapper = await start()
+    const s = state(wrapper)
+    const row = { ...candidate, path: 'src/main/java/Order.java', oldPath: 'src/Order.java', taskName: '支付重试', targetId: 'target-1' }
+    expect(s.fileName(row.path)).toBe('Order.java')
+    expect(s.pathTitle(row)).toContain('src/main/java/Order.java')
+    vi.mocked(tasksApi.result).mockResolvedValue({ id: 'r', targetId: 'target-1', kind: 'ISSUE', body: { summary: '有风险' } } as any)
+    await s.openResult(row)
+    expect(tasksApi.result).toHaveBeenCalledWith('task-1', 'target-1')
+    expect(s.resultOpen).toBe(true)
+    expect(s.resultView.body.summary).toBe('有风险')
     wrapper.unmount()
   })
 })

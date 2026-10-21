@@ -75,7 +75,11 @@
               @expand="onExpand"
             >
               <template #title="{ dataRef }">
-                <span :class="{ 'file-link': dataRef.isLeaf }">{{ dataRef.title }}</span>
+                <span
+                  class="tree-label"
+                  :class="{ 'file-link': dataRef.isLeaf }"
+                  :title="dataRef.path || dataRef.key || dataRef.title"
+                >{{ dataRef.title }}</span>
                 <a-tag v-if="dataRef.status" class="status-tag" color="blue">
                   {{ statusText(dataRef.status) }}
                 </a-tag>
@@ -84,7 +88,7 @@
           </a-spin>
         </aside>
 
-        <section class="code-pane">
+        <section ref="codePane" class="code-pane">
           <div class="code-head">
             <strong>{{ previewPath || '选择文件查看' }}</strong>
             <span class="spacer" />
@@ -107,7 +111,12 @@
                 highlight
                 empty-text="宿主未提供可显示的差异，请阅读修改前后原文"
               />
-              <pre v-else class="code">{{ previewText }}</pre>
+              <CodeViewer
+                v-else-if="previewSource !== null"
+                :text="previewSource"
+                :path="previewPath"
+              />
+              <pre v-else-if="previewNote" class="code">{{ previewNote }}</pre>
             </template>
             <div v-else class="empty">从左侧选择文件查看原文或改动。</div>
           </a-spin>
@@ -118,9 +127,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import CodeViewer from '@/components/CodeViewer.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import {
   projectsApi,
@@ -153,6 +163,7 @@ const tree = ref<FileTreeNode[]>([])
 const selected = ref<string[]>([])
 const expandedKeys = ref<string[]>([])
 const query = ref('')
+const codePane = ref<HTMLElement | null>(null)
 const previewPath = ref('')
 const previewMode = ref<'changes' | 'before' | 'after'>('changes')
 const previewContent = ref('')
@@ -207,12 +218,20 @@ const commitOptions = computed(() =>
 )
 const treeData = computed(() => filterPathTree(tree.value, query.value))
 
-const previewText = computed(() => {
-  if (mode.value === 'FILES') return numbered(previewContent.value)
+const previewSource = computed<string | null>(() => {
+  if (!previewPath.value) return null
+  if (mode.value === 'FILES') return previewContent.value
+  if (previewMode.value !== 'before' && previewMode.value !== 'after') return null
   const side = previewMode.value === 'before' ? previewDiff.value?.before : previewDiff.value?.after
-  if (!side) return ''
-  if (side.status === 'PRESENT') return numbered(side.content || '')
-  return side.status === 'MISSING' ? `该侧文件不存在（${side.reason || '未知原因'}）`
+  if (!side || side.status !== 'PRESENT') return null
+  return side.content || ''
+})
+const previewNote = computed(() => {
+  if (mode.value !== 'DIFF' || (previewMode.value !== 'before' && previewMode.value !== 'after')) return ''
+  const side = previewMode.value === 'before' ? previewDiff.value?.before : previewDiff.value?.after
+  if (!side || side.status === 'PRESENT') return ''
+  return side.status === 'MISSING'
+    ? `该侧文件不存在（${side.reason || '未知原因'}）`
     : `该侧原文不可读取（${side.reason || '读取失败'}）`
 })
 
@@ -232,7 +251,18 @@ onMounted(async () => {
       query.value = typeof saved.query === 'string' ? saved.query : ''
       const sceneIdentity = () => JSON.stringify([sourceKey(), commitSha.value])
       const sceneKey = sceneIdentity()
-      if (!await loadBranches() || sceneKey !== sceneIdentity()) return
+      if (!await loadBranches() || disposed) return
+      if (!branches.value.includes(branch.value)) {
+        const fallback = branches.value[0] || ''
+        if (!fallback) {
+          error.value = '该项目没有可选择的分支'
+          return
+        }
+        branch.value = fallback
+        message.warning('原分支已不存在，已改用 ' + fallback)
+      } else if (sceneKey !== sceneIdentity()) {
+        return
+      }
       await reload(saved.mode === 'FILES' ? saved.version : undefined)
       if (disposed || error.value || sceneKey !== sceneIdentity()) return
       const available = new Set(entries.value.map(entry => entry.path))
@@ -267,11 +297,20 @@ onBeforeUnmount(() => { saveScene(); disposed = true; epoch++; previewEpoch++; b
 
 async function onProjectChange() {
   const project = projects.value.find((item) => item.id === projectId.value)
-  branch.value = project?.currentBranch || 'main'
+  const preferred = project?.currentBranch || ''
   commitSha.value = ''
   const id = projectId.value
   if (!await loadBranches()) return
   if (disposed || id !== projectId.value) return
+  const next = preferred && branches.value.includes(preferred)
+    ? preferred
+    : (branches.value[0] || '')
+  if (!next) {
+    branch.value = ''
+    error.value = '该项目没有可选择的分支'
+    return
+  }
+  branch.value = next
   await reload()
 }
 
@@ -423,6 +462,8 @@ async function onSelect(_keys: (string | number)[], info: { node?: { dataRef?: F
   previewMode.value = 'changes'
   previewPath.value = node.path
   previewContent.value = ''
+  await nextTick()
+  codePane.value?.scrollTo({ top: 0 })
   previewDiff.value = null
   previewError.value = ''
   previewLoading.value = true
@@ -460,12 +501,6 @@ function launchSelected() {
   } catch { message.error('无法保存已选范围，请重试'); return }
   saveScene()
   router.push({ path: '/reviews/new', query: { from: 'browser' } })
-}
-
-function numbered(text: string): string {
-  if (!text) return ''
-  return text.split('\n').map((line, index) =>
-    `${String(index + 1).padStart(5, ' ')} | ${line}`).join('\n')
 }
 
 function statusText(status: string): string {
@@ -508,30 +543,50 @@ function statusText(status: string): string {
 }
 .browser-grid {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  min-height: 560px;
+  grid-template-columns: minmax(360px, 38%) minmax(0, 1fr);
+  height: calc(100vh - 250px);
+  min-height: 420px;
   border: 1px solid #e3e9f0;
   border-radius: 8px;
   overflow: hidden;
 }
 .tree {
+  min-width: 0;
+  min-height: 0;
   border-right: 1px solid #e3e9f0;
   padding: 12px;
   overflow: auto;
   background: #fbfcfe;
 }
+.tree :deep(.ant-tree-treenode) {
+  width: max-content;
+  min-width: 100%;
+}
+.tree :deep(.ant-tree-node-content-wrapper) {
+  overflow: visible;
+}
+.tree :deep(.tree-label) {
+  white-space: nowrap;
+}
 .code-pane {
   min-width: 0;
+  min-height: 0;
   overflow: auto;
   background: #fbfcfe;
 }
 .code-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   padding: 10px 14px;
   background: #fff;
   border-bottom: 1px solid #e3e9f0;
   display: flex;
   gap: 10px;
   align-items: center;
+}
+.code-head strong {
+  overflow-wrap: anywhere;
 }
 .code {
   margin: 0;

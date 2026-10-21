@@ -35,7 +35,7 @@
           <span class="spacer" />
           <span class="muted small">保存的是当时实际发送内容，修改策略不会改变此处</span>
         </div>
-        <pre class="code">{{ current }}</pre>
+        <CodeViewer :text="current" :language="jsonLike ? 'json' : ''" />
       </template>
     </a-spin>
   </a-modal>
@@ -43,6 +43,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import CodeViewer from '@/components/CodeViewer.vue'
 import { modelCallsApi, tasksApi, type CallDetailFull } from '@/api/v2'
 
 const props = defineProps<{ open: boolean; taskId?: string; callId: string }>()
@@ -64,6 +65,8 @@ const current = computed(() => {
   }
   return pretty(value)
 })
+
+const jsonLike = computed(() => current.value.startsWith('{') || current.value.startsWith('['))
 
 watch(
   () => [props.open, props.taskId, props.callId] as const,

@@ -11,7 +11,7 @@
         <div class="detail-head">
           <div>
             <div class="row wrap">
-              <h2>审查任务 {{ shortId(task.id) }}</h2>
+              <h2 :title="task.id">{{ taskLabel(task.name, task.id) }}</h2>
               <a-tag :color="stateColor(task.state)">{{ stateText(task.state) }}</a-tag>
             </div>
             <p class="muted">
@@ -20,6 +20,7 @@
               <code>{{ (task.headSha || '').slice(0, 7) }}</code>
               <span v-if="task.baseSha"> → 父 {{ task.baseSha.slice(0, 7) }}</span>
             </p>
+            <p class="muted small task-id" :title="task.id">任务 ID {{ task.id }}</p>
             <p class="muted small">
               文件完成 {{ succeededCount }} / {{ task.targets.length }}
               <span v-if="failedCount">（失败 {{ failedCount }}）</span>
@@ -223,6 +224,7 @@ import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
 import { discardFeedbackDrafts, hasDirtyFeedbackDrafts, feedbackSaveVersion } from '@/components/feedbackDrafts'
+import { taskLabel } from '@/utils/taskLabel'
 import {
   projectsApi,
   tasksApi,
@@ -569,10 +571,6 @@ function goBack() {
   }
 }
 
-function shortId(id: string): string {
-  return id.length > 10 ? `${id.slice(0, 10)}…` : id
-}
-
 function typeText(type: string): string {
   return ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度' } as Record<string, string>)[type] || type
 }
@@ -630,6 +628,10 @@ function formatTime(value: string): string {
 .detail-head h2 {
   margin: 0;
   font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.task-id {
+  overflow-wrap: anywhere;
 }
 .row {
   display: flex;

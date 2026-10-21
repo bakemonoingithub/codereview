@@ -113,7 +113,12 @@
             highlight
             empty-text="该文件没有可显示的差异"
           />
-          <pre v-else class="code-preview">{{ previewText }}</pre>
+          <CodeViewer
+            v-else-if="previewCode !== null"
+            :text="previewCode"
+            :path="previewPath"
+          />
+          <pre v-else class="code-preview">{{ previewNote }}</pre>
         </template>
       </a-spin>
     </a-modal>
@@ -122,6 +127,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import CodeViewer from '@/components/CodeViewer.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { repositoryApi, type DiffSides } from '@/api/v2'
 import {
@@ -186,19 +192,22 @@ const treeData = computed(() => filterPathTree(tree.value, query.value))
 const previewTitle = computed(() =>
   props.mode === 'DIFF' ? `${previewPath.value} · 提交差异` : `${previewPath.value} · 文件原文`
 )
-const previewText = computed(() => {
-  if (props.mode === 'FILES' || previewMode.value === 'content') {
-    return numberLines(previewContent.value)
-  }
+const previewCode = computed<string | null>(() => {
+  if (props.mode === 'FILES' || previewMode.value === 'content') return previewContent.value
+  if (previewMode.value === 'changes') return null
   const side = previewMode.value === 'before' ? previewSides.value?.before : previewSides.value?.after
-  if (!side || side.status !== 'PRESENT') {
-    return side?.reason === 'ADDED'
-      ? '该文件为新增文件，修改前不存在。'
-      : side?.reason === 'REMOVED'
-        ? '该文件已删除，修改后不存在。'
-        : '该侧原文不可读取。'
-  }
-  return numberLines(side.content || '')
+  if (!side || side.status !== 'PRESENT') return null
+  return side.content || ''
+})
+const previewNote = computed(() => {
+  if (props.mode === 'FILES' || previewMode.value === 'content' || previewMode.value === 'changes') return ''
+  const side = previewMode.value === 'before' ? previewSides.value?.before : previewSides.value?.after
+  if (side?.status === 'PRESENT') return ''
+  return side?.reason === 'ADDED'
+    ? '该文件为新增文件，修改前不存在。'
+    : side?.reason === 'REMOVED'
+      ? '该文件已删除，修改后不存在。'
+      : '该侧原文不可读取。'
 })
 
 watch(
@@ -350,13 +359,6 @@ async function openPreview(node: FileTreeNode) {
   } finally {
     if (epoch === previewEpoch) previewLoading.value = false
   }
-}
-
-function numberLines(text: string): string {
-  if (!text) {
-    return ''
-  }
-  return text.split('\n').map((line, index) => `${String(index + 1).padStart(5, ' ')} | ${line}`).join('\n')
 }
 
 function statusText(status: string): string {

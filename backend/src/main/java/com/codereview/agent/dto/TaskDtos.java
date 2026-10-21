@@ -24,7 +24,8 @@ public final class TaskDtos {
             @NotEmpty @Size(max = 500) List<@Valid Target> targets,
             @Size(max = 26) String strategyId,
             @Size(max = 26) String modelConfigId,
-            Boolean smartSplit) {
+            Boolean smartSplit,
+            @Size(max = 200) String name) {
     }
 
     /** FILES 需要 branch；DIFF 需要完整 commitSha，baseSha 可空表示第一父提交。 */
@@ -55,14 +56,14 @@ public final class TaskDtos {
                              String promptId, Integer promptVersionNo) {
     }
 
-    public record View(String id, String projectId, String route, String specialistType, String state,
+    public record View(String id, String name, String projectId, String route, String specialistType, String state,
                        String stopReason, String sourceKind, String branch, String headSha, String baseSha,
                        boolean smartSplit, int revision, LocalDateTime createdAt, LocalDateTime updatedAt,
                        LocalDateTime startedAt, LocalDateTime finishedAt, LocalDateTime deadlineAt,
                        LocalDateTime cancelRequestedAt, List<TargetView> targets, ConfigView config) {
     }
 
-    public record Summary(String id, String projectId, String route, String specialistType, String state,
+    public record Summary(String id, String name, String projectId, String route, String specialistType, String state,
                           String stopReason, LocalDateTime createdAt, LocalDateTime deadlineAt,
                           int targetCount, int succeededCount, int failedCount, int runningCount,
                           int queuedCount) {
@@ -72,7 +73,7 @@ public final class TaskDtos {
     public record CopyInput(String projectId, String route, String specialistType, String sourceKind,
                             String branch, String commitSha, String baseSha, List<TargetCopy> targets,
                             String strategyId, String modelConfigId, boolean smartSplit,
-                            boolean reobserveHead) {
+                            boolean reobserveHead, String name) {
     }
 
     public record TargetCopy(String path, String oldPath, String note) {

@@ -5,7 +5,7 @@ import ProjectList from '@/views/ProjectList.vue'
 import { attrsStub, namedAntStubs } from '@/testUtils/antStubs'
 
 vi.mock('@/api/v2', () => ({
-  projectsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn() }
+  projectsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() }
 }))
 
 import { projectsApi } from '@/api/v2'
@@ -93,5 +93,21 @@ describe('ProjectList', () => {
     expect(wrapper.find('a-input-stub[disabled]').exists()).toBe(true)
     expect(wrapper.find('a-input-password-stub').attributes('placeholder')).toContain('留空不修改')
     expect(projectsApi.update).not.toHaveBeenCalled()
+  })
+
+  it('确认后删除项目；进行中的任务由接口拒绝并保留提示', async () => {
+    ;(projectsApi.list as any).mockResolvedValue({ items: [project], nextCursor: null, hasMore: false })
+    ;(projectsApi.remove as any).mockRejectedValue(new Error('该项目仍有 1 个进行中的审查任务，完成或取消后再删除'))
+    const wrapper = mount(ProjectList, options)
+    await flush()
+    const remove = wrapper.findAll('a-button-stub').find((b) => b.text() === '删除')!
+    await remove.trigger('click')
+    await flush()
+    const s = (wrapper.vm as any).$.setupState
+    expect(s.confirmOpen).toBe(true)
+    await expect(s.confirmDelete()).rejects.toThrow('进行中')
+    expect(projectsApi.remove).toHaveBeenCalledWith('p1')
+    expect(s.deleteError).toContain('进行中')
+    expect(s.confirmOpen).toBe(true)
   })
 })

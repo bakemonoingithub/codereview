@@ -1,16 +1,14 @@
 <template>
-  <div>
-    <div class="page-head">
-      <div>
-        <a-breadcrumb>
-          <a-breadcrumb-item><router-link to="/reports">报告</router-link></a-breadcrumb-item>
-          <a-breadcrumb-item>生成报告</a-breadcrumb-item>
-        </a-breadcrumb>
-        <h2>生成报告</h2>
-        <p class="muted">勾选已完整发布的审查结果；提交后冻结来源、版本和当时反馈。</p>
-      </div>
-      <a-button @click="router.push('/reports')">返回报告</a-button>
-    </div>
+  <a-modal
+    :open="true"
+    title="生成报告"
+    :footer="null"
+    width="min(1100px, calc(100vw - 48px))"
+    :mask-closable="false"
+    wrap-class-name="report-create-modal"
+    @cancel="closeCreate"
+  >
+    <p class="muted intro">勾选已完整发布的审查结果；提交后冻结来源、版本和当时反馈。</p>
 
     <a-alert v-if="formError" type="error" show-icon :message="formError" class="mb16" />
     <a-alert
@@ -100,18 +98,17 @@
           <a-table-column title="来源" key="source" width="220">
             <template #default="{ record }">
               <div class="source-cell">
-                <strong>{{ record.projectName || record.projectId }}</strong>
+                <strong :title="record.taskId">{{ taskLabel(record.taskName, record.taskId) }}</strong>
                 <span class="muted small">
-                  {{ kindText(record.kind) }} · {{ record.taskState }} · {{ record.sourceKind === 'DIFF' ? '提交差异' : '文件内容' }}
+                  {{ record.projectName || record.projectId }} · {{ kindText(record.kind) }} · {{ record.taskState }} · {{ record.sourceKind === 'DIFF' ? '提交差异' : '文件内容' }}
                 </span>
-                <span class="muted small">{{ shortId(record.taskId) }}</span>
               </div>
             </template>
           </a-table-column>
-          <a-table-column title="目标" key="path" width="250">
+          <a-table-column title="目标" key="path" width="180">
             <template #default="{ record }">
               <div class="path-cell">
-                <span>{{ record.path || 'Agent Markdown' }}</span>
+                <span class="file-name" :title="pathTitle(record)">{{ fileName(record.path) }}</span>
                 <code class="muted small">{{ shortSha(record.headSha) }}</code>
               </div>
             </template>
@@ -124,6 +121,13 @@
           <a-table-column title="反馈" key="feedback" width="120">
             <template #default="{ record }">
               <span class="muted small">{{ feedbackText(record) }}</span>
+            </template>
+          </a-table-column>
+          <a-table-column title="" key="preview" width="96">
+            <template #default="{ record }">
+              <a-button type="link" size="small" :disabled="!record.targetId" @click="openResult(record)">
+                查看结果
+              </a-button>
             </template>
           </a-table-column>
           <template #emptyText>
@@ -150,8 +154,8 @@
           <div v-for="item in selectedList" :key="item.resultId" class="selected-item">
             <div>
               <strong>{{ item.projectName || item.projectId }}</strong>
-              <span class="muted small">
-                {{ kindText(item.kind) }} · {{ item.path || 'Agent Markdown' }}
+              <span class="muted small" :title="pathTitle(item)">
+                {{ kindText(item.kind) }} · {{ fileName(item.path) }}
               </span>
               <span class="muted small">{{ shortSha(item.headSha) }}</span>
             </div>
@@ -176,22 +180,50 @@
         <p class="muted small submit-note">生成在后台执行；可在报告详情查看状态、失败原因和实际调用。</p>
       </aside>
     </div>
-  </div>
+
+    <a-modal
+      v-model:open="resultOpen"
+      :title="resultTitle"
+      width="min(960px, calc(100vw - 48px))"
+      :footer="null"
+      destroy-on-close
+    >
+      <a-spin :spinning="resultLoading">
+        <a-alert v-if="resultError" type="error" show-icon :message="resultError" />
+        <SpecialistResultView
+          v-else-if="resultView && resultTaskId"
+          :result="resultView"
+          :task-id="resultTaskId"
+        />
+      </a-spin>
+    </a-modal>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { message } from 'ant-design-vue'
+import SpecialistResultView from '@/components/SpecialistResultView.vue'
 import {
   modelsApi,
   projectsApi,
   reportsApi,
+  tasksApi,
   type ModelView,
   type ProjectView,
-  type ReportCandidate
+  type ReportCandidate,
+  type ResultView
 } from '@/api/v2'
+import { fileName, taskLabel } from '@/utils/taskLabel'
 
 const router = useRouter()
+const resultOpen = ref(false)
+const resultLoading = ref(false)
+const resultError = ref('')
+const resultView = ref<ResultView | null>(null)
+const resultTaskId = ref('')
+const resultTitle = ref('审查结果')
 const form = reactive({ title: '专项审查报告', modelConfigId: undefined as string | undefined, instruction: '' })
 const formError = ref('')
 const submitting = ref(false)
@@ -319,6 +351,35 @@ function remove(resultId: string) {
   selected.delete(resultId)
 }
 
+function closeCreate() {
+  router.push('/reports')
+}
+
+function pathTitle(record: { path: string | null; oldPath?: string | null }) {
+  if (!record.path) return 'Agent Markdown'
+  return record.oldPath ? `${record.oldPath} → ${record.path}` : record.path
+}
+
+async function openResult(record: ReportCandidate) {
+  if (!record.targetId) {
+    message.warning('这条结果没有可查看的文件目标')
+    return
+  }
+  resultTitle.value = `${taskLabel(record.taskName, record.taskId)} · ${fileName(record.path)}`
+  resultTaskId.value = record.taskId
+  resultView.value = null
+  resultError.value = ''
+  resultOpen.value = true
+  resultLoading.value = true
+  try {
+    resultView.value = await tasksApi.result(record.taskId, record.targetId)
+  } catch (failure) {
+    resultError.value = (failure as Error).message || '审查结果读取失败'
+  } finally {
+    resultLoading.value = false
+  }
+}
+
 async function submit() {
   if (submitting.value || disposed) return
   formError.value = ''
@@ -381,22 +442,15 @@ function feedbackText(candidate: ReportCandidate) {
 function shortSha(sha: string | null) {
   return sha ? sha.slice(0, 10) : '—'
 }
-
-function shortId(id: string) {
-  return id.length <= 10 ? id : id.slice(-10)
-}
 </script>
 
 <style scoped lang="less">
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+.intro {
+  margin: 0 0 16px;
 }
-.page-head h2 {
-  margin: 4px 0;
+.file-name {
+  display: block;
+  overflow-wrap: anywhere;
 }
 .mb16 {
   margin-bottom: 16px;
@@ -499,5 +553,16 @@ function shortId(id: string) {
   .selected-panel {
     position: static;
   }
+}
+</style>
+
+<style lang="less">
+.report-create-modal .ant-modal {
+  top: 24px;
+  padding-bottom: 24px;
+}
+.report-create-modal .ant-modal-body {
+  max-height: calc(100vh - 120px);
+  overflow: auto;
 }
 </style>

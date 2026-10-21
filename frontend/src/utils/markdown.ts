@@ -82,6 +82,16 @@ export const marked = new Marked({
   }
 })
 
+/**
+ * 高亮一段源码。返回值已转义；未知语言按纯文本转义，避免把仓库内容当 HTML。
+ * 行号由调用方单独渲染，不写进正文。
+ */
+export function highlightSource(text: string, language: string): string {
+  if (!text) return ''
+  const known = language && hljs.getLanguage(language) ? language : ''
+  return known ? hljs.highlight(text, { language: known }).value : escapeHtml(text)
+}
+
 /** 渲染 Markdown 为 HTML（**未净化**，调用方必须过 DOMPurify）。 */
 export function renderMarkdown(text: string | null | undefined): string {
   if (!text) {

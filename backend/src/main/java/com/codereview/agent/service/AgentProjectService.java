@@ -8,7 +8,10 @@ import com.codereview.agent.api.PageResponse;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.ProjectDtos;
 import com.codereview.agent.entity.AgentProject;
+import com.codereview.agent.entity.AgentReviewTask;
+import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.mapper.AgentProjectMapper;
+import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
@@ -107,6 +110,31 @@ public class AgentProjectService {
 
     public ProjectDtos.View detail(String id) {
         return toView(require(id));
+    }
+
+    /**
+     * 逻辑删除项目。进行中的审查任务会阻止删除；已结束的任务留在原处，不级联清除历史。
+     * 仓库地址的唯一约束只统计未删除行，删除后可以再次接入同一仓库。
+     */
+    public void delete(String id) {
+        AgentProject project = require(id);
+        long active = countActiveTasks(project.getId());
+        if (active > 0) {
+            throw new ApiException(ErrorCode.CONFLICT,
+                    "该项目仍有 " + active + " 个进行中的审查任务，完成或取消后再删除");
+        }
+        int affected = db.mapper(AgentProjectMapper.class).deleteById(project.getId());
+        if (affected == 0) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "项目不存在：" + id);
+        }
+    }
+
+    private long countActiveTasks(String projectId) {
+        Long count = db.mapper(AgentReviewTaskMapper.class).selectCount(
+                new LambdaQueryWrapper<AgentReviewTask>()
+                        .eq(AgentReviewTask::getProjectId, projectId)
+                        .notIn(AgentReviewTask::getState, TaskStates.TASK_TERMINAL));
+        return count == null ? 0 : count;
     }
 
     private AgentProject require(String id) {

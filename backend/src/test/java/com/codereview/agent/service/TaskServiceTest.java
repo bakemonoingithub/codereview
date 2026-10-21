@@ -144,7 +144,28 @@ class TaskServiceTest {
         verify(quotaMapper).insert(quota.capture());
         assertEquals(200, quota.getValue().getHardLimit());
         assertEquals(0, quota.getValue().getReserved());
+        assertEquals("审查任务 " + task.getValue().getId(), task.getValue().getName());
+        assertEquals(task.getValue().getName(), view.name());
         verify(dispatcher).dispatch(task.getValue().getId());
+    }
+
+    @Test
+    void createPersistsATrimmedReviewName() {
+        TaskDtos.View view = service.create(request(null, "  支付重试  "), null);
+
+        ArgumentCaptor<AgentReviewTask> task = ArgumentCaptor.forClass(AgentReviewTask.class);
+        verify(taskMapper).insert(task.capture());
+        assertEquals("支付重试", task.getValue().getName());
+        assertEquals("支付重试", view.name());
+    }
+
+    @Test
+    void createRejectsANameLongerThan200Characters() {
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.create(request(null, "名".repeat(201)), null));
+
+        assertEquals(ErrorCode.VALIDATION_FAILED, error.errorCode());
+        verify(taskMapper, never()).insert(any(AgentReviewTask.class));
     }
 
     @Test
@@ -245,6 +266,7 @@ class TaskServiceTest {
         assertEquals("src/Order.java", copy.targets().get(0).path());
         assertEquals("strategy-1", copy.strategyId());
         assertEquals(MODEL_ID, copy.modelConfigId());
+        assertEquals("审查任务 " + TASK_ID, copy.name());
     }
 
     @Test
@@ -280,10 +302,14 @@ class TaskServiceTest {
     }
 
     private TaskDtos.Create request(String unused) {
+        return request(unused, null);
+    }
+
+    private TaskDtos.Create request(String unused, String name) {
         return new TaskDtos.Create(PROJECT_ID, "SPECIALIST", "ISSUE",
                 new TaskDtos.Source("FILES", "main", HEAD, null, null),
                 List.of(new TaskDtos.Target("src/Order.java", null, "关注并发")),
-                null, MODEL_ID, false);
+                null, MODEL_ID, false, name);
     }
 
     private AgentReviewTask task(String id, String hash) {

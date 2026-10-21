@@ -55,7 +55,12 @@
             highlight
             empty-text="宿主未提供可显示的差异，请阅读固定版本原文"
           />
-          <pre v-else class="code">{{ numbered(mode === 'saved' ? detail.content : content, mode === 'saved' ? metadata.startLine : 1) }}</pre>
+          <CodeViewer
+            v-else
+            :text="mode === 'saved' ? (detail.content || '') : content"
+            :path="metadata.path"
+            :start-line="mode === 'saved' ? (metadata.startLine || 1) : 1"
+          />
         </a-spin>
       </template>
     </a-spin>
@@ -64,6 +69,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import CodeViewer from '@/components/CodeViewer.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import {
   repositoryApi,
@@ -182,12 +188,6 @@ async function loadDiff() {
   } finally {
     if (epoch === contentEpoch) contentLoading.value = false
   }
-}
-
-function numbered(text: string, startLine: number): string {
-  if (!text) return ''
-  return text.split('\n').map((line, index) =>
-    `${String(startLine + index).padStart(6, ' ')} | ${line}`).join('\n')
 }
 
 function sideText(side: string): string {
