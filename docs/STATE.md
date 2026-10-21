@@ -90,6 +90,7 @@ P30.5–P30.8 交付：
 - 2026-10-21 会话前保留的模型验证修复（`fix(agent): accept plain-text model validation...`）与 GitHub 斜杠分支修复（`fix(git): fall back to commit query...`）已分别本地提交。
 - P32.1–P32.3 代码、前端、测试与工作记录在当前分支本地提交（`feat(agent): add feedback and task accuracy statistics`、`feat(agent): freeze report inputs from complete results`），未 push；提交前全量测试、类型检查和构建通过。
 - P32.1–P32.3 的 R01–R11 审查修复、正式回归与本轮记录在当前分支本地提交，未 push；详情见[修复与复验记录](work/agent-redesign/p32/p32-1-3-review-fixes.md)。
+- P32.4–P32.7 的代码、前端、V4 迁移、测试、截图与交付文档在当前分支本地提交 `352b97b`，未 push；服务已按本机新库与真实模型完成报告验证，当前仍运行在 8081／5173。
 - `../code` 工作树保留其原有 2 处未提交改动，不纳入本工作树。
 
 ## 已知坑
