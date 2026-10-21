@@ -29,6 +29,9 @@
           <a-button size="small" :type="part === 'response' ? 'primary' : 'default'" @click="part = 'response'">
             模型返回
           </a-button>
+          <a-button size="small" :type="part === 'usage' ? 'primary' : 'default'" @click="part = 'usage'">
+            调用用量
+          </a-button>
           <span class="spacer" />
           <span class="muted small">保存的是当时实际发送内容，修改策略不会改变此处</span>
         </div>
@@ -39,46 +42,55 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { tasksApi, type CallDetailFull } from '@/api/v2'
 
 const props = defineProps<{ open: boolean; taskId: string; callId: string }>()
 const emit = defineEmits<{ (event: 'update:open', value: boolean): void }>()
 
+let loadEpoch = 0
 const loading = ref(false)
 const error = ref('')
 const call = ref<CallDetailFull | null>(null)
-const part = ref<'request' | 'response'>('request')
+const part = ref<'request' | 'response' | 'usage'>('request')
 
 const current = computed(() => {
   if (!call.value) return ''
-  const value = part.value === 'request' ? call.value.requestBody : call.value.responseBody
+  const value = part.value === 'request' ? call.value.requestBody
+    : part.value === 'usage' ? call.value.usageJson : call.value.responseBody
   if (!value) {
-    return part.value === 'request' ? '（未保存请求正文）' : '（没有模型返回或调用未成功）'
+    return part.value === 'request' ? '（未保存请求正文）'
+      : part.value === 'usage' ? '（未返回用量信息）' : '（没有模型返回或调用未成功）'
   }
   return pretty(value)
 })
 
 watch(
-  () => [props.open, props.callId] as const,
+  () => [props.open, props.taskId, props.callId] as const,
   async ([open]) => {
+    const epoch = ++loadEpoch
+    call.value = null
     if (!open || !props.callId) return
     loading.value = true
     error.value = ''
     part.value = 'request'
     try {
-      call.value = await tasksApi.call(props.taskId, props.callId)
+      const loaded = await tasksApi.call(props.taskId, props.callId)
+      if (epoch !== loadEpoch) return
+      call.value = loaded
       if (!call.value.requestBody && call.value.responseBody) {
         part.value = 'response'
       }
     } catch (failure) {
-      error.value = (failure as Error).message || '调用记录读取失败'
+      if (epoch === loadEpoch) error.value = (failure as Error).message || '调用记录读取失败'
     } finally {
-      loading.value = false
+      if (epoch === loadEpoch) loading.value = false
     }
   },
-  { immediate: true }
+  { immediate: true, flush: 'sync' }
 )
+
+onBeforeUnmount(() => { loadEpoch++ })
 
 function pretty(value: string): string {
   try {
@@ -95,6 +107,7 @@ function duration(start: string | null, end: string | null): string {
 }
 
 function close() {
+  loadEpoch++
   emit('update:open', false)
 }
 </script>

@@ -92,4 +92,25 @@ describe('专项结果阅读', () => {
     expect(wrapper.html()).toContain('文件未完成')
     expect(wrapper.html()).toContain('不能作为完整文件结论')
   })
+  it('耦合结果展示程序计算事实和未定位边界', () => {
+    const result = issueResult(); result.kind = 'COUPLING'; result.body = { summary: '依赖分析', observations: [] }
+    result.provenance.couplingFacts = { resolvedOutgoingCount: 2, unresolvedTypeCount: 1, coverage: 0.66,
+      sha: 'fixed', side: 'FILE', edges: [{ id: 'dep-1', sourceType: 'Order', targetType: 'Payment', targetPath: 'Payment.java', relation: 'FIELD', line: 3 }], limitations: ['第三方类型未定位'] }
+    const w = mount(SpecialistResultView, { props: { result }, global: { stubs: namedAntStubs } })
+    expect(w.text()).toContain('仓库内已解析出向依赖：2'); expect(w.text()).toContain('未可靠定位类型：1')
+    expect(w.text()).toContain('Order → Payment'); expect(w.text()).toContain('第三方类型未定位'); w.unmount()
+  })
+  it('独立显示保存的材料缺口，模型未复述时也不丢失', () => {
+    const result = issueResult(); result.provenance.materialGaps = [{ code: 'NOT_AVAILABLE', subject: 'a.Base', detail: '当前版本未定位' }]
+    const w = mount(SpecialistResultView, { props: { result }, global: { stubs: namedAntStubs } })
+    expect(w.text()).toContain('NOT_AVAILABLE：a.Base，当前版本未定位'); w.unmount()
+  })
+
+  it('模型提供的恶意 HTML 只按文本展示', () => {
+    const result = issueResult(); result.body.summary = '<img src=x onerror="alert(1)"><script>alert(1)</script>'
+    const w = mount(SpecialistResultView, { props: { result }, global: { stubs: namedAntStubs } })
+    expect(w.find('script').exists()).toBe(false); expect(w.find('img').exists()).toBe(false)
+    expect(w.text()).toContain('<script>alert(1)</script>'); w.unmount()
+  })
+
 })

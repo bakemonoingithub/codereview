@@ -24,7 +24,7 @@ async function start() {
   await flushPromises(); return wrapper
 }
 beforeEach(() => {
-  vi.resetAllMocks(); context.route.query = {}
+  vi.resetAllMocks(); sessionStorage.clear(); context.route.query = {}
   vi.mocked(projectsApi.list).mockResolvedValue(page([{ id: 'p1', name: '项目', repoUrl: 'repo', currentBranch: 'main' }]) as any)
   vi.mocked(modelsApi.list).mockResolvedValue(page([{ id: 'm1', name: '模型' }]) as any)
   vi.mocked(strategiesApi.list).mockResolvedValue(page([]) as any)
@@ -111,4 +111,15 @@ describe('专项发起来源和提交保护', () => {
     const w = await start(); expect(state(w).form.observedSha).toBe('sha-main')
     expect(state(w).form.targets).toEqual([]); expect(state(w).copyHeadMoved).toBe(true); w.unmount()
   })
+  it('普通发起不会消费此前遗留的浏览器带入数据', async () => {
+    sessionStorage.setItem('review-launch-prefill', JSON.stringify({ projectId: 'p1', sourceKind: 'FILES', branch: 'stale', observedSha: 'old', targets: [{ path: 'Stale.java' }] }))
+    const w = await start(); expect(state(w).form.branch).toBe('main'); expect(state(w).form.targets).toEqual([]); w.unmount()
+  })
+  it('显式从浏览器发起时保留固定版本和范围', async () => {
+    context.route.query = { from: 'browser' }
+    sessionStorage.setItem('review-launch-prefill', JSON.stringify({ projectId: 'p1', sourceKind: 'FILES', branch: 'main', observedSha: 'fixed', targets: [{ path: 'A.java', oldPath: null }] }))
+    const w = await start(); expect(state(w).form.observedSha).toBe('fixed')
+    expect(state(w).form.targets[0].path).toBe('A.java'); expect(repositoryApi.head).not.toHaveBeenCalled(); w.unmount()
+  })
+
 })

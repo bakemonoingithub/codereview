@@ -80,7 +80,8 @@ public final class TaskDtos {
 
     public record CallSummary(String id, String targetId, String unitId, String purpose, int attempt,
                               String state, String errorCode, LocalDateTime createdAt,
-                              LocalDateTime startedAt, LocalDateTime finishedAt) {
+                              LocalDateTime startedAt, LocalDateTime finishedAt,
+                              Integer generation, Integer unitOrdinal) {
     }
 
     public record CallDetail(String id, String part, String content, long length, String sha256,

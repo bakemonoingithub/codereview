@@ -309,12 +309,14 @@ onMounted(async () => {
 })
 
 async function applyBrowserPrefill(): Promise<boolean> {
-  const raw = sessionStorage.getItem('review-launch-prefill')
+  if (route.query.from !== 'browser') return false
+  let raw: string | null = null
+  try { raw = sessionStorage.getItem('review-launch-prefill') } catch { return false }
   if (!raw) {
     return false
   }
-  sessionStorage.removeItem('review-launch-prefill')
   try {
+    sessionStorage.removeItem('review-launch-prefill')
     const prefill = JSON.parse(raw) as {
       projectId: string
       branch: string
@@ -323,12 +325,15 @@ async function applyBrowserPrefill(): Promise<boolean> {
       commitSha?: string
       targets: { path: string; oldPath: string | null }[]
     }
+    if (!projects.value.some(project => project.id === prefill.projectId)
+      || !['FILES', 'DIFF'].includes(prefill.sourceKind) || !Array.isArray(prefill.targets)) return false
     restoring.value = true
     form.projectId = prefill.projectId
     form.branch = prefill.branch
     form.specialistType = 'ISSUE'
     form.sourceKind = prefill.sourceKind
     form.observedSha = prefill.observedSha || ''
+    lastObservedSha = form.observedSha
     form.commitSha = prefill.commitSha || ''
     form.targets = (prefill.targets || []).map((target) => ({
       path: target.path,

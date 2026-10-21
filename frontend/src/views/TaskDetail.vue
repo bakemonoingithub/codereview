@@ -103,11 +103,11 @@
               <template v-if="activeTab === 'result'">
                 <a-alert v-if="resultError" type="warning" show-icon :message="resultError" />
                 <SpecialistResultView
-                  v-else-if="result"
+                  v-if="result"
                   :result="result"
                   @open-code="openMaterial"
                 />
-                <div v-else class="empty">该文件还没有已发布结果。</div>
+                <div v-else-if="!resultError" class="empty">该文件还没有已发布结果。</div>
               </template>
 
               <template v-else-if="activeTab === 'materials'">
@@ -117,8 +117,8 @@
                   show-icon
                   :message="materialError"
                 />
-                <a-empty v-else-if="!materials.length" description="还没有关联材料" />
-                <div v-else class="material-list">
+                <a-empty v-if="!materials.length && !materialError" description="还没有关联材料" />
+                <div v-if="materials.length" class="material-list">
                   <div v-for="material in materials" :key="material.id" class="material-row">
                     <div class="material-main">
                       <code>{{ material.path }}</code>
@@ -139,9 +139,9 @@
 
               <template v-else>
                 <a-alert v-if="callError" type="error" show-icon :message="callError" />
-                <a-empty v-else-if="!calls.length" description="还没有调用记录" />
+                <a-empty v-if="!calls.length && !callError" description="还没有调用记录" />
                 <a-table
-                  v-else
+                  v-if="calls.length"
                   :data-source="calls"
                   row-key="id"
                   :pagination="false"
@@ -149,9 +149,10 @@
                 >
                   <a-table-column title="尝试" key="attempt" width="140">
                     <template #default="{ record }">
-                      第 {{ record.attempt }} 次
+                      传输尝试 {{ record.attempt }}
                       <span class="muted small">
-                        {{ record.unitId ? '片段 ' + record.unitId.slice(0, 8) : '整文件' }} ·
+                        {{ record.generation ? '第 ' + record.generation + ' 代 · ' : '' }}
+                        {{ record.unitOrdinal ? '单元 ' + record.unitOrdinal : '单元未记录' }} ·
                         {{ record.purpose }}
                       </span>
                     </template>
@@ -206,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import SpecialistResultView from '@/components/SpecialistResultView.vue'
@@ -245,7 +246,11 @@ const materialId = ref('')
 const callOpen = ref(false)
 const callId = ref('')
 let loadEpoch = 0
-let pollTimer: ReturnType<typeof setInterval> | null = null
+let taskEpoch = 0
+let callsEpoch = 0
+let callsPages = 1
+let disposed = false
+let pollTimer: ReturnType<typeof setTimeout> | null = null
 
 const tabs = [
   { key: 'result' as const, label: '审查结果' },
@@ -260,137 +265,196 @@ const failedCount = computed(() =>
   task.value?.targets.filter((target) => target.state === 'FAILED').length || 0
 )
 const issueCount = computed(() => result.value?.issues.length || 0)
-onMounted(async () => {
-  await loadTask()
-  schedulePoll()
+function saveScene() {
+  if (!task.value) return
+  try {
+    sessionStorage.setItem(`review-detail-${task.value.id}`, JSON.stringify({
+      selectedTargetId: selectedTargetId.value, activeTab: activeTab.value, callsPages
+    }))
+  } catch { /* 存储不可用不阻断阅读 */ }
+}
+watch(() => route.params.id, () => {
+  saveScene()
+  stopPoll()
+  taskEpoch++
+  loadEpoch++
+  callsEpoch++
+  task.value = null
+  projectName.value = ''
+  selectedTargetId.value = ''
+  activeTab.value = 'result'
+  result.value = null
+  materials.value = []
+  calls.value = []
+  callsCursor.value = null
+  callsHasMore.value = false
+  callsPages = 1
+  materialOpen.value = false
+  callOpen.value = false
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(`review-detail-${String(route.params.id)}`) || 'null')
+    if (saved) {
+      selectedTargetId.value = typeof saved.selectedTargetId === 'string' ? saved.selectedTargetId : ''
+      activeTab.value = ['result', 'materials', 'calls'].includes(saved.activeTab) ? saved.activeTab : 'result'
+      callsPages = Math.min(4, Math.max(1, Number(saved.callsPages) || 1))
+    }
+  } catch { /* 无现场 */ }
+  void loadTask()
+}, { immediate: true, flush: 'sync' })
+onBeforeUnmount(() => {
+  saveScene()
+  disposed = true
+  taskEpoch++
+  loadEpoch++
+  callsEpoch++
+  stopPoll()
 })
 
-onBeforeUnmount(stopPoll)
-
 async function loadTask() {
+  const epoch = ++taskEpoch
+  const id = String(route.params.id)
+  stopPoll()
   taskLoading.value = !task.value
   refreshing.value = !!task.value
   error.value = ''
   try {
-    const loaded = await tasksApi.detail(String(route.params.id))
+    const loaded = await tasksApi.detail(id)
+    if (epoch !== taskEpoch || disposed) return
     task.value = loaded
-    if (!selectedTargetId.value && loaded.targets.length) {
-      selectedTargetId.value = loaded.targets[0].id
-      await loadTarget()
-    } else if (selectedTargetId.value) {
-      const target = loaded.targets.find((item) => item.id === selectedTargetId.value)
-      if (!target) {
-        selectedTargetId.value = loaded.targets[0]?.id || ''
-      }
-      await loadTarget()
+    if (!loaded.targets.some(target => target.id === selectedTargetId.value)) {
+      if (selectedTargetId.value) message.warning('原目标已不可用，已切换到当前任务目标')
+      selectedTargetId.value = loaded.targets[0]?.id || ''
+      result.value = null
+      materials.value = []
+      calls.value = []
+      callsCursor.value = null
+      callsHasMore.value = false
     }
+    await loadTarget()
+    if (epoch !== taskEpoch || disposed) return
     if (!projectName.value || projectName.value === loaded.projectId) {
       try {
-        projectName.value = (await projectsApi.detail(loaded.projectId)).name
+        const project = await projectsApi.detail(loaded.projectId)
+        if (epoch === taskEpoch && !disposed) projectName.value = project.name
       } catch {
-        projectName.value = loaded.projectId
+        if (epoch === taskEpoch && !disposed) projectName.value = loaded.projectId
       }
     }
-    schedulePoll()
   } catch (failure) {
-    error.value = (failure as Error).message || '任务详情加载失败'
+    if (epoch === taskEpoch && !disposed) error.value = (failure as Error).message || '任务详情加载失败'
   } finally {
-    taskLoading.value = false
-    refreshing.value = false
+    if (epoch === taskEpoch && !disposed) {
+      taskLoading.value = false
+      refreshing.value = false
+      schedulePoll()
+    }
   }
 }
 
 async function loadMoreCalls() {
-  if (!task.value || !selectedTargetId.value || !callsHasMore.value || callsLoadingMore.value) return
+  if (!task.value || !selectedTargetId.value || !callsHasMore.value || callsLoadingMore.value || detailLoading.value) return
+  const epoch = ++callsEpoch
+  const targetEpoch = loadEpoch
   callsLoadingMore.value = true
+  callError.value = ''
   try {
     const page = await tasksApi.calls(task.value.id, {
-      targetId: selectedTargetId.value,
-      cursor: callsCursor.value || undefined,
-      limit: 50
+      targetId: selectedTargetId.value, cursor: callsCursor.value || undefined, limit: 50
     })
-    calls.value = [...calls.value, ...page.items]
+    if (epoch !== callsEpoch || targetEpoch !== loadEpoch || disposed) return
+    calls.value = [...new Map([...calls.value, ...page.items].map(call => [call.id, call])).values()]
     callsCursor.value = page.nextCursor
     callsHasMore.value = page.hasMore
+    callsPages++
   } catch (failure) {
-    callError.value = (failure as Error).message || '更多调用读取失败'
+    if (epoch === callsEpoch && targetEpoch === loadEpoch && !disposed) {
+      callError.value = (failure as Error).message || '更多调用读取失败'
+    }
   } finally {
-    callsLoadingMore.value = false
+    if (epoch === callsEpoch && !disposed) callsLoadingMore.value = false
   }
 }
 
 async function selectTarget(targetId: string) {
   if (selectedTargetId.value === targetId) return
   selectedTargetId.value = targetId
+  callsPages = 1
+  callsEpoch++
+  callsCursor.value = null
+  callsHasMore.value = false
+  callsLoadingMore.value = false
+  result.value = null
+  materials.value = []
+  calls.value = []
+  materialOpen.value = false
+  callOpen.value = false
   await loadTarget()
 }
 
+async function readCallPages(taskId: string, targetId: string) {
+  let cursor: string | undefined
+  const items: CallSummary[] = []
+  let page
+  for (let index = 0; index < callsPages; index++) {
+    page = await tasksApi.calls(taskId, { targetId, cursor, limit: 50 })
+    items.push(...page.items)
+    if (!page.hasMore || !page.nextCursor) break
+    cursor = page.nextCursor
+  }
+  return { items, nextCursor: page?.nextCursor || null, hasMore: page?.hasMore || false }
+}
+
 async function loadTarget() {
-  if (!task.value || !selectedTargetId.value) return
   const epoch = ++loadEpoch
+  callsEpoch++
+  callsLoadingMore.value = false
+  if (!task.value || !selectedTargetId.value) {
+    result.value = null; materials.value = []; calls.value = []
+    detailLoading.value = false
+    return
+  }
+  const id = task.value.id
+  const targetId = selectedTargetId.value
   detailLoading.value = true
   resultError.value = ''
   materialError.value = ''
   callError.value = ''
-  result.value = null
-  materials.value = []
-  calls.value = []
   try {
     const [resultOutcome, materialOutcome, callOutcome] = await Promise.allSettled([
-      tasksApi.result(task.value.id, selectedTargetId.value),
-      tasksApi.materials(task.value.id, selectedTargetId.value),
-      tasksApi.calls(task.value.id, { targetId: selectedTargetId.value, limit: 50 })
+      tasksApi.result(id, targetId), tasksApi.materials(id, targetId), readCallPages(id, targetId)
     ])
-    if (epoch !== loadEpoch) return
-    if (resultOutcome.status === 'fulfilled') {
-      result.value = resultOutcome.value
-    } else {
-      resultError.value = (resultOutcome.reason as Error)?.message || '结果读取失败'
-    }
-    if (materialOutcome.status === 'fulfilled') {
-      materials.value = materialOutcome.value
-    } else {
-      materialError.value = (materialOutcome.reason as Error)?.message || '材料读取失败'
-    }
+    if (epoch !== loadEpoch || disposed) return
+    if (resultOutcome.status === 'fulfilled') result.value = resultOutcome.value
+    else resultError.value = (resultOutcome.reason as Error)?.message || '结果读取失败'
+    if (materialOutcome.status === 'fulfilled') materials.value = materialOutcome.value
+    else materialError.value = (materialOutcome.reason as Error)?.message || '材料读取失败'
     if (callOutcome.status === 'fulfilled') {
       calls.value = callOutcome.value.items
       callsCursor.value = callOutcome.value.nextCursor
       callsHasMore.value = callOutcome.value.hasMore
-    } else {
-      callError.value = (callOutcome.reason as Error)?.message || '调用读取失败'
-    }
+    } else callError.value = (callOutcome.reason as Error)?.message || '调用读取失败'
   } finally {
-    if (epoch === loadEpoch) detailLoading.value = false
+    if (epoch === loadEpoch && !disposed) detailLoading.value = false
   }
 }
 
 function schedulePoll() {
   stopPoll()
-  if (!task.value || !['QUEUED', 'RUNNING'].includes(task.value.state)) return
-  pollTimer = setInterval(async () => {
-    if (!task.value) return
-    try {
-      const loaded = await tasksApi.detail(task.value.id)
-      task.value = loaded
-      if (!['QUEUED', 'RUNNING'].includes(loaded.state)) {
-        stopPoll()
-      }
-      await loadTarget()
-    } catch {
-      // 单次轮询失败不终止；用户仍可手动刷新
-    }
-  }, 3000)
+  if (disposed || !task.value || !['QUEUED', 'RUNNING'].includes(task.value.state)) return
+  pollTimer = setTimeout(() => { void loadTask() }, 3000)
 }
 
 function stopPoll() {
   if (pollTimer) {
-    clearInterval(pollTimer)
+    clearTimeout(pollTimer)
     pollTimer = null
   }
 }
 
 async function cancelTask() {
   if (!task.value) return
+  const id = task.value.id
+  const revision = task.value.revision
   Modal.confirm({
     title: '取消任务',
     content: '已完成文件的结果会保留，未完成文件停止；是否继续？',
@@ -399,7 +463,8 @@ async function cancelTask() {
     cancelText: '继续等待',
     onOk: async () => {
       try {
-        task.value = await tasksApi.cancel(task.value!.id, task.value!.revision)
+        await tasksApi.cancel(id, revision)
+        if (disposed || id !== String(route.params.id)) return
         message.success('已请求取消')
         await loadTask()
       } catch (failure) {

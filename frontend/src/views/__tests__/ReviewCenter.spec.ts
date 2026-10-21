@@ -14,7 +14,7 @@ const state = (w: any) => w.vm.$.setupState as any
 async function start() { const w = mount(ReviewCenter, { global: { stubs: {
   ...namedAntStubs, 'a-table-column': { template: '<span />' }
 } } }); await flushPromises(); return w }
-beforeEach(() => { vi.resetAllMocks(); vi.mocked(projectsApi.list).mockResolvedValue({ items: [] } as any)
+beforeEach(() => { sessionStorage.clear(); vi.resetAllMocks(); vi.mocked(projectsApi.list).mockResolvedValue({ items: [] } as any)
   vi.mocked(tasksApi.list).mockResolvedValue(page('first', 'cursor-2') as any) })
 describe('审查中心列表', () => {
   it('后续页沿用服务端游标并追加，筛选后从第一页重载', async () => {
@@ -33,4 +33,15 @@ describe('审查中心列表', () => {
     latest.resolve(page('latest')); await second; old.resolve(page('old')); await first
     expect(s.tasks[0].id).toBe('latest'); w.unmount()
   })
+  it('从详情返回后恢复已加载页数', async () => {
+    const w = await start(); const s = state(w)
+    vi.mocked(tasksApi.list).mockResolvedValueOnce(page('second') as any); await s.loadMore(); w.unmount()
+    vi.mocked(tasksApi.list).mockResolvedValueOnce(page('first', 'cursor-2') as any).mockResolvedValueOnce(page('second') as any)
+    const restored = await start(); expect(state(restored).tasks.map((row: any) => row.id)).toEqual(['first', 'second']); restored.unmount()
+  })
+  it('sessionStorage 不可用时仍然查询列表', async () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('不可用') })
+    const w = await start(); expect(state(w).tasks[0].id).toBe('first'); w.unmount(); spy.mockRestore()
+  })
+
 })

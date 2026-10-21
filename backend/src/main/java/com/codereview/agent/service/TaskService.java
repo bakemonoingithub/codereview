@@ -8,6 +8,7 @@ import com.codereview.agent.api.PageResponse;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.TaskDtos;
 import com.codereview.agent.entity.AgentCallMaterial;
+import com.codereview.agent.entity.AgentExecutionUnit;
 import com.codereview.agent.entity.AgentIssue;
 import com.codereview.agent.entity.AgentMaterial;
 import com.codereview.agent.entity.AgentModelCall;
@@ -25,6 +26,7 @@ import com.codereview.agent.execution.TaskProperties;
 import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.invocation.ModelInvocationProperties;
 import com.codereview.agent.mapper.AgentCallMaterialMapper;
+import com.codereview.agent.mapper.AgentExecutionUnitMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentMaterialMapper;
 import com.codereview.agent.mapper.AgentModelCallMapper;
@@ -243,6 +245,10 @@ public class TaskService {
         requireTask(taskId);
         int size = AgentPaging.limit(limit);
         LambdaQueryWrapper<AgentModelCall> wrapper = new LambdaQueryWrapper<AgentModelCall>()
+                .select(AgentModelCall::getId, AgentModelCall::getTargetId, AgentModelCall::getUnitId,
+                        AgentModelCall::getPurpose, AgentModelCall::getAttempt, AgentModelCall::getState,
+                        AgentModelCall::getErrorCode, AgentModelCall::getCreatedAt,
+                        AgentModelCall::getStartedAt, AgentModelCall::getFinishedAt)
                 .eq(AgentModelCall::getTaskId, taskId);
         if (targetId != null && !targetId.isBlank()) {
             wrapper.eq(AgentModelCall::getTargetId, targetId.trim());
@@ -256,11 +262,19 @@ public class TaskService {
         PageResponse<AgentModelCall> page = AgentPaging.assemble(
                 db.mapper(AgentModelCallMapper.class).selectList(wrapper), size,
                 AgentModelCall::getCreatedAt, AgentModelCall::getId);
+        List<String> unitIds = page.items().stream().map(AgentModelCall::getUnitId)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        Map<String, AgentExecutionUnit> units = unitIds.isEmpty() ? Map.of()
+                : db.mapper(AgentExecutionUnitMapper.class).selectList(
+                        new LambdaQueryWrapper<AgentExecutionUnit>().in(AgentExecutionUnit::getId, unitIds))
+                .stream().collect(Collectors.toMap(AgentExecutionUnit::getId, value -> value));
         List<TaskDtos.CallSummary> items = page.items().stream()
                 .map(call -> new TaskDtos.CallSummary(call.getId(), call.getTargetId(), call.getUnitId(),
                         call.getPurpose(), call.getAttempt() == null ? 1 : call.getAttempt(),
                         call.getState(), call.getErrorCode(), call.getCreatedAt(),
-                        call.getStartedAt(), call.getFinishedAt()))
+                        call.getStartedAt(), call.getFinishedAt(),
+                        call.getUnitId() != null && units.containsKey(call.getUnitId()) ? units.get(call.getUnitId()).getGeneration() : null,
+                        call.getUnitId() != null && units.containsKey(call.getUnitId()) ? units.get(call.getUnitId()).getOrdinal() : null))
                 .toList();
         return new PageResponse<>(items, page.nextCursor(), page.hasMore());
     }
@@ -311,12 +325,12 @@ public class TaskService {
         List<TaskDtos.IssueView> issueViews = issues.stream()
                 .map(issue -> new TaskDtos.IssueView(issue.getId(), issue.getOrdinal() == null ? 0 : issue.getOrdinal(),
                         issue.getCategory(), issue.getSeverity(), issue.getTitle(), issue.getReason(),
-                        issue.getSuggestion(), readJsonArray(issue.getLocations()),
-                        readJsonArray(issue.getSourceUnits())))
+                        issue.getSuggestion(), readStoredJson(issue.getLocations(), true),
+                        readStoredJson(issue.getSourceUnits(), true)))
                 .toList();
         return new TaskDtos.ResultView(row.getId(), row.getTargetId(), row.getKind(),
                 row.getSchemaVersion(), row.getCompleteness(), row.getCreatedAt(),
-                readJson(row.getBody()), issueViews, readJson(row.getProvenance()));
+                readStoredJson(row.getBody(), false), issueViews, readStoredJson(row.getProvenance(), false));
     }
 
     /** 目标实际发送过的材料；同一材料被多次调用引用时合并为一条。 */
@@ -325,6 +339,7 @@ public class TaskService {
         requireTarget(taskId, targetId);
         List<AgentModelCall> calls = db.mapper(AgentModelCallMapper.class).selectList(
                 new LambdaQueryWrapper<AgentModelCall>()
+                        .select(AgentModelCall::getId)
                         .eq(AgentModelCall::getTaskId, taskId)
                         .eq(AgentModelCall::getTargetId, targetId)
                         .orderByAsc(AgentModelCall::getCreatedAt));
@@ -350,12 +365,7 @@ public class TaskService {
             if (material == null) {
                 continue;
             }
-            AgentCallMaterial first = entry.getValue().get(0);
-            boolean sent = entry.getValue().stream().anyMatch(link -> "SENT".equals(link.getDisposition()));
-            views.add(new TaskDtos.MaterialView(material.getId(), material.getPath(), material.getSha(),
-                    material.getSide(), material.getStartLine(), material.getEndLine(), first.getRole(),
-                    first.getDisposition(), material.getCompleteness(), material.getDiagnostic(),
-                    material.getContentHash(), byteSize(material.getContent()), sent));
+            views.add(materialView(material, entry.getValue()));
         }
         views.sort(Comparator.comparing(TaskDtos.MaterialView::path)
                 .thenComparing(TaskDtos.MaterialView::side)
@@ -369,6 +379,7 @@ public class TaskService {
         String id = AgentIds.requireValid(materialId, "材料 ID");
         List<String> callIds = db.mapper(AgentModelCallMapper.class).selectList(
                         new LambdaQueryWrapper<AgentModelCall>()
+                                .select(AgentModelCall::getId)
                                 .eq(AgentModelCall::getTaskId, taskId))
                 .stream().map(AgentModelCall::getId).toList();
         if (callIds.isEmpty()) {
@@ -385,11 +396,7 @@ public class TaskService {
         if (row == null) {
             throw new ApiException(ErrorCode.NOT_FOUND, "材料不存在：" + materialId);
         }
-        AgentCallMaterial first = links.get(0);
-        TaskDtos.MaterialView metadata = new TaskDtos.MaterialView(row.getId(), row.getPath(),
-                row.getSha(), row.getSide(), row.getStartLine(), row.getEndLine(), first.getRole(),
-                first.getDisposition(), row.getCompleteness(), row.getDiagnostic(),
-                row.getContentHash(), byteSize(row.getContent()), "SENT".equals(first.getDisposition()));
+        TaskDtos.MaterialView metadata = materialView(row, links);
         return new TaskDtos.MaterialDetail(metadata, row.getContent(), row.getContent() != null);
     }
 
@@ -417,16 +424,23 @@ public class TaskService {
         return target;
     }
 
-    private JsonNode readJsonArray(String value) {
-        if (value == null || value.isBlank()) {
-            return mapper.createArrayNode();
-        }
+    private TaskDtos.MaterialView materialView(AgentMaterial row, List<AgentCallMaterial> links) {
+        boolean sent = links.stream().anyMatch(link -> "SENT".equals(link.getDisposition()));
+        String role = links.stream().anyMatch(link -> "TARGET".equals(link.getRole()))
+                ? "TARGET" : links.get(0).getRole();
+        return new TaskDtos.MaterialView(row.getId(), row.getPath(), row.getSha(), row.getSide(),
+                row.getStartLine(), row.getEndLine(), role, sent ? "SENT" : links.get(0).getDisposition(),
+                row.getCompleteness(), row.getDiagnostic(), row.getContentHash(), byteSize(row.getContent()), sent);
+    }
+
+    private JsonNode readStoredJson(String value, boolean array) {
         try {
-            JsonNode node = mapper.readTree(value);
-            return node != null && node.isArray() ? node : mapper.createArrayNode();
-        } catch (JsonProcessingException e) {
-            return mapper.createArrayNode();
+            JsonNode node = value == null ? null : mapper.readTree(value);
+            if (node != null && (array ? node.isArray() : node.isObject())) return node;
+        } catch (JsonProcessingException ignored) {
+            // 保存数据损坏不能伪装为空结果。
         }
+        throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的结果或来源数据损坏，无法读取");
     }
 
     private static int byteSize(String content) {

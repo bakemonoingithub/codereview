@@ -1,6 +1,7 @@
 package com.codereview.agent.service;
 
 import com.codereview.agent.api.ApiException;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.TaskDtos;
@@ -55,6 +56,7 @@ class TaskDetailReadTest {
     private AgentCallMaterialMapper callMaterialMapper;
     private AgentMaterialMapper materialMapper;
     private TaskService service;
+    private com.codereview.agent.mapper.AgentExecutionUnitMapper unitMapper;
 
     @BeforeEach
     void setUp() {
@@ -64,7 +66,12 @@ class TaskDetailReadTest {
                     new org.apache.ibatis.builder.MapperBuilderAssistant(
                             new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), entity);
         }
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentTaskTarget.class);
         db = mock(AgentDatabase.class);
+        unitMapper = mock(com.codereview.agent.mapper.AgentExecutionUnitMapper.class);
+        when(db.mapper(com.codereview.agent.mapper.AgentExecutionUnitMapper.class)).thenReturn(unitMapper);
         taskMapper = mock(AgentReviewTaskMapper.class);
         targetMapper = mock(AgentTaskTargetMapper.class);
         resultMapper = mock(AgentReviewResultMapper.class);
@@ -163,6 +170,80 @@ class TaskDetailReadTest {
         assertEquals("request-body", detail.requestBody());
         assertEquals("response-body", detail.responseBody());
         assertEquals(CALL_ID, detail.id());
+    }
+
+    @Test
+    void aForeignTargetCannotExposeResultsOrMaterials() {
+        AgentTaskTarget foreign = target();
+        foreign.setTaskId(AgentIds.next());
+        when(targetMapper.selectById(TARGET_ID)).thenReturn(foreign);
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.result(TASK_ID, TARGET_ID)).errorCode());
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.materials(TASK_ID, TARGET_ID)).errorCode());
+    }
+
+    @Test
+    void aForeignCallCannotExposeItsRequestOrResponse() {
+        AgentModelCall foreign = call(); foreign.setTaskId(AgentIds.next());
+        when(callMapper.selectById(CALL_ID)).thenReturn(foreign);
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.callDetailFull(TASK_ID, CALL_ID)).errorCode());
+    }
+
+    @Test
+    void materialListAndReaderAggregateAllSendDispositionsConsistently() {
+        AgentCallMaterial skipped = new AgentCallMaterial();
+        skipped.setCallId(CALL_ID); skipped.setMaterialId(MATERIAL_ID);
+        skipped.setRole("AUXILIARY"); skipped.setDisposition("NOT_SENT");
+        AgentCallMaterial sent = new AgentCallMaterial();
+        sent.setCallId(CALL_ID); sent.setMaterialId(MATERIAL_ID);
+        sent.setRole("TARGET"); sent.setDisposition("SENT");
+        when(callMapper.selectList(any())).thenReturn(List.of(call()));
+        when(callMaterialMapper.selectList(any())).thenReturn(List.of(skipped, sent));
+        when(materialMapper.selectList(any())).thenReturn(List.of(material()));
+        when(materialMapper.selectById(MATERIAL_ID)).thenReturn(material());
+        var listed = service.materials(TASK_ID, TARGET_ID).get(0);
+        var loaded = service.material(TASK_ID, MATERIAL_ID).metadata();
+        assertTrue(loaded.sent());
+        assertEquals("SENT", loaded.disposition());
+        assertEquals("TARGET", loaded.role());
+        assertEquals(listed, loaded);
+    }
+
+    @Test
+    void corruptPublishedJsonDoesNotBecomeAnEmptySuccessfulResult() {
+        AgentReviewResult result = new AgentReviewResult(); result.setId(RESULT_ID);
+        result.setBody("{broken"); result.setProvenance("{}");
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+        assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class,
+                () -> service.result(TASK_ID, TARGET_ID)).errorCode());
+    }
+
+    @Test
+    void corruptIssueLocationsDoNotDisappearFromPublishedResults() {
+        AgentReviewResult result = new AgentReviewResult(); result.setId(RESULT_ID);
+        result.setBody("{}"); result.setProvenance("{}");
+        AgentIssue issue = new AgentIssue(); issue.setLocations("{}"); issue.setSourceUnits("[]");
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+        when(issueMapper.selectList(any())).thenReturn(List.of(issue));
+        assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class,
+                () -> service.result(TASK_ID, TARGET_ID)).errorCode());
+    }
+
+    @Test
+    void callSummariesIncludeGenerationAndOrdinalWithoutLoadingBodies() {
+        AgentModelCall call = call();
+        var unit = new com.codereview.agent.entity.AgentExecutionUnit();
+        unit.setId("u1"); unit.setGeneration(2); unit.setOrdinal(3);
+        when(callMapper.selectList(any())).thenReturn(List.of(call));
+        when(unitMapper.selectList(any())).thenReturn(List.of(unit));
+        var summary = service.calls(TASK_ID, TARGET_ID, null, null, 50).items().get(0);
+        assertEquals(2, summary.generation()); assertEquals(3, summary.unitOrdinal());
+        var query = org.mockito.ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        org.mockito.Mockito.verify(callMapper).selectList(query.capture());
+        assertFalse(query.getValue().getSqlSelect().contains("request_body"));
+        assertFalse(query.getValue().getSqlSelect().contains("response_body"));
     }
 
     private static AgentReviewTask task() {

@@ -374,6 +374,15 @@ export interface ResultView {
     materials?: Array<{ id: string; path: string; sha: string; side: string; role: string }>
     units?: Array<{ id: string; ordinal: number; ranges: Array<{ startLine: number; endLine: number }> }>
     calls?: Array<{ unitId: string; callId: string }>
+    couplingFacts?: {
+      resolvedOutgoingCount: number
+      unresolvedTypeCount: number
+      coverage: number
+      sha: string
+      side: string
+      edges: Array<{ id: string; sourceType: string; targetType: string; targetPath: string; relation: string; line: number }>
+      limitations: string[]
+    }
     materialGaps?: Array<{ code: string; subject: string; detail: string }>
   }
 }
@@ -401,6 +410,8 @@ export interface MaterialDetail {
 }
 
 export interface CallSummary {
+  generation?: number | null
+  unitOrdinal?: number | null
   id: string
   targetId: string | null
   unitId: string | null

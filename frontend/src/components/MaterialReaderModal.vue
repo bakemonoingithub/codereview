@@ -23,10 +23,11 @@
             {{ metadata.sent ? '实际发送' : '读取后未发送' }}
           </a-descriptions-item>
         </a-descriptions>
+        <a-alert v-if="!detail.complete" type="warning" show-icon message="保存的材料正文不可用，不能将空白内容视为完整原文。" />
         <p v-if="metadata.diagnostic" class="notice">{{ metadata.diagnostic }}</p>
 
         <div class="tabs">
-          <a-button size="small" :type="mode === 'saved' ? 'primary' : 'default'" @click="mode = 'saved'">
+          <a-button size="small" :type="mode === 'saved' ? 'primary' : 'default'" @click="showSaved">
             保存片段
           </a-button>
           <a-button size="small" :type="mode === 'full' ? 'primary' : 'default'" @click="loadFull">
@@ -50,10 +51,11 @@
             v-else-if="mode === 'diff'"
             :path="metadata.path"
             :patch="diff?.patch || null"
+            :status="diff?.status"
             highlight
-            empty-text="该文件没有可显示的差异"
+            empty-text="宿主未提供可显示的差异，请阅读固定版本原文"
           />
-          <pre v-else class="code">{{ numbered(content, mode === 'saved' ? metadata.startLine : 1) }}</pre>
+          <pre v-else class="code">{{ numbered(mode === 'saved' ? detail.content : content, mode === 'saved' ? metadata.startLine : 1) }}</pre>
         </a-spin>
       </template>
     </a-spin>
@@ -61,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import {
   repositoryApi,
@@ -80,6 +82,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ (event: 'update:open', value: boolean): void }>()
 
+let loadEpoch = 0
+let contentEpoch = 0
 const loading = ref(false)
 const contentLoading = ref(false)
 const error = ref('')
@@ -107,54 +111,76 @@ const emptyMaterial: MaterialView = {
 const metadata = computed<MaterialView>(() => detail.value?.metadata || emptyMaterial)
 
 watch(
-  () => [props.open, props.materialId] as const,
-  async ([open]) => {
-    if (!open || !props.materialId) return
-    await load()
+  () => [props.open, props.taskId, props.projectId, props.materialId, props.headSha] as const,
+  () => {
+    loadEpoch++
+    contentEpoch++
+    detail.value = null
+    content.value = ''
+    diff.value = null
+    contentError.value = ''
+    contentLoading.value = false
+    if (props.open && props.materialId) void load()
   },
-  { immediate: true }
+  { immediate: true, flush: 'sync' }
 )
+onBeforeUnmount(() => { loadEpoch++; contentEpoch++ })
 
 async function load() {
+  const epoch = ++loadEpoch
   loading.value = true
   error.value = ''
   mode.value = 'saved'
   try {
-    detail.value = await tasksApi.material(props.taskId, props.materialId)
-    content.value = detail.value.content
+    const loaded = await tasksApi.material(props.taskId, props.materialId)
+    if (epoch !== loadEpoch) return
+    detail.value = loaded
   } catch (failure) {
-    error.value = (failure as Error).message || '材料读取失败'
+    if (epoch === loadEpoch) error.value = (failure as Error).message || '材料读取失败'
   } finally {
-    loading.value = false
+    if (epoch === loadEpoch) loading.value = false
   }
+}
+
+function showSaved() {
+  contentEpoch++
+  mode.value = 'saved'
+  contentError.value = ''
+  contentLoading.value = false
 }
 
 async function loadFull() {
   if (!detail.value) return
+  const epoch = ++contentEpoch
+  const material = detail.value.metadata
   mode.value = 'full'
+  content.value = ''
   contentError.value = ''
   contentLoading.value = true
   try {
-    const snapshot = await repositoryApi.file(props.projectId, detail.value.metadata.sha,
-      detail.value.metadata.path)
-    content.value = snapshot.content
+    const snapshot = await repositoryApi.file(props.projectId, material.sha, material.path)
+    if (epoch === contentEpoch) content.value = snapshot.content
   } catch (failure) {
-    contentError.value = (failure as Error).message || '固定版本原文读取失败'
+    if (epoch === contentEpoch) contentError.value = (failure as Error).message || '固定版本原文读取失败'
   } finally {
-    contentLoading.value = false
+    if (epoch === contentEpoch) contentLoading.value = false
   }
 }
 
 async function loadDiff() {
+  if (!detail.value) return
+  const epoch = ++contentEpoch
   mode.value = 'diff'
+  diff.value = null
   contentError.value = ''
   contentLoading.value = true
   try {
-    diff.value = await repositoryApi.diff(props.projectId, props.headSha, metadata.value!.path)
+    const loaded = await repositoryApi.diff(props.projectId, props.headSha, metadata.value.path)
+    if (epoch === contentEpoch) diff.value = loaded
   } catch (failure) {
-    contentError.value = (failure as Error).message || '提交差异读取失败'
+    if (epoch === contentEpoch) contentError.value = (failure as Error).message || '提交差异读取失败'
   } finally {
-    contentLoading.value = false
+    if (epoch === contentEpoch) contentLoading.value = false
   }
 }
 
@@ -169,6 +195,8 @@ function sideText(side: string): string {
 }
 
 function close() {
+  loadEpoch++
+  contentEpoch++
   emit('update:open', false)
 }
 </script>

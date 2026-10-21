@@ -43,19 +43,7 @@
             type="link"
             @click="openModelLocation(location)"
           >
-            {{ locationLabel(location) }}
-          </a-button>
-        </div>
-        <div v-if="resolvedIssue(index)?.locations?.length" class="locations">
-          <span class="muted small">保存位置</span>
-          <a-button
-            v-for="(location, locationIndex) in (resolvedIssue(index)?.locations || [])"
-            :key="'r-' + locationIndex"
-            size="small"
-            type="link"
-            @click="openResolved(location)"
-          >
-            {{ resolvedLabel(location) }}
+            {{ modelLocationLabel(location) }}
           </a-button>
         </div>
         <div v-if="issue.evidence?.length" class="locations">
@@ -98,13 +86,24 @@
     </template>
 
     <template v-else>
+      <div v-if="result.provenance.couplingFacts" class="summary">
+        <strong>文件级依赖事实</strong>
+        <p>仓库内已解析出向依赖：{{ result.provenance.couplingFacts.resolvedOutgoingCount }}
+          · 未可靠定位类型：{{ result.provenance.couplingFacts.unresolvedTypeCount }}</p>
+        <p class="muted small">对应版本 {{ result.provenance.couplingFacts.sha }} ·
+          {{ sideText(result.provenance.couplingFacts.side) }}；未解析类型不计为零依赖，不包含全仓入向关系。</p>
+        <p v-for="edge in result.provenance.couplingFacts.edges" :key="edge.id" class="small">
+          {{ edge.id }} · {{ edge.sourceType }} → {{ edge.targetType }} · {{ edge.relation }}
+          · 目标声明文件 {{ edge.targetPath }} · 本文件引用行 {{ edge.line }}
+        </p>
+      </div>
       <a-empty v-if="!result.body.observations?.length" description="未形成有依据的关系解释" />
       <div v-for="(observation, index) in result.body.observations" :key="index" class="issue">
         <strong>{{ observation.title }}</strong>
         <p class="body">{{ observation.explanation }}</p>
         <div v-if="observation.dependencyIds?.length" class="locations">
           <span class="muted small">依赖事实</span>
-          <a-tag v-for="id in observation.dependencyIds" :key="id" color="blue">{{ id }}</a-tag>
+          <a-tag v-for="id in observation.dependencyIds" :key="id" color="blue">{{ dependencyLabel(id) }}</a-tag>
         </div>
         <p v-if="observation.suggestion" class="suggestion">
           <strong>建议：</strong>{{ observation.suggestion }}
@@ -124,10 +123,10 @@
       </div>
     </template>
 
-    <div v-if="result.body.limitations?.length" class="limitations">
+    <div v-if="limitations.length" class="limitations">
       <strong class="small">边界与缺失</strong>
       <ul>
-        <li v-for="(limitation, index) in result.body.limitations" :key="index">{{ limitation }}</li>
+        <li v-for="(limitation, index) in limitations" :key="index">{{ limitation }}</li>
       </ul>
     </div>
     <div class="feedback-placeholder">
@@ -138,7 +137,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { IssueView, ResultView } from '@/api/v2'
+import type { ResultView } from '@/api/v2'
 
 interface CodeRef {
   materialId?: string
@@ -154,19 +153,17 @@ const emit = defineEmits<{ (event: 'open-code', value: CodeRef): void }>()
 
 const kindText = computed(() => ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度' } as Record<string, string>)[props.result.kind] || props.result.kind)
 
-function resolvedIssue(index: number): IssueView | undefined {
-  return props.result.issues[index]
+const limitations = computed(() => [...new Set([
+  ...(props.result.body.limitations || []),
+  ...(props.result.provenance.couplingFacts?.limitations || []),
+  ...(props.result.provenance.materialGaps || []).map(gap => `${gap.code}：${gap.subject}，${gap.detail}`)
+])])
+function sideText(side: string): string {
+  return ({ FILE: '文件', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || side
 }
-
-function openResolved(location: IssueView['locations'][number]) {
-  emit('open-code', {
-    materialId: location.materialId,
-    path: location.path,
-    sha: location.sha,
-    side: location.side,
-    startLine: location.startLine,
-    endLine: location.endLine
-  })
+function dependencyLabel(id: string): string {
+  const edge = props.result.provenance.couplingFacts?.edges.find(edge => edge.id === id)
+  return edge ? `${edge.sourceType} → ${edge.targetType}（${edge.relation}）` : id
 }
 
 function openModelLocation(location: { materialId: string; startLine: number; endLine: number }) {
@@ -191,12 +188,8 @@ function locationLabel(location: { materialId: string; startLine: number; endLin
 function modelLocationLabel(location: { materialId: string; startLine: number; endLine: number }): string {
   const material = props.result.provenance.materials?.find((item) => item.id === location.materialId)
   return material
-    ? `${material.path} : ${location.startLine}-${location.endLine}`
+    ? `${material.path} : ${location.startLine}-${location.endLine} · ${sideText(material.side)}`
     : locationLabel(location)
-}
-
-function resolvedLabel(location: IssueView['locations'][number]): string {
-  return `${location.path} : ${location.startLine}-${location.endLine}`
 }
 
 function severityColor(severity: string): string {

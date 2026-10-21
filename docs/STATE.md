@@ -27,6 +27,8 @@ P31.7–P31.9 交付：
 - 统一详情：三类结果、目标状态、材料片段/全文/差异、实际调用完整请求与返回，反馈仅预留。见 [P31.8](work/agent-redesign/p31/p31-8-detail.md)。
 - 验证与交付：A07–A15、A21、A24 的本地证据映射、固定版本/位置/拆分/去重/片段失败复核；目标仓库与真实资源未执行。见 [P31.9](work/agent-redesign/p31/p31-9-validation.md)。
 
+2026-10-21 完成 P31.7–P31.9 的 R01–R11 审查修复，覆盖保存片段还原、材料与调用异步隔离、代码浏览来源及分页、返回现场、详情轮询与调用分页、耦合事实和材料缺口展示、读取一致性及调用摘要。新增后端 6 项、前端 29 项正式回归；复验后端 603 项、0 失败、0 异常、9 跳过，前端 50 个文件、417 项通过，类型检查和生产构建通过。见[修复与复验记录](work/agent-redesign/p31/p31-7-9-review-fixes.md)。P31.9 的目标仓库校准、真实资源与 PC 视觉仍未执行，保持 active。
+
 P30.5–P30.8 交付：
 - 统一组装与公共调用：`PromptAssemblyService`、`ModelCapacityService`、`ModelInvocationService`、`ModelCallConcurrencyLimiter`、`HttpModelTransport`；请求先落盘、200 次原子额度、全局 4／单任务 2 并发、一次暂态重试；验证调用同入口。见 [P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)。
 - 任务控制：`TaskService`、`TaskDispatchService`、`TaskExecutionGuard`、`TaskDeadlineSweeper`、`TaskRecoveryRunner`；幂等键、固定快照、取消、期限与重启收敛、终态条件更新。见 [P30.6](work/agent-redesign/p30/p30-6-task-control.md)。
@@ -39,7 +41,8 @@ P30.5–P30.8 交付：
 
 - P30 复验为后端 474 项、0 失败、0 异常、7 跳过；前端 41 个文件、360 项通过，类型检查和生产构建通过。详情见[本轮复验](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
 - P31.7–P31.8 完成后 `mvn clean test` 为 597 项、0 失败、0 异常、9 跳过；前端 46 个测试文件、388 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。跳过项不计为执行通过，真实网关和宿主探针显式禁用。
-- 真实数据库迁移与访问层、Git 宿主、目标仓库、模型网关、PC 正式页面视觉均未执行；P31.9 因目标仓库校准未完成保持 active，不把工程检查写成真实通过。
+- 真实数据库迁移与访问层、Git 宿主、目标仓库、专项模型完整流程、PC 正式页面视觉均未执行；历史通用网关探针不替代专项验收，详见 P31.4–P31.6 记录；P31.9 因目标仓库校准未完成保持 active，不把工程检查写成真实通过。
+- P31.7–P31.9 审查后复验为后端 603 项（9 跳过），前端 417 项，类型检查和构建通过；以[本轮记录](work/agent-redesign/p31/p31-7-9-review-fixes.md)为准。
 - 专项执行器已接入；`EXECUTOR_UNAVAILABLE` 不再是当前运行的预期行为。真实模型调用、并发竞争和取消边界仍按 P31.9／P32.6 验证。
 
 ## 接续依据
@@ -64,6 +67,7 @@ P30.5–P30.8 交付：
 - P31.4–P31.6 代码、前端与交付文档已本地提交（ab283af、4e3ae02、c7697c9），范围选择跨搜索保留的修正为 7de0a15，未 push。
 - P31.4–P31.6 审查修复、正式回归及复验记录为 b9f56bb，未 push；详见[修复记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。
 - P31.7–P31.9 代码、前端与验证文档已本地提交（6e50f33、73bb55c）；P31.9 因目标仓库校准未完成仍为 active，未 push。
+- 本轮 P31.7–P31.9 修复、正式回归及复验记录在当前分支本地提交，未 push；原型及开发启停脚本的会话前/会话中改动保留，不纳入修复。
 - `../code` 工作树保留其原有 2 处未提交改动，不纳入本工作树。
 
 ## 已知坑
