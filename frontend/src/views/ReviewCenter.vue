@@ -223,7 +223,7 @@ function shortId(id: string): string {
 }
 
 function openTask(id: string) {
-  router.push({ path: `/reviews/${id}`, query: { from: route.fullPath } })
+  router.push({ path: `/reviews/${id}`, query: { from: '/reviews' } })
 }
 
 function copyTask(id: string) {
