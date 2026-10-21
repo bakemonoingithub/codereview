@@ -8,6 +8,7 @@
 #>
 param(
     [switch]$CheckOnly,
+    [string]$BackendConfig,
     [ValidateRange(10, 3600)][int]$StartupTimeoutSeconds = 180
 )
 
@@ -26,6 +27,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     Write-Host 'Switching to PowerShell 7...'
     $launchArguments = @('-NoLogo', '-NoProfile', '-File', $PSCommandPath)
     if ($CheckOnly) { $launchArguments += '-CheckOnly' }
+    if ($BackendConfig) { $launchArguments += @('-BackendConfig', $BackendConfig) }
     $launchArguments += @('-StartupTimeoutSeconds', [string]$StartupTimeoutSeconds)
     & $pwshPath @launchArguments
     exit $LASTEXITCODE
@@ -47,6 +49,8 @@ $javaHome = if ($env:JAVA_HOME -and (Test-Path -LiteralPath (Join-Path $env:JAVA
 }
 if (-not $mavenPath) { throw 'Maven unavailable; check scripts/dev.config.psd1.' }
 if (-not $javaHome) { throw 'Java unavailable; check JAVA_HOME or scripts/dev.config.psd1.' }
+. (Join-Path $PSScriptRoot 'dev-backend-config.ps1')
+$springArguments = @(Get-DevBackendArguments -BackendRoot $backendRoot -ConfigPath $BackendConfig) -join ' '
 foreach ($relativePath in @('node_modules/vite/bin/vite.js', 'vite.config.ts')) {
     if (-not (Test-Path -LiteralPath (Join-Path $frontendRoot $relativePath))) {
         throw "Missing frontend dependency or configuration: $relativePath"
@@ -60,7 +64,7 @@ if ($listeners.Count -gt 0) {
 Write-Host "Java: $javaHome"
 Write-Host "Maven: $mavenPath"
 Write-Host 'Ports 5173 and 8081 are available.'
-Write-Host 'Database configuration is not validated by -CheckOnly; startup requires the isolated agent database configuration.'
+Write-Host 'Backend configuration source found. Database connectivity and migrations are checked only during application startup.'
 if ($CheckOnly) { Write-Host 'Preflight passed; no services started or files written.'; return }
 
 $runId = (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
@@ -87,7 +91,7 @@ $backendCommand = @(
     '$ErrorActionPreference = ''Stop'''
     ('$env:JAVA_HOME = ' + (Quote-Literal $javaHome))
     ('Set-Location -LiteralPath ' + (Quote-Literal $backendRoot))
-    ('& ' + (Quote-Literal $mavenPath) + ' ' + (Quote-Literal "-Dbackend.buildDirectory=target/runtime-local-$runId") + ' spring-boot:run ''-Dspring-boot.run.arguments=--server.port=8081''')
+    ('& ' + (Quote-Literal $mavenPath) + ' ' + (Quote-Literal "-Dbackend.buildDirectory=target/runtime-local-$runId") + ' spring-boot:run ' + (Quote-Literal "-Dspring-boot.run.arguments=$springArguments"))
     'exit $LASTEXITCODE'
 ) -join "`n"
 $encodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($backendCommand))

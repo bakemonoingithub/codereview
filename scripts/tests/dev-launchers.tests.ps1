@@ -11,12 +11,62 @@ function Assert-True([bool]$Condition, [string]$Message) {
     else { Write-Host "[ OK ] $Message" }
 }
 
-foreach ($path in @($startScript, $stopScript, (Join-Path $repoRoot 'scripts/dev.config.psd1'))) {
+$configHelper = Join-Path $repoRoot 'scripts/dev-backend-config.ps1'
+foreach ($path in @($startScript, $stopScript, $configHelper, (Join-Path $repoRoot 'scripts/dev.config.psd1'))) {
     $tokens = $null; $errors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($path, [ref]$tokens, [ref]$errors)
     Assert-True ($errors.Count -eq 0) "语法有效：$(Split-Path $path -Leaf)"
 }
 $beforeRuntimeExists = Test-Path -LiteralPath (Join-Path $repoRoot 'frontend/.dev-runtime')
+
+$configVariables = @('SPRING_CONFIG_LOCATION', 'SPRING_CONFIG_ADDITIONAL_LOCATION', 'SPRING_APPLICATION_JSON', 'SPRING_CONFIG_NAME', 'SPRING_PROFILES_ACTIVE', 'SPRING_DATASOURCE_URL', 'AGENT_DATASOURCE_URL')
+$savedVariables = @{}
+foreach ($name in $configVariables) {
+    $savedVariables[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+    [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+}
+$fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('agent-launcher-' + [guid]::NewGuid().ToString('N'))
+$null = New-Item -ItemType Directory -Path $fixtureRoot
+try {
+. $configHelper
+$refused = $false
+try { Get-DevBackendArguments $fixtureRoot '' } catch { $refused = $_.Exception.Message -match 'No backend configuration source' }
+Assert-True $refused '缺少配置时在启动进程前报错'
+$env:SPRING_DATASOURCE_URL = 'jdbc:mysql://invalid/legacy'
+$refused = $false
+try { Get-DevBackendArguments $fixtureRoot '' } catch { $refused = $_.Exception.Message -match 'BOTH' }
+Assert-True $refused '仅有旧链环境配置不能通过来源检查'
+$env:AGENT_DATASOURCE_URL = 'jdbc:mysql://invalid/agent'
+$arguments = @(Get-DevBackendArguments $fixtureRoot '')
+Assert-True ($arguments.Count -eq 1 -and $arguments[0] -eq '--server.port=8081') '两组环境数据源配置可作为来源'
+$env:SPRING_DATASOURCE_URL = $null
+$env:AGENT_DATASOURCE_URL = $null
+$fixtureConfig = Join-Path $fixtureRoot 'local config.properties'
+[IO.File]::WriteAllText($fixtureConfig, '# configuration source fixture')
+$arguments = @(Get-DevBackendArguments $fixtureRoot $fixtureConfig)
+Assert-True ($arguments.Count -eq 2 -and $arguments[1] -match '^--spring.config.additional-location=file:' -and $arguments[1].Contains('local%20config.properties')) '显式配置路径中的空格通过文件 URI 保留'
+$refused = $false
+try { Get-DevBackendArguments $fixtureRoot (Join-Path $fixtureRoot 'missing.yml') } catch { $refused = $true }
+Assert-True $refused '不存在的显式配置被拒绝'
+Remove-Item -LiteralPath $fixtureConfig
+$fixtureConfig = Join-Path $fixtureRoot 'application-dev.yml'
+[IO.File]::WriteAllText($fixtureConfig, '# profile source fixture')
+$refused = $false
+try { Get-DevBackendArguments $fixtureRoot '' } catch { $refused = $true }
+Assert-True $refused '未激活的 profile 文件不冒充有效来源'
+$env:SPRING_PROFILES_ACTIVE = 'dev'
+$arguments = @(Get-DevBackendArguments $fixtureRoot '')
+Assert-True ($arguments.Count -eq 1) '已激活 profile 的配置文件可被发现'
+Remove-Item -LiteralPath $fixtureConfig
+$fixtureConfig = $null
+$env:SPRING_PROFILES_ACTIVE = $null
+$env:SPRING_CONFIG_LOCATION = 'file:/configured-externally/application.properties'
+$arguments = @(Get-DevBackendArguments $fixtureRoot '')
+Assert-True ($arguments.Count -eq 1) '显式 Spring 配置来源交由应用解析'
+$env:SPRING_CONFIG_LOCATION = $null
+# Existing launcher checks use configuration-source fixtures, never real databases.
+$env:SPRING_DATASOURCE_URL = 'jdbc:mysql://invalid/legacy'
+$env:AGENT_DATASOURCE_URL = 'jdbc:mysql://invalid/agent'
 
 & {
     function Get-Command { param($Name, $CommandType, $ErrorAction)
@@ -103,3 +153,8 @@ $baseConfig = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $runtimeConf
 Assert-True ($baseConfig -eq (Join-Path $repoRoot 'frontend/vite.config.ts')) '运行配置引用当前工作树 Vite 配置'
 Write-Host "$checks 项检查，$failures 项失败"
 if ($failures) { exit 1 }
+} finally {
+    if ($fixtureConfig -and (Test-Path -LiteralPath $fixtureConfig)) { Remove-Item -LiteralPath $fixtureConfig }
+    Remove-Item -LiteralPath $fixtureRoot
+    foreach ($name in $configVariables) { [Environment]::SetEnvironmentVariable($name, $savedVariables[$name], 'Process') }
+}

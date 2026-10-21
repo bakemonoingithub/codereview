@@ -24,3 +24,6 @@ Thumbs.db
 
 # 当前工作树开发服务的日志、配置与进程记录
 frontend/.dev-runtime/
+
+# 本机开发数据库配置（示例文件保留在 scripts）
+backend/application-local.properties
