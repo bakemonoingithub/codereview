@@ -59,10 +59,7 @@ public class CouplingFactsBuilder {
                 if (name.isBlank() || TypeNames.isJdkBasic(name)) {
                     continue;
                 }
-                if (structure.declares(simpleName(name))) {
-                    continue;
-                }
-                String relation = name.equals(ref.raw()) ? ref.relation() : "GENERIC";
+                String relation = name.equals(TypeNames.erasure(ref.raw())) ? ref.relation() : "GENERIC";
                 DeclarationResolver.Resolved resolved = resolver.resolve(name, structure);
                 if (resolved.status() == SpecialistMaterials.Status.RESOLVED) {
                     if (resolved.path().equals(material.path())) {
@@ -156,11 +153,6 @@ public class CouplingFactsBuilder {
             }
         }
         return refs;
-    }
-
-    private static String simpleName(String name) {
-        int dot = name.lastIndexOf('.');
-        return dot < 0 ? name : name.substring(dot + 1);
     }
 
     private record Ref(String raw, String relation, int line, String sourceType) {

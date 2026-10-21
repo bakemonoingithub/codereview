@@ -102,7 +102,7 @@ public class MaterialPreparationService {
             String beforePath = sides.oldPath() != null && !sides.oldPath().isBlank()
                     ? sides.oldPath() : sides.path();
             JavaSourceStructure structure = parse(command, beforePath, sides.before().content(), gaps,
-                    !sides.after().present());
+                    SpecialistTypes.COUPLING.equals(command.specialistType()) && !sides.after().present());
             materials.add(save(diffMaterial(command, beforePath, sides.baseSha(), Side.BEFORE,
                     sides.before().content(), structure)));
         } else {

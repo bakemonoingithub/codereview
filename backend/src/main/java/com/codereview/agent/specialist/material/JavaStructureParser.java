@@ -10,6 +10,8 @@ import com.github.javaparser.ast.body.AnnotationDeclaration;
 import com.github.javaparser.ast.body.AnnotationMemberDeclaration;
 import com.github.javaparser.ast.body.BodyDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.CompactConstructorDeclaration;
 import com.github.javaparser.ast.body.EnumConstantDeclaration;
 import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
@@ -30,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.codereview.agent.specialist.material.JavaSourceStructure.FieldDecl;
+import static com.codereview.agent.specialist.material.JavaSourceStructure.BodyRange;
 import static com.codereview.agent.specialist.material.JavaSourceStructure.ImportInfo;
 import static com.codereview.agent.specialist.material.JavaSourceStructure.InitializerDecl;
 import static com.codereview.agent.specialist.material.JavaSourceStructure.LineRange;
@@ -51,6 +54,7 @@ public class JavaStructureParser {
 
     private static final ParserConfiguration CONFIG = new ParserConfiguration()
             .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17)
+            .setTabSize(1)
             .setAttributeComments(true);
 
     public JavaSourceStructure parse(String path, String content) {
@@ -145,6 +149,19 @@ public class JavaStructureParser {
             } else if (member instanceof MethodDeclaration method) {
                 methods.add(methodDecl(method));
                 members.add(memberRange("method", method.getNameAsString(), method));
+            } else if (member instanceof ConstructorDeclaration constructor) {
+                List<String> params = constructor.getParameters().stream()
+                        .map(parameter -> parameter.getType().asString()).toList();
+                methods.add(new MethodDecl(constructor.getNameAsString(), "", params, false,
+                        lineOf(constructor), endLineOf(constructor), lineOf(constructor.getBody()),
+                        endLineOf(constructor.getBody()), constructor.getNameAsString() + "("
+                        + String.join(", ", params) + ")", commentsOf(constructor)));
+                members.add(memberRange("constructor", constructor.getNameAsString(), constructor));
+            } else if (member instanceof CompactConstructorDeclaration constructor) {
+                methods.add(new MethodDecl(constructor.getNameAsString(), "", List.of(), false,
+                        lineOf(constructor), endLineOf(constructor), lineOf(constructor.getBody()),
+                        endLineOf(constructor.getBody()), constructor.getNameAsString(), commentsOf(constructor)));
+                members.add(memberRange("constructor", constructor.getNameAsString(), constructor));
             } else if (member instanceof InitializerDeclaration initializer) {
                 initializers.add(new InitializerDecl(lineOf(initializer),
                         endLineOf(initializer), initializer.isStatic()));
@@ -170,7 +187,7 @@ public class JavaStructureParser {
 
         TypeDecl declaration = new TypeDecl(qualifiedName, simpleName, kind, outer, annotations,
                 extended, implemented, fields, methods, initializers, dedupeRefs(objectCreations),
-                members, comments, lineOf(type), endLineOf(type));
+                members, implementationRanges(type), comments, lineOf(type), endLineOf(type));
         types.add(declaration);
 
         for (BodyDeclaration<?> member : type.getMembers()) {
@@ -197,6 +214,17 @@ public class JavaStructureParser {
         return new MethodDecl(method.getNameAsString(), method.getType().asString(), params,
                 method.isStatic(), lineOf(method), endLineOf(method), bodyStart, bodyEnd,
                 signature, commentsOf(method));
+    }
+
+    private static List<BodyRange> implementationRanges(TypeDeclaration<?> type) {
+        List<Node> bodies = new ArrayList<>();
+        type.findAll(MethodDeclaration.class).forEach(method -> method.getBody().ifPresent(bodies::add));
+        type.findAll(ConstructorDeclaration.class).forEach(constructor -> bodies.add(constructor.getBody()));
+        type.findAll(CompactConstructorDeclaration.class).forEach(constructor -> bodies.add(constructor.getBody()));
+        type.findAll(InitializerDeclaration.class).forEach(initializer -> bodies.add(initializer.getBody()));
+        return bodies.stream().map(body -> body.getRange().orElseThrow())
+                .map(range -> new BodyRange(range.begin.line, range.begin.column,
+                        range.end.line, range.end.column)).toList();
     }
 
     private List<LineRange> coverage(CompilationUnit cu, List<TypeDecl> types, int lineCount) {

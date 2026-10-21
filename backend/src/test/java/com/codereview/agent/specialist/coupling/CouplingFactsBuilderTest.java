@@ -71,7 +71,7 @@ class CouplingFactsBuilderTest {
         assertEquals(1, facts.declarationRelationCounts().get("NEW"));
         assertEquals(1.0, facts.coverage());
         assertTrue(facts.limitations().isEmpty());
-        assertEquals(6, facts.promptFacts().size());
+        assertEquals(7, facts.promptFacts().size());
     }
 
     @Test

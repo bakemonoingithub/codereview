@@ -13,6 +13,8 @@ P31.1–P31.3 交付：
 - 有限声明增强：限定名/导入/同包定位、读取后核对声明、父类与接口广度优先、循环/菱形去重、声明摘要与直接类型补充，限额和缺口分别记录。见 [P31.2](work/agent-redesign/p31/p31-2-declarations.md)。
 - 协议与位置校验：三类 schema 版本 1、严格 JSON、目标/辅助与前后侧规则、changeRelation、耦合事实与 dependencyId 校验、初次加最多 2 次格式重试策略。见 [P31.3](work/agent-redesign/p31/p31-3-protocol.md)。
 
+2026-10-21 已修复 P31.1–P31.3 审查的 R01–R09，补入 27 项正式回归；源码根、限定身份、构造器、摘要范围、依赖关系、JSON 类型及共享读取预算均已复验。见[修复与复验记录](work/agent-redesign/p31/p31-1-3-review-fixes.md)。
+
 P30.5–P30.8 交付：
 - 统一组装与公共调用：`PromptAssemblyService`、`ModelCapacityService`、`ModelInvocationService`、`ModelCallConcurrencyLimiter`、`HttpModelTransport`；请求先落盘、200 次原子额度、全局 4／单任务 2 并发、一次暂态重试；验证调用同入口。见 [P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)。
 - 任务控制：`TaskService`、`TaskDispatchService`、`TaskExecutionGuard`、`TaskDeadlineSweeper`、`TaskRecoveryRunner`；幂等键、固定快照、取消、期限与重启收敛、终态条件更新。见 [P30.6](work/agent-redesign/p30/p30-6-task-control.md)。
@@ -24,7 +26,7 @@ P30.5–P30.8 交付：
 ## 验证与未验证
 
 - P30 复验为后端 474 项、0 失败、0 异常、7 跳过；前端 41 个文件、360 项通过，类型检查和生产构建通过。详情见[本轮复验](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
-- 2026-10-21 P31.1–P31.3 完成后 `mvn clean test`：后端 533 项、0 失败、0 异常、9 跳过；新增 59 项专项材料/协议测试。跳过项不计为执行通过。
+- P31.1–P31.3 初交付为 533 项；本轮审查修复后全量隔离回归为 560 项、0 失败、0 异常、9 跳过，专项定向 86 项通过。初交付新增 59 项，本轮另补 27 项回归；跳过项不计为执行通过，真实网关和宿主探针显式禁用。
 - 真实数据库迁移与访问层、Git 宿主、目标仓库、模型网关、PC 正式页面视觉均未执行；不把工程检查写成真实通过。P31.9／P32.6 继续。
 - 当前任务创建后仍没有专项执行器：`TaskWorker` 未接入时任务明确失败为 `EXECUTOR_UNAVAILABLE`，这是 P31.5 前的预期行为，不是回归。
 

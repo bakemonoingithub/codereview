@@ -10,6 +10,7 @@ import com.codereview.agent.support.SpecialistTypes;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static com.codereview.agent.specialist.material.SpecialistMaterials.PreparedTarget;
@@ -30,9 +31,13 @@ public class SpecialistPromptBuilder {
         List<PromptMaterial> auxiliary = target.auxiliary().stream()
                 .map(SpecialistMaterials.Material::toPromptMaterial).toList();
         List<PromptFact> promptFacts = facts == null ? List.of() : facts.promptFacts();
+        Set<String> missingNotes = new LinkedHashSet<>(target.gapNotes());
+        if (facts != null) {
+            missingNotes.addAll(facts.limitations());
+        }
         return new PromptInput(purpose(target), SpecialistProtocol.VERSION, strategyName,
                 strategyPrompt, target.note(), target.sourceKind(), target.branch(),
-                target.headSha(), target.baseSha(), targets, auxiliary, target.gapNotes(),
+                target.headSha(), target.baseSha(), targets, auxiliary, List.copyOf(missingNotes),
                 promptFacts, null);
     }
 

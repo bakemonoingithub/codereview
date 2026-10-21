@@ -8,6 +8,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.cfg.CoercionAction;
+import com.fasterxml.jackson.databind.cfg.CoercionInputShape;
+import com.fasterxml.jackson.databind.type.LogicalType;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -25,10 +30,23 @@ import static com.codereview.agent.specialist.protocol.SpecialistResults.Pattern
 @Component
 public class SpecialistResultParser {
 
-    private final ObjectMapper strict = new ObjectMapper()
+    private final ObjectMapper strict = strictMapper();
+
+    private static ObjectMapper strictMapper() {
+        ObjectMapper mapper = JsonMapper.builder()
             .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-            .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+            .enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+            .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
+            .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
+            .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+            .build();
+        mapper.coercionConfigFor(LogicalType.Textual)
+                .setCoercion(CoercionInputShape.Integer, CoercionAction.Fail)
+                .setCoercion(CoercionInputShape.Float, CoercionAction.Fail)
+                .setCoercion(CoercionInputShape.Boolean, CoercionAction.Fail);
+        return mapper;
+    }
 
     public SpecialistResults.Result parse(String raw, String specialistType) {
         String text = raw == null ? "" : raw.strip();

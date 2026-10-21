@@ -40,7 +40,7 @@ class SpecialistPromptBuilderTest {
 
         assertEquals(PromptPurpose.ISSUE_DIFF, input.purpose());
         assertEquals(2, input.targets().size());
-        assertEquals(1, input.facts().size());
+        assertEquals(2, input.facts().size());
         assertTrue(prompt.userPrompt().contains("## 程序计算的依赖事实"));
         assertTrue(prompt.userPrompt().contains("dep-1"));
         assertTrue(prompt.userPrompt().contains("## 缺失与限制"));

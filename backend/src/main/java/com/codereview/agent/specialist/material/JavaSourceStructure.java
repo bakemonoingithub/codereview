@@ -37,6 +37,18 @@ public record JavaSourceStructure(
         return types.stream().anyMatch(type -> type.simpleName().equals(simpleName));
     }
 
+    /** 限定引用必须匹配完整身份；不能因末段同名就当作文件内类型。 */
+    public boolean declaresReference(String name) {
+        if (TypeNames.isProbablyQualified(name)) {
+            return type(name).isPresent();
+        }
+        if (name.contains(".")) {
+            String qualified = packageName.isBlank() ? name : packageName + "." + name;
+            return type(qualified).isPresent();
+        }
+        return declares(name);
+    }
+
     public Optional<TypeDecl> type(String qualifiedName) {
         return types.stream().filter(type -> type.qualifiedName().equals(qualifiedName)).findFirst();
     }
@@ -59,6 +71,7 @@ public record JavaSourceStructure(
     public record FieldDecl(String type, String name, int line) {
     }
 
+    /** 可调用成员；构造器的 returnType 为空，紧凑构造器的参数由 record 字段承载。 */
     public record MethodDecl(String name, String returnType, List<String> parameterTypes,
                              boolean isStatic, int startLine, int endLine,
                              int bodyStartLine, int bodyEndLine, String signature,
@@ -80,6 +93,10 @@ public record JavaSourceStructure(
     public record MemberRange(String kind, String name, int startLine, int endLine) {
     }
 
+    /** 花括号包围的实现范围，列从 1 开始，保留同一行中范围外的声明。 */
+    public record BodyRange(int startLine, int startColumn, int endLine, int endColumn) {
+    }
+
     /**
      * 一个类型声明。{@code qualifiedName} 含外部类型前缀，例如 {@code a.b.Outer.Inner}；
      * {@code outerQualifiedName} 为空表示顶层类型。
@@ -89,7 +106,8 @@ public record JavaSourceStructure(
                            List<TypeRef> extendedTypes, List<TypeRef> implementedTypes,
                            List<FieldDecl> fields, List<MethodDecl> methods,
                            List<InitializerDecl> initializers, List<TypeRef> objectCreations,
-                           List<MemberRange> memberRanges, List<String> comments,
+                           List<MemberRange> memberRanges, List<BodyRange> implementationRanges,
+                           List<String> comments,
                            int startLine, int endLine) {
 
         public TypeDecl {
@@ -101,6 +119,7 @@ public record JavaSourceStructure(
             initializers = initializers == null ? List.of() : List.copyOf(initializers);
             objectCreations = objectCreations == null ? List.of() : List.copyOf(objectCreations);
             memberRanges = memberRanges == null ? List.of() : List.copyOf(memberRanges);
+            implementationRanges = implementationRanges == null ? List.of() : List.copyOf(implementationRanges);
             comments = comments == null ? List.of() : List.copyOf(comments);
         }
     }

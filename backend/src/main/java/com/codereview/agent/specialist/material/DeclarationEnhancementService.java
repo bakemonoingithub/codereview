@@ -56,6 +56,8 @@ public class DeclarationEnhancementService {
             return target;
         }
         Map<String, DeclarationResolver> resolvers = new LinkedHashMap<>();
+        DeclarationResolver.ReadBudget readBudget = new DeclarationResolver.ReadBudget(
+                properties.getMaxAuxiliaryFiles(), properties.getMaxAuxiliaryBytes());
         Set<String> targetPaths = new LinkedHashSet<>();
         for (Material material : target.targets()) {
             targetPaths.add(material.path());
@@ -65,15 +67,14 @@ public class DeclarationEnhancementService {
         List<Candidate> direct = new ArrayList<>();
         List<Gap> gaps = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
-        int[] budget = {0};
 
         for (Material material : target.targets()) {
             if (material.structure() == null || material.sha() == null) {
                 continue;
             }
             DeclarationResolver resolver = resolvers.computeIfAbsent(material.sha(),
-                    sha -> new DeclarationResolver(target.projectId(), sha, repository, parser));
-            collectAncestors(material, resolver, targetPaths, ancestors, gaps, seen, budget);
+                    sha -> new DeclarationResolver(target.projectId(), sha, repository, parser, readBudget));
+            collectAncestors(material, resolver, targetPaths, ancestors, gaps, seen);
         }
 
         if (properties.isIncludeDirectDeclarations()) {
@@ -82,19 +83,20 @@ public class DeclarationEnhancementService {
                     continue;
                 }
                 DeclarationResolver resolver = resolvers.computeIfAbsent(material.sha(),
-                        sha -> new DeclarationResolver(target.projectId(), sha, repository, parser));
-                collectDirect(material, resolver, targetPaths, direct, gaps, seen, budget);
+                        sha -> new DeclarationResolver(target.projectId(), sha, repository, parser, readBudget));
+                collectDirect(material, resolver, targetPaths, direct, gaps, seen);
             }
         }
 
         List<Material> auxiliary = new ArrayList<>();
-        int files = 0;
+        Set<String> sentFiles = new LinkedHashSet<>();
         int bytes = 0;
         boolean limited = false;
         List<Candidate> ordered = new ArrayList<>(ancestors);
         ordered.addAll(direct);
         for (Candidate candidate : ordered) {
-            if (files >= properties.getMaxAuxiliaryFiles()) {
+            String fileKey = candidate.resolved().sha() + "|" + candidate.resolved().path();
+            if (!sentFiles.contains(fileKey) && sentFiles.size() >= properties.getMaxAuxiliaryFiles()) {
                 limited = true;
                 break;
             }
@@ -118,7 +120,7 @@ public class DeclarationEnhancementService {
                     "仅类型声明与方法签名；方法体以占位行省略", Role.AUXILIARY, Status.RESOLVED,
                     candidate.resolved().qualifiedName(), candidate.resolved().structure());
             auxiliary.add(store.save(material));
-            files++;
+            sentFiles.add(fileKey);
             bytes += size;
         }
         if (limited) {
@@ -131,7 +133,7 @@ public class DeclarationEnhancementService {
 
     private void collectAncestors(Material targetMaterial, DeclarationResolver resolver,
                                   Set<String> targetPaths, List<Candidate> out, List<Gap> gaps,
-                                  Set<String> seen, int[] budget) {
+                                  Set<String> seen) {
         Deque<QueueItem> queue = new ArrayDeque<>();
         for (JavaSourceStructure.TypeDecl type : targetMaterial.structure().types()) {
             for (JavaSourceStructure.TypeRef ref : concat(type.extendedTypes(), type.implementedTypes())) {
@@ -158,12 +160,6 @@ public class DeclarationEnhancementService {
                 if (!seen.add(key)) {
                     continue;
                 }
-                if (budget[0] >= properties.getMaxAuxiliaryFiles()) {
-                    gaps.add(new Gap(Status.LIMIT_REACHED.name(), resolved.displayName(),
-                            "辅助文件达到 " + properties.getMaxAuxiliaryFiles() + " 个，停止扩展"));
-                    continue;
-                }
-                budget[0]++;
                 out.add(new Candidate(resolved, item.side()));
                 for (JavaSourceStructure.TypeDecl type : resolved.structure().types()) {
                     if (!type.qualifiedName().equals(resolved.qualifiedName())) {
@@ -178,14 +174,16 @@ public class DeclarationEnhancementService {
             } else if (resolved.actionableGap()) {
                 gaps.add(new Gap(resolved.status().name(), resolved.displayName(),
                         resolved.diagnostic()));
+                if (resolved.status() == Status.LIMIT_REACHED) break;
             }
         }
     }
 
     private void collectDirect(Material targetMaterial, DeclarationResolver resolver,
                                Set<String> targetPaths, List<Candidate> out, List<Gap> gaps,
-                               Set<String> seen, int[] budget) {
+                               Set<String> seen) {
         Set<String> missing = new LinkedHashSet<>();
+        directTypes:
         for (JavaSourceStructure.TypeDecl type : targetMaterial.structure().types()) {
             List<JavaSourceStructure.TypeRef> refs = new ArrayList<>();
             for (JavaSourceStructure.FieldDecl field : type.fields()) {
@@ -213,19 +211,13 @@ public class DeclarationEnhancementService {
                         if (!seen.add(key)) {
                             continue;
                         }
-                        if (budget[0] >= properties.getMaxAuxiliaryFiles()) {
-                            gaps.add(new Gap(Status.LIMIT_REACHED.name(), resolved.displayName(),
-                                    "辅助文件达到 " + properties.getMaxAuxiliaryFiles()
-                                            + " 个，停止直接声明补充"));
-                            return;
-                        }
-                        budget[0]++;
                         out.add(new Candidate(resolved, targetMaterial.side()));
                     } else if (resolved.status() == Status.NOT_AVAILABLE) {
                         missing.add(TypeNames.erasure(name));
                     } else if (resolved.actionableGap()) {
                         gaps.add(new Gap(resolved.status().name(), resolved.displayName(),
                                 resolved.diagnostic()));
+                        if (resolved.status() == Status.LIMIT_REACHED) break directTypes;
                     }
                 }
             }

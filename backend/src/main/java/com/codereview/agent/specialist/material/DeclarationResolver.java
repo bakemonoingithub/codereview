@@ -9,9 +9,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.nio.charset.StandardCharsets;
 
 import static com.codereview.agent.specialist.material.SpecialistMaterials.Status;
 
@@ -31,6 +31,7 @@ public final class DeclarationResolver {
     private final String sha;
     private final RepositoryReadService repository;
     private final JavaStructureParser parser;
+    private final ReadBudget readBudget;
 
     private RepositorySnapshots.PathList pathList;
     private Set<String> pathSet;
@@ -38,10 +39,16 @@ public final class DeclarationResolver {
 
     public DeclarationResolver(String projectId, String sha, RepositoryReadService repository,
                                JavaStructureParser parser) {
+        this(projectId, sha, repository, parser, new ReadBudget(Integer.MAX_VALUE, Long.MAX_VALUE));
+    }
+
+    DeclarationResolver(String projectId, String sha, RepositoryReadService repository,
+                        JavaStructureParser parser, ReadBudget readBudget) {
         this.projectId = projectId;
         this.sha = sha;
         this.repository = repository;
         this.parser = parser;
+        this.readBudget = readBudget;
     }
 
     public String sha() {
@@ -57,8 +64,11 @@ public final class DeclarationResolver {
         if (TypeNames.isPrimitiveOrVoid(base)) {
             return Resolved.external(raw, "Java 基本类型");
         }
-        if (source != null && source.declares(simpleName(base))) {
+        if (source != null && source.declaresReference(base)) {
             return Resolved.internal(raw, "目标文件内已声明");
+        }
+        if (TypeNames.isJdkPlatform(base)) {
+            return Resolved.external(raw, "Java 平台类型");
         }
         if (TypeNames.isProbablyQualified(base)) {
             return resolveFqcn(raw, base);
@@ -123,7 +133,7 @@ public final class DeclarationResolver {
         String samePackage = packageName.isBlank() ? name : packageName + "." + name;
         Resolved same = resolveFqcn(name, samePackage);
         if (same.status() == Status.RESOLVED || same.status() == Status.AMBIGUOUS
-                || same.status() == Status.PARSE_FAILED) {
+                || same.status() == Status.PARSE_FAILED || same.status() == Status.LIMIT_REACHED) {
             return new NameResolution(List.of(samePackage), same.status(), same.diagnostic());
         }
         List<String> candidates = new ArrayList<>();
@@ -146,19 +156,13 @@ public final class DeclarationResolver {
 
     private Resolved resolveFqcn(String requested, String fqcn) {
         List<Resolved> matches = new ArrayList<>();
-        boolean parseFailed = false;
-        String parseFailure = null;
-        for (String path : candidatePaths(fqcn)) {
-            if (!pathSet().contains(path)) {
-                continue;
-            }
+        Loaded incomplete = null;
+        for (String path : matchingPaths(fqcn)) {
             Loaded loaded = load(path);
-            if (loaded.status() == Status.PARSE_FAILED) {
-                parseFailed = true;
-                parseFailure = loaded.diagnostic();
-                continue;
-            }
             if (loaded.status() != Status.RESOLVED) {
+                if (incomplete == null || loaded.status() == Status.LIMIT_REACHED) {
+                    incomplete = loaded;
+                }
                 continue;
             }
             JavaSourceStructure.TypeDecl type = loaded.structure().type(fqcn).orElse(null);
@@ -168,24 +172,30 @@ public final class DeclarationResolver {
             matches.add(new Resolved(Status.RESOLVED, requested, fqcn, path, sha,
                     loaded.content(), loaded.structure(), type, null));
         }
-        if (matches.size() == 1) {
-            return matches.get(0);
-        }
         if (matches.size() > 1) {
             String detail = "同名类型有多个可核对声明：" + matches.stream()
                     .map(match -> match.path() + "#" + match.qualifiedName())
                     .reduce((left, right) -> left + ", " + right).orElse("");
             return Resolved.of(Status.AMBIGUOUS, requested, null, null, null, null, null, detail);
         }
-        if (parseFailed) {
-            return Resolved.of(Status.PARSE_FAILED, requested, null, null, null, null, null,
-                    "候选源码解析失败：" + parseFailure);
+        if (incomplete != null) {
+            return Resolved.of(incomplete.status(), requested, null, null, null, null, null,
+                    incomplete.diagnostic());
+        }
+        if (matches.size() == 1) {
+            return matches.get(0);
         }
         return Resolved.of(Status.NOT_AVAILABLE, requested, null, null, null, null, null,
                 "未在版本 " + sha + " 中找到声明：" + fqcn);
     }
 
     private static Resolved one(List<Resolved> resolved) {
+        // 未能核对全部候选时，不能把另一个可读候选当作唯一声明。
+        for (Status status : List.of(Status.LIMIT_REACHED, Status.AMBIGUOUS, Status.PARSE_FAILED)) {
+            for (Resolved candidate : resolved) {
+                if (candidate.status() == status) return candidate;
+            }
+        }
         List<Resolved> hits = resolved.stream()
                 .filter(item -> item.status() == Status.RESOLVED).toList();
         if (hits.size() == 1) {
@@ -210,13 +220,26 @@ public final class DeclarationResolver {
 
     private Loaded load(String path) {
         return files.computeIfAbsent(path, key -> {
+            if (!readBudget.reserveFile()) {
+                return new Loaded(Status.LIMIT_REACHED, null, null, "辅助源码读取达到文件数或字节上限");
+            }
             try {
                 RepositorySnapshots.FileSnapshot snapshot = repository.readFile(projectId, sha, key);
+                if (!readBudget.recordBytes(snapshot.content().getBytes(StandardCharsets.UTF_8).length)) {
+                    return new Loaded(Status.LIMIT_REACHED, null, null,
+                            "辅助源码全文超过剩余读取字节上限，未解析或发送，停止后续读取");
+                }
                 JavaSourceStructure structure = parser.parse(key, snapshot.content());
                 return new Loaded(Status.RESOLVED, snapshot.content(), structure, null);
             } catch (StructureParseException failure) {
                 return new Loaded(Status.PARSE_FAILED, null, null, failure.getMessage());
             } catch (ApiException failure) {
+                if (failure.details() instanceof Map<?, ?> details
+                        && details.get("byteSize") instanceof Number size
+                        && !readBudget.recordBytes(size.longValue())) {
+                    return new Loaded(Status.LIMIT_REACHED, null, null,
+                            "候选源码超过读取字节上限，停止后续读取");
+                }
                 return new Loaded(Status.NOT_AVAILABLE, null, null,
                         failure.errorCode().code() + "：" + failure.getMessage());
             }
@@ -247,9 +270,39 @@ public final class DeclarationResolver {
         return List.copyOf(paths);
     }
 
-    private static String simpleName(String name) {
-        int dot = name.lastIndexOf('.');
-        return dot < 0 ? name : name.substring(dot + 1);
+    /** 固定版本路径按包路径后缀建立候选，不假定源码从仓库根开始。 */
+    private List<String> matchingPaths(String fqcn) {
+        Set<String> matches = new LinkedHashSet<>();
+        for (String suffix : candidatePaths(fqcn)) {
+            for (String path : pathSet()) {
+                if (path.equals(suffix) || path.endsWith("/" + suffix)) matches.add(path);
+            }
+        }
+        return List.copyOf(matches);
+    }
+
+    /** 跨版本解析器共用读取预算；失败候选也消耗次数和已取得的正文字节。 */
+    static final class ReadBudget {
+        private final int maxFiles;
+        private final long maxBytes;
+        private int files;
+        private long bytes;
+
+        ReadBudget(int maxFiles, long maxBytes) {
+            this.maxFiles = Math.max(0, maxFiles);
+            this.maxBytes = Math.max(0, maxBytes);
+        }
+
+        boolean reserveFile() {
+            if (files >= maxFiles || bytes >= maxBytes) return false;
+            files++;
+            return true;
+        }
+
+        boolean recordBytes(long size) {
+            bytes += size;
+            return bytes <= maxBytes;
+        }
     }
 
     private record NameResolution(List<String> fqcns, Status status, String diagnostic) {

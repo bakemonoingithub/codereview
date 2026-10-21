@@ -4,6 +4,8 @@
 
 ## 1. 交付
 
+审查修复补齐删除目标的原文降级、构造器与实现行列范围；复验见 [R02、R04、R05](p31-1-3-review-fixes.md)。
+
 | 能力 | 位置 | 说明 |
 | --- | --- | --- |
 | 固定版本材料准备 | `agent.specialist.material.MaterialPreparationService` | 按文件或提交差异读取固定 SHA，返回目标材料、缺口与失败原因；失败不返回空材料 |

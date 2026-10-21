@@ -3,6 +3,7 @@ package com.codereview.agent.specialist.coupling;
 import com.codereview.agent.prompt.PromptFact;
 
 import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,9 +35,13 @@ public record CouplingFacts(List<Edge> edges, int resolvedOutgoingCount, int unr
     }
 
     public List<PromptFact> promptFacts() {
-        return edges.stream()
-                .map(edge -> new PromptFact(edge.id(), edge.describe()))
-                .toList();
+        List<PromptFact> facts = new ArrayList<>();
+        facts.add(new PromptFact("coupling-metrics", "仓库内已解析出向依赖：resolvedOutgoingCount="
+                + resolvedOutgoingCount + "; unresolvedTypeCount=" + unresolvedTypeCount
+                + "; coverage=" + coverage + "; declarationRelationCounts=" + declarationRelationCounts
+                + "; sha=" + sha + "; side=" + side + "。此统计项不是可引用的 dependencyId。"));
+        edges.forEach(edge -> facts.add(new PromptFact(edge.id(), edge.describe())));
+        return List.copyOf(facts);
     }
 
     public record Edge(String id, String sourceType, String targetType, String targetPath,
