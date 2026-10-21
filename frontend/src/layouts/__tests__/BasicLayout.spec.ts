@@ -49,10 +49,11 @@ describe('侧边栏菜单图标', () => {
 
     // @ant-design/icons 会把组件名渲染成 kebab 的 class（FolderOutlined → anticon-folder）
     expect(icons[0]).toContain('anticon-audit')
-    expect(icons[1]).toContain('anticon-folder')
-    expect(icons[2]).toContain('anticon-robot')
-    expect(icons[3]).toContain('anticon-setting')
-    expect(icons[4]).toContain('anticon-file-text')
+    expect(icons[1]).toContain('anticon-code')
+    expect(icons[2]).toContain('anticon-folder')
+    expect(icons[3]).toContain('anticon-robot')
+    expect(icons[4]).toContain('anticon-setting')
+    expect(icons[5]).toContain('anticon-file-text')
   })
 
   it('菜单项带 title，折叠态才有中文 tooltip', () => {
@@ -62,7 +63,7 @@ describe('侧边栏菜单图标', () => {
       ...new Set(wrapper.findAllComponents({ name: 'AMenuItem' }).map((m) => m.props('title')))
     ]
 
-    expect(titles).toEqual(['审查', '项目', '模型', '策略', '提示词'])
+    expect(titles).toEqual(['审查', '代码浏览', '项目', '模型', '策略', '提示词'])
   })
 })
 

@@ -1,0 +1,215 @@
+<template>
+  <a-modal
+    :open="open"
+    title="材料与固定版本"
+    width="min(1000px, calc(100vw - 48px))"
+    :footer="null"
+    destroy-on-close
+    @cancel="close"
+  >
+    <a-spin :spinning="loading">
+      <a-alert v-if="error" type="error" show-icon :message="error" />
+      <template v-else-if="detail">
+        <a-descriptions :column="2" size="small" bordered class="mb12">
+          <a-descriptions-item label="路径" :span="2">{{ metadata.path }}</a-descriptions-item>
+          <a-descriptions-item label="版本">
+            <code>{{ metadata.sha?.slice(0, 12) }}</code>
+          </a-descriptions-item>
+          <a-descriptions-item label="侧">{{ sideText(metadata.side) }}</a-descriptions-item>
+          <a-descriptions-item label="行号">{{ metadata.startLine }}-{{ metadata.endLine }}</a-descriptions-item>
+          <a-descriptions-item label="角色">{{ metadata.role }}</a-descriptions-item>
+          <a-descriptions-item label="完整性">{{ metadata.completeness }}</a-descriptions-item>
+          <a-descriptions-item label="发送">
+            {{ metadata.sent ? '实际发送' : '读取后未发送' }}
+          </a-descriptions-item>
+        </a-descriptions>
+        <p v-if="metadata.diagnostic" class="notice">{{ metadata.diagnostic }}</p>
+
+        <div class="tabs">
+          <a-button size="small" :type="mode === 'saved' ? 'primary' : 'default'" @click="mode = 'saved'">
+            保存片段
+          </a-button>
+          <a-button size="small" :type="mode === 'full' ? 'primary' : 'default'" @click="loadFull">
+            固定版本全文
+          </a-button>
+          <a-button
+            v-if="metadata.side !== 'FILE'"
+            size="small"
+            :type="mode === 'diff' ? 'primary' : 'default'"
+            @click="loadDiff"
+          >
+            提交差异
+          </a-button>
+          <span class="spacer" />
+          <span class="muted small">扩展全文不会改变实际发送内容</span>
+        </div>
+
+        <a-spin :spinning="contentLoading">
+          <a-alert v-if="contentError" type="error" show-icon :message="contentError" />
+          <DiffViewer
+            v-else-if="mode === 'diff'"
+            :path="metadata.path"
+            :patch="diff?.patch || null"
+            highlight
+            empty-text="该文件没有可显示的差异"
+          />
+          <pre v-else class="code">{{ numbered(content, mode === 'saved' ? metadata.startLine : 1) }}</pre>
+        </a-spin>
+      </template>
+    </a-spin>
+  </a-modal>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import DiffViewer from '@/components/DiffViewer.vue'
+import {
+  repositoryApi,
+  tasksApi,
+  type DiffSides,
+  type MaterialDetail,
+  type MaterialView
+} from '@/api/v2'
+
+const props = defineProps<{
+  open: boolean
+  taskId: string
+  projectId: string
+  headSha: string
+  materialId: string
+}>()
+const emit = defineEmits<{ (event: 'update:open', value: boolean): void }>()
+
+const loading = ref(false)
+const contentLoading = ref(false)
+const error = ref('')
+const contentError = ref('')
+const detail = ref<MaterialDetail | null>(null)
+const content = ref('')
+const diff = ref<DiffSides | null>(null)
+const mode = ref<'saved' | 'full' | 'diff'>('saved')
+
+const emptyMaterial: MaterialView = {
+  id: '',
+  path: '',
+  sha: '',
+  side: 'FILE',
+  startLine: 1,
+  endLine: 1,
+  role: '',
+  disposition: '',
+  completeness: '',
+  diagnostic: null,
+  contentHash: '',
+  byteSize: 0,
+  sent: false
+}
+const metadata = computed<MaterialView>(() => detail.value?.metadata || emptyMaterial)
+
+watch(
+  () => [props.open, props.materialId] as const,
+  async ([open]) => {
+    if (!open || !props.materialId) return
+    await load()
+  },
+  { immediate: true }
+)
+
+async function load() {
+  loading.value = true
+  error.value = ''
+  mode.value = 'saved'
+  try {
+    detail.value = await tasksApi.material(props.taskId, props.materialId)
+    content.value = detail.value.content
+  } catch (failure) {
+    error.value = (failure as Error).message || '材料读取失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadFull() {
+  if (!detail.value) return
+  mode.value = 'full'
+  contentError.value = ''
+  contentLoading.value = true
+  try {
+    const snapshot = await repositoryApi.file(props.projectId, detail.value.metadata.sha,
+      detail.value.metadata.path)
+    content.value = snapshot.content
+  } catch (failure) {
+    contentError.value = (failure as Error).message || '固定版本原文读取失败'
+  } finally {
+    contentLoading.value = false
+  }
+}
+
+async function loadDiff() {
+  mode.value = 'diff'
+  contentError.value = ''
+  contentLoading.value = true
+  try {
+    diff.value = await repositoryApi.diff(props.projectId, props.headSha, metadata.value!.path)
+  } catch (failure) {
+    contentError.value = (failure as Error).message || '提交差异读取失败'
+  } finally {
+    contentLoading.value = false
+  }
+}
+
+function numbered(text: string, startLine: number): string {
+  if (!text) return ''
+  return text.split('\n').map((line, index) =>
+    `${String(startLine + index).padStart(6, ' ')} | ${line}`).join('\n')
+}
+
+function sideText(side: string): string {
+  return ({ FILE: '文件', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || side
+}
+
+function close() {
+  emit('update:open', false)
+}
+</script>
+
+<style scoped lang="less">
+.mb12 {
+  margin-bottom: 12px;
+}
+.muted {
+  color: #69798d;
+}
+.small {
+  font-size: 12px;
+}
+.notice {
+  background: #f7f9fc;
+  border: 1px solid #e3e9f0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #4d5d70;
+  font-size: 12px;
+}
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.spacer {
+  flex: 1;
+}
+.code {
+  max-height: 55vh;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  background: #f6f8fc;
+  border: 1px solid #e3e9f0;
+  border-radius: 6px;
+  font: 12px/1.8 Consolas, 'Cascadia Code', monospace;
+  white-space: pre;
+}
+</style>

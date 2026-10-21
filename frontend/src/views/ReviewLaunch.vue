@@ -300,11 +300,52 @@ onMounted(async () => {
   await loadOptions()
   if (copyFrom.value) {
     await loadCopy()
+  } else if (await applyBrowserPrefill()) {
+    // 代码浏览已带入固定版本与目标
   } else if (projects.value.length) {
     form.projectId = projects.value[0].id
     form.branch = projects.value[0].currentBranch || 'main'
   }
 })
+
+async function applyBrowserPrefill(): Promise<boolean> {
+  const raw = sessionStorage.getItem('review-launch-prefill')
+  if (!raw) {
+    return false
+  }
+  sessionStorage.removeItem('review-launch-prefill')
+  try {
+    const prefill = JSON.parse(raw) as {
+      projectId: string
+      branch: string
+      sourceKind: 'FILES' | 'DIFF'
+      observedSha?: string
+      commitSha?: string
+      targets: { path: string; oldPath: string | null }[]
+    }
+    restoring.value = true
+    form.projectId = prefill.projectId
+    form.branch = prefill.branch
+    form.specialistType = 'ISSUE'
+    form.sourceKind = prefill.sourceKind
+    form.observedSha = prefill.observedSha || ''
+    form.commitSha = prefill.commitSha || ''
+    form.targets = (prefill.targets || []).map((target) => ({
+      path: target.path,
+      oldPath: target.oldPath,
+      note: ''
+    }))
+    if (prefill.sourceKind === 'DIFF' && prefill.commitSha) {
+      await loadCommitDetail(prefill.commitSha)
+    }
+    await nextTick()
+    restoring.value = false
+    return true
+  } catch {
+    restoring.value = false
+    return false
+  }
+}
 
 // 来源身份一变化立即失效；异步监听器随后读取新身份。
 watch(() => [form.projectId, form.branch, form.sourceKind], () => {

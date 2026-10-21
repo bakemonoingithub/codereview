@@ -23,6 +23,13 @@
 
     <a-card>
       <div class="filters">
+        <a-input
+          v-model:value="search"
+          allow-clear
+          placeholder="按任务 ID 搜索"
+          style="width: 220px"
+          @change="load"
+        />
         <a-select
           v-model:value="filterProject"
           allow-clear
@@ -106,7 +113,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
 import { projectsApi, tasksApi, type ProjectView, type TaskSummary } from '@/api/v2'
 
 const route = useRoute()
@@ -122,6 +128,7 @@ const created = ref(String(route.query.created || ''))
 const filterProject = ref<string | undefined>()
 const filterType = ref<string | undefined>()
 const filterState = ref<string | undefined>()
+const search = ref('')
 
 const projectOptions = computed(() =>
   projects.value.map((project) => ({ value: project.id, label: project.name }))
@@ -141,6 +148,23 @@ const stateOptions = [
 ]
 
 onMounted(async () => {
+  const saved = sessionStorage.getItem('review-center-filters')
+  if (saved) {
+    try {
+      const filters = JSON.parse(saved) as {
+        project?: string
+        type?: string
+        state?: string
+        q?: string
+      }
+      filterProject.value = filters.project
+      filterType.value = filters.type
+      filterState.value = filters.state
+      search.value = filters.q || ''
+    } catch {
+      sessionStorage.removeItem('review-center-filters')
+    }
+  }
   try {
     const page = await projectsApi.list({ limit: 100 })
     projects.value = page.items
@@ -164,11 +188,18 @@ async function loadPage(append: boolean) {
   loading.value = true
   error.value = ''
   try {
+    sessionStorage.setItem('review-center-filters', JSON.stringify({
+      project: filterProject.value,
+      type: filterType.value,
+      state: filterState.value,
+      q: search.value
+    }))
     const page = await tasksApi.list({
       cursor: append ? nextCursor.value || undefined : undefined,
       projectId: filterProject.value,
       type: filterType.value,
       state: filterState.value,
+      q: search.value || undefined,
       limit: 50
     })
     if (epoch !== listEpoch) return
@@ -192,8 +223,7 @@ function shortId(id: string): string {
 }
 
 function openTask(id: string) {
-  // P31.7 接入统一详情；当前先提示任务已创建，避免跳到不存在的路由。
-  message.info(`任务 ${shortId(id)} 已记录，详情阅读在 P31.7 接入`)
+  router.push({ path: `/reviews/${id}`, query: { from: route.fullPath } })
 }
 
 function copyTask(id: string) {

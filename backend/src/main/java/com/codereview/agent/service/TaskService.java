@@ -7,7 +7,11 @@ import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.api.PageResponse;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.TaskDtos;
+import com.codereview.agent.entity.AgentCallMaterial;
+import com.codereview.agent.entity.AgentIssue;
+import com.codereview.agent.entity.AgentMaterial;
 import com.codereview.agent.entity.AgentModelCall;
+import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentProject;
 import com.codereview.agent.entity.AgentPrompt;
@@ -20,8 +24,12 @@ import com.codereview.agent.execution.TaskDispatchService;
 import com.codereview.agent.execution.TaskProperties;
 import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.invocation.ModelInvocationProperties;
+import com.codereview.agent.mapper.AgentCallMaterialMapper;
+import com.codereview.agent.mapper.AgentIssueMapper;
+import com.codereview.agent.mapper.AgentMaterialMapper;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
+import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
 import com.codereview.agent.mapper.AgentPromptVersionMapper;
@@ -137,11 +145,14 @@ public class TaskService {
     }
 
     public PageResponse<TaskDtos.Summary> list(String projectId, String route, String type, String state,
-                                               String cursor, Integer limit) {
+                                               String q, String cursor, Integer limit) {
         int size = AgentPaging.limit(limit);
         LambdaQueryWrapper<AgentReviewTask> wrapper = new LambdaQueryWrapper<>();
         if (projectId != null && !projectId.isBlank()) {
             wrapper.eq(AgentReviewTask::getProjectId, projectId.trim());
+        }
+        if (q != null && !q.isBlank()) {
+            wrapper.likeRight(AgentReviewTask::getId, q.trim().toUpperCase());
         }
         if (route != null && !route.isBlank()) {
             wrapper.eq(AgentReviewTask::getRoute, route.trim().toUpperCase());
@@ -274,6 +285,152 @@ public class TaskService {
         String text = content == null ? "" : content;
         return new TaskDtos.CallDetail(call.getId(), normalized, text,
                 text.getBytes(StandardCharsets.UTF_8).length, sha256(text), complete);
+    }
+
+    /**
+     * 统一详情：按目标读取最近一次结果。结果正文和来源都是发布时保存的 JSON，
+     * 不按当前提示词或最新源码重建。
+     */
+    public TaskDtos.ResultView result(String taskId, String targetId) {
+        requireTask(taskId);
+        requireTarget(taskId, targetId);
+        List<AgentReviewResult> rows = db.mapper(AgentReviewResultMapper.class).selectList(
+                new LambdaQueryWrapper<AgentReviewResult>()
+                        .eq(AgentReviewResult::getTaskId, taskId)
+                        .eq(AgentReviewResult::getTargetId, targetId)
+                        .orderByDesc(AgentReviewResult::getCreatedAt)
+                        .last("limit 1"));
+        if (rows.isEmpty()) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "该目标还没有已发布结果");
+        }
+        AgentReviewResult row = rows.get(0);
+        List<AgentIssue> issues = db.mapper(AgentIssueMapper.class).selectList(
+                new LambdaQueryWrapper<AgentIssue>()
+                        .eq(AgentIssue::getResultId, row.getId())
+                        .orderByAsc(AgentIssue::getOrdinal));
+        List<TaskDtos.IssueView> issueViews = issues.stream()
+                .map(issue -> new TaskDtos.IssueView(issue.getId(), issue.getOrdinal() == null ? 0 : issue.getOrdinal(),
+                        issue.getCategory(), issue.getSeverity(), issue.getTitle(), issue.getReason(),
+                        issue.getSuggestion(), readJsonArray(issue.getLocations()),
+                        readJsonArray(issue.getSourceUnits())))
+                .toList();
+        return new TaskDtos.ResultView(row.getId(), row.getTargetId(), row.getKind(),
+                row.getSchemaVersion(), row.getCompleteness(), row.getCreatedAt(),
+                readJson(row.getBody()), issueViews, readJson(row.getProvenance()));
+    }
+
+    /** 目标实际发送过的材料；同一材料被多次调用引用时合并为一条。 */
+    public List<TaskDtos.MaterialView> materials(String taskId, String targetId) {
+        requireTask(taskId);
+        requireTarget(taskId, targetId);
+        List<AgentModelCall> calls = db.mapper(AgentModelCallMapper.class).selectList(
+                new LambdaQueryWrapper<AgentModelCall>()
+                        .eq(AgentModelCall::getTaskId, taskId)
+                        .eq(AgentModelCall::getTargetId, targetId)
+                        .orderByAsc(AgentModelCall::getCreatedAt));
+        if (calls.isEmpty()) {
+            return List.of();
+        }
+        List<String> callIds = calls.stream().map(AgentModelCall::getId).toList();
+        List<AgentCallMaterial> links = db.mapper(AgentCallMaterialMapper.class).selectList(
+                new LambdaQueryWrapper<AgentCallMaterial>().in(AgentCallMaterial::getCallId, callIds));
+        if (links.isEmpty()) {
+            return List.of();
+        }
+        Map<String, List<AgentCallMaterial>> byMaterial = links.stream()
+                .collect(Collectors.groupingBy(AgentCallMaterial::getMaterialId, LinkedHashMap::new,
+                        Collectors.toList()));
+        List<AgentMaterial> rows = db.mapper(AgentMaterialMapper.class).selectList(
+                new LambdaQueryWrapper<AgentMaterial>().in(AgentMaterial::getId, byMaterial.keySet()));
+        Map<String, AgentMaterial> byId = rows.stream()
+                .collect(Collectors.toMap(AgentMaterial::getId, material -> material));
+        List<TaskDtos.MaterialView> views = new ArrayList<>();
+        for (Map.Entry<String, List<AgentCallMaterial>> entry : byMaterial.entrySet()) {
+            AgentMaterial material = byId.get(entry.getKey());
+            if (material == null) {
+                continue;
+            }
+            AgentCallMaterial first = entry.getValue().get(0);
+            boolean sent = entry.getValue().stream().anyMatch(link -> "SENT".equals(link.getDisposition()));
+            views.add(new TaskDtos.MaterialView(material.getId(), material.getPath(), material.getSha(),
+                    material.getSide(), material.getStartLine(), material.getEndLine(), first.getRole(),
+                    first.getDisposition(), material.getCompleteness(), material.getDiagnostic(),
+                    material.getContentHash(), byteSize(material.getContent()), sent));
+        }
+        views.sort(Comparator.comparing(TaskDtos.MaterialView::path)
+                .thenComparing(TaskDtos.MaterialView::side)
+                .thenComparingInt(TaskDtos.MaterialView::startLine));
+        return views;
+    }
+
+    /** 材料原文；只允许读取本任务调用实际关联过的材料。 */
+    public TaskDtos.MaterialDetail material(String taskId, String materialId) {
+        requireTask(taskId);
+        String id = AgentIds.requireValid(materialId, "材料 ID");
+        List<String> callIds = db.mapper(AgentModelCallMapper.class).selectList(
+                        new LambdaQueryWrapper<AgentModelCall>()
+                                .eq(AgentModelCall::getTaskId, taskId))
+                .stream().map(AgentModelCall::getId).toList();
+        if (callIds.isEmpty()) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "材料不属于当前任务：" + materialId);
+        }
+        List<AgentCallMaterial> links = db.mapper(AgentCallMaterialMapper.class).selectList(
+                new LambdaQueryWrapper<AgentCallMaterial>()
+                        .eq(AgentCallMaterial::getMaterialId, id)
+                        .in(AgentCallMaterial::getCallId, callIds));
+        if (links.isEmpty()) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "材料不属于当前任务：" + materialId);
+        }
+        AgentMaterial row = db.mapper(AgentMaterialMapper.class).selectById(id);
+        if (row == null) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "材料不存在：" + materialId);
+        }
+        AgentCallMaterial first = links.get(0);
+        TaskDtos.MaterialView metadata = new TaskDtos.MaterialView(row.getId(), row.getPath(),
+                row.getSha(), row.getSide(), row.getStartLine(), row.getEndLine(), first.getRole(),
+                first.getDisposition(), row.getCompleteness(), row.getDiagnostic(),
+                row.getContentHash(), byteSize(row.getContent()), "SENT".equals(first.getDisposition()));
+        return new TaskDtos.MaterialDetail(metadata, row.getContent(), row.getContent() != null);
+    }
+
+    /** 一次实际调用的完整输入/输出/错误；调用必须属于本任务。 */
+    public TaskDtos.CallDetailFull callDetailFull(String taskId, String callId) {
+        requireTask(taskId);
+        AgentModelCall call = db.mapper(AgentModelCallMapper.class)
+                .selectById(AgentIds.requireValid(callId, "调用 ID"));
+        if (call == null || !taskId.equals(call.getTaskId())) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "调用记录不属于当前任务：" + callId);
+        }
+        return new TaskDtos.CallDetailFull(call.getId(), call.getTargetId(), call.getUnitId(),
+                call.getPurpose(), call.getAttempt() == null ? 1 : call.getAttempt(),
+                call.getState(), call.getErrorCode(), call.getErrorMessage(), call.getRequestBody(),
+                call.getResponseBody(), call.getUsageJson(), call.getCreatedAt(), call.getStartedAt(),
+                call.getFinishedAt());
+    }
+
+    private AgentTaskTarget requireTarget(String taskId, String targetId) {
+        AgentTaskTarget target = db.mapper(AgentTaskTargetMapper.class)
+                .selectById(AgentIds.requireValid(targetId, "目标 ID"));
+        if (target == null || !taskId.equals(target.getTaskId())) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "目标不属于当前任务：" + targetId);
+        }
+        return target;
+    }
+
+    private JsonNode readJsonArray(String value) {
+        if (value == null || value.isBlank()) {
+            return mapper.createArrayNode();
+        }
+        try {
+            JsonNode node = mapper.readTree(value);
+            return node != null && node.isArray() ? node : mapper.createArrayNode();
+        } catch (JsonProcessingException e) {
+            return mapper.createArrayNode();
+        }
+    }
+
+    private static int byteSize(String content) {
+        return content == null ? 0 : content.getBytes(StandardCharsets.UTF_8).length;
     }
 
     private TaskDtos.View replay(AgentReviewTask existing, String requestHash) {

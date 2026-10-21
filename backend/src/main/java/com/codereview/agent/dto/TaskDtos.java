@@ -1,5 +1,6 @@
 package com.codereview.agent.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -84,5 +85,31 @@ public final class TaskDtos {
 
     public record CallDetail(String id, String part, String content, long length, String sha256,
                              boolean complete) {
+    }
+
+    /** 统一详情读取：结果正文按保存时的 JSON 返回，不按当前模板重建。 */
+    public record ResultView(String id, String targetId, String kind, String schemaVersion,
+                             String completeness, LocalDateTime createdAt, JsonNode body,
+                             List<IssueView> issues, JsonNode provenance) {
+    }
+
+    public record IssueView(String id, int ordinal, String category, String severity, String title,
+                            String reason, String suggestion, JsonNode locations,
+                            JsonNode sourceUnits) {
+    }
+
+    public record MaterialView(String id, String path, String sha, String side, int startLine,
+                               int endLine, String role, String disposition, String completeness,
+                               String diagnostic, String contentHash, int byteSize, boolean sent) {
+    }
+
+    public record MaterialDetail(MaterialView metadata, String content, boolean complete) {
+    }
+
+    public record CallDetailFull(String id, String targetId, String unitId, String purpose, int attempt,
+                                 String state, String errorCode, String errorMessage,
+                                 String requestBody, String responseBody, String usageJson,
+                                 LocalDateTime createdAt, LocalDateTime startedAt,
+                                 LocalDateTime finishedAt) {
     }
 }

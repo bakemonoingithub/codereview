@@ -13,12 +13,12 @@ describe('侧边栏菜单', () => {
   it('由路由表生成，且排除 hideMenu 的项（项目详情不进菜单）', () => {
     const paths = menuItems.map((m) => m.path)
 
-    expect(paths).toEqual(['/reviews', '/projects', '/models', '/strategies', '/prompts'])
+    expect(paths).toEqual(['/reviews', '/browser', '/projects', '/models', '/strategies', '/prompts'])
     expect(paths).not.toContain('/projects/:id')
   })
 
   it('菜单标题取自路由 meta.title（不再是另写一份硬编码）', () => {
-    expect(menuItems.map((m) => m.title)).toEqual(['审查', '项目', '模型', '策略', '提示词'])
+    expect(menuItems.map((m) => m.title)).toEqual(['审查', '代码浏览', '项目', '模型', '策略', '提示词'])
   })
 
   /**

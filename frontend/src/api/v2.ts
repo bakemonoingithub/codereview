@@ -189,6 +189,8 @@ export interface CommitDetail {
 }
 
 export const repositoryApi = {
+  branches: (projectId: string) =>
+    v2.get<string[]>(`/projects/${projectId}/branches`).then((r) => r.data),
   head: (projectId: string, branch: string) =>
     v2
       .get<{ sha: string }>(`/projects/${projectId}/head`, { params: { branch } })
@@ -312,6 +314,122 @@ export interface TaskCopyInput {
   reobserveHead: boolean
 }
 
+export interface IssueView {
+  id: string
+  ordinal: number
+  category: string
+  severity: string
+  title: string
+  reason: string | null
+  suggestion: string | null
+  locations: Array<{
+    materialId?: string
+    path: string
+    sha?: string
+    side: string
+    startLine: number
+    endLine: number
+  }>
+  sourceUnits: string[]
+}
+
+export interface ResultView {
+  id: string
+  targetId: string
+  kind: 'ISSUE' | 'PATTERN' | 'COUPLING'
+  schemaVersion: string
+  completeness: 'COMPLETE' | 'INCOMPLETE'
+  createdAt: string
+  body: {
+    summary?: string
+    issues?: Array<{
+      category: string
+      severity: string
+      title: string
+      locations: Array<{ materialId: string; startLine: number; endLine: number }>
+      reason: string
+      suggestion: string
+      evidence?: Array<{ materialId: string; startLine: number; endLine: number }>
+      changeRelation?: string | null
+    }>
+    patterns?: Array<{
+      name: string
+      family: string
+      role: string
+      explanation: string
+      evidence: Array<{ materialId: string; startLine: number; endLine: number }>
+    }>
+    observations?: Array<{
+      title: string
+      explanation: string
+      dependencyIds: string[]
+      evidence: Array<{ materialId: string; startLine: number; endLine: number }>
+      suggestion?: string | null
+    }>
+    limitations?: string[]
+  }
+  issues: IssueView[]
+  provenance: {
+    versions?: { headSha?: string; baseSha?: string; path?: string; oldPath?: string }
+    materials?: Array<{ id: string; path: string; sha: string; side: string; role: string }>
+    units?: Array<{ id: string; ordinal: number; ranges: Array<{ startLine: number; endLine: number }> }>
+    calls?: Array<{ unitId: string; callId: string }>
+    materialGaps?: Array<{ code: string; subject: string; detail: string }>
+  }
+}
+
+export interface MaterialView {
+  id: string
+  path: string
+  sha: string
+  side: string
+  startLine: number
+  endLine: number
+  role: string
+  disposition: string
+  completeness: string
+  diagnostic: string | null
+  contentHash: string
+  byteSize: number
+  sent: boolean
+}
+
+export interface MaterialDetail {
+  metadata: MaterialView
+  content: string
+  complete: boolean
+}
+
+export interface CallSummary {
+  id: string
+  targetId: string | null
+  unitId: string | null
+  purpose: string
+  attempt: number
+  state: string
+  errorCode: string | null
+  createdAt: string
+  startedAt: string | null
+  finishedAt: string | null
+}
+
+export interface CallDetailFull {
+  id: string
+  targetId: string | null
+  unitId: string | null
+  purpose: string
+  attempt: number
+  state: string
+  errorCode: string | null
+  errorMessage: string | null
+  requestBody: string | null
+  responseBody: string | null
+  usageJson: string | null
+  createdAt: string
+  startedAt: string | null
+  finishedAt: string | null
+}
+
 export const tasksApi = {
   create: (body: TaskCreateInput, idempotencyKey: string) =>
     v2
@@ -321,18 +439,36 @@ export const tasksApi = {
     projectId?: string
     type?: string
     state?: string
+    q?: string
     cursor?: string
     limit?: number
   } = {}) => v2.get<Page<TaskSummary>>('/review-tasks', { params }).then((r) => r.data),
   detail: (id: string) => v2.get<TaskView>(`/review-tasks/${id}`).then((r) => r.data),
   copyInput: (id: string) => v2.get<TaskCopyInput>(`/review-tasks/${id}/copy-input`).then((r) => r.data),
   cancel: (id: string, expectedRevision: number) =>
-    v2.post<TaskView>(`/review-tasks/${id}/cancel`, { expectedRevision }).then((r) => r.data)
+    v2.post<TaskView>(`/review-tasks/${id}/cancel`, { expectedRevision }).then((r) => r.data),
+  result: (taskId: string, targetId: string) =>
+    v2.get<ResultView>(`/review-tasks/${taskId}/targets/${targetId}/result`).then((r) => r.data),
+  materials: (taskId: string, targetId: string) =>
+    v2
+      .get<MaterialView[]>(`/review-tasks/${taskId}/targets/${targetId}/materials`)
+      .then((r) => r.data),
+  material: (taskId: string, materialId: string) =>
+    v2
+      .get<MaterialDetail>(`/review-tasks/${taskId}/materials/${materialId}`)
+      .then((r) => r.data),
+  call: (taskId: string, callId: string) =>
+    v2.get<CallDetailFull>(`/review-tasks/${taskId}/calls/${callId}`).then((r) => r.data),
+  calls: (
+    taskId: string,
+    params: { targetId?: string; unitId?: string; cursor?: string; limit?: number } = {}
+  ) => v2.get<Page<CallSummary>>(`/review-tasks/${taskId}/calls`, { params }).then((r) => r.data)
 }
 
 export const projectsApi = {
   list: (params: { q?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ProjectView>>('/projects', { params }).then((r) => r.data),
+  detail: (id: string) => v2.get<ProjectView>(`/projects/${id}`).then((r) => r.data),
   create: (body: {
     name: string
     repoUrl: string

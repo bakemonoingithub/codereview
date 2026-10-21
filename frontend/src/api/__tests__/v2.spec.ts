@@ -73,6 +73,24 @@ describe('v2 客户端的真实响应链', () => {
     expect(sent.params).toEqual({ sha: 'a'.repeat(40), path: 'src/A.java' })
   })
 
+  it('统一详情读取结果、材料和实际调用', async () => {
+    payload = { id: 'r1', kind: 'ISSUE', body: { summary: 'x' }, issues: [], provenance: {} }
+    expect(await tasksApi.result('t1', 'g1')).toEqual(payload)
+    expect(sent.url).toBe('/review-tasks/t1/targets/g1/result')
+
+    payload = [{ id: 'm1', path: 'src/A.java', sent: true }]
+    expect(await tasksApi.materials('t1', 'g1')).toEqual(payload)
+    expect(sent.url).toBe('/review-tasks/t1/targets/g1/materials')
+
+    payload = { id: 'c1', requestBody: '{}', responseBody: '{}' }
+    expect(await tasksApi.call('t1', 'c1')).toEqual(payload)
+    expect(sent.url).toBe('/review-tasks/t1/calls/c1')
+
+    payload = ['main', 'release']
+    expect(await repositoryApi.branches('p1')).toEqual(payload)
+    expect(sent.url).toBe('/projects/p1/branches')
+  })
+
   it('保留结构化错误，便于页面展示与重试', async () => {
     failure = { response: { data: {
       code: 'REVISION_CONFLICT', message: '配置已更新', retryable: false, details: { revision: 3 }

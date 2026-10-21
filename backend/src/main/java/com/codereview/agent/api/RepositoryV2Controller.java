@@ -25,6 +25,11 @@ public class RepositoryV2Controller {
         this.service = service;
     }
 
+    @GetMapping("/branches")
+    public java.util.List<String> branches(@PathVariable String projectId) {
+        return service.branches(projectId);
+    }
+
     @GetMapping("/head")
     public java.util.Map<String, String> head(@PathVariable String projectId,
                                               @RequestParam String branch) {

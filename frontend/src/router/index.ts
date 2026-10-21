@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import type { Component } from 'vue'
 import {
   AuditOutlined,
+  CodeOutlined,
   FileTextOutlined,
   FolderOutlined,
   RobotOutlined,
@@ -36,6 +37,18 @@ const appRoutes: RouteRecordRaw[] = [
     name: 'review-launch',
     component: () => import('@/views/ReviewLaunch.vue'),
     meta: { title: '发起审查', hideMenu: true }
+  },
+  {
+    path: 'reviews/:id',
+    name: 'review-detail',
+    component: () => import('@/views/TaskDetail.vue'),
+    meta: { title: '任务详情', hideMenu: true }
+  },
+  {
+    path: 'browser',
+    name: 'code-browser',
+    component: () => import('@/views/CodeBrowser.vue'),
+    meta: { title: '代码浏览', icon: CodeOutlined }
   },
   {
     path: 'projects',

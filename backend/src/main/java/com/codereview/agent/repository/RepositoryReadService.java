@@ -102,6 +102,13 @@ public class RepositoryReadService {
                 context.credentialType(), context.ref, branch.trim()));
     }
 
+    /** 分支列表；浏览页用于切换观察版本，真正读取仍使用固定 SHA。 */
+    public List<String> branches(String projectId) {
+        ProjectContext context = context(projectId);
+        return call("读取分支列表", () -> client(context).branches(context.credential(),
+                context.credentialType(), context.ref));
+    }
+
     /** 提交列表分页；只用于发起表单选择固定提交，不改变任务读取的 SHA 语义。 */
     public com.codereview.git.CommitPage commits(String projectId, String branch, int page,
                                                  int perPage) {

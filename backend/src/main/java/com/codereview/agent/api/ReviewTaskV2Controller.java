@@ -48,9 +48,10 @@ public class ReviewTaskV2Controller {
                                                @RequestParam(required = false) String route,
                                                @RequestParam(required = false) String type,
                                                @RequestParam(required = false) String state,
+                                               @RequestParam(required = false) String q,
                                                @RequestParam(required = false) String cursor,
                                                @RequestParam(required = false) Integer limit) {
-        return service.list(projectId, route, type, state, cursor, limit);
+        return service.list(projectId, route, type, state, q, cursor, limit);
     }
 
     @GetMapping("/{id}")
@@ -75,5 +76,27 @@ public class ReviewTaskV2Controller {
                                                     @RequestParam(required = false) String cursor,
                                                     @RequestParam(required = false) Integer limit) {
         return service.calls(id, targetId, unitId, cursor, limit);
+    }
+
+    @GetMapping("/{id}/calls/{callId}")
+    public TaskDtos.CallDetailFull call(@PathVariable String id, @PathVariable String callId) {
+        return service.callDetailFull(id, callId);
+    }
+
+    @GetMapping("/{id}/targets/{targetId}/result")
+    public TaskDtos.ResultView result(@PathVariable String id, @PathVariable String targetId) {
+        return service.result(id, targetId);
+    }
+
+    @GetMapping("/{id}/targets/{targetId}/materials")
+    public java.util.List<TaskDtos.MaterialView> materials(@PathVariable String id,
+                                                           @PathVariable String targetId) {
+        return service.materials(id, targetId);
+    }
+
+    @GetMapping("/{id}/materials/{materialId}")
+    public TaskDtos.MaterialDetail material(@PathVariable String id,
+                                            @PathVariable String materialId) {
+        return service.material(id, materialId);
     }
 }
