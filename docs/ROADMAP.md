@@ -16,6 +16,8 @@
 
 2026-10-21 负责人另行授权本机建库与沿用旧工作树的本机配置；已完成独立新库、账号、V1–V3 迁移、开发服务启动及基础只读列表验证，见[本机启停记录](work/agent-redesign/dev-launchers.md)。本项不代替专项真实仓库、模型、完整访问层或 PC 视觉验收，P31.9 继续 active，P32–P33 未启动。
 
+同日按负责人授权迁入旧库未删除的项目、模型、策略、提示词及版本，共 23 条记录，映射、事务写入和读取复验见[配置迁移记录](work/agent-redesign/config-migration-20261021.md)。千问连通通过，DeepSeek 返回正文检查未通过；这两次配置连通检查不代替专项模型流程或目标仓库验收，不改变阶段状态。
+
 - 业务以[业务契约](work/agent-redesign/business-contract.md)为准，复用范围以[成果盘点](work/agent-redesign/review-inventory.md)为准。
 - P29 设计基线为[共用数据、接口与存储](work/agent-redesign/p29/shared-design.md)、[专项执行与结果协议](work/agent-redesign/p29/specialist-design.md)；界面以[已批准原型](work/agent-redesign/p29/prototype/index.html)及[评审记录](work/agent-redesign/p29/acceptance.md)的最终修订为准。
 - 原型用于界面与交互基线，不作为完整功能清单。原型中的演示数据、缺省控件或简化操作不能作为删除既有功能的依据；实施前核对现有能力、来源事实和已确认取舍，差异逐项落到任务记录。
