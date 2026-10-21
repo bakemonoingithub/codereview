@@ -2,7 +2,7 @@
   <div class="list-page">
     <div class="page-head">
       <div class="page-head-main">
-        <h2 class="page-title">{{ title }}</h2>
+        <h1 class="page-title">{{ title }}</h1>
         <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>
       </div>
       <div class="page-head-actions">
@@ -10,32 +10,53 @@
       </div>
     </div>
 
-    <div v-if="$slots.filters" class="page-filters">
-      <slot name="filters" />
+    <div v-if="$slots.notice" class="page-notices">
+      <slot name="notice" />
     </div>
 
-    <slot />
+    <div v-if="card" class="page-card">
+      <div v-if="$slots.filters" class="page-filters">
+        <div class="page-filters-main">
+          <slot name="filters" />
+        </div>
+        <div v-if="$slots['filters-extra']" class="page-filters-extra">
+          <slot name="filters-extra" />
+        </div>
+      </div>
+      <div class="page-card-body">
+        <slot />
+      </div>
+    </div>
+    <template v-else>
+      <div v-if="$slots.filters" class="page-filters page-filters-plain">
+        <slot name="filters" />
+      </div>
+      <slot />
+    </template>
+
+    <div v-if="$slots.footer" class="page-footer">
+      <slot name="footer" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * 列表页统一骨架：页面标题 + 右侧主操作 + 左侧筛选区 + 内容。
+ * 列表页统一骨架：标题、说明、筛选和表格。
  *
- * 抽出来的原因：四个列表页原先"新建按钮一会儿最左一会儿最右、容器一会儿 class
- * 一会儿内联 style、全都没有页面标题" —— 页面上没有标题，用户只能靠侧边栏猜自己在哪。
- * 四处各写一份必然再次漂移，所以统一到这里。
- *
- * 插槽：
- * - `actions`：页面主操作（如"新建项目"），固定在标题右侧；
- * - `filters`：筛选/搜索区，仅在需要时渲染（用 `$slots.filters` 判断，不留空行）；
- * - 默认插槽：表格等内容。
+ * `card` 为真时，筛选栏和表格在同一张圆角卡片里（原型的列表结构）。
+ * `notice` 放在页头下方，`footer` 放在卡片下方，`filters-extra` 在筛选栏右侧。
  */
-defineProps<{
-  title: string
-  /** 一句话说明这个页面是干什么的，帮助"第一次用的人"快速定位 */
-  subtitle?: string
-}>()
+withDefaults(
+  defineProps<{
+    title: string
+    /** 一句话说明这个页面是干什么的 */
+    subtitle?: string
+    /** 筛选和默认插槽是否包进同一张卡片 */
+    card?: boolean
+  }>(),
+  { card: true }
+)
 </script>
 
 <style scoped lang="less">
@@ -44,28 +65,95 @@ defineProps<{
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 32px;
 }
+
 .page-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 28px;
-  color: rgba(0, 0, 0, 0.88);
+  color: var(--ink);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
 }
+
 .page-subtitle {
-  margin: 4px 0 0;
-  color: #8c8c8c;
-  font-size: 12px;
-  line-height: 18px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
 }
+
 .page-head-actions {
   flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
+.page-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.page-notices:not(:has(.page-notice)) {
+  display: none;
+}
+
+.page-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
 .page-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.page-filters-plain {
   margin-bottom: 12px;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.page-filters-main,
+.page-filters-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.page-filters-main {
+  flex: 1;
+}
+
+.page-footer {
+  margin-top: 18px;
+}
+
+@media (max-width: 760px) {
+  .page-head {
+    flex-direction: column;
+  }
+
+  .page-title {
+    font-size: 26px;
+  }
+
+  .page-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>

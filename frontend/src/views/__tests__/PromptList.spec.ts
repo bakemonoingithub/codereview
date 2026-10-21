@@ -158,18 +158,18 @@ describe('PromptList 编辑与版本', () => {
     const wrapper = mount(PromptList, options)
     await flush()
 
-    await button(wrapper, '版本').trigger('click')
+    await button(wrapper, '版本与对比').trigger('click')
     await flush()
     expect(wrapper.find('diff-viewer-stub').exists()).toBe(true)
 
     ;(promptsApi.diff as any).mockRejectedValueOnce(new Error('对比接口 500'))
-    await button(wrapper, '对比').trigger('click')
+    await button(wrapper, '对比正文').trigger('click')
     await flush()
     await nextTick()
 
-    const alert = wrapper.find('a-alert-stub')
+    const alert = wrapper.find('.load-error')
     expect(alert.exists()).toBe(true)
-    expect(alert.attributes('message')).toContain('对比接口 500')
+    expect(alert.text()).toContain('对比接口 500')
     expect(wrapper.find('diff-viewer-stub').exists()).toBe(false)
   })
 })

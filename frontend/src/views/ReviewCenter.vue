@@ -1,119 +1,118 @@
 <template>
-  <div>
-    <div class="page-head">
-      <div>
-        <h2>审查中心</h2>
-        <p class="muted">查看逐文件分析状态，复制历史参数发起新任务。</p>
-      </div>
+  <ListPageLayout
+    title="审查中心"
+    subtitle="查看逐文件分析结果，跟进反馈，并将已完成结果整理成报告。"
+  >
+    <template #actions>
+      <a-button @click="router.push('/reports/new')">生成报告</a-button>
       <a-button type="primary" @click="router.push('/reviews/new')">＋ 发起审查</a-button>
-    </div>
+    </template>
 
-    <a-alert
-      v-if="created"
-      type="info"
-      show-icon
-      message="新任务已受理。任务正在后台逐文件执行，可稍后刷新查看状态。"
-      class="mb16"
-      closable
-      @close="created = ''"
-    />
-    <a-alert v-if="error" type="error" show-icon :message="error" class="mb16">
-      <template #action><a-button size="small" @click="load">重试</a-button></template>
-    </a-alert>
+    <template #notice>
+      <PageNotice v-if="created" closable @close="created = ''">
+        新任务已受理。任务正在后台逐文件执行，可稍后刷新查看状态。
+      </PageNotice>
+      <LoadErrorAlert :message="error" @retry="load" />
+    </template>
 
-    <a-card>
-      <div class="filters">
-        <a-input
-          v-model:value="search"
-          allow-clear
-          placeholder="按任务 ID 搜索"
-          style="width: 220px"
-          @change="load"
-        />
-        <a-select
-          v-model:value="filterProject"
-          allow-clear
-          placeholder="全部项目"
-          style="width: 200px"
-          :options="projectOptions"
-          @change="load"
-        />
-        <a-select
-          v-model:value="filterType"
-          allow-clear
-          placeholder="全部专项类型"
-          style="width: 160px"
-          :options="typeOptions"
-          @change="load"
-        />
-        <a-select
-          v-model:value="filterState"
-          allow-clear
-          placeholder="全部状态"
-          style="width: 150px"
-          :options="stateOptions"
-          @change="load"
-        />
-        <span class="spacer" />
-        <a-button :loading="loading" @click="load">刷新</a-button>
-      </div>
+    <template #filters>
+      <a-input
+        v-model:value="search"
+        class="filter-search"
+        allow-clear
+        placeholder="按任务 ID 搜索"
+        @change="load"
+      />
+      <a-select
+        v-model:value="filterProject"
+        allow-clear
+        placeholder="全部项目"
+        style="width: 200px"
+        :options="projectOptions"
+        @change="load"
+      />
+      <a-select
+        v-model:value="filterType"
+        allow-clear
+        placeholder="全部专项类型"
+        style="width: 160px"
+        :options="typeOptions"
+        @change="load"
+      />
+      <a-select
+        v-model:value="filterState"
+        allow-clear
+        placeholder="全部状态"
+        style="width: 150px"
+        :options="stateOptions"
+        @change="load"
+      />
+    </template>
+    <template #filters-extra>
+      <a-button :loading="loading" @click="load">刷新</a-button>
+    </template>
 
-      <a-table
-        :data-source="tasks"
-        row-key="id"
-        :loading="loading"
-        :pagination="false"
-        size="middle"
-        :scroll="{ x: 'max-content' }"
-      >
-        <a-table-column title="任务" key="task" width="310">
-          <template #default="{ record }">
-            <div class="task-cell">
-              <a @click="openTask(record.id)">{{ shortId(record.id) }}</a>
-              <span class="muted small">{{ projectName(record.projectId) }}</span>
-            </div>
-          </template>
-        </a-table-column>
-        <a-table-column title="类型" key="type" width="110">
-          <template #default="{ record }">{{ typeText(record.specialistType) }}</template>
-        </a-table-column>
-        <a-table-column title="状态" key="state" width="110">
-          <template #default="{ record }">
-            <a-tag :color="stateColor(record.state)">{{ stateText(record.state) }}</a-tag>
-          </template>
-        </a-table-column>
-        <a-table-column title="文件完成情况" key="counts" width="170">
-          <template #default="{ record }">
-            {{ record.succeededCount }} / {{ record.targetCount }}
-            <span v-if="record.failedCount" class="muted small">（失败 {{ record.failedCount }}）</span>
-          </template>
-        </a-table-column>
-        <a-table-column title="发起时间" key="createdAt" width="170">
-          <template #default="{ record }">{{ formatTime(record.createdAt) }}</template>
-        </a-table-column>
-        <a-table-column title="操作" key="actions" width="180">
-          <template #default="{ record }">
-            <a-space>
-              <a-button size="small" @click="copyTask(record.id)">复制参数</a-button>
-              <a-button size="small" type="link" @click="openTask(record.id)">查看</a-button>
-            </a-space>
-          </template>
-        </a-table-column>
-        <template #emptyText>
-          <a-empty description="还没有审查任务">
-            <a-button type="primary" @click="router.push('/reviews/new')">发起第一个审查</a-button>
-          </a-empty>
+    <a-table
+      :data-source="tasks"
+      row-key="id"
+      :loading="loading"
+      :pagination="false"
+      :scroll="{ x: 'max-content' }"
+    >
+      <a-table-column title="任务" key="task" width="310">
+        <template #default="{ record }">
+          <strong><a @click="openTask(record.id)">{{ shortId(record.id) }}</a></strong>
+          <span class="cell-sub">{{ projectName(record.projectId) }}</span>
         </template>
-      </a-table>
-      <a-button v-if="hasMore" :loading="loading" @click="loadMore">加载更多</a-button>
-    </a-card>
-  </div>
+      </a-table-column>
+      <a-table-column title="类型" key="type" width="110">
+        <template #default="{ record }">{{ typeText(record.specialistType) }}</template>
+      </a-table-column>
+      <a-table-column title="状态" key="state" width="120">
+        <template #default="{ record }">
+          <StatusBadge :tone="stateTone(record.state)">{{ stateText(record.state) }}</StatusBadge>
+        </template>
+      </a-table-column>
+      <a-table-column title="文件完成情况" key="counts" width="170">
+        <template #default="{ record }">
+          {{ record.succeededCount }} / {{ record.targetCount }}
+          <span v-if="record.failedCount" class="cell-sub">失败 {{ record.failedCount }}</span>
+        </template>
+      </a-table-column>
+      <a-table-column title="发起时间" key="createdAt" width="170">
+        <template #default="{ record }">{{ formatTime(record.createdAt) }}</template>
+      </a-table-column>
+      <a-table-column title="操作" key="actions" width="200">
+        <template #default="{ record }">
+          <a-button type="link" size="small" @click="openTask(record.id)">查看详情 →</a-button>
+          <a-button type="link" size="small" @click="copyTask(record.id)">复制参数</a-button>
+        </template>
+      </a-table-column>
+      <template #emptyText>
+        <EmptyGuide
+          title="还没有审查任务"
+          action-text="发起第一个审查"
+          @action="router.push('/reviews/new')"
+        />
+        <a-button v-if="hasFilters" type="link" @click="resetFilters">重置筛选</a-button>
+      </template>
+    </a-table>
+    <div class="table-footer">
+      <span>按发起时间排序</span>
+      <a-button v-if="hasMore" type="link" :loading="loading" @click="loadMore">加载更多</a-button>
+    </div>
+  </ListPageLayout>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectsApi, tasksApi, type ProjectView, type TaskSummary } from '@/api/v2'
+import ListPageLayout from '@/components/ListPageLayout.vue'
+import EmptyGuide from '@/components/EmptyGuide.vue'
+import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import PageNotice from '@/components/PageNotice.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,6 +132,9 @@ const filterProject = ref<string | undefined>()
 const filterType = ref<string | undefined>()
 const filterState = ref<string | undefined>()
 const search = ref('')
+const hasFilters = computed(
+  () => !!(filterProject.value || filterType.value || filterState.value || search.value)
+)
 
 const projectOptions = computed(() =>
   projects.value.map((project) => ({ value: project.id, label: project.name }))
@@ -209,6 +211,14 @@ async function loadMore() {
   await loadPage(true)
 }
 
+function resetFilters() {
+  filterProject.value = undefined
+  filterType.value = undefined
+  filterState.value = undefined
+  search.value = ''
+  return load()
+}
+
 async function loadPage(append: boolean) {
   const epoch = ++listEpoch
   const key = filterKey()
@@ -272,56 +282,15 @@ function stateText(state: string): string {
   )
 }
 
-function stateColor(state: string): string {
-  return (
-    ({
-      SUCCEEDED: 'green',
-      RUNNING: 'blue',
-      PARTIAL: 'orange',
-      FAILED: 'red',
-      CANCELLED: 'default'
-    } as Record<string, string>)[state] || 'default'
-  )
+function stateTone(state: string): 'green' | 'amber' | 'blue' | 'red' | 'default' {
+  if (state === 'SUCCEEDED') return 'green'
+  if (state === 'PARTIAL') return 'amber'
+  if (state === 'RUNNING') return 'blue'
+  if (state === 'FAILED') return 'red'
+  return 'default'
 }
 
 function formatTime(value: string): string {
   return value ? value.replace('T', ' ').slice(0, 19) : '—'
 }
 </script>
-
-<style scoped lang="less">
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 18px;
-}
-.page-head h2 {
-  margin: 0 0 4px;
-}
-.muted {
-  color: #69798d;
-}
-.small {
-  font-size: 12px;
-}
-.mb16 {
-  margin-bottom: 16px;
-}
-.filters {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.spacer {
-  flex: 1;
-}
-.task-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-</style>

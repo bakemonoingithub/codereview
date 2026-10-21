@@ -1,17 +1,21 @@
 <template>
   <ListPageLayout
     title="模型管理"
-    subtitle="维护 OpenAI 兼容接入地址、凭据与容量档案；验证只证明可达与简单 JSON，不证明完整上下文窗口"
+    subtitle="维护接入地址、凭据与容量档案。验证记录说明实际检查范围。"
   >
     <template #actions>
-      <a-button type="primary" @click="openCreate">新建模型</a-button>
+      <a-button type="primary" @click="openCreate">＋ 新建模型</a-button>
+    </template>
+
+    <template #notice>
+      <PageNotice>配置模型后可在审查策略和报告表单中选用。凭据只写入，不回显正文或带入历史输入。</PageNotice>
     </template>
 
     <template #filters>
       <a-input-search
         v-model:value="keyword"
+        class="filter-search"
         placeholder="搜索名称或模型名"
-        style="width: 280px"
         allow-clear
         @search="reload"
       />
@@ -50,28 +54,27 @@
       </a-table-column>
       <a-table-column title="验证状态" width="170">
         <template #default="{ record }">
-          <a-tag :color="validationColor(record.validationStatus)">
+          <StatusBadge :tone="validationTone(record.validationStatus)">
             {{ validationLabel(record.validationStatus) }}
-          </a-tag>
+          </StatusBadge>
           <div class="cell-sub">可达性与简单 JSON；未验证完整窗口</div>
         </template>
       </a-table-column>
       <a-table-column title="操作" width="210">
         <template #default="{ record }">
-          <a-space>
-            <a-button
-              size="small"
-              :loading="validatingId === record.id"
-              :disabled="!!validatingId"
-              @click="onValidate(record)"
-            >
-              验证
-            </a-button>
-            <a-button size="small" @click="openEdit(record)">编辑</a-button>
-            <a-popconfirm title="删除后历史调用与任务快照不受影响，确认删除？" @confirm="onDelete(record.id)">
-              <a-button size="small" danger>删除</a-button>
-            </a-popconfirm>
-          </a-space>
+          <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+          <a-button
+            type="link"
+            size="small"
+            :loading="validatingId === record.id"
+            :disabled="!!validatingId"
+            @click="onValidate(record)"
+          >
+            验证
+          </a-button>
+          <a-popconfirm title="删除后历史调用与任务快照不受影响，确认删除？" @confirm="onDelete(record.id)">
+            <a-button type="link" size="small" danger>删除</a-button>
+          </a-popconfirm>
         </template>
       </a-table-column>
     </a-table>
@@ -84,9 +87,10 @@
       v-model:open="modalOpen"
       :title="editing ? '编辑模型' : '新建模型'"
       :confirm-loading="saving"
+      wrap-class-name="admin-form-modal"
       @ok="onSave"
     >
-      <a-form layout="vertical">
+      <a-form class="form-grid" layout="vertical">
         <a-form-item label="名称" required>
           <a-input v-model:value="form.name" placeholder="如 默认模型" />
         </a-form-item>
@@ -109,15 +113,15 @@
         <a-form-item label="最大输出（tokens）">
           <a-input v-model:value="form.maxOutput" placeholder="如 4096" />
         </a-form-item>
-        <a-form-item label="计量方式">
+        <a-form-item class="span-2" label="计量方式">
           <a-input v-model:value="form.tokenizer" placeholder="留空使用保守估算" />
           <div class="field-hint">未适配 tokenizer 时按 UTF-8 字节上界估算，界面记为估算值。</div>
         </a-form-item>
-        <a-form-item label="协议">
+        <a-form-item class="span-2" label="协议">
           <a-select v-model:value="form.protocol" :options="protocolOptions" />
           <div class="field-hint">当前公共调用只接入 OpenAI Chat 兼容协议。</div>
         </a-form-item>
-        <a-form-item v-if="editing">
+        <a-form-item v-if="editing" class="span-2">
           <span class="field-hint">保存后配置修订号增加，旧的验证记录自动过期。</span>
         </a-form-item>
       </a-form>
@@ -132,6 +136,8 @@ import { modelsApi, type ModelView } from '@/api/v2'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import PageNotice from '@/components/PageNotice.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 const records = ref<ModelView[]>([])
 const loading = ref(false)
@@ -157,19 +163,19 @@ const protocolOptions = [{ value: 'OPENAI_CHAT', label: 'OpenAI Chat 兼容' }]
 const hasMore = computed(() => !!nextCursor.value)
 let listGeneration = 0
 
-const validationLabels: Record<string, { label: string; color: string }> = {
-  PASSED: { label: '验证通过', color: 'green' },
-  FAILED: { label: '验证失败', color: 'red' },
-  EXPIRED: { label: '配置已变更，验证过期', color: 'orange' },
-  NONE: { label: '未验证', color: 'default' }
+const validationLabels: Record<string, { label: string; tone: 'green' | 'amber' | 'red' | 'default' }> = {
+  PASSED: { label: '验证通过', tone: 'green' },
+  FAILED: { label: '验证失败', tone: 'red' },
+  EXPIRED: { label: '配置已变更，验证过期', tone: 'amber' },
+  NONE: { label: '未验证', tone: 'amber' }
 }
 
 function validationLabel(status: string) {
   return validationLabels[status]?.label || status
 }
 
-function validationColor(status: string) {
-  return validationLabels[status]?.color || 'default'
+function validationTone(status: string): 'green' | 'amber' | 'red' | 'default' {
+  return validationLabels[status]?.tone || 'default'
 }
 
 function formatNumber(value: number | null) {
@@ -312,14 +318,9 @@ onMounted(load)
 </script>
 
 <style scoped lang="less">
-.cell-sub {
-  margin-top: 2px;
-  color: rgb(0 0 0 / 45%);
-  font-size: 12px;
-}
 .field-hint {
   margin-top: 4px;
-  color: rgb(0 0 0 / 45%);
+  color: var(--muted);
   font-size: 12px;
 }
 .load-more {
