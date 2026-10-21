@@ -1,6 +1,6 @@
 # 设计基线 - 专项审查与 Agent 分析
 
-状态：P30.7 起使用。界面依据负责人已批准的 [P29 原型](work/agent-redesign/p29/prototype/index.html) 与 [评审记录](work/agent-redesign/p29/acceptance.md)；本文只把既有界面语言固化为可执行约束，不新增业务范围。
+状态：P30.7 起使用；P31.6 补充发起审查与范围选择流程。界面依据负责人已批准的 [P29 原型](work/agent-redesign/p29/prototype/index.html) 与 [评审记录](work/agent-redesign/p29/acceptance.md)；本文只把既有界面语言固化为可执行约束，不新增业务范围。
 
 ## 1. 设计简报
 
