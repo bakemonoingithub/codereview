@@ -71,7 +71,8 @@ public class ModelInvocationService {
         InvocationScope scope = request.scope();
         requireModel(model);
 
-        CapacityEstimate estimate = capacity.requireFits(prompt, model);
+        CapacityEstimate estimate = request.sendWholeSpecialist()
+                ? capacity.estimate(prompt, model) : capacity.requireFits(prompt, model);
         String body = requestBody(model, prompt, estimate.outputReserve());
         int attempts = 1 + Math.max(0, properties.getTransportRetries());
         ApiException lastFailure = null;
@@ -273,14 +274,13 @@ public class ModelInvocationService {
     }
 
     static boolean looksLikeContextLimit(String body) {
-        String lower = body == null ? "" : body.toLowerCase();
-        for (String marker : List.of("context length", "context_length", "maximum context",
-                "too many tokens", "token limit", "上下文", "超出最大")) {
-            if (lower.contains(marker)) {
-                return true;
-            }
+        try {
+            JsonNode error = new ObjectMapper().readTree(body).path("error");
+            return List.of("context_length_exceeded", "context_window_exceeded")
+                    .contains(error.path("code").asText());
+        } catch (Exception invalid) {
+            return false;
         }
-        return false;
     }
 
     private InvocationScope activeScope(InvocationScope scope) {

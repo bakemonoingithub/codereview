@@ -189,6 +189,7 @@ public class SpecialistTaskWorker implements TaskWorker {
 
     private SpecialistTargetOutcome executeTarget(AgentReviewTask task, AgentTaskTarget target) {
         try {
+            guard.requireActive(task.getId());
             updateTarget(target.getId(), TaskStates.PREPARING, null);
             PreparedTarget prepared = preparation.prepare(command(task, target));
             if (prepared.failed()) {
@@ -200,40 +201,71 @@ public class SpecialistTaskWorker implements TaskWorker {
             ModelSnapshot model = model(task);
             Strategy strategy = strategy(task);
             CouplingFacts facts = facts(task, enhanced);
-            List<SpecialistUnitPlan> units = planner.plan(enhanced, facts, strategy.name(),
-                    strategy.prompt(), model, read(task.getInputSnapshot()).path("smartSplit")
-                            .asBoolean(false));
-
-            updateTarget(target.getId(), TaskStates.RUNNING, null);
-            List<SpecialistUnitExecution> executions = new ArrayList<>();
-            boolean unitFailed = false;
-            for (SpecialistUnitPlan unit : units) {
-                AgentExecutionUnit row = createUnit(target.getId(), unit);
-                try {
-                    SpecialistUnitExecution execution = executeUnit(task, target, unit, row, model,
-                            facts, strategy);
-                    updateUnit(row.getId(), TaskStates.SUCCEEDED);
-                    executions.add(execution);
-                } catch (ApiException failure) {
-                    updateUnit(row.getId(), TaskStates.FAILED);
-                    if (failure.errorCode() == ErrorCode.TASK_CANCELLED
-                            || failure.errorCode() == ErrorCode.TASK_DEADLINE) {
-                        finishTarget(target.getId(), TaskStates.CANCELLED,
-                                failure.errorCode().code());
-                        throw failure;
+            boolean smartSplit = read(task.getInputSnapshot()).path("smartSplit").asBoolean(false);
+            ModelSnapshot planningModel = model;
+            for (int generation = 1; generation <= 3; generation++) {
+                List<SpecialistUnitPlan> units = planner.plan(enhanced, facts, strategy.name(),
+                        strategy.prompt(), planningModel, smartSplit);
+                updateTarget(target.getId(), TaskStates.RUNNING, null);
+                List<SpecialistUnitExecution> executions = new ArrayList<>();
+                boolean unitFailed = false;
+                String lastUnitError = null;
+                boolean replan = false;
+                for (SpecialistUnitPlan unit : units) {
+                    guard.requireActive(task.getId());
+                    AgentExecutionUnit row = createUnit(target.getId(), unit, generation);
+                    try {
+                        SpecialistUnitExecution execution = executeUnit(task, target, unit, row,
+                                model, facts, strategy, !smartSplit);
+                        guard.requireActive(task.getId());
+                        updateUnit(row.getId(), TaskStates.SUCCEEDED);
+                        executions.add(execution);
+                    } catch (ApiException failure) {
+                        updateUnit(row.getId(), TaskStates.FAILED);
+                        if (failure.errorCode() == ErrorCode.TASK_CANCELLED
+                                || failure.errorCode() == ErrorCode.TASK_DEADLINE) {
+                            throw failure;
+                        }
+                        if (failure.errorCode() == ErrorCode.CONTEXT_LIMIT && smartSplit) {
+                            if (generation == 3) {
+                                throw failure;
+                            }
+                            var estimate = capacity.estimate(promptAssembly.assemble(
+                                    promptBuilder.build(unit.target(), facts, strategy.name(),
+                                            strategy.prompt())), planningModel);
+                            int window = Math.max(1, Math.min(planningModel.contextWindow() - 1,
+                                    (int) (estimate.required() * 0.75)));
+                            planningModel = new ModelSnapshot(model.id(), model.name(), model.baseUrl(),
+                                    model.modelName(), model.credential(), window, model.maxOutput(),
+                                    model.tokenizer(), model.protocol(), model.revision());
+                            replan = true;
+                            break;
+                        }
+                        unitFailed = true;
+                        lastUnitError = failure.errorCode().code();
                     }
-                    unitFailed = true;
                 }
+                if (replan) {
+                    // 旧代仅保留诊断，不能带入新代结果。
+                    continue;
+                }
+                if (executions.isEmpty()) {
+                    finishTarget(target.getId(), TaskStates.FAILED, lastUnitError);
+                    return new SpecialistTargetOutcome(target.getId(), TaskStates.FAILED, lastUnitError);
+                }
+                boolean complete = !unitFailed;
+                String state = complete ? TaskStates.SUCCEEDED : TaskStates.PARTIAL;
+                db.inTransaction(() -> {
+                    guard.requireActiveLocked(task.getId());
+                    publisher.publish(task, target, enhanced, executions, complete);
+                    if (finishTarget(target.getId(), state, complete ? null : "PARTIAL_UNITS") == 0) {
+                        throw new ApiException(ErrorCode.TASK_CANCELLED, "目标已结束，拒绝迟到发布");
+                    }
+                    return null;
+                });
+                return new SpecialistTargetOutcome(target.getId(), state, null);
             }
-            if (executions.isEmpty()) {
-                finishTarget(target.getId(), TaskStates.FAILED, "ALL_UNITS_FAILED");
-                return new SpecialistTargetOutcome(target.getId(), TaskStates.FAILED,
-                        "ALL_UNITS_FAILED");
-            }
-            publisher.publish(task, target, enhanced, executions, !unitFailed);
-            String state = unitFailed ? TaskStates.PARTIAL : TaskStates.SUCCEEDED;
-            finishTarget(target.getId(), state, unitFailed ? "PARTIAL_UNITS" : null);
-            return new SpecialistTargetOutcome(target.getId(), state, null);
+            throw new ApiException(ErrorCode.CONTEXT_LIMIT, "容量重规划次数已用尽");
         } catch (ApiException failure) {
             if (failure.errorCode() == ErrorCode.TASK_CANCELLED
                     || failure.errorCode() == ErrorCode.TASK_DEADLINE) {
@@ -249,37 +281,50 @@ public class SpecialistTaskWorker implements TaskWorker {
     private SpecialistUnitExecution executeUnit(AgentReviewTask task, AgentTaskTarget target,
                                                 SpecialistUnitPlan unit, AgentExecutionUnit row,
                                                 ModelSnapshot model, CouplingFacts facts,
-                                                Strategy strategy) {
+                                                Strategy strategy, boolean sendWhole) {
         PromptInput.FormatRetry retry = null;
-        for (int attempt = 1; attempt <= SpecialistProtocolPolicy.maxAttempts(); attempt++) {
-            guard.requireActive(task.getId());
-            PromptInput input = promptBuilder.build(unit.target(), facts, strategy.name(),
-                    strategy.prompt(), retry);
-            AssembledPrompt prompt = promptAssembly.assemble(input);
-            capacity.requireFits(prompt, model);
-            InvocationResult result = null;
-            try {
-                result = invocation.invoke(new InvocationRequest(model, prompt,
-                        new InvocationScope(task.getId(), target.getId(), row.getId(),
-                                task.getDeadlineAt())));
-                linkMaterials(row.getId(), attempt, unit.target());
-                SpecialistResults.Result parsed = resultParser.parse(result.content(),
-                        task.getSpecialistType());
-                SpecialistResultValidator.ValidatedResult validated = validator.validate(parsed,
-                        promptBuilder.context(unit.target(), facts));
-                return new SpecialistUnitExecution(row.getId(), unit, validated, result.callId());
-            } catch (ApiException failure) {
-                linkMaterials(row.getId(), attempt, unit.target());
-                if (failure.errorCode() == ErrorCode.MODEL_OUTPUT_INVALID
-                        && SpecialistProtocolPolicy.shouldRetry(attempt)) {
-                    retry = SpecialistProtocolPolicy.diagnostic(attempt, failure,
-                            result == null ? null : result.content());
-                    continue;
+        try {
+            for (int attempt = 1; attempt <= SpecialistProtocolPolicy.maxAttempts(); attempt++) {
+                guard.requireActive(task.getId());
+                PromptInput input = promptBuilder.build(unit.target(), facts, strategy.name(),
+                        strategy.prompt(), retry);
+                AssembledPrompt prompt = promptAssembly.assemble(input);
+                if (!sendWhole) {
+                    capacity.requireFits(prompt, model);
                 }
-                throw failure;
+                InvocationResult result = null;
+                try {
+                    result = invocation.invoke(new InvocationRequest(model, prompt,
+                            new InvocationScope(task.getId(), target.getId(), row.getId(),
+                                    task.getDeadlineAt()), sendWhole));
+                    guard.requireActive(task.getId());
+                    SpecialistResults.Result parsed = resultParser.parse(result.content(),
+                            task.getSpecialistType());
+                    SpecialistResultValidator.ValidatedResult validated = validator.validate(parsed,
+                            promptBuilder.context(unit.target(), facts));
+                    return new SpecialistUnitExecution(row.getId(), unit, validated, result.callId(), facts);
+                } catch (ApiException failure) {
+                    if (result != null && failure.errorCode() == ErrorCode.MODEL_OUTPUT_INVALID) {
+                        db.mapper(AgentModelCallMapper.class).update(null,
+                                new LambdaUpdateWrapper<AgentModelCall>()
+                                        .eq(AgentModelCall::getId, result.callId())
+                                        .set(AgentModelCall::getState, "FAILED")
+                                        .set(AgentModelCall::getErrorCode, failure.errorCode().code())
+                                        .set(AgentModelCall::getErrorMessage, failure.getMessage()));
+                    }
+                    if (failure.errorCode() == ErrorCode.MODEL_OUTPUT_INVALID
+                            && SpecialistProtocolPolicy.shouldRetry(attempt)) {
+                        retry = SpecialistProtocolPolicy.diagnostic(attempt, failure,
+                                result == null ? null : result.content());
+                        continue;
+                    }
+                    throw failure;
+                }
             }
+            throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, "格式重试次数已用尽");
+        } finally {
+            linkMaterials(row.getId(), unit.target());
         }
-        throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, "格式重试次数已用尽");
     }
 
     private PrepareCommand command(AgentReviewTask task, AgentTaskTarget target) {
@@ -335,12 +380,12 @@ public class SpecialistTaskWorker implements TaskWorker {
         return new Strategy(name, content);
     }
 
-    private AgentExecutionUnit createUnit(String targetId, SpecialistUnitPlan plan) {
+    private AgentExecutionUnit createUnit(String targetId, SpecialistUnitPlan plan, int generation) {
         LocalDateTime now = AgentTime.now();
         AgentExecutionUnit row = new AgentExecutionUnit();
         row.setId(AgentIds.next());
         row.setTargetId(targetId);
-        row.setGeneration(1);
+        row.setGeneration(generation);
         row.setOrdinal(plan.ordinal());
         row.setRanges(json(ranges(plan)));
         row.setState(TaskStates.RUNNING);
@@ -351,24 +396,25 @@ public class SpecialistTaskWorker implements TaskWorker {
         return row;
     }
 
-    private void linkMaterials(String unitId, int attempt, PreparedTarget target) {
+    private void linkMaterials(String unitId, PreparedTarget target) {
         List<AgentModelCall> calls = db.mapper(AgentModelCallMapper.class).selectList(
                 new LambdaQueryWrapper<AgentModelCall>()
                         .eq(AgentModelCall::getUnitId, unitId)
-                        .eq(AgentModelCall::getAttempt, attempt)
-                        .orderByDesc(AgentModelCall::getCreatedAt)
-                        .last("limit 1"));
+                        .orderByAsc(AgentModelCall::getCreatedAt));
         if (calls.isEmpty()) {
             return;
         }
-        String callId = calls.get(0).getId();
-        for (Material material : target.allMaterials()) {
-            AgentCallMaterial link = new AgentCallMaterial();
-            link.setCallId(callId);
-            link.setMaterialId(material.id());
-            link.setRole(material.target() ? "TARGET" : "AUXILIARY");
-            link.setDisposition("SENT");
-            db.mapper(AgentCallMaterialMapper.class).insert(link);
+        for (AgentModelCall call : calls) {
+            for (Material material : target.allMaterials().stream().collect(
+                    java.util.stream.Collectors.toMap(Material::id, value -> value, (left, right) -> left))
+                    .values()) {
+                AgentCallMaterial link = new AgentCallMaterial();
+                link.setCallId(call.getId());
+                link.setMaterialId(material.id());
+                link.setRole(material.target() ? "TARGET" : "AUXILIARY");
+                link.setDisposition("SENT");
+                db.mapper(AgentCallMaterialMapper.class).insert(link);
+            }
         }
     }
 
@@ -383,8 +429,8 @@ public class SpecialistTaskWorker implements TaskWorker {
                         .setSql("revision = revision + 1"));
     }
 
-    private void finishTarget(String targetId, String state, String errorCode) {
-        db.mapper(AgentTaskTargetMapper.class).update(null,
+    private int finishTarget(String targetId, String state, String errorCode) {
+        return db.mapper(AgentTaskTargetMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentTaskTarget>()
                         .eq(AgentTaskTarget::getId, targetId)
                         .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)
@@ -430,12 +476,13 @@ public class SpecialistTaskWorker implements TaskWorker {
 
     private static String text(JsonNode node, String field, String fallback) {
         JsonNode value = node.path(field);
-        return value.isTextual() && !value.asText().isBlank() ? value.asText() : fallback;
+        return value.isNull() ? null
+                : value.isTextual() && !value.asText().isBlank() ? value.asText() : fallback;
     }
 
     private static Integer integer(JsonNode node, String field, Integer fallback) {
         JsonNode value = node.path(field);
-        return value.isNumber() ? value.asInt() : fallback;
+        return value.isNull() ? null : value.isNumber() ? value.asInt() : fallback;
     }
 
     private record Strategy(String name, String prompt) {

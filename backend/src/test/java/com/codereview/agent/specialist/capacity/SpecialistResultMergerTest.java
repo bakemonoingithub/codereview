@@ -65,6 +65,18 @@ class SpecialistResultMergerTest {
         assertEquals(1, merged.observations().size());
     }
 
+    @Test
+    void differentSuggestionsAndCaseSensitiveReasonsAreNotCertainDuplicates() {
+        var first = issue("问题", 10, 12, "key=ABC");
+        var differentCase = issue("问题", 10, 12, "key=abc");
+        var differentSuggestion = new SpecialistResults.Issue(first.category(), first.severity(),
+                first.title(), first.locations(), first.reason(), "另一条建议", List.of(), null);
+        var result = new SpecialistResults.IssueResult("结论", List.of(first, differentCase, differentSuggestion), List.of());
+        var merged = assertInstanceOf(SpecialistResults.IssueResult.class,
+                merger.merge("ISSUE", List.of(validated(result, "t1"))));
+        assertEquals(3, merged.issues().size());
+    }
+
     private static SpecialistResults.Issue issue(String title, int start, int end, String reason) {
         return new SpecialistResults.Issue("CORRECTNESS", "HIGH", title,
                 List.of(new SpecialistResults.Location("t1", start, end)), reason, "建议",

@@ -27,6 +27,18 @@ public class TaskExecutionGuard {
 
     public AgentReviewTask requireActive(String taskId) {
         AgentReviewTask task = db.mapper(AgentReviewTaskMapper.class).selectById(taskId);
+        return requireActive(task, taskId);
+    }
+
+    /** 在新库事务内调用，使取消、期限收敛与结果发布串行化。 */
+    public AgentReviewTask requireActiveLocked(String taskId) {
+        AgentReviewTask task = db.mapper(AgentReviewTaskMapper.class).selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AgentReviewTask>()
+                        .eq(AgentReviewTask::getId, taskId).last("FOR UPDATE"));
+        return requireActive(task, taskId);
+    }
+
+    private AgentReviewTask requireActive(AgentReviewTask task, String taskId) {
         if (task == null) {
             throw new ApiException(ErrorCode.NOT_FOUND, "任务不存在：" + taskId);
         }

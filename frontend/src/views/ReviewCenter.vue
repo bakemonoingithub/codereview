@@ -33,6 +33,7 @@
         />
         <a-select
           v-model:value="filterType"
+          allow-clear
           placeholder="全部专项类型"
           style="width: 160px"
           :options="typeOptions"
@@ -40,6 +41,7 @@
         />
         <a-select
           v-model:value="filterState"
+          allow-clear
           placeholder="全部状态"
           style="width: 150px"
           :options="stateOptions"
@@ -96,6 +98,7 @@
           </a-empty>
         </template>
       </a-table>
+      <a-button v-if="hasMore" :loading="loading" @click="loadMore">加载更多</a-button>
     </a-card>
   </div>
 </template>
@@ -110,6 +113,9 @@ const route = useRoute()
 const router = useRouter()
 const tasks = ref<TaskSummary[]>([])
 const projects = ref<ProjectView[]>([])
+let listEpoch = 0
+const nextCursor = ref<string | null>(null)
+const hasMore = ref(false)
 const loading = ref(false)
 const error = ref('')
 const created = ref(String(route.query.created || ''))
@@ -145,20 +151,35 @@ onMounted(async () => {
 })
 
 async function load() {
+  await loadPage(false)
+}
+
+async function loadMore() {
+  if (loading.value || !hasMore.value) return
+  await loadPage(true)
+}
+
+async function loadPage(append: boolean) {
+  const epoch = ++listEpoch
   loading.value = true
   error.value = ''
   try {
     const page = await tasksApi.list({
+      cursor: append ? nextCursor.value || undefined : undefined,
       projectId: filterProject.value,
       type: filterType.value,
       state: filterState.value,
       limit: 50
     })
-    tasks.value = page.items
+    if (epoch !== listEpoch) return
+    tasks.value = append ? [...tasks.value, ...page.items] : page.items
+    nextCursor.value = page.nextCursor
+    hasMore.value = page.hasMore
   } catch (failure) {
+    if (epoch !== listEpoch) return
     error.value = (failure as Error).message || '任务列表加载失败'
   } finally {
-    loading.value = false
+    if (epoch === listEpoch) loading.value = false
   }
 }
 

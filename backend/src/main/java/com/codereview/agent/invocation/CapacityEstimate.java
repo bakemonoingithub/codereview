@@ -1,6 +1,6 @@
 package com.codereview.agent.invocation;
 
-/** 发送前的容量判断结果；任何一项超出都不得发请求。 */
+/** 发送前的保守容量估算；整文件专项可按授权路径仅作诊断。 */
 public record CapacityEstimate(int inputEstimate, int outputReserve, int safetyReserve,
                                int contextWindow, String method) {
 

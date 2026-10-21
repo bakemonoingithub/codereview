@@ -99,6 +99,23 @@ class ModelInvocationServiceTest {
     }
 
     @Test
+    void wholeSpecialistRequestCanExceedTheConservativeEstimate() {
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("{}"));
+        var base = request(prompt(20_000), model(10_000, 4096));
+        service.invoke(new InvocationRequest(base.model(), base.prompt(), base.scope(), true));
+        verify(transport).post(any(), any(), any(), any());
+    }
+
+    @Test
+    void onlyStructuredContextErrorsAreRecognised() {
+        assertTrue(ModelInvocationService.looksLikeContextLimit(
+                "{\"error\":{\"code\":\"context_length_exceeded\"}}"));
+        assertFalse(ModelInvocationService.looksLikeContextLimit(
+                "{\"error\":{\"code\":\"invalid_parameter\",\"message\":\"context length parameter invalid\"}}"));
+        assertFalse(ModelInvocationService.looksLikeContextLimit("context length exceeded"));
+    }
+
+    @Test
     void persistsTheExactRequestBeforeSendingAndKeepsTheResponse() {
         when(transport.post(any(), any(), any(), any())).thenReturn(ok("{\"summary\":\"ok\"}"));
 

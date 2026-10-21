@@ -16,6 +16,9 @@ import com.codereview.agent.specialist.material.MaterialStore;
 import com.codereview.agent.specialist.material.SpecialistMaterials;
 import com.codereview.agent.specialist.protocol.SpecialistPromptBuilder;
 import com.codereview.agent.support.AgentIds;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.ast.stmt.Statement;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.codereview.agent.specialist.material.SpecialistMaterials.Gap;
 import static com.codereview.agent.specialist.material.SpecialistMaterials.Material;
 import static com.codereview.agent.specialist.material.SpecialistMaterials.PreparedTarget;
 import static com.codereview.agent.specialist.material.SpecialistMaterials.Role;
@@ -38,7 +40,7 @@ import static com.codereview.agent.specialist.material.SpecialistMaterials.Statu
  * <p>顺序固定：
  * <ol>
  *   <li>完整目标 + 有限辅助材料能容纳时，保持整文件；</li>
- *   <li>未开启智能拆分时直接以 CONTEXT_LIMIT 失败，不偷偷拆分；</li>
+ *   <li>未开启智能拆分时保留整份请求，估算不替代模型的容量判断；</li>
  *   <li>开启后先从低优先级辅助材料开始裁剪，仍超限才按类型/成员边界拆分；</li>
  *   <li>单元仍超限时按原始行区间有限细分，单行都放不下才 UNSPLITTABLE。</li>
  * </ol>
@@ -73,10 +75,10 @@ public class SpecialistSplitPlanner {
         if (full.fits()) {
             return List.of(new SpecialistUnitPlan(1, target, ranges(target.targets()), List.of()));
         }
-        // 完整目标 + 原辅助材料不 fit；以下只在授权拆分或裁剪后继续。
+        // 保守估算只作诊断；未授权拆分时仍完整发送，由网关判断实际容量。
         if (!smartSplit) {
-            throw contextLimit(target.path(), full.estimate(),
-                    "未开启智能拆分，完整请求超过上下文窗口");
+            return List.of(new SpecialistUnitPlan(1, target, ranges(target.targets()),
+                    List.of("本地估算超限，未开启智能拆分，仍按完整请求发送")));
         }
 
         List<Material> auxiliary = new ArrayList<>(target.auxiliary());
@@ -189,11 +191,23 @@ public class SpecialistSplitPlanner {
         List<Block> pending = new ArrayList<>();
         pending.add(block);
         int added = 0;
+        List<Integer> statementEnds = statementEnds(block.material());
         while (!pending.isEmpty()) {
             Block part = pending.remove(0);
             Material fragment = fragment(part.material(), part.start(), part.end(), part.kind());
             if (fits(variant(target, append(headers, fragment), List.of()), facts, strategyName,
                     strategyPrompt, model)) {
+                List<Material> candidate = append(current, fragment);
+                if (!fits(variant(target, candidate, List.of()), facts, strategyName,
+                        strategyPrompt, model)) {
+                    units.add(unit(units.size() + 1, target, current, List.of()));
+                    if (units.size() >= properties.getMaxUnitsPerFile()) {
+                        throw new ApiException(ErrorCode.UNSPLITTABLE, "文件拆分超过单元上限");
+                    }
+                    current.clear();
+                    current.addAll(headers);
+                    added = 0;
+                }
                 current.add(fragment);
                 added++;
                 continue;
@@ -204,11 +218,26 @@ public class SpecialistSplitPlanner {
                                 + ":" + part.start(),
                         Map.of("path", part.material().path(), "line", part.start()));
             }
-            int middle = (part.start() + part.end()) / 2;
-            pending.add(0, new Block(part.material(), middle + 1, part.end(), part.kind()));
-            pending.add(0, new Block(part.material(), part.start(), middle, part.kind()));
+            int midpoint = (part.start() + part.end()) / 2;
+            Integer boundary = statementEnds.stream()
+                    .filter(line -> line >= part.start() && line < part.end())
+                    .min(Comparator.comparingInt(line -> Math.abs(line - midpoint))).orElse(null);
+            int middle = boundary == null ? midpoint : boundary;
+            String kind = boundary == null ? "lines-nonsemantic" : "statement-boundary";
+            pending.add(0, new Block(part.material(), middle + 1, part.end(), kind));
+            pending.add(0, new Block(part.material(), part.start(), middle, kind));
         }
         return added;
+    }
+
+    private static List<Integer> statementEnds(Material material) {
+        if (material.structure() == null || !material.structure().parsed()) return List.of();
+        var parser = new JavaParser(new ParserConfiguration()
+                .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21));
+        return parser.parse(material.content()).getResult().map(root -> root.findAll(Statement.class)
+                .stream().filter(statement -> !statement.isBlockStmt())
+                .flatMap(statement -> statement.getEnd().stream()).map(position -> position.line)
+                .distinct().sorted().toList()).orElse(List.of());
     }
 
     private Attempt fit(PreparedTarget target, CouplingFacts facts, String strategyName,
@@ -254,10 +283,6 @@ public class SpecialistSplitPlanner {
                 if (type.outerQualifiedName() != null) {
                     continue;
                 }
-                if (type.memberRanges().isEmpty()) {
-                    headers.add(fragment(material, type.startLine(), type.endLine(), "type"));
-                    continue;
-                }
                 int firstMember = type.memberRanges().stream()
                         .mapToInt(JavaSourceStructure.MemberRange::startLine)
                         .min().orElse(type.startLine());
@@ -276,6 +301,7 @@ public class SpecialistSplitPlanner {
                 continue;
             }
             JavaSourceStructure structure = material.structure();
+            List<Block> semantic = new ArrayList<>();
             for (JavaSourceStructure.TypeDecl type : structure.types()) {
                 if (type.outerQualifiedName() != null) {
                     continue;
@@ -283,14 +309,28 @@ public class SpecialistSplitPlanner {
                 List<JavaSourceStructure.MemberRange> members = new ArrayList<>(type.memberRanges());
                 members.sort(Comparator.comparingInt(JavaSourceStructure.MemberRange::startLine));
                 for (JavaSourceStructure.MemberRange member : members) {
-                    blocks.add(new Block(material, member.startLine(), member.endLine(), member.kind()));
+                    semantic.add(new Block(material, member.startLine(), member.endLine(), member.kind()));
                 }
                 if (!members.isEmpty()) {
                     int tailStart = members.get(members.size() - 1).endLine() + 1;
                     if (tailStart <= type.endLine()) {
-                        blocks.add(new Block(material, tailStart, type.endLine(), "type-tail"));
+                        semantic.add(new Block(material, tailStart, type.endLine(), "type-tail"));
                     }
                 }
+            }
+            semantic.sort(Comparator.comparingInt(Block::start));
+            int cursor = material.startLine();
+            for (Block block : semantic) {
+                if (block.start() > cursor) {
+                    blocks.add(new Block(material, cursor, block.start() - 1, "outside-members"));
+                }
+                if (block.end() >= cursor) {
+                    blocks.add(new Block(material, Math.max(cursor, block.start()), block.end(), block.kind()));
+                    cursor = block.end() + 1;
+                }
+            }
+            if (cursor <= material.endLine()) {
+                blocks.add(new Block(material, cursor, material.endLine(), "outside-members"));
             }
         }
         blocks.sort(Comparator.comparing((Block block) -> block.material().id())
@@ -321,9 +361,32 @@ public class SpecialistSplitPlanner {
         String content = slice(source.content(), start, end);
         Material fragment = new Material(AgentIds.next(), source.projectId(), source.sha(),
                 source.path(), source.side(), start, end, content, ContentHash.sha256(content),
-                "FRAGMENT", "拆分片段（" + kind + "），原始行 " + start + "-" + end,
+                "FRAGMENT", "拆分片段（" + kind + "），原始行 " + start + "-" + end + background(source, start, end, content),
                 Role.TARGET, Status.RESOLVED, null, null);
         return store.save(fragment);
+    }
+
+    /** 只补当前区间涉及的声明事实，不把背景计入目标覆盖。 */
+    private static String background(Material source, int start, int end, String content) {
+        if (source.structure() == null) return "";
+        List<String> facts = new ArrayList<>();
+        for (var type : source.structure().types()) {
+            if (type.endLine() < start || type.startLine() > end) continue;
+            facts.add("类型=" + type.qualifiedName());
+            type.fields().stream().filter(field -> content.contains(field.name())).forEach(field ->
+                    facts.add("字段=" + field.type() + " " + field.name() + "@" + field.line()));
+            type.methods().stream().filter(method -> method.startLine() <= end && method.endLine() >= start)
+                    .forEach(method -> facts.add("签名=" + method.signature() + "@" + method.startLine()));
+        }
+        StringBuilder text = new StringBuilder();
+        for (String fact : facts) {
+            if (text.length() + fact.length() > 360) {
+                text.append("；声明背景超限，部分省略");
+                break;
+            }
+            text.append("；").append(fact);
+        }
+        return text.toString();
     }
 
     private static List<Material> append(List<Material> head, Material tail) {
@@ -352,16 +415,6 @@ public class SpecialistSplitPlanner {
             text.append(lines[line - 1]);
         }
         return text.toString();
-    }
-
-    private static ApiException contextLimit(String path, CapacityEstimate estimate, String detail) {
-        return new ApiException(ErrorCode.CONTEXT_LIMIT, detail + "：" + path,
-                Map.of("path", path,
-                        "inputEstimate", estimate.inputEstimate(),
-                        "outputReserve", estimate.outputReserve(),
-                        "safetyReserve", estimate.safetyReserve(),
-                        "required", estimate.required(),
-                        "contextWindow", estimate.contextWindow()));
     }
 
     private record Attempt(boolean fits, CapacityEstimate estimate) {

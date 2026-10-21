@@ -69,14 +69,13 @@ class SpecialistSplitPlannerTest {
     }
 
     @Test
-    void refusesToSplitWhenTheSwitchIsOff() {
+    void keepsTheCompleteRequestWhenTheSwitchIsOff() {
         SpecialistMaterials.PreparedTarget target = target("app/Big.java", bigJava(100));
 
-        ApiException failure = assertThrows(ApiException.class, () -> planner.plan(target, null,
-                null, null, model(7000), false));
+        List<SpecialistUnitPlan> units = planner.plan(target, null, null, null, model(7000), false);
+        assertEquals(1, units.size());
+        assertEquals(target, units.get(0).target());
 
-        assertEquals(ErrorCode.CONTEXT_LIMIT, failure.errorCode());
-        assertTrue(failure.getMessage().contains("未开启智能拆分"));
     }
 
     @Test
@@ -131,6 +130,65 @@ class SpecialistSplitPlannerTest {
                 null, null, model(7000), true));
 
         assertEquals(ErrorCode.UNSPLITTABLE, failure.errorCode());
+    }
+
+    @Test
+    void oversizedSingleMethodProducesOnlyFittingUnits() {
+        String content = "package app;\nclass Big {\n void run() {\n"
+                + "  System.out.println(123456789);\n".repeat(120) + " }\n}\n";
+        assertFittingCoverage(target("app/Big.java", content), content);
+    }
+
+    @Test
+    void preservesCommentsAndRegionsBetweenTypesAndMembers() {
+        StringBuilder source = new StringBuilder("package app;\nclass Big {\n");
+        for (int i = 0; i < 65; i++) {
+            source.append(" int field").append(String.format("%03d", i))
+                    .append(" = 1;\n // comments between members\n\n");
+        }
+        String content = source.append("}\n// outside types\nclass Other {}\n// end\n").toString();
+        assertFittingCoverage(target("app/Big.java", content), content);
+    }
+
+    @Test
+    void oversizedPlainTextIsPartitionedIntoFittingRequests() {
+        String content = "普通文本材料，每个片段保留原始行号。\n".repeat(150);
+        assertFittingCoverage(target("src/readme.txt", content), content);
+    }
+
+    @Test
+    void unitLimitStopsAnOversizedMethod() {
+        String content = "package app;\nclass Big {\n void run() {\n"
+                + "  System.out.println(123456789);\n".repeat(120) + " }\n}\n";
+        SpecialistProperties limits = new SpecialistProperties();
+        limits.setMaxUnitsPerFile(1);
+        ModelInvocationProperties props = new ModelInvocationProperties();
+        props.setOutputReserveTokens(64);
+        SpecialistSplitPlanner bounded = new SpecialistSplitPlanner(new PromptAssemblyService(),
+                new ModelCapacityService(props), new SpecialistPromptBuilder(), store, limits);
+        ApiException failure = assertThrows(ApiException.class, () -> bounded.plan(
+                target("app/Big.java", content), null, null, null, model(7000), true));
+        assertEquals(ErrorCode.UNSPLITTABLE, failure.errorCode());
+    }
+
+    private void assertFittingCoverage(SpecialistMaterials.PreparedTarget target, String content) {
+        ModelInvocationProperties props = new ModelInvocationProperties();
+        props.setOutputReserveTokens(64);
+        ModelCapacityService capacity = new ModelCapacityService(props);
+        List<SpecialistUnitPlan> units = planner.plan(target, null, null, null, model(7000), true);
+        assertTrue(units.size() > 1);
+        boolean[] covered = new boolean[JavaStructureParser.countLines(content) + 1];
+        for (SpecialistUnitPlan unit : units) {
+            var prompt = new PromptAssemblyService().assemble(new SpecialistPromptBuilder()
+                    .build(unit.target(), null, null, null));
+            assertTrue(capacity.estimate(prompt, model(7000)).fits(), "最终请求必须容纳");
+            for (var material : unit.target().targets()) {
+                assertEquals(SpecialistSplitPlanner.slice(content, material.startLine(), material.endLine()),
+                        material.content());
+                for (int line = material.startLine(); line <= material.endLine(); line++) covered[line] = true;
+            }
+        }
+        for (int line = 1; line < covered.length; line++) assertTrue(covered[line], "漏行 " + line);
     }
 
     private SpecialistMaterials.PreparedTarget target(String path, String content) {

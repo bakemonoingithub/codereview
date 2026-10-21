@@ -76,7 +76,7 @@
       <span class="muted">点击文件名只预览，复选框只调整审查目标；确认后回填主表单，取消不改变原范围。</span>
       <span class="spacer" />
       <a-button @click="close">取消</a-button>
-      <a-button type="primary" @click="confirm">确认选择</a-button>
+      <a-button type="primary" :disabled="loading || !!error" @click="confirm">确认选择</a-button>
     </div>
 
     <a-modal
@@ -157,6 +157,8 @@ const emit = defineEmits<{
   (event: 'confirm', entries: ScopeSelection[]): void
 }>()
 
+let loadEpoch = 0
+let previewEpoch = 0
 const loading = ref(false)
 const error = ref('')
 const truncated = ref(false)
@@ -202,6 +204,11 @@ const previewText = computed(() => {
 watch(
   () => [props.open, props.projectId, props.mode, props.sha, props.commitSha] as const,
   async ([open]) => {
+    loadEpoch++
+    previewEpoch++
+    previewOpen.value = false
+    entries.value = []
+    tree.value = []
     if (!open) {
       return
     }
@@ -215,14 +222,18 @@ async function load() {
   if (!props.projectId) {
     return
   }
+  const epoch = ++loadEpoch
   loading.value = true
   error.value = ''
+  entries.value = []
+  tree.value = []
   try {
     if (props.mode === 'DIFF') {
       if (!props.commitSha) {
         throw new Error('请选择提交')
       }
       const detail = await repositoryApi.commit(props.projectId, props.commitSha)
+      if (epoch !== loadEpoch) return
       entries.value = detail.files
         .filter((file) => file.reviewable)
         .map((file) => ({
@@ -234,6 +245,7 @@ async function load() {
       truncated.value = detail.truncated
     } else {
       const list = await repositoryApi.paths(props.projectId, props.sha)
+      if (epoch !== loadEpoch) return
       entries.value = list.entries
         .filter((entry) => entry.type === 'blob' && entry.reviewable)
         .map((entry) => ({ path: entry.path, reviewable: true }))
@@ -243,9 +255,10 @@ async function load() {
     expandAll()
     checked.value = checked.value.filter((path) => entries.value.some((entry) => entry.path === path))
   } catch (failure) {
+    if (epoch !== loadEpoch) return
     error.value = (failure as Error).message || '文件列表加载失败'
   } finally {
-    loading.value = false
+    if (epoch === loadEpoch) loading.value = false
   }
 }
 
@@ -289,6 +302,7 @@ function clearChecked() {
 }
 
 function confirm() {
+  if (loading.value || error.value) return
   const byPath = new Map(entries.value.map((entry) => [entry.path, entry]))
   const selected = checked.value
     .map((path) => byPath.get(path))
@@ -299,6 +313,8 @@ function confirm() {
 }
 
 function close() {
+  loadEpoch++
+  previewEpoch++
   previewOpen.value = false
   emit('update:open', false)
 }
@@ -307,6 +323,7 @@ async function openPreview(node: FileTreeNode) {
   if (!node.path) {
     return
   }
+  const epoch = ++previewEpoch
   previewPath.value = node.path
   previewOpen.value = true
   previewLoading.value = true
@@ -319,15 +336,19 @@ async function openPreview(node: FileTreeNode) {
       if (!props.commitSha) {
         throw new Error('请选择提交')
       }
-      previewSides.value = await repositoryApi.diff(props.projectId, props.commitSha, node.path)
+      const sides = await repositoryApi.diff(props.projectId, props.commitSha, node.path)
+      if (epoch !== previewEpoch) return
+      previewSides.value = sides
     } else {
       const snapshot = await repositoryApi.file(props.projectId, props.sha, node.path)
+      if (epoch !== previewEpoch) return
       previewContent.value = snapshot.content
     }
   } catch (failure) {
+    if (epoch !== previewEpoch) return
     previewError.value = (failure as Error).message || '文件读取失败'
   } finally {
-    previewLoading.value = false
+    if (epoch === previewEpoch) previewLoading.value = false
   }
 }
 

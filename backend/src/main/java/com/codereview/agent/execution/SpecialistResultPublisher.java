@@ -58,6 +58,12 @@ public class SpecialistResultPublisher {
     public String publish(AgentReviewTask task, AgentTaskTarget target,
                           SpecialistMaterials.PreparedTarget prepared,
                           List<SpecialistUnitExecution> executions, boolean complete) {
+        return db.inTransaction(() -> publishInTransaction(task, target, prepared, executions, complete));
+    }
+
+    private String publishInTransaction(AgentReviewTask task, AgentTaskTarget target,
+                          SpecialistMaterials.PreparedTarget prepared,
+                          List<SpecialistUnitExecution> executions, boolean complete) {
         if (executions == null || executions.isEmpty()) {
             throw new IllegalArgumentException("没有可发布的结果");
         }
@@ -87,9 +93,7 @@ public class SpecialistResultPublisher {
     private void publishIssues(String resultId, SpecialistResults.IssueResult result,
                                List<SpecialistUnitExecution> executions) {
         Map<String, Material> materials = new LinkedHashMap<>();
-        Set<String> unitIds = new LinkedHashSet<>();
         for (SpecialistUnitExecution execution : executions) {
-            unitIds.add(execution.unitId());
             materials.putAll(execution.validated().materials());
         }
         int ordinal = 1;
@@ -104,7 +108,12 @@ public class SpecialistResultPublisher {
             row.setReason(issue.reason());
             row.setSuggestion(issue.suggestion());
             row.setLocations(json(locations(issue.locations(), materials)));
-            row.setSourceUnits(json(List.copyOf(unitIds)));
+            String key = SpecialistResultMerger.issueKey(issue, materials);
+            row.setSourceUnits(json(executions.stream().filter(execution ->
+                    execution.validated().result() instanceof SpecialistResults.IssueResult part
+                            && part.issues().stream().anyMatch(candidate -> key.equals(
+                                    SpecialistResultMerger.issueKey(candidate, execution.validated().materials()))))
+                    .map(SpecialistUnitExecution::unitId).distinct().toList()));
             db.mapper(AgentIssueMapper.class).insert(row);
         }
     }
@@ -132,6 +141,9 @@ public class SpecialistResultPublisher {
     private ObjectNode provenance(SpecialistMaterials.PreparedTarget prepared,
                                   List<SpecialistUnitExecution> executions) {
         ObjectNode root = mapper.createObjectNode();
+        if (executions.get(0).couplingFacts() != null) {
+            root.set("couplingFacts", mapper.valueToTree(executions.get(0).couplingFacts()));
+        }
         ObjectNode versions = root.putObject("versions");
         versions.put("headSha", prepared.headSha());
         if (prepared.baseSha() != null) {
@@ -173,6 +185,7 @@ public class SpecialistResultPublisher {
             ObjectNode unit = units.addObject();
             unit.put("id", execution.unitId());
             unit.put("ordinal", plan.ordinal());
+            unit.set("notes", mapper.valueToTree(plan.notes()));
             ArrayNode ranges = unit.putArray("ranges");
             for (var range : plan.ranges()) {
                 ranges.addObject().put("startLine", range.startLine()).put("endLine", range.endLine());

@@ -42,6 +42,7 @@ class SpecialistResultPublisherTest {
     @BeforeEach
     void setUp() {
         db = mock(AgentDatabase.class);
+        when(db.inTransaction(any())).thenAnswer(call -> ((java.util.function.Supplier<?>) call.getArgument(0)).get());
         resultMapper = mock(AgentReviewResultMapper.class);
         issueMapper = mock(AgentIssueMapper.class);
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
@@ -108,6 +109,49 @@ class SpecialistResultPublisherTest {
         verify(resultMapper).insert(captor.capture());
         assertEquals("INCOMPLETE", captor.getValue().getCompleteness());
         verify(issueMapper, org.mockito.Mockito.never()).insert(any(AgentIssue.class));
+    }
+
+    @Test
+    void issueSourcesExcludeUnrelatedUnitsAndKeepDuplicateSources() throws Exception {
+        var material = material("t1");
+        var prepared = prepared(material);
+        var issue = new SpecialistResults.Issue("CORRECTNESS", "HIGH", "问题",
+                List.of(new SpecialistResults.Location("t1", 2, 3)), "原因", "建议", List.of(), null);
+        var withIssue = new SpecialistResultValidator.ValidatedResult(
+                new SpecialistResults.IssueResult("有问题", List.of(issue), List.of()), Map.of("t1", material), "1");
+        var empty = new SpecialistResultValidator.ValidatedResult(
+                new SpecialistResults.IssueResult("无问题", List.of(), List.of()), Map.of("t1", material), "1");
+        var plan = new SpecialistUnitPlan(1, prepared, List.of(), List.of("拆分诊断"));
+        publisher.publish(task("ISSUE"), target(), prepared, List.of(
+                new SpecialistUnitExecution("u1", plan, withIssue, "c1"),
+                new SpecialistUnitExecution("u2", plan, empty, "c2"),
+                new SpecialistUnitExecution("u3", plan, withIssue, "c3")), true);
+        var issueCaptor = ArgumentCaptor.forClass(AgentIssue.class);
+        verify(issueMapper).insert(issueCaptor.capture());
+        assertEquals("[\"u1\",\"u3\"]", issueCaptor.getValue().getSourceUnits());
+        var resultCaptor = ArgumentCaptor.forClass(AgentReviewResult.class);
+        verify(resultMapper).insert(resultCaptor.capture());
+        assertTrue(mapper.readTree(resultCaptor.getValue().getBody()).path("summary").asText().contains("无问题"));
+        assertEquals("拆分诊断", mapper.readTree(resultCaptor.getValue().getProvenance())
+                .path("units").get(0).path("notes").get(0).asText());
+        verify(db).inTransaction(any());
+    }
+
+    @Test
+    void couplingFactsAreFrozenWithThePublishedResult() throws Exception {
+        var material = material("t1");
+        var prepared = prepared(material);
+        var facts = new com.codereview.agent.specialist.coupling.CouplingFacts(List.of(), 3, 2,
+                Map.of("FIELD", 3), 0.6, SHA, "FILE", List.of("缺口"));
+        var validated = new SpecialistResultValidator.ValidatedResult(
+                new SpecialistResults.CouplingResult("结论", List.of(), List.of()), Map.of("t1", material), "1");
+        publisher.publish(task("COUPLING"), target(), prepared, List.of(new SpecialistUnitExecution(
+                "u1", new SpecialistUnitPlan(1, prepared, List.of(), List.of()), validated, "c1", facts)), true);
+        var resultCaptor = ArgumentCaptor.forClass(AgentReviewResult.class);
+        verify(resultMapper).insert(resultCaptor.capture());
+        var stored = mapper.readTree(resultCaptor.getValue().getProvenance()).path("couplingFacts");
+        assertEquals(3, stored.path("resolvedOutgoingCount").asInt());
+        assertEquals(SHA, stored.path("sha").asText());
     }
 
     private static AgentReviewTask task(String type) {

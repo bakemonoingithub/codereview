@@ -28,8 +28,8 @@ public class SpecialistResultMerger {
             throw new IllegalArgumentException("没有可归并的片段结果");
         }
         String summary = parts.stream().map(part -> part.result().summary())
-                .filter(text -> text != null && !text.isBlank()).findFirst()
-                .orElse("已完成逐文件分析");
+                .filter(text -> text != null && !text.isBlank()).distinct()
+                .collect(java.util.stream.Collectors.joining("\n\n"));
         List<String> limitations = new ArrayList<>();
         Set<String> seenLimitations = new LinkedHashSet<>();
         for (SpecialistResultValidator.ValidatedResult part : parts) {
@@ -57,9 +57,7 @@ public class SpecialistResultMerger {
                 continue;
             }
             for (SpecialistResults.Issue issue : result.issues()) {
-                String key = normalized(issue.category()) + "|" + normalized(issue.severity())
-                        + "|" + normalized(issue.title()) + "|" + normalized(issue.reason())
-                        + "|" + locationKey(issue.locations(), part.materials());
+                String key = issueKey(issue, part.materials());
                 if (seen.add(key)) {
                     issues.add(issue);
                 }
@@ -116,13 +114,22 @@ public class SpecialistResultMerger {
                     SpecialistMaterials.Material material = materials.get(location.materialId());
                     String path = material == null ? location.materialId() : material.path();
                     String side = material == null ? "?" : material.side().name();
-                    return path + ":" + side + ":" + location.startLine() + "-" + location.endLine();
+                    return path + ":" + (material == null ? "?" : material.sha()) + ":"
+                            + side + ":" + location.startLine() + "-" + location.endLine();
                 })
                 .sorted()
                 .reduce((left, right) -> left + "," + right).orElse("");
     }
 
     private static String normalized(String text) {
-        return text == null ? "" : text.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+        return text == null ? "" : text.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    public static String issueKey(SpecialistResults.Issue issue,
+                                   Map<String, SpecialistMaterials.Material> materials) {
+        return List.of(issue.category(), issue.severity(), normalized(issue.title()),
+                issue.reason().strip(), issue.suggestion() == null ? "" : issue.suggestion().strip(),
+                issue.changeRelation() == null ? "" : issue.changeRelation().strip(), locationKey(issue.locations(), materials),
+                locationKey(issue.evidence(), materials)).toString();
     }
 }

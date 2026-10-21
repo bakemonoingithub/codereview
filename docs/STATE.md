@@ -20,6 +20,8 @@ P31.4–P31.6 交付：
 - 执行与发布：`SpecialistTaskWorker` 接入 `TaskWorker`，逐目标独立执行；格式重试最多 2 次，部分成功发布 `INCOMPLETE`，完整结果/问题/单元/调用材料落库。见 [P31.5](work/agent-redesign/p31/p31-5-execution.md)。
 - 发起与复制：审查中心、发起表单、独立范围弹窗与文件/差异预览、复制参数重定版本；后端补分支 HEAD、提交列表与提交详情读取。见 [P31.6](work/agent-redesign/p31/p31-6-launch.md)。
 
+2026-10-21 完成 P31.4–P31.6 的 R01–R12 审查修复，覆盖整文件估算、拆分容量与覆盖、结构化超限重规划、取消后发布、调用材料关联、结果来源、配置快照、前端来源隔离、幂等提交及列表分页。新增后端 17 项、前端 18 项回归；最终后端 593 项、0 失败、0 异常、9 跳过，前端 45 个文件、385 项通过，类型检查和生产构建通过。见[修复与复验记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。首轮因继承凭据意外运行的 2 项通用真实网关探针已单独记录；最终复验显式禁用外部探针，专项真实联调与 PC 视觉验收仍未执行。
+
 P30.5–P30.8 交付：
 - 统一组装与公共调用：`PromptAssemblyService`、`ModelCapacityService`、`ModelInvocationService`、`ModelCallConcurrencyLimiter`、`HttpModelTransport`；请求先落盘、200 次原子额度、全局 4／单任务 2 并发、一次暂态重试；验证调用同入口。见 [P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)。
 - 任务控制：`TaskService`、`TaskDispatchService`、`TaskExecutionGuard`、`TaskDeadlineSweeper`、`TaskRecoveryRunner`；幂等键、固定快照、取消、期限与重启收敛、终态条件更新。见 [P30.6](work/agent-redesign/p30/p30-6-task-control.md)。
@@ -32,7 +34,8 @@ P30.5–P30.8 交付：
 
 - P30 复验为后端 474 项、0 失败、0 异常、7 跳过；前端 41 个文件、360 项通过，类型检查和生产构建通过。详情见[本轮复验](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
 - P31.1–P31.3 初交付为 533 项；审查修复后为 560 项、0 失败、0 异常、9 跳过，专项定向 86 项通过，另补 27 项回归。P31.4–P31.6 完成后 `mvn clean test` 为 576 项、0 失败、0 异常、9 跳过；前端 42 个测试文件、367 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。跳过项不计为执行通过，真实网关和宿主探针显式禁用。
-- 真实数据库迁移与访问层、Git 宿主、目标仓库、模型网关、PC 正式页面视觉均未执行；不把工程检查写成真实通过。P31.9／P32.6 继续。
+- 真实数据库迁移与访问层、Git 宿主、目标仓库、专项模型流程及 PC 正式页面视觉均未执行；首轮意外触发的 2 个通用网关探针见本轮记录，不能替代专项验收；不把工程检查写成真实通过。P31.9／P32.6 继续。
+- P31.4–P31.6 审查后的最终工程复验为后端 593 项（9 跳过），前端 385 项，类型检查和构建通过；以[本轮记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)为准。
 - 专项执行器已接入；`EXECUTOR_UNAVAILABLE` 不再是当前运行的预期行为。真实模型调用、并发竞争和取消边界仍按 P31.9／P32.6 验证。
 
 ## 接续依据
@@ -55,12 +58,14 @@ P30.5–P30.8 交付：
 - P29 文档与原型已提交（6b852a8、44abc7b、6c53b0f）；P30 代码与文档已本地提交（7a48762、d05997a、21c93b4、e45883d、7c712f1、463e83c、0cded7d），未 push。
 - P31.1–P31.3 代码与测试已本地提交（3d4e568、3b7704e、ec959e6），直接声明缺口修正为 7754931，交付文档为 3f48ac1，R01–R09 审查修复为 4f76b49。
 - P31.4–P31.6 代码、前端与交付文档已本地提交（ab283af、4e3ae02、c7697c9），范围选择跨搜索保留的修正为 7de0a15，未 push。
+- 本轮 P31.4–P31.6 修复、正式回归及复验记录在本工作树本地提交，未 push；详见[修复记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。
 - `../code` 工作树保留其原有 2 处未提交改动，不纳入本工作树。
 
 ## 已知坑
 
 - 本次环境 JDK 21 在 `D:\IDEA\IntelliJ IDEA 2024.3\jbr`，Maven 在 `D:\IDEA\IntelliJ IDEA 2024.3\plugins\maven\lib\maven3\bin\mvn.cmd`；`java`／`mvn` 不在 PATH，命令前需设 `JAVA_HOME`。
 - `frontend/node_modules` 当前是指向 `../code/frontend/node_modules` 的目录联接；`pnpm install --offline` 因 `I:\uv_cache` 缺少 `@antfu/utils` 元数据失败，未完成独立安装。重新安装前先确认 store，不要误删联接。
+- 当前 pnpm 启动器引用的缓存脚本缺失；本轮通过 Node 直接调用现有依赖中的 Vitest、vue-tsc 和 Vite，没有重新安装依赖。
 - Vitest／Vite 会改写 `frontend/components.d.ts`，结束后恢复基线；本轮已恢复。
 - 未执行真实 MySQL；V1–V3 只做契约检查。新库验证必须在负责人指定的隔离库进行。
 - Surefire 报告目录会累积历史失败；统计全量结果前先 `mvn clean test`，否则旧 XML 会污染计数。

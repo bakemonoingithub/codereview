@@ -37,6 +37,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -61,6 +62,8 @@ class SpecialistTaskWorkerTest {
     private ModelInvocationService invocation;
     private SpecialistResultPublisher publisher;
     private SpecialistTaskWorker worker;
+    private TaskExecutionGuard guard;
+    private ModelCapacityService capacity;
     private AgentReviewTask task;
     private AgentTaskTarget target;
     private SpecialistMaterials.PreparedTarget prepared;
@@ -74,6 +77,7 @@ class SpecialistTaskWorkerTest {
                             new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), entity);
         }
         db = mock(AgentDatabase.class);
+        when(db.inTransaction(any())).thenAnswer(call -> ((java.util.function.Supplier<?>) call.getArgument(0)).get());
         targetMapper = mock(AgentTaskTargetMapper.class);
         unitMapper = mock(AgentExecutionUnitMapper.class);
         callMapper = mock(AgentModelCallMapper.class);
@@ -113,10 +117,11 @@ class SpecialistTaskWorkerTest {
         planner = mock(SpecialistSplitPlanner.class);
         invocation = mock(ModelInvocationService.class);
         publisher = mock(SpecialistResultPublisher.class);
-        ModelCapacityService capacity = mock(ModelCapacityService.class);
+        capacity = mock(ModelCapacityService.class);
+        when(capacity.estimate(any(), any())).thenReturn(new CapacityEstimate(5000, 100, 1024, 100_000, "ESTIMATED"));
         when(capacity.requireFits(any(), any())).thenReturn(new CapacityEstimate(1, 1, 1,
                 100_000, "ESTIMATED"));
-        TaskExecutionGuard guard = mock(TaskExecutionGuard.class);
+        guard = mock(TaskExecutionGuard.class);
         when(guard.requireActive(TASK_ID)).thenReturn(task());
         when(publisher.publish(any(), any(), any(), any(), eq(true))).thenReturn("r1");
         when(publisher.publish(any(), any(), any(), any(), eq(false))).thenReturn("r2");
@@ -205,6 +210,100 @@ class SpecialistTaskWorkerTest {
 
         assertEquals(TaskStates.FAILED, outcome.state());
         verify(publisher, org.mockito.Mockito.never()).publish(any(), any(), any(), any(), eq(true));
+    }
+
+    @Test
+    void aLateResponseAfterCancellationCannotPublish() {
+        when(invocation.invoke(any())).thenAnswer(call -> {
+            when(guard.requireActive(TASK_ID)).thenThrow(new com.codereview.agent.api.ApiException(
+                    com.codereview.agent.api.ErrorCode.TASK_CANCELLED, "已取消"));
+            return success("late", validIssue());
+        });
+        org.junit.jupiter.api.Assertions.assertThrows(com.codereview.agent.api.ApiException.class,
+                () -> worker.execute(task));
+        verify(publisher, org.mockito.Mockito.never()).publish(any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void publicationChecksTheLockedTaskState() {
+        when(invocation.invoke(any())).thenReturn(success("c1", validIssue()));
+        when(guard.requireActiveLocked(TASK_ID)).thenThrow(new com.codereview.agent.api.ApiException(
+                com.codereview.agent.api.ErrorCode.TASK_DEADLINE, "已到期限"));
+        org.junit.jupiter.api.Assertions.assertThrows(com.codereview.agent.api.ApiException.class,
+                () -> worker.execute(task));
+        verify(publisher, org.mockito.Mockito.never()).publish(any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void linksEveryTransportAndFormatAttemptExactlyOnce() {
+        AgentModelCall first = new AgentModelCall(); first.setId("c1");
+        AgentModelCall second = new AgentModelCall(); second.setId("c2");
+        AgentModelCall third = new AgentModelCall(); third.setId("c3");
+        when(callMapper.selectList(any())).thenReturn(List.of(first, second, third));
+        when(invocation.invoke(any())).thenReturn(success("c2", "not json"), success("c3", validIssue()));
+        assertEquals(TaskStates.SUCCEEDED, worker.execute(task).state());
+        var links = org.mockito.ArgumentCaptor.forClass(AgentCallMaterial.class);
+        verify(callMaterialMapper, times(3)).insert(links.capture());
+        assertEquals(List.of("c1", "c2", "c3"), links.getAllValues().stream().map(AgentCallMaterial::getCallId).toList());
+        verify(callMapper).update(any(), any());
+    }
+
+    @Test
+    void contextReplanningDiscardsPriorGenerationResults() {
+        task.setInputSnapshot("{\"smartSplit\":true}");
+        when(planner.plan(any(), any(), any(), any(), any(), eq(true))).thenReturn(
+                List.of(unit(), unit()), List.of(unit()));
+        when(invocation.invoke(any())).thenReturn(success("old", validIssue()))
+                .thenThrow(new com.codereview.agent.api.ApiException(
+                        com.codereview.agent.api.ErrorCode.CONTEXT_LIMIT, "模型容量超限"))
+                .thenReturn(success("new", validIssue()));
+        assertEquals(TaskStates.SUCCEEDED, worker.execute(task).state());
+        var executions = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(publisher).publish(any(), any(), any(), executions.capture(), eq(true));
+        assertEquals(1, executions.getValue().size());
+        assertEquals("new", ((SpecialistUnitExecution) executions.getValue().get(0)).callId());
+        var rows = org.mockito.ArgumentCaptor.forClass(AgentExecutionUnit.class);
+        verify(unitMapper, times(3)).insert(rows.capture());
+        assertEquals(List.of(1, 1, 2), rows.getAllValues().stream().map(AgentExecutionUnit::getGeneration).toList());
+    }
+
+    @Test
+    void repeatedContextLimitsStopAfterTwoReplans() {
+        task.setInputSnapshot("{\"smartSplit\":true}");
+        when(planner.plan(any(), any(), any(), any(), any(), eq(true))).thenReturn(List.of(unit()));
+        when(invocation.invoke(any())).thenThrow(new com.codereview.agent.api.ApiException(
+                com.codereview.agent.api.ErrorCode.CONTEXT_LIMIT, "容量超限"));
+        assertEquals(TaskStates.FAILED, worker.execute(task).state());
+        verify(invocation, times(3)).invoke(any());
+        verify(publisher, org.mockito.Mockito.never()).publish(any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void wholeFileCallMarksConservativeEstimateAsDiagnostic() {
+        when(invocation.invoke(any())).thenReturn(success("c1", validIssue()));
+        worker.execute(task);
+        var request = org.mockito.ArgumentCaptor.forClass(com.codereview.agent.invocation.InvocationRequest.class);
+        verify(invocation).invoke(request.capture());
+        org.junit.jupiter.api.Assertions.assertTrue(request.getValue().sendWholeSpecialist());
+    }
+
+    @Test
+    void explicitNullConfigurationRemainsFrozenInsteadOfReadingCurrentValues() {
+        task.setConfigSnapshot("{\"model\":{\"id\":\"m1\",\"maxOutput\":null,\"tokenizer\":null}}");
+        when(invocation.invoke(any())).thenReturn(success("c1", validIssue()));
+        worker.execute(task);
+        var request = org.mockito.ArgumentCaptor.forClass(com.codereview.agent.invocation.InvocationRequest.class);
+        verify(invocation).invoke(request.capture());
+        org.junit.jupiter.api.Assertions.assertNull(request.getValue().model().maxOutput());
+        org.junit.jupiter.api.Assertions.assertNull(request.getValue().model().tokenizer());
+    }
+
+    @Test
+    void invalidFormatExhaustsExactlyThreeAttempts() {
+        when(invocation.invoke(any())).thenReturn(success("bad", "not json"));
+        assertEquals(TaskStates.FAILED, worker.execute(task).state());
+        verify(invocation, times(3)).invoke(any());
+        verify(publisher, org.mockito.Mockito.never()).publish(any(), any(), any(), any(), anyBoolean());
     }
 
     private InvocationResult success(String callId, String content) {

@@ -231,6 +231,11 @@ const copyFrom = computed(() => String(route.query.copyFrom || ''))
 const projects = ref<ProjectView[]>([])
 const strategies = ref<StrategyView[]>([])
 const models = ref<{ id: string; name: string }[]>([])
+let lastObservedSha = ''
+let headEpoch = 0
+let commitsEpoch = 0
+let detailEpoch = 0
+let submission: { fingerprint: string; key: string } | null = null
 const optionsLoading = ref(false)
 const headLoading = ref(false)
 const commitsLoading = ref(false)
@@ -276,11 +281,13 @@ const commitOptions = computed(() =>
   }))
 )
 const scopeReady = computed(() =>
-  !!form.projectId && (form.sourceKind === 'FILES' ? !!form.observedSha : !!form.commitSha)
+  !!form.projectId && !restoring.value && (form.sourceKind === 'FILES'
+    ? !!form.observedSha && !headLoading.value
+    : !!form.commitSha && commitDetail.value?.sha === form.commitSha)
 )
 const canSubmit = computed(
   () =>
-    !!form.projectId &&
+    scopeReady.value && !optionsLoading.value && !sourceMoved.value &&
     form.targets.length > 0 &&
     (!!form.strategyId || !!form.modelConfigId) &&
     (form.sourceKind === 'FILES' ? !!form.observedSha : !!form.commitSha) &&
@@ -296,9 +303,24 @@ onMounted(async () => {
   } else if (projects.value.length) {
     form.projectId = projects.value[0].id
     form.branch = projects.value[0].currentBranch || 'main'
-    await resolveHead()
   }
 })
+
+// 来源身份一变化立即失效；异步监听器随后读取新身份。
+watch(() => [form.projectId, form.branch, form.sourceKind], () => {
+  headEpoch++
+  commitsEpoch++
+  detailEpoch++
+  if (restoring.value) return
+  form.observedSha = ''
+  lastObservedSha = ''
+  form.commitSha = ''
+  form.baseSha = ''
+  form.targets = []
+  commitDetail.value = null
+  commits.value = []
+  scopeOpen.value = false
+}, { flush: 'sync' })
 
 watch(
   () => form.projectId,
@@ -403,6 +425,7 @@ async function loadCopy() {
     form.strategyId = copy.strategyId || ''
     form.modelConfigId = copy.modelConfigId || ''
     form.smartSplit = copy.smartSplit
+    onStrategyChange()
     if (copy.sourceKind === 'FILES' && copy.reobserveHead) {
       await resolveHead()
       if (original.headSha && form.observedSha && form.observedSha !== original.headSha) {
@@ -446,15 +469,28 @@ async function resolveHead() {
     form.observedSha = ''
     return
   }
+  const epoch = ++headEpoch
+  const previousSha = form.observedSha || lastObservedSha
+  const projectId = form.projectId
+  const branch = form.branch
   headLoading.value = true
+  form.observedSha = ''
   formError.value = ''
   try {
-    form.observedSha = await repositoryApi.head(form.projectId, form.branch)
+    const sha = await repositoryApi.head(projectId, branch)
+    if (epoch !== headEpoch) return
+    if (previousSha && previousSha !== sha) {
+      form.targets = []
+      copyHeadMoved.value = true
+    }
+    form.observedSha = sha
+    lastObservedSha = sha
   } catch (failure) {
+    if (epoch !== headEpoch) return
     form.observedSha = ''
     formError.value = (failure as Error).message || '分支版本读取失败'
   } finally {
-    headLoading.value = false
+    if (epoch === headEpoch) headLoading.value = false
   }
 }
 
@@ -462,14 +498,17 @@ async function loadCommits() {
   if (!form.projectId || !form.branch) {
     return
   }
+  const epoch = ++commitsEpoch
   commitsLoading.value = true
   try {
     const page = await repositoryApi.commits(form.projectId, form.branch, 1, 30)
+    if (epoch !== commitsEpoch) return
     commits.value = page.commits
   } catch (failure) {
+    if (epoch !== commitsEpoch) return
     formError.value = (failure as Error).message || '提交列表读取失败'
   } finally {
-    commitsLoading.value = false
+    if (epoch === commitsEpoch) commitsLoading.value = false
   }
 }
 
@@ -479,13 +518,19 @@ async function onCommitChange() {
 }
 
 async function loadCommitDetail(sha: string) {
+  const epoch = ++detailEpoch
+  commitDetail.value = null
+  form.baseSha = ''
   if (!form.projectId || !sha) {
     return
   }
   try {
-    commitDetail.value = await repositoryApi.commit(form.projectId, sha)
+    const detail = await repositoryApi.commit(form.projectId, sha)
+    if (epoch !== detailEpoch || form.commitSha !== sha) return
+    commitDetail.value = detail
     form.baseSha = commitDetail.value.parents?.[0] || ''
   } catch (failure) {
+    if (epoch !== detailEpoch) return
     formError.value = (failure as Error).message || '提交详情读取失败'
   }
 }
@@ -536,22 +581,22 @@ async function submit() {
             commitSha: form.commitSha,
             baseSha: form.baseSha || undefined
           }
-    const created = await tasksApi.create(
-      {
-        projectId: form.projectId,
-        specialistType: form.specialistType,
-        source,
-        targets: form.targets.map((target) => ({
-          path: target.path,
-          oldPath: target.oldPath,
-          note: target.note || undefined
-        })),
-        strategyId: form.strategyId || undefined,
-        modelConfigId: form.strategyId ? undefined : form.modelConfigId || undefined,
-        smartSplit: form.smartSplit
-      },
-      idempotencyKey()
-    )
+    const body = {
+      projectId: form.projectId,
+      specialistType: form.specialistType,
+      source,
+      targets: form.targets.map((target) => ({
+        path: target.path, oldPath: target.oldPath, note: target.note || undefined
+      })),
+      strategyId: form.strategyId || undefined,
+      modelConfigId: form.strategyId ? undefined : form.modelConfigId || undefined,
+      smartSplit: form.smartSplit
+    }
+    const fingerprint = JSON.stringify(body)
+    if (!submission || submission.fingerprint !== fingerprint) {
+      submission = { fingerprint, key: idempotencyKey() }
+    }
+    const created = await tasksApi.create(body, submission.key)
     message.success('任务已受理')
     router.push({ path: '/reviews', query: { created: created.id } })
   } catch (failure) {
