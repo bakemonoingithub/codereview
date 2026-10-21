@@ -24,14 +24,19 @@ export interface MenuItem {
    * 静默且难查；放组件则由 TS 在编译期拦住。代价只是路由模块多 import 4 个小图标组件。
    */
   icon?: Component
+  /** 侧栏分组。只影响展示，不改变路由。 */
+  group: 'workspace' | 'manage'
 }
+
+/** 侧栏展示顺序：工作台在前，管理在后。路径本身不因排序改变。 */
+const menuOrder = ['/reviews', '/browser', '/reports', '/projects', '/models', '/prompts', '/strategies']
 
 const appRoutes: RouteRecordRaw[] = [
   {
     path: 'reviews',
     name: 'reviews',
     component: () => import('@/views/ReviewCenter.vue'),
-    meta: { title: '审查', icon: AuditOutlined }
+    meta: { title: '审查中心', icon: AuditOutlined, group: 'workspace' }
   },
   {
     path: 'reviews/new',
@@ -49,7 +54,7 @@ const appRoutes: RouteRecordRaw[] = [
     path: 'reports',
     name: 'reports',
     component: () => import('@/views/ReportList.vue'),
-    meta: { title: '报告', icon: FileDoneOutlined }
+    meta: { title: '报告', icon: FileDoneOutlined, group: 'workspace' }
   },
   {
     path: 'reports/new',
@@ -67,13 +72,13 @@ const appRoutes: RouteRecordRaw[] = [
     path: 'browser',
     name: 'code-browser',
     component: () => import('@/views/CodeBrowser.vue'),
-    meta: { title: '代码浏览', icon: CodeOutlined }
+    meta: { title: '代码浏览', icon: CodeOutlined, group: 'workspace' }
   },
   {
     path: 'projects',
     name: 'projects',
     component: () => import('@/views/ProjectList.vue'),
-    meta: { title: '项目', icon: FolderOutlined }
+    meta: { title: '项目管理', icon: FolderOutlined, group: 'manage' }
   },
   {
     path: 'projects/:id',
@@ -85,19 +90,19 @@ const appRoutes: RouteRecordRaw[] = [
     path: 'models',
     name: 'models',
     component: () => import('@/views/ModelConfigList.vue'),
-    meta: { title: '模型', icon: RobotOutlined }
+    meta: { title: '模型管理', icon: RobotOutlined, group: 'manage' }
   },
   {
     path: 'strategies',
     name: 'strategies',
     component: () => import('@/views/StrategyList.vue'),
-    meta: { title: '策略', icon: SettingOutlined }
+    meta: { title: '策略管理', icon: SettingOutlined, group: 'manage' }
   },
   {
     path: 'prompts',
     name: 'prompts',
     component: () => import('@/views/PromptList.vue'),
-    meta: { title: '提示词', icon: FileTextOutlined }
+    meta: { title: '提示词管理', icon: FileTextOutlined, group: 'manage' }
   }
 ]
 
@@ -112,8 +117,15 @@ export const menuItems: MenuItem[] = appRoutes
   .map((route) => ({
     path: `/${route.path}`,
     title: String(route.meta!.title),
-    icon: route.meta!.icon as Component | undefined
+    icon: route.meta!.icon as Component | undefined,
+    group: (route.meta!.group as MenuItem['group']) || 'workspace'
   }))
+  .sort((a, b) => menuOrder.indexOf(a.path) - menuOrder.indexOf(b.path))
+
+export const menuGroups: Array<{ key: MenuItem['group']; label: string; items: MenuItem[] }> = [
+  { key: 'workspace', label: 'WORKSPACE', items: menuItems.filter((item) => item.group === 'workspace') },
+  { key: 'manage', label: 'MANAGE', items: menuItems.filter((item) => item.group === 'manage') }
+]
 
 /**
  * 当前路径对应哪个菜单项。
