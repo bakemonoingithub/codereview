@@ -6,7 +6,7 @@
 
 当前: P31
 
-P29 已完成并经负责人批准（D-88）。P30 于 2026-10-20 完成，P30.1–P30.8 全部交付。2026-10-21 负责人先要求完成 P31.1–P31.3，随后要求完成 P31.4–P31.6；六项已完成工程实现与本地测试，P31 保持 active，P31.7–P31.9 未启动。
+P29 已完成并经负责人批准（D-88）。P30 于 2026-10-20 完成，P30.1–P30.8 全部交付。2026-10-21 负责人依次要求完成 P31.1–P31.3、P31.4–P31.6、P31.7–P31.9。P31.1–P31.8 已完成工程实现与本地测试；P31.9 工程交付完成但目标仓库校准与真实资源未执行，P31 保持 active。
 
 P31.1–P31.3 交付：
 - 材料准备与结构解析：固定版本整文件/差异两侧、JavaParser 声明事实、完整性/原始行号、`material` 来源记录；读取失败或必需 AST 缺失时该文件失败，不返回空成功。见 [P31.1](work/agent-redesign/p31/p31-1-materials.md)。
@@ -20,7 +20,12 @@ P31.4–P31.6 交付：
 - 执行与发布：`SpecialistTaskWorker` 接入 `TaskWorker`，逐目标独立执行；格式重试最多 2 次，部分成功发布 `INCOMPLETE`，完整结果/问题/单元/调用材料落库。见 [P31.5](work/agent-redesign/p31/p31-5-execution.md)。
 - 发起与复制：审查中心、发起表单、独立范围弹窗与文件/差异预览、复制参数重定版本；后端补分支 HEAD、提交列表与提交详情读取。见 [P31.6](work/agent-redesign/p31/p31-6-launch.md)。
 
-2026-10-21 完成 P31.4–P31.6 的 R01–R12 审查修复，覆盖整文件估算、拆分容量与覆盖、结构化超限重规划、取消后发布、调用材料关联、结果来源、配置快照、前端来源隔离、幂等提交及列表分页。新增后端 17 项、前端 18 项回归；最终后端 593 项、0 失败、0 异常、9 跳过，前端 45 个文件、385 项通过，类型检查和生产构建通过。见[修复与复验记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。首轮因继承凭据意外运行的 2 项通用真实网关探针已单独记录；最终复验显式禁用外部探针，专项真实联调与 PC 视觉验收仍未执行。
+2026-10-21 完成 P31.4–P31.6 的 R01–R12 审查修复，覆盖整文件估算、拆分容量与覆盖、结构化超限重规划、取消后发布、调用材料关联、结果来源、配置快照、前端来源隔离、幂等提交及列表分页。见[修复与复验记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。
+
+P31.7–P31.9 交付：
+- 代码浏览与审查中心：`CodeBrowser` 分支/提交/文件/差异浏览与勾选带入；任务 ID 搜索、筛选、游标分页、返回现场与异步防串用。见 [P31.7](work/agent-redesign/p31/p31-7-browser.md)。
+- 统一详情：三类结果、目标状态、材料片段/全文/差异、实际调用完整请求与返回，反馈仅预留。见 [P31.8](work/agent-redesign/p31/p31-8-detail.md)。
+- 验证与交付：A07–A15、A21、A24 的本地证据映射、固定版本/位置/拆分/去重/片段失败复核；目标仓库与真实资源未执行。见 [P31.9](work/agent-redesign/p31/p31-9-validation.md)。
 
 P30.5–P30.8 交付：
 - 统一组装与公共调用：`PromptAssemblyService`、`ModelCapacityService`、`ModelInvocationService`、`ModelCallConcurrencyLimiter`、`HttpModelTransport`；请求先落盘、200 次原子额度、全局 4／单任务 2 并发、一次暂态重试；验证调用同入口。见 [P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)。
@@ -33,9 +38,8 @@ P30.5–P30.8 交付：
 ## 验证与未验证
 
 - P30 复验为后端 474 项、0 失败、0 异常、7 跳过；前端 41 个文件、360 项通过，类型检查和生产构建通过。详情见[本轮复验](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
-- P31.1–P31.3 初交付为 533 项；审查修复后为 560 项、0 失败、0 异常、9 跳过，专项定向 86 项通过，另补 27 项回归。P31.4–P31.6 完成后 `mvn clean test` 为 576 项、0 失败、0 异常、9 跳过；前端 42 个测试文件、367 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。跳过项不计为执行通过，真实网关和宿主探针显式禁用。
-- 真实数据库迁移与访问层、Git 宿主、目标仓库、专项模型流程及 PC 正式页面视觉均未执行；首轮意外触发的 2 个通用网关探针见本轮记录，不能替代专项验收；不把工程检查写成真实通过。P31.9／P32.6 继续。
-- P31.4–P31.6 审查后的最终工程复验为后端 593 项（9 跳过），前端 385 项，类型检查和构建通过；以[本轮记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)为准。
+- P31.7–P31.8 完成后 `mvn clean test` 为 597 项、0 失败、0 异常、9 跳过；前端 46 个测试文件、388 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。跳过项不计为执行通过，真实网关和宿主探针显式禁用。
+- 真实数据库迁移与访问层、Git 宿主、目标仓库、模型网关、PC 正式页面视觉均未执行；P31.9 因目标仓库校准未完成保持 active，不把工程检查写成真实通过。
 - 专项执行器已接入；`EXECUTOR_UNAVAILABLE` 不再是当前运行的预期行为。真实模型调用、并发竞争和取消边界仍按 P31.9／P32.6 验证。
 
 ## 接续依据
@@ -44,14 +48,14 @@ P30.5–P30.8 交付：
 - [P29 工作记录](work/agent-redesign/p29/README.md) 与 [验收清单](work/agent-redesign/p29/acceptance.md)。
 - [P30.1 复用差异](work/agent-redesign/p30/p30-1-reuse-diff.md)、[P30.2 新库](work/agent-redesign/p30/p30-2-schema.md)、[P30.3 配置接口](work/agent-redesign/p30/p30-3-config-api.md)、[P30.4 固定读取](work/agent-redesign/p30/p30-4-fixed-version-read.md)。
 - [P30 审查修复](work/agent-redesign/p30/p30-review-fixes.md)、[P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)、[P30.6](work/agent-redesign/p30/p30-6-task-control.md)、[P30.7](work/agent-redesign/p30/p30-7-admin-pages.md)、[P30.8](work/agent-redesign/p30/p30-8-validation.md)。
-- [P31 总览](work/agent-redesign/p31/README.md)、[P31.1 材料](work/agent-redesign/p31/p31-1-materials.md)、[P31.2 声明](work/agent-redesign/p31/p31-2-declarations.md)、[P31.3 协议](work/agent-redesign/p31/p31-3-protocol.md)、[P31.4 容量](work/agent-redesign/p31/p31-4-capacity.md)、[P31.5 执行](work/agent-redesign/p31/p31-5-execution.md)、[P31.6 发起](work/agent-redesign/p31/p31-6-launch.md)。
+- [P31 总览](work/agent-redesign/p31/README.md)、[P31.1 材料](work/agent-redesign/p31/p31-1-materials.md)、[P31.2 声明](work/agent-redesign/p31/p31-2-declarations.md)、[P31.3 协议](work/agent-redesign/p31/p31-3-protocol.md)、[P31.4 容量](work/agent-redesign/p31/p31-4-capacity.md)、[P31.5 执行](work/agent-redesign/p31/p31-5-execution.md)、[P31.6 发起](work/agent-redesign/p31/p31-6-launch.md)、[P31.7 浏览](work/agent-redesign/p31/p31-7-browser.md)、[P31.8 详情](work/agent-redesign/p31/p31-8-detail.md)、[P31.9 验证](work/agent-redesign/p31/p31-9-validation.md)。
 
 ## 下一步
 
-1. 等负责人启动 P31.7：代码浏览与审查中心接入；再按 P31.8–P31.9 接入统一详情、材料阅读、实际调用与专项验收。
-2. P31.6 的 PC 页面截图、真实仓库读取与 P31.9 目标仓库校准仍待执行；未执行前不记为视觉或真实联调通过。
+1. 等负责人提供目标仓库与只读令牌后补 P31.9 采样：小／普通／大文件、提交差异、材料量与 token 误差、并发与耗时，再校准 P29 候选参数。
+2. P31.6–P31.8 的 PC 页面截图、真实仓库读取与 P31.9 真实宿主／数据库／模型验收仍待执行；未执行前不记为视觉或真实联调通过。
 3. P30.8 清单中的真实新库、宿主、模型、目标仓库与 PC 视觉验收按 P31.9／P32.6 安排；未执行前保持未完成。
-4. 不自动启动 P31.7 及后续、P32、P33，不操作真实数据库或部署入口。
+4. 不自动启动 P32、P33，不操作真实数据库或部署入口。
 
 ## 工作区保留
 
