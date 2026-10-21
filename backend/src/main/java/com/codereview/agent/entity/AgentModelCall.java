@@ -15,6 +15,8 @@ public class AgentModelCall {
     @TableId(type = IdType.INPUT)
     private String id;
     private String taskId;
+    /** 报告调用的稳定归属；任务调用为空。 */
+    private String reportId;
     private String targetId;
     private String unitId;
     private String purpose;

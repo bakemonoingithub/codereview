@@ -63,6 +63,14 @@ class ModelCapacityServiceTest {
     }
 
     @Test
+    void reportOutputReserveCanBeRaisedButNeverExceedsModelDeclaration() {
+        assertEquals(16_384, service.estimate(prompt(PromptPurpose.REPORT, 100),
+                model(1_000_000, 393_216), 16_384).outputReserve());
+        assertEquals(8_000, service.estimate(prompt(PromptPurpose.REPORT, 100),
+                model(1_000_000, 8_000), 16_384).outputReserve());
+    }
+
+    @Test
     void validationSkipsCapacityButStillUsesTheCommonEstimate() {
         CapacityEstimate estimate = service.estimate(validationPrompt(), model(null, null));
 

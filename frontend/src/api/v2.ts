@@ -607,3 +607,131 @@ export const strategiesApi = {
   ) => v2.put<StrategyView>(`/strategies/${id}`, body).then((r) => r.data),
   remove: (id: string) => v2.delete(`/strategies/${id}`).then((r) => r.data)
 }
+
+export interface ReportCandidate {
+  resultId: string
+  taskId: string
+  targetId: string | null
+  kind: 'ISSUE' | 'PATTERN' | 'COUPLING' | 'AGENT'
+  projectId: string
+  projectName: string | null
+  taskRoute: string
+  taskState: string
+  sourceKind: 'FILES' | 'DIFF'
+  path: string | null
+  oldPath: string | null
+  headSha: string | null
+  baseSha: string | null
+  branch: string | null
+  resultCreatedAt: string
+  issueCount: number
+  feedback: {
+    assessment: 'ACCURATE' | 'INACCURATE' | 'UNKNOWN' | null
+    comment: string | null
+    revision: number
+    updatedAt: string | null
+  } | null
+}
+
+export interface ReportSourceSummary {
+  ordinal: number
+  resultId: string
+  kind: ReportCandidate['kind']
+  projectId: string
+  projectName: string | null
+  taskId: string
+  taskRoute: string
+  path: string | null
+  headSha: string | null
+  baseSha: string | null
+  summary: string | null
+  issueCount: number
+  accurate: number
+  inaccurate: number
+  unknown: number
+  unassessed: number
+}
+
+export interface ReportModelView {
+  id: string
+  name: string
+  modelName: string
+  contextWindow: number | null
+  maxOutput: number | null
+  tokenizer: string | null
+  protocol: string
+  revision: number
+}
+
+export interface ReportCallSummary {
+  id: string
+  purpose: string
+  attempt: number
+  state: string
+  errorCode: string | null
+  errorMessage: string | null
+  createdAt: string
+  startedAt: string | null
+  finishedAt: string | null
+}
+
+export interface ReportSummary {
+  id: string
+  title: string
+  state: string
+  errorCode: string | null
+  errorMessage: string | null
+  modelName: string | null
+  sourceCount: number
+  taskCount: number
+  versionCount: number
+  kindCounts: Record<string, number>
+  createdAt: string
+  updatedAt: string
+  startedAt: string | null
+  finishedAt: string | null
+}
+
+export interface ReportDetail extends ReportSummary {
+  body: string | null
+  model: ReportModelView | null
+  instruction: string | null
+  sources: ReportSourceSummary[]
+  calls: ReportCallSummary[]
+}
+
+export interface ReportSourceSnapshot {
+  ordinal: number
+  resultId: string
+  snapshot: any
+}
+
+export const reportsApi = {
+  candidates: (params: {
+    projectId?: string
+    taskId?: string
+    kind?: string
+    cursor?: string
+    limit?: number
+  } = {}) => v2.get<Page<ReportCandidate>>('/reports/candidates', { params }).then((r) => r.data),
+  freezeInputs: (body: { title: string; resultIds: string[] }) =>
+    v2.post<{ reportId: string; title: string; state: string; createdAt: string; sourceCount: number }>(
+      '/reports/inputs', body
+    ).then((r) => r.data),
+  inputs: (id: string) => v2.get(`/reports/${id}/inputs`).then((r) => r.data),
+  list: (params: { cursor?: string; limit?: number } = {}) =>
+    v2.get<Page<ReportSummary>>('/reports', { params }).then((r) => r.data),
+  start: (id: string, body: { modelConfigId: string; instruction?: string }) =>
+    v2.post<ReportDetail>(`/reports/${id}/generate`, body).then((r) => r.data),
+  detail: (id: string) => v2.get<ReportDetail>(`/reports/${id}`).then((r) => r.data),
+  source: (id: string, ordinal: number) =>
+    v2.get<ReportSourceSnapshot>(`/reports/${id}/sources/${ordinal}`).then((r) => r.data),
+  calls: (id: string) => v2.get<ReportCallSummary[]>(`/reports/${id}/calls`).then((r) => r.data),
+  download: (id: string) =>
+    v2.get(`/reports/${id}/download`, { responseType: 'blob' }).then((r) => r.data as Blob)
+}
+
+export const modelCallsApi = {
+  detail: (id: string, part: 'request' | 'response' = 'response') =>
+    v2.get<CallDetailFull>(`/model-calls/${id}`, { params: { part } }).then((r) => r.data)
+}

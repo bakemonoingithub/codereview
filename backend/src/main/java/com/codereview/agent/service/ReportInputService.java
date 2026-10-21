@@ -335,11 +335,13 @@ public class ReportInputService {
         Set<String> versions = new LinkedHashSet<>();
         ArrayNode versionNodes = node.putArray("versions");
         ArrayNode resultIds = node.putArray("resultIds");
+        ArrayNode sourceNodes = node.putArray("sources");
         for (ReportDtos.FrozenSource source : sources) {
             JsonNode snapshot = source.snapshot();
             String kind = snapshot.path("kind").asText();
             kinds.put(kind, kinds.path(kind).asInt(0) + 1);
             String projectId = snapshot.path("project").path("id").asText();
+            String projectName = snapshot.path("project").path("name").asText(null);
             String taskId = snapshot.path("task").path("id").asText();
             tasks.put(taskId, projectId);
             String headSha = snapshot.path("target").path("headSha").asText("");
@@ -352,8 +354,73 @@ public class ReportInputService {
                 version.put("baseSha", baseSha);
             }
             resultIds.add(source.resultId());
+            ObjectNode sourceNode = sourceNodes.addObject();
+            sourceNode.put("ordinal", source.ordinal());
+            sourceNode.put("resultId", source.resultId());
+            sourceNode.put("kind", kind);
+            sourceNode.put("projectId", projectId);
+            sourceNode.put("projectName", projectName);
+            sourceNode.put("taskId", taskId);
+            sourceNode.put("taskRoute", snapshot.path("task").path("route").asText(null));
+            sourceNode.put("path", snapshot.path("target").path("path").asText(null));
+            sourceNode.put("headSha", headSha);
+            sourceNode.put("baseSha", baseSha);
+            sourceNode.put("summary", summaryOf(kind, snapshot));
+            sourceNode.put("issueCount", snapshot.path("issues").isArray()
+                    ? snapshot.path("issues").size() : 0);
+            FeedbackCounts counts = feedbackCounts(kind, snapshot);
+            sourceNode.put("accurate", counts.accurate);
+            sourceNode.put("inaccurate", counts.inaccurate);
+            sourceNode.put("unknown", counts.unknown);
+            sourceNode.put("unassessed", counts.unassessed);
         }
         return node;
+    }
+
+    /** 摘要只服务列表与来源导航；完整正文、问题和证据仍在 report_source 快照里。 */
+    private static String summaryOf(String kind, JsonNode snapshot) {
+        JsonNode body = snapshot.path("result").path("body");
+        if ("AGENT".equals(kind)) {
+            String text = body.isTextual() ? body.asText() : "";
+            int lineBreak = text.indexOf('\n');
+            String first = (lineBreak >= 0 ? text.substring(0, lineBreak) : text).strip();
+            return first.length() <= 200 ? first : first.substring(0, 200) + "…";
+        }
+        String summary = body.path("summary").asText("");
+        return summary.length() <= 200 ? summary : summary.substring(0, 200) + "…";
+    }
+
+    private static FeedbackCounts feedbackCounts(String kind, JsonNode snapshot) {
+        FeedbackCounts counts = new FeedbackCounts();
+        if ("ISSUE".equals(kind)) {
+            for (JsonNode issue : snapshot.path("issues")) {
+                counts.add(issue.path("feedback"));
+            }
+        } else {
+            counts.add(snapshot.path("resultFeedback"));
+        }
+        return counts;
+    }
+
+    private static final class FeedbackCounts {
+        int accurate;
+        int inaccurate;
+        int unknown;
+        int unassessed;
+
+        void add(JsonNode feedback) {
+            String assessment = feedback == null || feedback.isNull()
+                    ? null : feedback.path("assessment").asText(null);
+            if ("ACCURATE".equals(assessment)) {
+                accurate++;
+            } else if ("INACCURATE".equals(assessment)) {
+                inaccurate++;
+            } else if ("UNKNOWN".equals(assessment)) {
+                unknown++;
+            } else {
+                unassessed++;
+            }
+        }
     }
 
     private Map<String, Integer> issueCounts(List<String> resultIds) {

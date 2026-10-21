@@ -4,6 +4,7 @@ import type { Component } from 'vue'
 import {
   AuditOutlined,
   CodeOutlined,
+  FileDoneOutlined,
   FileTextOutlined,
   FolderOutlined,
   RobotOutlined,
@@ -43,6 +44,24 @@ const appRoutes: RouteRecordRaw[] = [
     name: 'review-detail',
     component: () => import('@/views/TaskDetail.vue'),
     meta: { title: '任务详情', hideMenu: true }
+  },
+  {
+    path: 'reports',
+    name: 'reports',
+    component: () => import('@/views/ReportList.vue'),
+    meta: { title: '报告', icon: FileDoneOutlined }
+  },
+  {
+    path: 'reports/new',
+    name: 'report-create',
+    component: () => import('@/views/ReportCreate.vue'),
+    meta: { title: '生成报告', hideMenu: true }
+  },
+  {
+    path: 'reports/:id',
+    name: 'report-detail',
+    component: () => import('@/views/ReportDetail.vue'),
+    meta: { title: '报告详情', hideMenu: true }
   },
   {
     path: 'browser',

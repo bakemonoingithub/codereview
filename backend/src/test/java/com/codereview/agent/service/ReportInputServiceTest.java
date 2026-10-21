@@ -201,6 +201,10 @@ class ReportInputServiceTest {
         assertEquals(2, summary.path("sourceCount").asInt());
         assertEquals(1, summary.path("kinds").path("ISSUE").asInt());
         assertEquals(1, summary.path("kinds").path("PATTERN").asInt());
+        assertEquals(2, summary.path("sources").size());
+        assertEquals("A.java", summary.path("sources").get(0).path("path").asText());
+        assertEquals(1, summary.path("sources").get(0).path("issueCount").asInt());
+        assertEquals(1, summary.path("sources").get(0).path("accurate").asInt());
 
         ArgumentCaptor<AgentReportSource> sources = ArgumentCaptor.forClass(AgentReportSource.class);
         verify(reportSourceMapper, org.mockito.Mockito.times(2)).insert(sources.capture());

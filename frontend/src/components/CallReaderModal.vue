@@ -43,9 +43,9 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { tasksApi, type CallDetailFull } from '@/api/v2'
+import { modelCallsApi, tasksApi, type CallDetailFull } from '@/api/v2'
 
-const props = defineProps<{ open: boolean; taskId: string; callId: string }>()
+const props = defineProps<{ open: boolean; taskId?: string; callId: string }>()
 const emit = defineEmits<{ (event: 'update:open', value: boolean): void }>()
 
 let loadEpoch = 0
@@ -75,7 +75,9 @@ watch(
     error.value = ''
     part.value = 'request'
     try {
-      const loaded = await tasksApi.call(props.taskId, props.callId)
+      const loaded = props.taskId
+        ? await tasksApi.call(props.taskId, props.callId)
+        : await modelCallsApi.detail(props.callId)
       if (epoch !== loadEpoch) return
       call.value = loaded
       if (!call.value.requestBody && call.value.responseBody) {

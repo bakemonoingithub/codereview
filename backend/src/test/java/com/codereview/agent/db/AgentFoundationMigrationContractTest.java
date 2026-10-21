@@ -48,6 +48,18 @@ class AgentFoundationMigrationContractTest {
     }
 
     @Test
+    void reportGenerationMigrationLinksCallsAndAddsTimestamps() throws IOException {
+        String sql = sql("V4__agent_report_generation.sql");
+
+        assertTrue(sql.contains("alter table model_call"));
+        assertTrue(sql.contains("add column report_id char(26) null"));
+        assertTrue(sql.contains("create index") || sql.contains("add key idx_model_call_report"));
+        assertTrue(sql.contains("alter table report"));
+        assertTrue(sql.contains("add column started_at"));
+        assertTrue(sql.contains("add column finished_at"));
+    }
+
+    @Test
     void schemaIdentityStaysOnTheSameGenerationForAdditiveMigrations() {
         assertTrue(AgentSchemaGuard.EXPECTED_VERSION.matches("\\d+"));
     }

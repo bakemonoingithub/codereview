@@ -72,7 +72,8 @@ public class ModelInvocationService {
         requireModel(model);
 
         CapacityEstimate estimate = request.sendWholeSpecialist()
-                ? capacity.estimate(prompt, model) : capacity.requireFits(prompt, model);
+                ? capacity.estimate(prompt, model, request.outputReserve())
+                : capacity.requireFits(prompt, model, request.outputReserve());
         String body = requestBody(model, prompt, estimate.outputReserve());
         int attempts = 1 + Math.max(0, properties.getTransportRetries());
         ApiException lastFailure = null;
@@ -88,7 +89,7 @@ public class ModelInvocationService {
                 if (scope.taskId() != null) {
                     reserveQuota(scope.taskId());
                 }
-                AgentModelCall call = startCall(scope, prompt, body, attempt, estimate);
+                AgentModelCall call = startCall(scope, request.reportId(), prompt, body, attempt, estimate);
                 Duration timeout;
                 try {
                     // 等待许可和请求落盘都可能跨过取消或期限；以真正发送前的状态为准。
@@ -151,12 +152,13 @@ public class ModelInvocationService {
         }
     }
 
-    private AgentModelCall startCall(InvocationScope scope, AssembledPrompt prompt, String body,
-                                     int attempt, CapacityEstimate estimate) {
+    private AgentModelCall startCall(InvocationScope scope, String reportId, AssembledPrompt prompt,
+                                     String body, int attempt, CapacityEstimate estimate) {
         LocalDateTime now = AgentTime.now();
         AgentModelCall call = new AgentModelCall();
         call.setId(AgentIds.next());
         call.setTaskId(scope.taskId());
+        call.setReportId(reportId);
         call.setTargetId(scope.targetId());
         call.setUnitId(scope.unitId());
         call.setPurpose(prompt.purpose().wireName());

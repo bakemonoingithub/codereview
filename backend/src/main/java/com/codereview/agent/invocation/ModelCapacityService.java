@@ -25,9 +25,17 @@ public class ModelCapacityService {
     }
 
     public CapacityEstimate estimate(AssembledPrompt prompt, ModelSnapshot model) {
+        return estimate(prompt, model, null);
+    }
+
+    /**
+     * @param outputOverride 调用方为本用途要求的输出预留；为空时使用公共默认值。
+     *                       任何值都不会超过模型声明的最大输出。
+     */
+    public CapacityEstimate estimate(AssembledPrompt prompt, ModelSnapshot model, Integer outputOverride) {
         boolean validation = prompt.purpose() == PromptPurpose.VALIDATION;
         int outputReserve = validation ? limitOutput(properties.getValidationOutputTokens(), model)
-                : outputReserve(model);
+                : outputOverride == null ? outputReserve(model) : limitOutput(outputOverride, model);
         if (model.contextWindow() == null || model.contextWindow() <= 0) {
             if (!validation) {
                 throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,
@@ -43,7 +51,12 @@ public class ModelCapacityService {
     }
 
     public CapacityEstimate requireFits(AssembledPrompt prompt, ModelSnapshot model) {
-        CapacityEstimate estimate = estimate(prompt, model);
+        return requireFits(prompt, model, null);
+    }
+
+    public CapacityEstimate requireFits(AssembledPrompt prompt, ModelSnapshot model,
+                                        Integer outputOverride) {
+        CapacityEstimate estimate = estimate(prompt, model, outputOverride);
         if (!estimate.fits()) {
             throw new ApiException(ErrorCode.CONTEXT_LIMIT,
                     "完整请求超过模型上下文窗口，未发送",
