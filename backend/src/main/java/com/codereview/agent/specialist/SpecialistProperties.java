@@ -23,4 +23,8 @@ public class SpecialistProperties {
     private int maxAuxiliaryBytes = 256 * 1024;
     /** 是否补充字段、参数和返回类型的一层声明；默认开启。 */
     private boolean includeDirectDeclarations = true;
+    /** 每个目标最多拆成多少个执行单元；P29 候选上限。 */
+    private int maxUnitsPerFile = 32;
+    /** 无 AST 或单块过大时按行切分的最大块行数。 */
+    private int maxBlockLines = 200;
 }
