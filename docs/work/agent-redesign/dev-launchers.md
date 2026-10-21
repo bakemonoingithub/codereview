@@ -83,3 +83,27 @@ pwsh -NoProfile -File .\scripts\tests\dev-launchers.tests.ps1
 补修回归为 22 项检查、0 失败，新增覆盖缺少配置、仅有旧链 URL、两组数据源环境变量、显式路径空格、路径不存在、未激活与已激活 profile、Spring 外部配置来源。所有网络与进程仍使用替身；数据库有效性与真实服务联调仍未验证。
 
 实机复验确认：无配置的 `-CheckOnly` 立即失败并提示双数据源配置；通过 Windows PowerShell 5.1 指定带空格的临时配置路径时，自动切换 PowerShell 7 后预检通过。该临时文件仅用于来源检查，已删除；没有启动应用或连接数据库。
+
+## 本机新库与真实启动（2026-10-21）
+
+负责人随后授权新建数据库，并要求其余配置沿用 `code/backend/src/main/resources/application.yml`。本轮在该文件所指向的本机 MySQL 8.0.39 上新建 `ai_code_review_agent`，使用 `utf8mb4`／`utf8mb4_0900_ai_ci`。同时创建随机口令的独立账号，仅授予新库所需的查询、写入与建表迁移权限，符合[共用设计](p29/shared-design.md)的新旧库隔离约定。
+
+实际配置保存到 `agent/backend/src/main/resources/application.yml`，已确认被 Git 忽略。原文件内容保留并追加 `agent.datasource`；解析后移除新增的 `agent` 配置，剩余内容与来源配置完全一致。连接沿用同一实例与连接参数，新库采用独立账号。实际口令仅保存在本机忽略的配置文件中，没有写入提交或本文。
+
+本轮真实启动额外暴露 Node 可执行路径被解析为数组的问题：环境中存在多个同名候选时，`Get-Command` 返回多个结果，不能直接传给 `Start-Process -FilePath`。启动脚本已对 Node 与 Maven 统一选择首个候选，并补入完整启动流程的替身回归。修复后脚本共 23 项检查、0 失败。
+
+| 实际检查 | 结果 |
+| --- | --- |
+| 新库初始化前 | 目标库不存在；旧库为 `code_review`，17 张表，迁移版本 12 |
+| Agent 迁移 | V1、V2、V3 全部应用成功；共 20 张表（包含任务幂等键与迁移历史表） |
+| 身份与迁移版本 | `agent_schema_identity.schema_version=1`；`agent_schema_history` 最新成功版本为 3，两者含义不同 |
+| 隔离 | 新库不含旧链 `flyway_schema_history`；独立账号看不到旧库表 |
+| 旧库复核 | 仍为 17 张表、迁移版本 12；应用日志确认旧链无须迁移，本轮未执行旧库迁移或修复 |
+| 启动脚本 | 运行 `20261021-155338-cbe05825`，约 29 秒后前后端均就绪 |
+| 后端与代理 | `8081/api/v2/health`、`5173/api/v2/health` 均返回 `database=agent`、`schemaVersion=1` |
+| 页面与基础列表 | 前端首页、项目、模型、提示词、策略、审查任务的 v2 列表接口均返回 HTTP 200；未创建业务记录或调用模型 |
+| 停止预检 | 可识别本次前后端进程，未执行停止 |
+
+服务保持在本机后台运行，可直接打开 <http://127.0.0.1:5173/>。停止时执行 `scripts/stop-dev.ps1`；停止后，从 `scripts` 目录运行 `./start-dev.ps1` 即可，无须再传入配置路径。当前端口已被本次服务占用时，不应重复执行启动脚本。
+
+启动日志与进程记录位于 `frontend/.dev-runtime/20261021-155338-cbe05825/`。本轮只验证本机数据库初始化、配置隔离、启动与只读列表；目标仓库、真实模型调用、专项完整流程和 PC 视觉验收仍未执行，不据此完成 P31.9。Vite 启动期间自动更新了既有未提交的 `frontend/components.d.ts`，该生成文件不纳入本次提交。

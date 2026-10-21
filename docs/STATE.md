@@ -41,13 +41,13 @@ P30.5–P30.8 交付：
 
 - P30 复验为后端 474 项、0 失败、0 异常、7 跳过；前端 41 个文件、360 项通过，类型检查和生产构建通过。详情见[本轮复验](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
 - P31.7–P31.8 完成后 `mvn clean test` 为 597 项、0 失败、0 异常、9 跳过；前端 46 个测试文件、388 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。跳过项不计为执行通过，真实网关和宿主探针显式禁用。
-- 真实数据库迁移与访问层、Git 宿主、目标仓库、专项模型完整流程、PC 正式页面视觉均未执行；历史通用网关探针不替代专项验收，详见 P31.4–P31.6 记录；P31.9 因目标仓库校准未完成保持 active，不把工程检查写成真实通过。
+- 2026-10-21 按负责人授权完成本机 `ai_code_review_agent` 建库、独立账号、V1–V3 迁移、前后端启动及基础只读列表验证，见[本机启停记录](work/agent-redesign/dev-launchers.md)。业务写入与完整访问层验收、Git 宿主、目标仓库、专项模型完整流程、PC 正式页面视觉仍未执行；历史通用网关探针不替代专项验收，P31.9 保持 active。
 - P31.7–P31.9 审查后复验为后端 603 项（9 跳过），前端 417 项，类型检查和构建通过；以[本轮记录](work/agent-redesign/p31/p31-7-9-review-fixes.md)为准。
 - 专项执行器已接入；`EXECUTOR_UNAVAILABLE` 不再是当前运行的预期行为。真实模型调用、并发竞争和取消边界仍按 P31.9／P32.6 验证。
 
 ## 接续依据
 
-- [本机开发服务启停](work/agent-redesign/dev-launchers.md)：已迁入其他分支的启动、停止脚本；使用方法、适配与验证记录见该文档，真实服务启动未执行。
+- [本机开发服务启停](work/agent-redesign/dev-launchers.md)：启停脚本、配置补修、本机新库初始化及真实启动记录；本次服务保持运行，停止与再次启动方法见该文档。
 - [工作区规则](../AGENTS.md)、[ROADMAP](ROADMAP.md)、[业务契约](work/agent-redesign/business-contract.md)。
 - [P29 工作记录](work/agent-redesign/p29/README.md) 与 [验收清单](work/agent-redesign/p29/acceptance.md)。
 - [P30.1 复用差异](work/agent-redesign/p30/p30-1-reuse-diff.md)、[P30.2 新库](work/agent-redesign/p30/p30-2-schema.md)、[P30.3 配置接口](work/agent-redesign/p30/p30-3-config-api.md)、[P30.4 固定读取](work/agent-redesign/p30/p30-4-fixed-version-read.md)。
@@ -58,8 +58,8 @@ P30.5–P30.8 交付：
 
 1. 等负责人提供目标仓库与只读令牌后补 P31.9 采样：小／普通／大文件、提交差异、材料量与 token 误差、并发与耗时，再校准 P29 候选参数。
 2. P31.6–P31.8 的 PC 页面截图、真实仓库读取与 P31.9 真实宿主／数据库／模型验收仍待执行；未执行前不记为视觉或真实联调通过。
-3. P30.8 清单中的真实新库、宿主、模型、目标仓库与 PC 视觉验收按 P31.9／P32.6 安排；未执行前保持未完成。
-4. 不自动启动 P32、P33，不操作真实数据库或部署入口。
+3. 本机新库迁移与只读列表已验证；P30.8 清单中的其余数据库访问、宿主、模型、目标仓库与 PC 视觉验收按 P31.9／P32.6 安排；未执行前保持未完成。
+4. 不自动启动 P32、P33；数据库与服务操作限于负责人已授权的本机新库和开发服务，不扩大到部署入口。
 
 ## 工作区保留
 
@@ -77,5 +77,5 @@ P30.5–P30.8 交付：
 - `frontend/node_modules` 当前是指向 `../code/frontend/node_modules` 的目录联接；`pnpm install --offline` 因 `I:\uv_cache` 缺少 `@antfu/utils` 元数据失败，未完成独立安装。重新安装前先确认 store，不要误删联接。
 - 当前 pnpm 启动器引用的缓存脚本缺失；本轮通过 Node 直接调用现有依赖中的 Vitest、vue-tsc 和 Vite，没有重新安装依赖。
 - Vitest／Vite 会改写 `frontend/components.d.ts`，结束后恢复基线；本轮已恢复。
-- 未执行真实 MySQL；V1–V3 只做契约检查。新库验证必须在负责人指定的隔离库进行。
+- 本机 MySQL 新库已按负责人授权建立，V1–V3 迁移与健康检查通过；实际配置位于忽略的 `backend/src/main/resources/application.yml`，不得纳入提交。新库采用独立账号，不与旧库共用权限。
 - Surefire 报告目录会累积历史失败；统计全量结果前先 `mvn clean test`，否则旧 XML 会污染计数。

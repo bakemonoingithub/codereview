@@ -151,6 +151,47 @@ Assert-True ((Test-Path -LiteralPath (Join-Path $repoRoot 'frontend/.dev-runtime
 $runtimeConfig = Join-Path $repoRoot "frontend/.dev-runtime/$runId/vite.config.mts"
 $baseConfig = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $runtimeConfig) '../../vite.config.ts'))
 Assert-True ($baseConfig -eq (Join-Path $repoRoot 'frontend/vite.config.ts')) '运行配置引用当前工作树 Vite 配置'
+
+# Exercise the real launcher with duplicate executable candidates and fake child
+# processes. All runtime files stay in an isolated temporary worktree fixture.
+$probeRoot = Join-Path $fixtureRoot 'startup-probe'
+try {
+    foreach ($relative in @('scripts', 'backend', 'frontend/node_modules/vite/bin')) {
+        $null = New-Item -ItemType Directory -Path (Join-Path $probeRoot $relative) -Force
+    }
+    foreach ($relative in @('scripts/start-dev.ps1', 'scripts/dev.config.psd1', 'scripts/dev-backend-config.ps1')) {
+        Copy-Item -LiteralPath (Join-Path $repoRoot $relative) -Destination (Join-Path $probeRoot $relative)
+    }
+    [IO.File]::WriteAllText((Join-Path $probeRoot 'frontend/vite.config.ts'), '// fixture')
+    [IO.File]::WriteAllText((Join-Path $probeRoot 'frontend/node_modules/vite/bin/vite.js'), '// fixture')
+    & {
+        $seenPaths = [Collections.Generic.List[string]]::new()
+        function Get-Command { param($Name, $CommandType, $ErrorAction)
+            if ($Name -in 'node', 'mvn') {
+                return @([pscustomobject]@{ Source = "mock-$Name-first" }, [pscustomobject]@{ Source = "mock-$Name-second" })
+            }
+            Microsoft.PowerShell.Core\Get-Command -Name $Name -ErrorAction $ErrorAction
+        }
+        function Get-NetTCPConnection { param($State, $ErrorAction) return @() }
+        function Start-Process {
+            param([string]$FilePath, $WindowStyle, [switch]$PassThru, $ArgumentList, $WorkingDirectory, $RedirectStandardOutput, $RedirectStandardError)
+            $seenPaths.Add($FilePath)
+            $fake = New-FakeProcess ([DateTime]::UtcNow)
+            $fake.HasExited = $true
+            $fake | Add-Member NoteProperty Id (920000 + $seenPaths.Count)
+            $fake | Add-Member NoteProperty ExitCode 0
+            return $fake
+        }
+        $expectedExit = $false
+        try { & (Join-Path $probeRoot 'scripts/start-dev.ps1') } catch { $expectedExit = $_.Exception.Message -match 'Service process .* exited' }
+        Assert-True ($expectedExit -and $seenPaths.Count -eq 2 -and $seenPaths[1] -eq 'mock-node-first') '重复 Node/Maven 候选只选择首个，完整启动流程使用标量路径'
+    }
+} finally {
+    $resolvedProbe = [IO.Path]::GetFullPath($probeRoot)
+    $resolvedFixture = [IO.Path]::GetFullPath($fixtureRoot) + [IO.Path]::DirectorySeparatorChar
+    if (-not $resolvedProbe.StartsWith($resolvedFixture, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe fixture cleanup path' }
+    if (Test-Path -LiteralPath $resolvedProbe) { Remove-Item -LiteralPath $resolvedProbe -Recurse }
+}
 Write-Host "$checks 项检查，$failures 项失败"
 if ($failures) { exit 1 }
 } finally {

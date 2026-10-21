@@ -37,8 +37,8 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $frontendRoot = Join-Path $repoRoot 'frontend'
 $backendRoot = Join-Path $repoRoot 'backend'
 $config = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'dev.config.psd1')
-$nodePath = (Get-Command node -CommandType Application -ErrorAction Stop).Source
-$maven = Get-Command mvn -CommandType Application -ErrorAction SilentlyContinue
+$nodePath = (Get-Command node -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+$maven = Get-Command mvn -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 $mavenPath = if ($maven) { $maven.Source } else {
     $config.MavenCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 }
