@@ -106,8 +106,21 @@ public class GitHubClient implements GitHostClient {
     public String headCommitSha(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
         String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/branches/"
                 + UriUtils.encodePathSegment(branch, StandardCharsets.UTF_8);
-        JsonNode root = getJson(url, token, credentialType);
-        return root.path("commit").path("sha").asText();
+        try {
+            JsonNode root = getJson(url, token, credentialType);
+            return root.path("commit").path("sha").asText();
+        } catch (HostHttpException e) {
+            if (e.statusCode() != 404 || branch == null || !branch.contains("/")) {
+                throw e;
+            }
+            // Some GitHub routes reject an encoded slash in the branch path. Retry through the
+            // commits endpoint, where the complete branch name is a query parameter.
+            List<CommitInfo> first = commitPage(token, credentialType, repoRef, branch, 1, 1).commits();
+            if (!first.isEmpty() && first.get(0).sha() != null) {
+                return first.get(0).sha();
+            }
+            throw e;
+        }
     }
 
     @Override

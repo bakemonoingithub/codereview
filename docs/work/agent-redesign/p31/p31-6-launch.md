@@ -11,7 +11,7 @@
 | 范围弹窗 | `ScopePickerModal.vue` | 独立文件树、搜索、展开／收起、全选筛选结果、清空；蓝色文件名只预览，复选框只选目标 |
 | 代码预览 | 同一弹窗 | 文件原文行号；差异可切换改动／修改前／修改后；新增、删除、不可读分别提示 |
 | 参数复制 | `ReviewLaunch.vue` | 从 `copy-input` 回填并重新读取分支 HEAD；版本移动时清空原范围并提示 |
-| v2 读取 | `RepositoryV2Controller` | 分支 HEAD、提交列表、提交详情（去 patch）、路径、文件与差异 |
+| v2 读取 | `RepositoryV2Controller` | 分支 HEAD、提交列表、提交详情（去 patch）、路径、文件与差异；GitHub 含斜杠分支的 HEAD 路径返回 404 时，会回退到提交查询参数 |
 | 客户端 | `api/v2.ts` | `tasksApi`、`repositoryApi` 与任务/仓库类型 |
 
 ## 2. 交互边界
