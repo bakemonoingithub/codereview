@@ -9,7 +9,7 @@ const context = vi.hoisted(() => ({ route: { query: {} as Record<string, string>
 vi.mock('vue-router', () => ({ useRoute: () => context.route, useRouter: () => ({ push: context.push }) }))
 vi.mock('@/api/v2', () => ({
   projectsApi: { list: vi.fn() }, modelsApi: { list: vi.fn() }, strategiesApi: { list: vi.fn() },
-  repositoryApi: { head: vi.fn(), commits: vi.fn(), commit: vi.fn() },
+  repositoryApi: { head: vi.fn(), commits: vi.fn(), commit: vi.fn(), branches: vi.fn() },
   tasksApi: { create: vi.fn(), copyInput: vi.fn(), detail: vi.fn() }
 }))
 import { projectsApi, modelsApi, strategiesApi, repositoryApi, tasksApi } from '@/api/v2'
@@ -20,7 +20,8 @@ function deferred<T>() { let resolve!: (v: T) => void; let reject!: (v: Error) =
 const page = (items: unknown[]) => ({ items, nextCursor: null, hasMore: false })
 const state = (wrapper: any) => wrapper.vm.$.setupState as any
 async function start() {
-  const wrapper = mount(ReviewLaunch, { global: { stubs: { ...namedAntStubs, ScopePickerModal: true, RouterLink: true } } })
+  const wrapper = mount(ReviewLaunch, { global: { stubs: { ...namedAntStubs, ScopePickerModal: true, RouterLink: true,
+    'a-modal': { name: 'AModal', template: '<div class="modal-stub"><slot /></div>' } } } })
   await flushPromises(); return wrapper
 }
 beforeEach(() => {
@@ -28,6 +29,7 @@ beforeEach(() => {
   vi.mocked(projectsApi.list).mockResolvedValue(page([{ id: 'p1', name: '项目', repoUrl: 'repo', currentBranch: 'main' }]) as any)
   vi.mocked(modelsApi.list).mockResolvedValue(page([{ id: 'm1', name: '模型' }]) as any)
   vi.mocked(strategiesApi.list).mockResolvedValue(page([]) as any)
+  vi.mocked(repositoryApi.branches).mockResolvedValue(['main'])
   vi.mocked(repositoryApi.head).mockResolvedValue('sha-main')
   vi.mocked(repositoryApi.commits).mockResolvedValue({ commits: [] } as any)
   vi.mocked(repositoryApi.commit).mockImplementation(async (_id, sha) => ({ sha, parents: ['base-' + sha], files: [] }) as any)
@@ -120,6 +122,34 @@ describe('专项发起来源和提交保护', () => {
     sessionStorage.setItem('review-launch-prefill', JSON.stringify({ projectId: 'p1', sourceKind: 'FILES', branch: 'main', observedSha: 'fixed', targets: [{ path: 'A.java', oldPath: null }] }))
     const w = await start(); expect(state(w).form.observedSha).toBe('fixed')
     expect(state(w).form.targets[0].path).toBe('A.java'); expect(repositoryApi.head).not.toHaveBeenCalled(); w.unmount()
+  })
+  it('当前分支不在仓库里时改用真实分支，不拿 main 去读提交', async () => {
+    vi.mocked(projectsApi.list).mockResolvedValue(page([{ id: 'p1', name: '项目', repoUrl: 'repo', currentBranch: 'main' }]) as any)
+    vi.mocked(repositoryApi.branches).mockResolvedValue(['dev'])
+    const w = await start()
+    expect(state(w).form.branch).toBe('dev')
+    expect(repositoryApi.head).toHaveBeenCalledWith('p1', 'dev')
+    expect(repositoryApi.commits).not.toHaveBeenCalled()
+    w.unmount()
+  })
+  it('分支列表失败时不读取提交', async () => {
+    vi.mocked(repositoryApi.branches).mockRejectedValue(new Error('分支列表读取失败'))
+    const w = await start()
+    expect(repositoryApi.head).not.toHaveBeenCalled()
+    expect(repositoryApi.commits).not.toHaveBeenCalled()
+    expect(state(w).form.branch).toBe('')
+    expect(state(w).formError).toContain('分支列表')
+    w.unmount()
+  })
+  it('填写的审查名称随任务提交', async () => {
+    const w = await start(); const s = state(w)
+    s.form.name = '  支付重试  '
+    s.form.modelConfigId = 'm1'
+    s.form.targets = [{ path: 'A.java', oldPath: null, note: '' }]
+    vi.mocked(tasksApi.create).mockResolvedValue({ id: 'task-1' } as any)
+    await s.submit()
+    expect(vi.mocked(tasksApi.create).mock.calls[0][0].name).toBe('支付重试')
+    w.unmount()
   })
 
 })

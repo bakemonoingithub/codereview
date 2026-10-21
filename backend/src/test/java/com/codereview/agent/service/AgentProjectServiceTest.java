@@ -6,6 +6,7 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.ProjectDtos;
 import com.codereview.agent.entity.AgentProject;
 import com.codereview.agent.mapper.AgentProjectMapper;
+import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
 import com.codereview.git.GitHostClient;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.io.Serializable;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,6 +46,8 @@ class AgentProjectServiceTest {
     @Mock
     private AgentProjectMapper mapper;
     @Mock
+    private AgentReviewTaskMapper taskMapper;
+    @Mock
     private GitHostClient client;
 
     private AgentProjectService service;
@@ -52,6 +56,7 @@ class AgentProjectServiceTest {
     void setUp() {
         service = new AgentProjectService(db, registry);
         when(db.mapper(AgentProjectMapper.class)).thenReturn(mapper);
+        when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
         when(registry.forRepo(any())).thenReturn(client);
     }
 
@@ -131,6 +136,42 @@ class AgentProjectServiceTest {
 
         assertEquals(ErrorCode.REVISION_CONFLICT, error.errorCode());
         verify(mapper, never()).update(any(), any());
+    }
+
+    @Test
+    void deleteRejectsAProjectWithAnOpenTask() {
+        AgentProject current = project(0);
+        when(mapper.selectById(any())).thenReturn(current);
+        when(taskMapper.selectCount(any())).thenReturn(1L);
+
+        ApiException error = assertThrows(ApiException.class, () -> service.delete(current.getId()));
+
+        assertEquals(ErrorCode.CONFLICT, error.errorCode());
+        assertTrue(error.getMessage().contains("进行中"));
+        verify(mapper, never()).deleteById(any(Serializable.class));
+    }
+
+    @Test
+    void deleteLogicallyRemovesAProjectWithoutOpenTasks() {
+        AgentProject current = project(0);
+        when(mapper.selectById(any())).thenReturn(current);
+        when(taskMapper.selectCount(any())).thenReturn(0L);
+        when(mapper.deleteById(any(Serializable.class))).thenReturn(1);
+
+        service.delete(current.getId());
+
+        verify(mapper).deleteById(current.getId());
+    }
+
+    @Test
+    void deleteRejectsAMissingProject() {
+        when(mapper.selectById(any())).thenReturn(null);
+
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.delete(project(0).getId()));
+
+        assertEquals(ErrorCode.NOT_FOUND, error.errorCode());
+        verify(taskMapper, never()).selectCount(any());
     }
 
     private static AgentProject project(int revision) {

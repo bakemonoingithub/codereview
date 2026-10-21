@@ -5,6 +5,7 @@ import com.codereview.agent.service.AgentProjectService;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,5 +50,11 @@ public class ProjectV2Controller {
     @PutMapping("/{id}")
     public ProjectDtos.View update(@PathVariable String id, @Valid @RequestBody ProjectDtos.Update req) {
         return service.update(id, req);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

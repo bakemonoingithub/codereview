@@ -1,16 +1,14 @@
 <template>
-  <div>
-    <div class="page-head">
-      <div>
-        <a-breadcrumb>
-          <a-breadcrumb-item><router-link to="/reviews">审查中心</router-link></a-breadcrumb-item>
-          <a-breadcrumb-item>{{ copyFrom ? '复制参数' : '发起审查' }}</a-breadcrumb-item>
-        </a-breadcrumb>
-        <h2>{{ copyFrom ? '复制参数发起新审查' : '发起专项审查' }}</h2>
-        <p class="muted">按文件独立分析，完成后在同一任务中阅读结果。</p>
-      </div>
-      <a-button @click="router.push('/reviews')">返回审查中心</a-button>
-    </div>
+  <a-modal
+    :open="true"
+    :title="copyFrom ? '复制参数发起新审查' : '发起专项审查'"
+    :footer="null"
+    width="min(1080px, calc(100vw - 48px))"
+    :mask-closable="false"
+    wrap-class-name="launch-review-modal"
+    @cancel="closeLaunch"
+  >
+    <p class="muted intro">按文件独立分析，完成后在同一任务中阅读结果。</p>
 
     <a-alert
       v-if="copyFrom"
@@ -41,6 +39,14 @@
 
     <a-card title="1. 审查目标" class="mb16">
       <div class="form-grid">
+        <div class="field full">
+          <label>审查名称</label>
+          <a-input
+            v-model:value="form.name"
+            :maxlength="200"
+            placeholder="留空时保存为「审查任务」加任务 ID"
+          />
+        </div>
         <div class="field">
           <label>项目</label>
           <a-select
@@ -52,7 +58,7 @@
             @change="onProjectChange"
           />
         </div>
-        <div class="field">
+        <div class="field type-switch">
           <label>专项类型</label>
           <a-radio-group v-model:value="form.specialistType" button-style="solid" @change="onTypeChange">
             <a-radio-button value="ISSUE">问题审查</a-radio-button>
@@ -75,7 +81,14 @@
       <div class="form-grid">
         <div class="field">
           <label>分支</label>
-          <a-input v-model:value="form.branch" placeholder="分支名" @change="onBranchChange" />
+          <a-select
+            v-model:value="form.branch"
+            style="width: 100%"
+            placeholder="选择该项目的分支"
+            :loading="branchesLoading"
+            :options="branchOptions"
+            @change="onBranchChange"
+          />
         </div>
         <div v-if="form.sourceKind === 'FILES'" class="field">
           <label>固定版本</label>
@@ -180,7 +193,7 @@
     <div class="submit-bar">
       <span class="muted small">将固定版本和本次输入保存在新任务中；不会自动带入未发送材料。</span>
       <span class="spacer" />
-      <a-button @click="router.push('/reviews')">取消</a-button>
+      <a-button @click="closeLaunch">取消</a-button>
       <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
         开始审查
       </a-button>
@@ -196,7 +209,7 @@
       :selected="form.targets.map((target) => target.path)"
       @confirm="onScopeConfirm"
     />
-  </div>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
@@ -235,8 +248,11 @@ let lastObservedSha = ''
 let headEpoch = 0
 let commitsEpoch = 0
 let detailEpoch = 0
+let branchEpoch = 0
 let submission: { fingerprint: string; key: string } | null = null
 const optionsLoading = ref(false)
+const branches = ref<string[]>([])
+const branchesLoading = ref(false)
 const headLoading = ref(false)
 const commitsLoading = ref(false)
 const commits = ref<CommitInfo[]>([])
@@ -249,6 +265,7 @@ const copyHeadMoved = ref(false)
 const restoring = ref(false)
 
 const form = reactive({
+  name: '',
   projectId: '',
   specialistType: 'ISSUE' as SpecialistType,
   sourceKind: 'FILES' as SourceKind,
@@ -265,6 +282,7 @@ const form = reactive({
 const projectOptions = computed(() =>
   projects.value.map((project) => ({ value: project.id, label: `${project.name} · ${project.repoUrl}` }))
 )
+const branchOptions = computed(() => branches.value.map((item) => ({ value: item, label: item })))
 const strategyOptions = computed(() =>
   strategies.value
     .filter((strategy) => strategy.specialistType === form.specialistType)
@@ -304,7 +322,6 @@ onMounted(async () => {
     // 代码浏览已带入固定版本与目标
   } else if (projects.value.length) {
     form.projectId = projects.value[0].id
-    form.branch = projects.value[0].currentBranch || 'main'
   }
 })
 
@@ -343,6 +360,7 @@ async function applyBrowserPrefill(): Promise<boolean> {
     if (prefill.sourceKind === 'DIFF' && prefill.commitSha) {
       await loadCommitDetail(prefill.commitSha)
     }
+    await refreshBranchOptions()
     await nextTick()
     restoring.value = false
     return true
@@ -371,23 +389,17 @@ watch(() => [form.projectId, form.branch, form.sourceKind], () => {
 watch(
   () => form.projectId,
   async (projectId) => {
-    if (restoring.value) {
+    if (restoring.value || !projectId) {
       return
     }
     const project = projects.value.find((item) => item.id === projectId)
-    if (project) {
-      form.branch = project.currentBranch || 'main'
-      form.targets = []
-      form.commitSha = ''
-      form.baseSha = ''
-      commits.value = []
-      commitDetail.value = null
-      if (form.sourceKind === 'FILES') {
-        await resolveHead()
-      } else {
-        await loadCommits()
-      }
-    }
+    if (!project) return
+    form.targets = []
+    form.commitSha = ''
+    form.baseSha = ''
+    commits.value = []
+    commitDetail.value = null
+    await syncBranches(project.currentBranch || '')
   }
 )
 
@@ -461,6 +473,8 @@ async function loadCopy() {
     form.specialistType = copy.specialistType
     form.sourceKind = copy.sourceKind
     form.branch = copy.branch || form.branch
+    const copiedDefault = `审查任务 ${copyFrom.value}`
+    form.name = copy.name && copy.name !== copiedDefault ? copy.name : ''
     form.commitSha = copy.commitSha || ''
     form.baseSha = copy.baseSha || ''
     form.targets = copy.targets.map((target) => ({
@@ -472,6 +486,7 @@ async function loadCopy() {
     form.modelConfigId = copy.modelConfigId || ''
     form.smartSplit = copy.smartSplit
     onStrategyChange()
+    await refreshBranchOptions()
     if (copy.sourceKind === 'FILES' && copy.reobserveHead) {
       await resolveHead()
       if (original.headSha && form.observedSha && form.observedSha !== original.headSha) {
@@ -491,6 +506,56 @@ async function loadCopy() {
 
 async function onProjectChange() {
   // watcher 负责重新读取版本和清空范围
+}
+
+function closeLaunch() {
+  router.push('/reviews')
+}
+
+async function refreshBranchOptions() {
+  if (!form.projectId) return
+  const epoch = ++branchEpoch
+  const projectId = form.projectId
+  branchesLoading.value = true
+  try {
+    const loaded = await repositoryApi.branches(projectId)
+    if (epoch !== branchEpoch || projectId !== form.projectId) return
+    branches.value = Array.isArray(loaded) ? loaded : []
+  } catch (failure) {
+    if (epoch !== branchEpoch || projectId !== form.projectId) return
+    if (!form.branch) formError.value = (failure as Error).message || '分支列表读取失败'
+  } finally {
+    if (epoch === branchEpoch) branchesLoading.value = false
+  }
+}
+
+async function syncBranches(preferred: string) {
+  if (!form.projectId) return
+  const epoch = ++branchEpoch
+  const projectId = form.projectId
+  branchesLoading.value = true
+  try {
+    const loaded = await repositoryApi.branches(projectId)
+    if (epoch !== branchEpoch || projectId !== form.projectId || restoring.value) return
+    branches.value = Array.isArray(loaded) ? loaded : []
+    const next = preferred && branches.value.includes(preferred) ? preferred : (branches.value[0] || '')
+    if (!next) {
+      form.branch = ''
+      formError.value = '该项目没有可选择的分支'
+      return
+    }
+    formError.value = ''
+    form.branch = next
+    if (form.sourceKind === 'FILES') await resolveHead()
+    else await loadCommits()
+  } catch (failure) {
+    if (epoch !== branchEpoch || projectId !== form.projectId || restoring.value) return
+    branches.value = []
+    form.branch = ''
+    formError.value = (failure as Error).message || '分支列表读取失败'
+  } finally {
+    if (epoch === branchEpoch) branchesLoading.value = false
+  }
 }
 
 async function onTypeChange() {
@@ -627,9 +692,11 @@ async function submit() {
             commitSha: form.commitSha,
             baseSha: form.baseSha || undefined
           }
+    const name = form.name.trim()
     const body = {
       projectId: form.projectId,
       specialistType: form.specialistType,
+      ...(name ? { name } : {}),
       source,
       targets: form.targets.map((target) => ({
         path: target.path, oldPath: target.oldPath, note: target.note || undefined
@@ -667,15 +734,20 @@ function idempotencyKey(): string {
 </script>
 
 <style scoped lang="less">
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  align-items: flex-start;
-  margin-bottom: 18px;
+.intro {
+  margin: 0 0 16px;
 }
-.page-head h2 {
-  margin: 8px 0 4px;
+.type-switch {
+  grid-column: 1 / -1;
+}
+.type-switch :deep(.ant-radio-group) {
+  display: flex;
+  flex-flow: row nowrap;
+  width: 100%;
+}
+.type-switch :deep(.ant-radio-button-wrapper) {
+  flex: 1 1 0;
+  text-align: center;
 }
 .muted {
   color: #69798d;
@@ -769,5 +841,16 @@ function idempotencyKey(): string {
 }
 .spacer {
   flex: 1;
+}
+</style>
+
+<style lang="less">
+.launch-review-modal .ant-modal {
+  top: 32px;
+  padding-bottom: 32px;
+}
+.launch-review-modal .ant-modal-body {
+  max-height: calc(100vh - 140px);
+  overflow: auto;
 }
 </style>

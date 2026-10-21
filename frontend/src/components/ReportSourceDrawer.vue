@@ -115,7 +115,12 @@
               <span class="muted small">{{ sideText(material.side) }}</span>
               <span class="muted small">{{ material.completeness }}</span>
             </div>
-            <pre v-if="material.content" class="code">{{ numbered(material.content, material.startLine || 1) }}</pre>
+            <CodeViewer
+              v-if="material.content"
+              :text="material.content"
+              :path="material.path || ''"
+              :start-line="material.startLine || 1"
+            />
             <a-alert v-else type="warning" show-icon message="保存的代码正文缺失，不能用当前源码替换。" />
             <p v-if="material.diagnostic" class="muted small">{{ material.diagnostic }}</p>
           </a-collapse-panel>
@@ -129,6 +134,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { reportsApi, type ReportSourceSnapshot } from '@/api/v2'
+import CodeViewer from '@/components/CodeViewer.vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 
 const props = defineProps<{ open: boolean; reportId: string; ordinal: number }>()
@@ -222,10 +228,6 @@ function shortSha(sha: string) {
   return sha ? sha.slice(0, 12) : 'UNKNOWN'
 }
 
-function numbered(text: string, startLine: number) {
-  return text.split('\n').map((line, index) =>
-    `${String(startLine + index).padStart(6, ' ')} | ${line}`).join('\n')
-}
 </script>
 
 <style scoped lang="less">

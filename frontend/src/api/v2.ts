@@ -253,6 +253,7 @@ export interface TaskCreateInput {
   strategyId?: string
   modelConfigId?: string
   smartSplit?: boolean
+  name?: string
 }
 
 export interface TaskTargetView {
@@ -272,6 +273,7 @@ export interface TaskTargetView {
 
 export interface TaskView {
   id: string
+  name: string | null
   projectId: string
   route: string
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
@@ -304,6 +306,7 @@ export interface TaskView {
 
 export interface TaskSummary {
   id: string
+  name: string | null
   projectId: string
   route: string
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
@@ -347,6 +350,7 @@ export interface TaskCopyInput {  projectId: string
   modelConfigId: string | null
   smartSplit: boolean
   reobserveHead: boolean
+  name: string | null
 }
 
 export interface IssueView {
@@ -525,7 +529,8 @@ export const projectsApi = {
     currentBranch?: string
   }) => v2.post<ProjectView>('/projects', body).then((r) => r.data),
   update: (id: string, body: { name: string; credential?: string; expectedRevision: number }) =>
-    v2.put<ProjectView>(`/projects/${id}`, body).then((r) => r.data)
+    v2.put<ProjectView>(`/projects/${id}`, body).then((r) => r.data),
+  remove: (id: string) => v2.delete(`/projects/${id}`).then((r) => r.data)
 }
 
 export const modelsApi = {
@@ -611,6 +616,7 @@ export const strategiesApi = {
 export interface ReportCandidate {
   resultId: string
   taskId: string
+  taskName?: string | null
   targetId: string | null
   kind: 'ISSUE' | 'PATTERN' | 'COUPLING' | 'AGENT'
   projectId: string

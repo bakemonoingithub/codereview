@@ -20,7 +20,7 @@
         v-model:value="search"
         class="filter-search"
         allow-clear
-        placeholder="按任务 ID 搜索"
+        placeholder="按任务名称或 ID 搜索"
         @change="load"
       />
       <a-select
@@ -59,10 +59,13 @@
       :pagination="false"
       :scroll="{ x: 'max-content' }"
     >
-      <a-table-column title="任务" key="task" width="310">
+      <a-table-column title="任务" key="task">
         <template #default="{ record }">
-          <strong><a @click="openTask(record.id)">{{ shortId(record.id) }}</a></strong>
-          <span class="cell-sub">{{ projectName(record.projectId) }}</span>
+          <div class="task-cell">
+            <strong><a :title="taskLabel(record.name, record.id)" @click="openTask(record.id)">{{ taskLabel(record.name, record.id) }}</a></strong>
+            <span class="cell-sub" :title="record.id">{{ record.id }}</span>
+            <span class="cell-sub">{{ projectName(record.projectId) }}</span>
+          </div>
         </template>
       </a-table-column>
       <a-table-column title="类型" key="type" width="110">
@@ -108,6 +111,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectsApi, tasksApi, type ProjectView, type TaskSummary } from '@/api/v2'
+import { taskLabel } from '@/utils/taskLabel'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
@@ -252,10 +256,6 @@ function projectName(id: string): string {
   return projects.value.find((project) => project.id === id)?.name || id
 }
 
-function shortId(id: string): string {
-  return id.length > 10 ? `${id.slice(0, 10)}…` : id
-}
-
 function openTask(id: string) {
   router.push({ path: `/reviews/${id}`, query: { from: '/reviews' } })
 }
@@ -294,3 +294,15 @@ function formatTime(value: string): string {
   return value ? value.replace('T', ' ').slice(0, 19) : '—'
 }
 </script>
+
+<style scoped lang="less">
+.task-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 16em;
+}
+.task-cell strong,
+.task-cell .cell-sub {
+  display: block;
+}
+</style>

@@ -56,6 +56,7 @@ declare module 'vue' {
     ATree: typeof import('ant-design-vue/es')['Tree']
     CallReaderModal: typeof import('./src/components/CallReaderModal.vue')['default']
     ChangedFileTree: typeof import('./src/components/ChangedFileTree.vue')['default']
+    CodeViewer: typeof import('./src/components/CodeViewer.vue')['default']
     CommitTable: typeof import('./src/components/CommitTable.vue')['default']
     CouplingResult: typeof import('./src/components/CouplingResult.vue')['default']
     DiffReviewResult: typeof import('./src/components/DiffReviewResult.vue')['default']

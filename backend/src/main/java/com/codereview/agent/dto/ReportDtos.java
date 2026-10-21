@@ -16,7 +16,7 @@ public final class ReportDtos {
     }
 
     /** 可选材料：只包含已完整发布的结果，任务可以是部分完成或已取消。 */
-    public record Candidate(String resultId, String taskId, String targetId, String kind,
+    public record Candidate(String resultId, String taskId, String taskName, String targetId, String kind,
                             String projectId, String projectName, String taskRoute, String taskState,
                             String sourceKind, String path, String oldPath, String headSha,
                             String baseSha, String branch, LocalDateTime resultCreatedAt,

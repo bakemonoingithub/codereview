@@ -114,6 +114,7 @@ public class TaskService {
         AgentReviewTask task = new AgentReviewTask();
         task.setId(AgentIds.next());
         task.setProjectId(project.getId());
+        task.setName(normalizeName(req.name(), task.getId()));
         task.setRoute(route);
         task.setSpecialistType(specialistType);
         task.setState(TaskStates.QUEUED);
@@ -154,7 +155,10 @@ public class TaskService {
             wrapper.eq(AgentReviewTask::getProjectId, projectId.trim());
         }
         if (q != null && !q.isBlank()) {
-            wrapper.likeRight(AgentReviewTask::getId, q.trim().toUpperCase());
+            String keyword = q.trim();
+            wrapper.and(nested -> nested.likeRight(AgentReviewTask::getId, keyword.toUpperCase())
+                    .or()
+                    .like(AgentReviewTask::getName, keyword));
         }
         if (route != null && !route.isBlank()) {
             wrapper.eq(AgentReviewTask::getRoute, route.trim().toUpperCase());
@@ -237,7 +241,8 @@ public class TaskService {
         return new TaskDtos.CopyInput(task.getProjectId(), task.getRoute(), task.getSpecialistType(),
                 kind, textOrNull(source, "branch"), textOrNull(source, "commitSha"),
                 textOrNull(source, "baseSha"), targets, strategyId, modelId,
-                input.path("smartSplit").asBoolean(false), "FILES".equals(kind));
+                input.path("smartSplit").asBoolean(false), "FILES".equals(kind),
+                TaskNames.display(task.getName(), task.getId()));
     }
 
     public PageResponse<TaskDtos.CallSummary> calls(String taskId, String targetId, String unitId,
@@ -678,7 +683,8 @@ public class TaskService {
                         target.getRevision() == null ? 0 : target.getRevision(),
                         target.getCreatedAt(), target.getUpdatedAt()))
                 .toList();
-        return new TaskDtos.View(task.getId(), task.getProjectId(), task.getRoute(),
+        return new TaskDtos.View(task.getId(), TaskNames.display(task.getName(), task.getId()),
+                task.getProjectId(), task.getRoute(),
                 task.getSpecialistType(), task.getState(), task.getStopReason(),
                 source.path("kind").asText(null), textOrNull(source, "branch"),
                 textOrNull(source, "headSha"), textOrNull(source, "baseSha"),
@@ -700,7 +706,8 @@ public class TaskService {
                 default -> queued++;
             }
         }
-        return new TaskDtos.Summary(task.getId(), task.getProjectId(), task.getRoute(),
+        return new TaskDtos.Summary(task.getId(), TaskNames.display(task.getName(), task.getId()),
+                task.getProjectId(), task.getRoute(),
                 task.getSpecialistType(), task.getState(), task.getStopReason(),
                 task.getCreatedAt(), task.getDeadlineAt(), targets.size(), succeeded, failed,
                 running, queued);
@@ -734,6 +741,18 @@ public class TaskService {
             throw new ApiException(ErrorCode.NOT_FOUND, "任务不存在：" + id);
         }
         return task;
+    }
+
+    private static String normalizeName(String requested, String id) {
+        if (requested == null || requested.isBlank()) {
+            return TaskNames.display(null, id);
+        }
+        String trimmed = requested.trim();
+        if (trimmed.length() > 200) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "审查名称不能超过 200 个字符",
+                    Map.of("field", "name"));
+        }
+        return trimmed;
     }
 
     private static String normalizeSpecialist(String value) {

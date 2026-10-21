@@ -19,7 +19,8 @@ describe('材料阅读的固定内容与异步隔离', () => {
   it('全文后返回保存片段，恢复实际发送文本及原始行号', async () => {
     const w = await start(); const s = state(w); await s.loadFull()
     expect(w.text()).toContain('full file'); s.showSaved(); await flushPromises()
-    expect(w.find('pre').text()).toBe('10 | saved'); expect(w.find('pre').text()).not.toContain('full file')
+    expect(w.find('pre').text()).toBe('saved'); expect(w.find('.code-gutter').text()).toContain('10')
+    expect(w.find('pre').text()).not.toContain('full file'); expect(w.text()).not.toContain('| saved')
     expect(repositoryApi.file).toHaveBeenCalledWith('p1', 'fixed-sha', 'm1.java'); w.unmount()
   })
   it('扩展全文失败不阻止返回保存内容', async () => {

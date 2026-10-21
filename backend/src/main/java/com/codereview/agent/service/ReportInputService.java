@@ -124,7 +124,8 @@ public class ReportInputService {
             AgentProject project = projects.get(task.getProjectId());
             TaskSource source = source(task);
             AgentFeedback feedback = resultFeedback.get(result.getId());
-            items.add(new ReportDtos.Candidate(result.getId(), result.getTaskId(), result.getTargetId(),
+            items.add(new ReportDtos.Candidate(result.getId(), result.getTaskId(),
+                    TaskNames.display(task.getName(), task.getId()), result.getTargetId(),
                     result.getKind(), task.getProjectId(), project == null ? task.getProjectId() : project.getName(),
                     task.getRoute(), task.getState(), source.kind(),
                     target == null ? null : target.getPath(), target == null ? null : target.getOldPath(),

@@ -15,6 +15,8 @@ public class AgentReviewTask {
     @TableId(type = IdType.INPUT)
     private String id;
     private String projectId;
+    /** 用户填写的审查名称；空值在读取时显示为「审查任务 」加任务 ID。 */
+    private String name;
     private String route;
     private String specialistType;
     private String state;

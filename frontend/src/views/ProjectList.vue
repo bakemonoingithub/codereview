@@ -1,7 +1,7 @@
 <template>
   <ListPageLayout
     title="项目管理"
-    subtitle="维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读。代码浏览与任务执行在 P31 接入"
+    subtitle="维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读。"
   >
     <template #actions>
       <a-button type="primary" @click="openCreate">＋ 新建项目</a-button>
@@ -26,7 +26,7 @@
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的项目' : '还没有项目'"
-          :hint="keyword ? '换个关键词，或清空搜索看全部' : '创建一个项目，把代码仓库接进来；代码浏览与任务执行在 P31 接入'"
+          :hint="keyword ? '换个关键词，或清空搜索看全部' : '创建一个项目，把代码仓库接进来。'"
           :action-text="keyword ? '' : '新建项目'"
           @action="openCreate"
         />
@@ -48,9 +48,10 @@
           </StatusBadge>
         </template>
       </a-table-column>
-      <a-table-column title="操作" width="100">
+      <a-table-column title="操作" width="150">
         <template #default="{ record }">
           <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+          <a-button type="link" size="small" danger @click="askDelete(record)">删除</a-button>
         </template>
       </a-table-column>
     </a-table>
@@ -86,6 +87,21 @@
       </a-form>
     </a-modal>
 
+    <a-modal
+      v-model:open="confirmOpen"
+      title="删除项目"
+      ok-text="删除"
+      ok-type="danger"
+      cancel-text="取消"
+      :confirm-loading="deleting"
+      @ok="confirmDelete"
+    >
+      <p v-if="pendingDelete">
+        将从项目列表移除「{{ pendingDelete.name }}」。已完成的审查任务仍保留，不能再从该项目发起新审查。进行中的任务会阻止删除。
+      </p>
+      <p v-if="deleteError" class="delete-error">{{ deleteError }}</p>
+    </a-modal>
+
     <template #footer>
       <PageNotice>新建时填写仓库地址；编辑时仓库地址锁定，令牌留空保留当前值。</PageNotice>
     </template>
@@ -109,6 +125,10 @@ const keyword = ref('')
 const nextCursor = ref<string | null>(null)
 const hasMore = computed(() => !!nextCursor.value)
 const modalOpen = ref(false)
+const confirmOpen = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
+const pendingDelete = ref<ProjectView | null>(null)
 const saving = ref(false)
 const editing = ref<ProjectView | null>(null)
 const credentialConfigured = ref(false)
@@ -149,6 +169,31 @@ function openCreate() {
   credentialConfigured.value = false
   form.value = { name: '', repoUrl: '', credential: '', currentBranch: 'main' }
   modalOpen.value = true
+}
+
+function askDelete(record: ProjectView) {
+  pendingDelete.value = record
+  deleteError.value = ''
+  confirmOpen.value = true
+}
+
+async function confirmDelete() {
+  if (!pendingDelete.value || deleting.value) return
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await projectsApi.remove(pendingDelete.value.id)
+    message.success('已删除')
+    confirmOpen.value = false
+    pendingDelete.value = null
+    await load()
+  } catch (e: any) {
+    deleteError.value = e?.message || '删除失败'
+    message.error(deleteError.value)
+    throw e
+  } finally {
+    deleting.value = false
+  }
 }
 
 function openEdit(record: ProjectView) {
@@ -208,5 +253,9 @@ onMounted(load)
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
+}
+.delete-error {
+  color: #b42318;
+  margin-bottom: 0;
 }
 </style>
