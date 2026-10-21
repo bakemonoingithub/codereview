@@ -129,6 +129,7 @@ import {
   checkedFileKeys,
   filterPathTree,
   leafKeys,
+  mergeCheckedSelection,
   type FileTreeEntry,
   type FileTreeNode
 } from '@/utils/pathTree'
@@ -249,7 +250,11 @@ async function load() {
 }
 
 function onCheck(keys: (string | number)[]) {
-  checked.value = checkedFileKeys(keys, tree.value)
+  // 搜索筛选后树里只剩部分文件；a-tree 的回写只覆盖当前可见叶子，
+  // 筛选外的已选必须保留，否则“搜索一下再勾一个”会静默丢范围。
+  const visible = leafKeys(treeData.value)
+  checked.value = mergeCheckedSelection(checked.value, visible,
+    checkedFileKeys(keys, treeData.value))
 }
 
 function onExpand(keys: (string | number)[]) {

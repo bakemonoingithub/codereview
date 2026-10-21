@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildPathTree, checkedFileKeys, filterPathTree, leafKeys } from '@/utils/pathTree'
+import {
+  buildPathTree,
+  checkedFileKeys,
+  filterPathTree,
+  leafKeys,
+  mergeCheckedSelection
+} from '@/utils/pathTree'
 
 describe('仓库路径树', () => {
   const tree = buildPathTree([
@@ -27,6 +33,15 @@ describe('仓库路径树', () => {
     expect(leaves).toEqual(['src/main/java/A.java', 'src/main/java/B.java', 'README.md'])
     expect(checkedFileKeys(['src', ...leaves], tree)).toEqual(leaves)
     expect(checkedFileKeys(['src/main/java'], tree)).toEqual([])
+  })
+
+  it('搜索后勾选保留筛选外的已选，不静默丢范围', () => {
+    const merged = mergeCheckedSelection(
+      ['README.md', 'src/main/java/A.java'],
+      ['src/main/java/B.java'],
+      ['src/main/java/B.java']
+    )
+    expect(merged).toEqual(['README.md', 'src/main/java/A.java', 'src/main/java/B.java'])
   })
 
   it('状态保留在叶子上，供范围弹窗显示新增/修改', () => {

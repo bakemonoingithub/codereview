@@ -117,3 +117,13 @@ export function checkedFileKeys(checked: (string | number)[], tree: FileTreeNode
   const leaves = new Set(leafKeys(tree))
   return checked.map(String).filter((key) => leaves.has(key))
 }
+
+/**
+ * 合并搜索结果里的勾选：搜索树只包含部分文件，回写不能抹掉筛选外的已选。
+ */
+export function mergeCheckedSelection(previous: string[], visible: string[],
+                                      checkedVisible: string[]): string[] {
+  const visibleSet = new Set(visible)
+  const hidden = previous.filter((path) => !visibleSet.has(path))
+  return Array.from(new Set([...hidden, ...checkedVisible]))
+}
