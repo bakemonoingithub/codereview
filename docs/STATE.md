@@ -47,6 +47,7 @@ P30.5–P30.8 交付：
 
 ## 接续依据
 
+- [本机开发服务启停](work/agent-redesign/dev-launchers.md)：已迁入其他分支的启动、停止脚本；使用方法、适配与验证记录见该文档，真实服务启动未执行。
 - [工作区规则](../AGENTS.md)、[ROADMAP](ROADMAP.md)、[业务契约](work/agent-redesign/business-contract.md)。
 - [P29 工作记录](work/agent-redesign/p29/README.md) 与 [验收清单](work/agent-redesign/p29/acceptance.md)。
 - [P30.1 复用差异](work/agent-redesign/p30/p30-1-reuse-diff.md)、[P30.2 新库](work/agent-redesign/p30/p30-2-schema.md)、[P30.3 配置接口](work/agent-redesign/p30/p30-3-config-api.md)、[P30.4 固定读取](work/agent-redesign/p30/p30-4-fixed-version-read.md)。

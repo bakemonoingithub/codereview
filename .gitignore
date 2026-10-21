@@ -21,3 +21,6 @@ backend/src/main/resources/static/
 # OS
 .DS_Store
 Thumbs.db
+
+# 当前工作树开发服务的日志、配置与进程记录
+frontend/.dev-runtime/
