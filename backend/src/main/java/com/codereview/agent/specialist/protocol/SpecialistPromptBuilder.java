@@ -26,6 +26,13 @@ public class SpecialistPromptBuilder {
 
     public PromptInput build(PreparedTarget target, CouplingFacts facts,
                              String strategyName, String strategyPrompt) {
+        return build(target, facts, strategyName, strategyPrompt, null);
+    }
+
+    /** 格式重试时把上一次实际错误和返回片段带回组装，仍走同一入口。 */
+    public PromptInput build(PreparedTarget target, CouplingFacts facts,
+                             String strategyName, String strategyPrompt,
+                             PromptInput.FormatRetry formatRetry) {
         List<PromptMaterial> targets = target.targets().stream()
                 .map(SpecialistMaterials.Material::toPromptMaterial).toList();
         List<PromptMaterial> auxiliary = target.auxiliary().stream()
@@ -38,7 +45,7 @@ public class SpecialistPromptBuilder {
         return new PromptInput(purpose(target), SpecialistProtocol.VERSION, strategyName,
                 strategyPrompt, target.note(), target.sourceKind(), target.branch(),
                 target.headSha(), target.baseSha(), targets, auxiliary, List.copyOf(missingNotes),
-                promptFacts, null);
+                promptFacts, formatRetry);
     }
 
     public SpecialistResultValidator.ValidationContext context(PreparedTarget target,
