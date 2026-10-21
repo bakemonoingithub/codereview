@@ -4,25 +4,27 @@
     subtitle="为专项选择模型和可选的通用规则提示词；发起任务时固定当时配置"
   >
     <template #actions>
-      <a-button type="primary" @click="openCreate">新建策略</a-button>
+      <a-button type="primary" @click="openCreate">＋ 新建策略</a-button>
+    </template>
+
+    <template #notice>
+      <PageNotice>策略关联专项类型、模型及可选提示词。文件说明仍由每次任务分别填写，内置任务和输出协议集中管理。</PageNotice>
     </template>
 
     <template #filters>
-      <a-space>
-        <a-input-search
-          v-model:value="keyword"
-          placeholder="搜索策略名称"
-          style="width: 240px"
-          allow-clear
-          @search="reload"
-        />
-        <a-select
-          v-model:value="specialistFilter"
-          style="width: 180px"
-          :options="specialistFilterOptions"
-          @change="reload"
-        />
-      </a-space>
+      <a-input-search
+        v-model:value="keyword"
+        class="filter-search"
+        placeholder="搜索策略名称"
+        allow-clear
+        @search="reload"
+      />
+      <a-select
+        v-model:value="specialistFilter"
+        style="min-width: 160px"
+        :options="specialistFilterOptions"
+        @change="reload"
+      />
     </template>
 
     <LoadErrorAlert :message="loadError" @retry="load" />
@@ -40,7 +42,9 @@
           @action="openCreate"
         />
       </template>
-      <a-table-column title="策略名称" data-index="name" />
+      <a-table-column title="策略名称">
+        <template #default="{ record }"><strong>{{ record.name }}</strong></template>
+      </a-table-column>
       <a-table-column title="专项类型" width="150">
         <template #default="{ record }">{{ specialistLabel(record.specialistType) }}</template>
       </a-table-column>
@@ -49,18 +53,19 @@
       </a-table-column>
       <a-table-column title="通用规则提示词" width="220">
         <template #default="{ record }">
-          <template v-if="record.promptId">{{ promptName(record.promptId) }}</template>
+          <template v-if="record.promptId">
+            {{ promptName(record.promptId) }}
+            <code v-if="promptRevision(record.promptId) != null">r{{ promptRevision(record.promptId) }}</code>
+          </template>
           <span v-else class="muted">不选提示词</span>
         </template>
       </a-table-column>
       <a-table-column title="操作" width="160">
         <template #default="{ record }">
-          <a-space>
-            <a-button size="small" @click="openEdit(record)">编辑</a-button>
-            <a-popconfirm title="删除后历史任务不受影响，确认删除？" @confirm="onDelete(record.id)">
-              <a-button size="small" danger>删除</a-button>
-            </a-popconfirm>
-          </a-space>
+          <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+          <a-popconfirm title="删除后历史任务不受影响，确认删除？" @confirm="onDelete(record.id)">
+            <a-button type="link" size="small" danger>删除</a-button>
+          </a-popconfirm>
         </template>
       </a-table-column>
     </a-table>
@@ -73,9 +78,10 @@
       v-model:open="modalOpen"
       :title="editing ? '编辑策略' : '新建策略'"
       :confirm-loading="saving"
+      wrap-class-name="admin-form-modal"
       @ok="onSave"
     >
-      <a-form layout="vertical">
+      <a-form class="form-grid" layout="vertical">
         <a-form-item label="名称" required>
           <a-input v-model:value="form.name" placeholder="如 订单服务规范" />
         </a-form-item>
@@ -83,27 +89,33 @@
           <a-select v-model:value="form.specialistType" :options="specialistOptions" />
         </a-form-item>
         <a-form-item label="关联模型" required>
-          <a-select v-model:value="form.modelConfigId" placeholder="选择模型" :options="modelOptions">
-            <template #notFoundContent>
-              <div class="not-found">
-                <span>暂无可用模型</span>
-                <router-link to="/models">去创建模型</router-link>
-              </div>
-            </template>
-          </a-select>
+          <div class="field-with-link">
+            <a-select v-model:value="form.modelConfigId" placeholder="选择模型" :options="modelOptions">
+              <template #notFoundContent>
+                <div class="not-found">
+                  <span>暂无可用模型</span>
+                  <router-link to="/models">去创建模型</router-link>
+                </div>
+              </template>
+            </a-select>
+            <router-link class="manage-link" to="/models">管理模型 →</router-link>
+          </div>
           <div v-if="modelLoadError" class="field-error">
             {{ modelLoadError }}，<router-link to="/models">去模型页重试</router-link>
           </div>
         </a-form-item>
         <a-form-item label="通用规则提示词（可选）">
-          <a-select v-model:value="form.promptId" placeholder="不选提示词" :options="promptOptions" allow-clear>
-            <template #notFoundContent>
-              <div class="not-found">
-                <span>暂无专项提示词</span>
-                <router-link to="/prompts">去创建提示词</router-link>
-              </div>
-            </template>
-          </a-select>
+          <div class="field-with-link">
+            <a-select v-model:value="form.promptId" placeholder="不选提示词" :options="promptOptions" allow-clear>
+              <template #notFoundContent>
+                <div class="not-found">
+                  <span>暂无专项提示词</span>
+                  <router-link to="/prompts">去创建提示词</router-link>
+                </div>
+              </template>
+            </a-select>
+            <router-link class="manage-link" to="/prompts">管理提示词 →</router-link>
+          </div>
           <div v-if="promptLoadError" class="field-error">
             {{ promptLoadError }}，<router-link to="/prompts">去提示词页重试</router-link>
           </div>
@@ -128,6 +140,7 @@ import {
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import PageNotice from '@/components/PageNotice.vue'
 
 const records = ref<StrategyView[]>([])
 const models = ref<ModelView[]>([])
@@ -176,6 +189,12 @@ function modelName(id: string | null) {
 function promptName(id: string | null) {
   if (!id) return ''
   return prompts.value.find((p) => p.id === id)?.name || '已失效的提示词'
+}
+
+function promptRevision(id: string | null): number | null {
+  if (!id) return null
+  const prompt = prompts.value.find((item) => item.id === id)
+  return prompt && typeof prompt.revision === 'number' ? prompt.revision : null
 }
 
 async function load(cursor?: string) {
@@ -309,11 +328,11 @@ onMounted(async () => {
 
 <style scoped lang="less">
 .muted {
-  color: rgb(0 0 0 / 45%);
+  color: var(--muted);
 }
 .field-hint {
   margin-top: 4px;
-  color: rgb(0 0 0 / 45%);
+  color: var(--muted);
   font-size: 12px;
 }
 .field-error {

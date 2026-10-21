@@ -4,17 +4,20 @@
     subtitle="维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读。代码浏览与任务执行在 P31 接入"
   >
     <template #actions>
-      <a-button type="primary" @click="openCreate">新建项目</a-button>
+      <a-button type="primary" @click="openCreate">＋ 新建项目</a-button>
     </template>
 
     <template #filters>
       <a-input-search
         v-model:value="keyword"
+        class="filter-search"
         placeholder="搜索项目名称"
-        style="width: 280px"
         allow-clear
         @search="reload"
       />
+    </template>
+    <template #filters-extra>
+      <span class="filter-hint">管理可复用配置</span>
     </template>
 
     <LoadErrorAlert :message="loadError" @retry="load" />
@@ -28,19 +31,26 @@
           @action="openCreate"
         />
       </template>
-      <a-table-column title="名称" data-index="name" />
+      <a-table-column title="名称">
+        <template #default="{ record }"><strong>{{ record.name }}</strong></template>
+      </a-table-column>
       <a-table-column title="仓库地址" data-index="repoUrl" ellipsis />
-      <a-table-column title="当前分支" data-index="currentBranch" width="140" />
+      <a-table-column title="当前分支" width="140">
+        <template #default="{ record }">
+          <code v-if="record.currentBranch">{{ record.currentBranch }}</code>
+          <span v-else>—</span>
+        </template>
+      </a-table-column>
       <a-table-column title="访问令牌" width="120">
         <template #default="{ record }">
-          <a-tag :color="record.credentialConfigured ? 'green' : 'default'">
+          <StatusBadge :tone="record.credentialConfigured ? 'green' : 'default'">
             {{ record.credentialConfigured ? '已配置' : '未配置' }}
-          </a-tag>
+          </StatusBadge>
         </template>
       </a-table-column>
       <a-table-column title="操作" width="100">
         <template #default="{ record }">
-          <a-button size="small" @click="openEdit(record)">编辑</a-button>
+          <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
         </template>
       </a-table-column>
     </a-table>
@@ -75,6 +85,10 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <template #footer>
+      <PageNotice>新建时填写仓库地址；编辑时仓库地址锁定，令牌留空保留当前值。</PageNotice>
+    </template>
   </ListPageLayout>
 </template>
 
@@ -85,6 +99,8 @@ import { projectsApi, type ProjectView } from '@/api/v2'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import PageNotice from '@/components/PageNotice.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 const projects = ref<ProjectView[]>([])
 const loading = ref(false)
@@ -190,7 +206,7 @@ onMounted(load)
 }
 .field-hint {
   margin-top: 4px;
-  color: rgb(0 0 0 / 45%);
+  color: var(--muted);
   font-size: 12px;
 }
 </style>

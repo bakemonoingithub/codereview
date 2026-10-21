@@ -45,9 +45,9 @@ describe('ProjectList', () => {
     const wrapper = mount(ProjectList, options)
     await flush()
 
-    const alert = wrapper.find('a-alert-stub')
+    const alert = wrapper.find('.load-error')
     expect(alert.exists()).toBe(true)
-    expect(alert.attributes('message')).toContain('无法连接服务器')
+    expect(alert.text()).toContain('无法连接服务器')
     expect(wrapper.findAll('a-button-stub').some((b) => b.text() === '重试')).toBe(true)
   })
 
@@ -65,7 +65,7 @@ describe('ProjectList', () => {
     await retry.trigger('click')
     await flush()
 
-    expect(wrapper.find('a-alert-stub').exists()).toBe(false)
+    expect(wrapper.find('.load-error').exists()).toBe(false)
     expect(wrapper.text()).toContain('订单服务')
   })
 

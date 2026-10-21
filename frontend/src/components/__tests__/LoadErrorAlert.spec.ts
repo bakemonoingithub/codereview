@@ -14,17 +14,17 @@ describe('LoadErrorAlert', () => {
   it('没有错误时不渲染任何东西（调用方不必自己 v-if）', () => {
     const wrapper = mount(LoadErrorAlert, { props: { message: '' }, ...options })
 
-    expect(wrapper.find('a-alert-stub').exists()).toBe(false)
+    expect(wrapper.find('.load-error').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('重试')
   })
 
   it('有错误时显示文案与「重试」按钮', () => {
     const wrapper = mount(LoadErrorAlert, { props: { message: '无法连接服务器' }, ...options })
 
-    const alert = wrapper.find('a-alert-stub')
+    const alert = wrapper.find('.load-error')
     expect(alert.exists()).toBe(true)
-    expect(alert.attributes('message')).toBe('无法连接服务器')
-    expect(alert.attributes('type')).toBe('error')
+    expect(alert.text()).toContain('无法连接服务器')
+    expect(alert.find('.is-red').exists()).toBe(true)
     expect(wrapper.findAll('a-button-stub').some((b) => b.text() === '重试')).toBe(true)
   })
 

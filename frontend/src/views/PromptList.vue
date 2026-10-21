@@ -4,14 +4,18 @@
     subtitle="维护专项通用规则；正文按版本保存，历史版本不可改，实际调用按任务回看"
   >
     <template #actions>
-      <a-button type="primary" @click="openCreate">新建提示词</a-button>
+      <a-button type="primary" @click="openCreate">＋ 新建提示词</a-button>
+    </template>
+
+    <template #notice>
+      <PageNotice>专项通过策略选用通用规则；逐文件临时说明仍在发起表单填写。Agent 指导提示词用途在 P33 接入。</PageNotice>
     </template>
 
     <template #filters>
       <a-input-search
         v-model:value="keyword"
+        class="filter-search"
         placeholder="搜索名称或标签"
-        style="width: 280px"
         allow-clear
         @search="reload"
       />
@@ -28,14 +32,16 @@
           @action="openCreate"
         />
       </template>
-      <a-table-column title="名称" data-index="name" />
+      <a-table-column title="名称">
+        <template #default="{ record }"><strong>{{ record.name }}</strong></template>
+      </a-table-column>
       <a-table-column title="用途" width="120">
         <template #default="{ record }">{{ purposeLabel(record.purpose) }}</template>
       </a-table-column>
       <a-table-column title="标签" width="200">
         <template #default="{ record }">
           <template v-if="record.tags?.length">
-            <a-tag v-for="tag in record.tags" :key="tag">{{ tag }}</a-tag>
+            <a-tag v-for="tag in record.tags" :key="tag" class="tag-chip">{{ tag }}</a-tag>
           </template>
           <span v-else>—</span>
         </template>
@@ -46,13 +52,13 @@
       <a-table-column title="更新时间" width="170">
         <template #default="{ record }">{{ formatWhen(record.updatedAt) }}</template>
       </a-table-column>
-      <a-table-column title="操作" width="220">
+      <a-table-column title="操作" width="280">
         <template #default="{ record }">
           <a-space>
-            <a-button size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button size="small" @click="openVersions(record)">版本</a-button>
+            <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button type="link" size="small" @click="openVersions(record)">版本与对比</a-button>
             <a-popconfirm title="删除后历史任务输入不受影响，确认删除？" @confirm="onDelete(record.id)">
-              <a-button size="small" danger>删除</a-button>
+              <a-button type="link" size="small" danger>删除</a-button>
             </a-popconfirm>
           </a-space>
         </template>
@@ -66,11 +72,11 @@
     <a-modal
       v-model:open="modalOpen"
       :title="editingId ? '编辑提示词' : '新建提示词'"
-      :width="'72vw'"
       :confirm-loading="saving"
+      wrap-class-name="prompt-form-modal"
       @ok="onSave"
     >
-      <a-form layout="vertical">
+      <a-form class="form-grid" layout="vertical">
         <a-form-item label="名称" required>
           <a-input v-model:value="form.name" placeholder="如 订单服务通用规则" />
         </a-form-item>
@@ -90,7 +96,7 @@
           <a-select v-model:value="form.purpose" :options="purposeOptions" />
           <div class="field-hint">专项通用规则在策略里选用；Agent 指导提示词在 P33 接入。</div>
         </a-form-item>
-        <a-form-item label="正文" required>
+        <a-form-item class="span-2" label="正文" required>
           <a-textarea
             v-model:value="form.content"
             :auto-size="{ minRows: 12, maxRows: 28 }"
@@ -104,11 +110,16 @@
 
     <a-modal
       v-model:open="versionOpen"
-      title="版本对比"
       :width="'90vw'"
       :footer="null"
       wrap-class-name="prompt-diff-modal"
     >
+      <template #title>
+        <div class="modal-title-block">
+          <div>{{ versionPromptName }} · 版本与对比</div>
+          <p>正文版本独立保存；实际调用输入按任务回看</p>
+        </div>
+      </template>
       <a-space style="margin-bottom: 12px">
         <a-select v-model:value="fromVersion" style="width: 160px" :options="versionOptions" placeholder="旧版本" />
         <a-select v-model:value="toVersion" style="width: 160px" :options="versionOptions" placeholder="新版本" />
@@ -118,7 +129,7 @@
           :disabled="!fromVersion || !toVersion || diffLoading || versionLoading"
           @click="loadDiff"
         >
-          对比
+          对比正文
         </a-button>
       </a-space>
       <LoadErrorAlert :message="diffError" @retry="loadDiff" />
@@ -143,6 +154,7 @@ import {
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
+import PageNotice from '@/components/PageNotice.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { hasChanges, toUnifiedPatch } from '@/utils/promptDiff'
 
@@ -174,6 +186,7 @@ let listGeneration = 0
 
 const versionOpen = ref(false)
 const versionPromptId = ref('')
+const versionPromptName = ref('')
 const versionOptions = ref<{ value: string; label: string }[]>([])
 const fromVersion = ref('')
 const toVersion = ref('')
@@ -341,6 +354,7 @@ async function onDelete(id: string) {
 
 async function openVersions(record: PromptSummary) {
   versionPromptId.value = record.id
+  versionPromptName.value = record.name
   versionOpen.value = true
   versionOptions.value = []
   diffLines.value = []
@@ -390,7 +404,7 @@ onMounted(load)
 }
 .field-hint {
   margin-top: 4px;
-  color: rgb(0 0 0 / 45%);
+  color: var(--muted);
   font-size: 12px;
 }
 .load-more {
