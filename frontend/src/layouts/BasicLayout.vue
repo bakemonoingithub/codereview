@@ -39,8 +39,8 @@
           </a-menu-item-group>
         </a-menu>
         <div v-if="!collapsed" class="sider-foot">
-          <strong>专项审查工作台</strong>
-          <span>文件级分析 · 固定版本</span>
+          <strong>专项与 Agent 工作台</strong>
+          <span>固定版本 · 只读调查</span>
         </div>
       </div>
     </a-layout-sider>
@@ -120,7 +120,7 @@ const parentCrumb = computed(() => {
   align-items: center;
   gap: 12px;
   min-height: 34px;
-  margin: 0 8px 22px;
+  margin: 0 8px 30px;
   overflow: hidden;
 }
 

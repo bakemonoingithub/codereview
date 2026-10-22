@@ -22,8 +22,8 @@
         <div class="page-head">
           <div>
             <div class="row wrap">
-              <h2>{{ report.title }}</h2>
-              <a-tag :color="stateColor(report.state)">{{ stateText(report.state) }}</a-tag>
+              <h1>{{ report.title }}</h1>
+              <StatusBadge :tone="stateTone(report.state)">{{ stateText(report.state) }}</StatusBadge>
             </div>
             <p class="muted">
               {{ report.sourceCount }} 个审查结果 · {{ report.taskCount }} 个来源任务 ·
@@ -117,9 +117,9 @@
               </div>
               <div v-for="call in report.calls" :key="call.id" class="call-row">
                 <div>
-                  <a-tag :color="call.state === 'SUCCEEDED' ? 'green' : call.state === 'FAILED' ? 'red' : 'blue'">
+                  <StatusBadge :tone="call.state === 'SUCCEEDED' ? 'green' : call.state === 'FAILED' ? 'red' : 'blue'">
                     {{ call.state }}
-                  </a-tag>
+                  </StatusBadge>
                   <span class="muted small">第 {{ call.attempt }} 次 · {{ call.errorCode || '无错误码' }}</span>
                   <div v-if="call.errorMessage" class="error small">{{ call.errorMessage }}</div>
                 </div>
@@ -142,8 +142,8 @@
               @click="openSource(source.ordinal)"
             >
               <div class="row wrap">
-                <a-tag color="blue">S{{ source.ordinal }}</a-tag>
-                <a-tag>{{ kindText(source.kind) }}</a-tag>
+                <StatusBadge tone="blue">S{{ source.ordinal }}</StatusBadge>
+                <StatusBadge :tone="source.kind === 'AGENT' ? 'blue' : 'default'">{{ kindText(source.kind) }}</StatusBadge>
                 <span class="spacer" />
                 <span class="muted small">{{ shortSha(source.headSha) }}</span>
               </div>
@@ -216,6 +216,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { modelsApi, reportsApi, type ModelView, type ReportDetail } from '@/api/v2'
 import ReportMarkdown from '@/components/ReportMarkdown.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import ReportSourceDrawer from '@/components/ReportSourceDrawer.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
 
@@ -403,14 +404,11 @@ function stateText(state: string) {
   } as Record<string, string>)[state] || state
 }
 
-function stateColor(state: string) {
-  return ({
-    INPUT_FROZEN: 'blue',
-    QUEUED: 'gold',
-    RUNNING: 'processing',
-    SUCCEEDED: 'green',
-    FAILED: 'red'
-  } as Record<string, string>)[state] || 'default'
+function stateTone(state: string): 'green' | 'amber' | 'blue' | 'red' | 'default' {
+  if (state === 'SUCCEEDED') return 'green'
+  if (state === 'FAILED') return 'red'
+  if (state === 'QUEUED' || state === 'RUNNING' || state === 'INPUT_FROZEN') return 'blue'
+  return 'default'
 }
 
 function kindText(kind: string) {
@@ -437,17 +435,25 @@ function formatTime(value: string) {
 
 <style scoped lang="less">
 .back-row {
-  margin-bottom: 4px;
+  margin-bottom: 16px;
 }
 .page-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 20px;
+  margin-bottom: 32px;
 }
-.page-head h2 {
-  margin: 0 0 4px;
+.page-head h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.4;
+}
+.page-head p {
+  margin: 8px 0 0;
+  font-size: 15px;
 }
 .row {
   display: flex;
@@ -470,46 +476,58 @@ function formatTime(value: string) {
   margin-bottom: 12px;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
 }
 .error {
-  color: #b42318;
+  color: var(--red);
 }
 .overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 22px 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow);
 }
 .overview > div {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px 14px;
-  background: #f7f9fc;
-  border: 1px solid #e3e9f0;
-  border-radius: 8px;
+  gap: 10px;
+  align-items: baseline;
 }
 .overview b {
-  font-size: 20px;
-  color: #1f3b63;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  color: var(--ink);
 }
 .overview span {
-  color: #69798d;
+  color: var(--muted);
   font-size: 12px;
 }
 .report-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
   align-items: start;
 }
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
 .report-body {
-  padding: 22px 24px;
+  padding: 30px 38px;
+  max-width: none;
   min-height: 320px;
+  line-height: 1.95;
 }
 .sources-panel {
   position: sticky;
@@ -520,7 +538,13 @@ function formatTime(value: string) {
 .section-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+.sources-panel .section-head {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.calls .section-head {
   margin-bottom: 10px;
 }
 .spacer {
@@ -529,32 +553,37 @@ function formatTime(value: string) {
 .source-card {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   width: 100%;
-  padding: 10px 11px;
-  margin-bottom: 8px;
+  padding: 15px 18px;
   text-align: left;
-  background: #fbfcfe;
-  border: 1px solid #e3e9f0;
-  border-radius: 7px;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
   cursor: pointer;
+  font-weight: 500;
 }
 .source-card:hover {
-  border-color: #9ec2f5;
-  background: #f5f9ff;
+  background: var(--bg);
 }
 .source-title {
   margin-top: 2px;
 }
 .notice {
   margin-top: 18px;
-  padding: 10px 12px;
-  background: #f7f9fc;
-  border: 1px solid #e3e9f0;
-  border-radius: 6px;
-  color: #4d5d70;
+  padding: 13px 16px;
+  background: var(--notice);
+  border: 1px solid var(--notice-border);
+  border-radius: 14px;
+  color: var(--notice-ink);
   font-size: 12px;
   line-height: 1.7;
+}
+.sources-panel > .muted,
+.sources-panel > p.muted {
+  padding: 15px 18px;
 }
 .calls {
   margin-top: 24px;
@@ -581,7 +610,7 @@ function formatTime(value: string) {
 }
 .field label {
   font-weight: 500;
-  color: #2c3e50;
+  color: var(--ink);
 }
 @media (max-width: 1100px) {
   .report-layout {

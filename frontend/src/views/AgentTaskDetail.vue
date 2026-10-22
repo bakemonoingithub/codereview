@@ -1,8 +1,7 @@
 <template>
-  <div class="agent-detail">
+  <div class="agent-page">
     <div class="back-row">
-      <a-button type="link" @click="goBack">← 返回审查中心</a-button>
-      <a-button v-if="task" type="link" @click="router.push('/agents/new')">发起新的 Agent 调查</a-button>
+      <button type="button" class="back-link" @click="goBack">← 返回审查中心</button>
     </div>
 
     <a-alert v-if="loadError" type="error" show-icon :message="loadError">
@@ -11,17 +10,20 @@
 
     <a-spin :spinning="taskLoading">
       <template v-if="task">
-        <div class="detail-head">
+        <div class="heading">
           <div>
             <div class="row wrap">
-              <h2 :title="task.id">{{ task.name || 'Agent 任务' }}</h2>
-              <a-tag color="blue">Agent 调查</a-tag>
-              <StatusBadge :tone="stateTone">{{ task.state }}</StatusBadge>
-              <a-tag v-if="task.stopReason" color="orange">{{ task.stopReason }}</a-tag>
+              <h1 :title="task.id">{{ task.name || 'Agent 任务' }}</h1>
+              <StatusBadge :tone="stateTone">{{ stateLabel(task.state) }}</StatusBadge>
+              <span class="agent-label">只读</span>
             </div>
-            <div class="muted mono">{{ task.id }}</div>
+            <p class="sub">
+              {{ task.projectId }} / Agent 分析 / {{ sourceLabel(task.sourceKind) }}
+              <template v-if="task.headSha"> / <code>{{ task.headSha.slice(0, 7) }}</code></template>
+            </p>
+            <p class="muted small mono">{{ task.id }}</p>
           </div>
-          <a-space wrap>
+          <div class="actions">
             <a-button :loading="refreshing" @click="refreshAll">刷新</a-button>
             <a-button
               v-if="task.state === 'QUEUED' || task.state === 'RUNNING'"
@@ -31,179 +33,239 @@
             >
               取消任务
             </a-button>
-          </a-space>
+            <a-button @click="router.push('/agents/new')">发起新的 Agent 调查</a-button>
+          </div>
         </div>
 
-        <a-row :gutter="16">
-          <a-col :xs="24" :lg="16">
-            <a-tabs v-model:activeKey="activeTab">
-              <a-tab-pane key="result" tab="结果">
-                <a-spin :spinning="resultLoading">
-                  <template v-if="result">
-                    <div class="result-head">
-                      <h3>{{ result.body.title }}</h3>
-                      <a-space>
-                        <a-tag :color="result.body.answerStatus === 'ANSWERED' ? 'green' : 'orange'">
-                          {{ result.body.answerStatus === 'ANSWERED' ? '已回答' : '材料不足' }}
-                        </a-tag>
-                        <a-button size="small" @click="downloadMarkdown">下载 Markdown</a-button>
-                      </a-space>
-                    </div>
-                    <p class="muted">{{ result.body.summary }}</p>
-                    <a-alert
-                      v-if="result.body.answerStatus !== 'ANSWERED'"
-                      type="warning"
-                      show-icon
-                      message="本次调查材料不足；报告选材时会保留该限制，不视为全部问题已回答。"
-                      class="mb12"
-                    />
-                    <div v-if="result.body.unresolved.length" class="unresolved">
-                      <strong>未解决事项</strong>
-                      <ul>
-                        <li v-for="(item, index) in result.body.unresolved" :key="index">{{ item }}</li>
-                      </ul>
-                    </div>
-                    <MarkdownView :text="result.body.markdown" />
-                    <div class="citations">
-                      <div class="section-head">
-                        <strong>来源</strong>
-                        <span class="muted">点击查看固定版本材料；行号为原始行号</span>
-                      </div>
-                      <a-list size="small" :data-source="result.body.citations">
-                        <template #renderItem="{ item }">
-                          <a-list-item>
-                            <a-space wrap>
-                              <a-tag color="blue">{{ item.id }}</a-tag>
-                              <a-button type="link" size="small" @click="openMaterial(item.materialId)">
-                                {{ item.path }}
-                              </a-button>
-                              <span class="muted">第 {{ item.startLine }}–{{ item.endLine }} 行</span>
-                              <span v-if="item.side && item.side !== 'FILE'" class="muted">
-                                {{ item.side === 'BEFORE' ? '变更前' : '变更后' }}
-                              </span>
-                            </a-space>
-                          </a-list-item>
-                        </template>
-                      </a-list>
-                    </div>
-                  </template>
-                  <a-alert
-                    v-else-if="resultError"
-                    type="info"
-                    show-icon
-                    :message="resultError"
-                    description="任务已终止，但只保留调查过程与调用记录；这类结果不进入报告候选。"
-                  />
-                  <a-empty v-else description="调查尚未结束，结果发布后显示" />
-                </a-spin>
-              </a-tab-pane>
+        <a-alert
+          v-if="task.state === 'QUEUED' || task.state === 'RUNNING'"
+          class="mb16"
+          type="info"
+          show-icon
+          :message="`正在执行：${progress?.currentAction || stateLabel(task.state)}`"
+          description="已查范围与调用逐步保存。此处只显示工具动作，不显示模型内部思考。"
+        />
+        <a-alert
+          v-else-if="task.state === 'SUCCEEDED'"
+          class="mb16"
+          type="info"
+          show-icon
+          message="审查结果已固定保存。进一步分析需另建任务；生成报告需另行选材。"
+        />
+        <a-alert
+          v-else
+          class="mb16"
+          type="warning"
+          show-icon
+          :message="`${stateLabel(task.state)}${task.stopReason ? '：' + task.stopReason : ''}`"
+          description="已有记录仅供回看，未形成完整成功结果。"
+        />
 
-              <a-tab-pane key="calls" tab="调用记录">
-                <a-alert v-if="callError" type="error" show-icon :message="callError" />
-                <a-table
-                  :data-source="calls"
-                  :columns="callColumns"
-                  :pagination="false"
-                  size="small"
-                  row-key="id"
-                  :custom-row="callRow"
+        <div class="agent-meters">
+          <div class="agent-meter">
+            <span class="muted small">模型轮次</span>
+            <strong>{{ progress?.turnNo ?? 0 }} <small>/ {{ limitText('modelTurns') }} 次</small></strong>
+            <progress :value="progress?.turnNo || 0" :max="limitMax('modelTurns')" />
+          </div>
+          <div class="agent-meter">
+            <span class="muted small">工具尝试</span>
+            <strong>{{ progress?.toolAttempts ?? 0 }} <small>/ {{ limitText('toolAttempts') }} 次</small></strong>
+            <progress :value="progress?.toolAttempts || 0" :max="limitMax('toolAttempts')" />
+          </div>
+          <div class="agent-meter">
+            <span class="muted small">网络尝试</span>
+            <strong>{{ progress?.networkAttempts ?? 0 }} <small>/ {{ limitText('networkAttempts') }} 次</small></strong>
+            <progress :value="progress?.networkAttempts || 0" :max="limitMax('networkAttempts')" />
+          </div>
+          <div class="agent-meter">
+            <span class="muted small">期限</span>
+            <strong>{{ limitText('deadlineMinutes') }} <small>分钟</small></strong>
+            <span class="muted small">输出上限 {{ limitText('outputTokens') }} tokens</span>
+          </div>
+        </div>
+        <p v-if="progressError" class="error-line">{{ progressError }}</p>
+
+        <div class="tabbar">
+          <button type="button" :class="{ active: activeTab === 'result' }" @click="activeTab = 'result'">审查结果</button>
+          <button type="button" :class="{ active: activeTab === 'progress' }" @click="activeTab = 'progress'">执行记录</button>
+          <button type="button" :class="{ active: activeTab === 'calls' }" @click="activeTab = 'calls'">实际调用 · {{ callTotal }}</button>
+          <button type="button" :class="{ active: activeTab === 'input' }" @click="activeTab = 'input'">任务输入</button>
+        </div>
+
+        <div v-show="activeTab === 'result'">
+          <a-spin :spinning="resultLoading">
+            <div v-if="result" class="agent-layout">
+              <article class="card agent-article">
+                <div class="row wrap result-head">
+                  <StatusBadge :tone="result.body.answerStatus === 'ANSWERED' ? 'green' : 'amber'">
+                    {{ result.body.answerStatus === 'ANSWERED' ? '已回答' : '材料不足' }}
+                  </StatusBadge>
+                  <span class="spacer" />
+                  <a-button size="small" @click="downloadMarkdown">下载 Markdown</a-button>
+                </div>
+                <h2>{{ result.body.title }}</h2>
+                <p class="muted">{{ result.body.summary }}</p>
+                <a-alert
+                  v-if="result.body.answerStatus !== 'ANSWERED'"
+                  class="mb16"
+                  type="warning"
+                  show-icon
+                  message="本次调查材料不足；报告选材时会保留该限制，不视为全部问题已回答。"
                 />
-                <div class="table-footer">
-                  <a-space>
-                    <a-button size="small" :disabled="callPage <= 1" @click="changeCallPage(-1)">上一页</a-button>
-                    <span class="muted">第 {{ callPage }} 页 · 共 {{ callTotal }} 次</span>
-                    <a-button size="small" :disabled="calls.length < callPageSize" @click="changeCallPage(1)">下一页</a-button>
-                  </a-space>
+                <div v-if="result.body.unresolved.length" class="unresolved">
+                  <strong>未解决事项</strong>
+                  <ul>
+                    <li v-for="(item, index) in result.body.unresolved" :key="index">{{ item }}</li>
+                  </ul>
                 </div>
-              </a-tab-pane>
+                <MarkdownView :text="result.body.markdown" />
+              </article>
+              <aside class="agent-side">
+                <section class="card">
+                  <div class="section-top"><h3>代码证据</h3><span class="spacer" /><span class="muted small">固定版本</span></div>
+                  <div class="pad">
+                    <p v-if="!result.body.citations.length" class="muted small">没有引用。</p>
+                    <div v-for="item in result.body.citations" :key="item.id" class="agent-evidence">
+                      <span class="muted small">{{ item.id }}</span>
+                      <button type="button" class="source-link" @click="openMaterial(item.materialId)">
+                        {{ item.path }} : {{ item.startLine }}–{{ item.endLine }} ↗
+                      </button>
+                      <p class="muted small">
+                        <code>{{ item.sha?.slice(0, 7) || '—' }}</code>
+                        <template v-if="item.side && item.side !== 'FILE'"> · {{ item.side === 'BEFORE' ? '变更前' : '变更后' }}</template>
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              </aside>
+            </div>
+            <div v-else-if="resultError" class="card pad">
+              <a-alert type="warning" show-icon :message="resultError" description="任务已终止，但只保留调查过程与调用记录；这类结果不进入报告候选。" />
+              <div class="row wrap" style="margin-top: 16px">
+                <a-button @click="activeTab = 'progress'">查看已有执行记录</a-button>
+              </div>
+            </div>
+            <div v-else class="card empty">调查尚未结束，结果发布后显示</div>
+          </a-spin>
+        </div>
 
-              <a-tab-pane key="progress" tab="进度">
-                <a-descriptions bordered size="small" :column="2">
-                  <a-descriptions-item label="状态">{{ progress?.state || task.state }}</a-descriptions-item>
-                  <a-descriptions-item label="停止原因">{{ progress?.stopReason || '—' }}</a-descriptions-item>
-                  <a-descriptions-item label="模型轮次">{{ progress?.turnNo ?? 0 }}</a-descriptions-item>
-                  <a-descriptions-item label="工具尝试">{{ progress?.toolAttempts ?? 0 }}</a-descriptions-item>
-                  <a-descriptions-item label="网络尝试">{{ progress?.networkAttempts ?? 0 }}</a-descriptions-item>
-                  <a-descriptions-item label="当前动作">{{ progress?.currentAction || '—' }}</a-descriptions-item>
-                </a-descriptions>
-                <div v-if="progress?.limits" class="limits">
-                  <div class="section-head"><strong>本次冻结限额</strong></div>
-                  <a-space wrap>
-                    <a-tag>轮次 {{ progress.limits.modelTurns }}</a-tag>
-                    <a-tag>网络 {{ progress.limits.networkAttempts }}</a-tag>
-                    <a-tag>工具 {{ progress.limits.toolAttempts }}</a-tag>
-                    <a-tag>期限 {{ progress.limits.deadlineMinutes }} 分钟</a-tag>
-                    <a-tag>输出 {{ progress.limits.outputTokens }}</a-tag>
-                    <a-tag v-if="progress.limits.toolSchemaVersion">{{ progress.limits.toolSchemaVersion }}</a-tag>
-                  </a-space>
+        <section v-show="activeTab === 'progress'" class="card">
+          <div class="section-top">
+            <h2>可观察的执行记录</h2>
+            <span class="spacer" />
+            <span class="muted small">{{ callTotal }} 次工具调用</span>
+          </div>
+          <div class="pad">
+            <a-alert v-if="callError" type="error" show-icon :message="callError" class="mb16" />
+            <div class="agent-timeline">
+              <div v-for="(call, index) in calls" :key="call.id" class="agent-event">
+                <div class="row wrap">
+                  <strong>{{ String(index + 1).padStart(2, '0') }} · {{ call.toolName }}</strong>
+                  <span class="spacer" />
+                  <StatusBadge :tone="callTone(call.status)">{{ call.status }}</StatusBadge>
+                  <button type="button" class="quiet" @click="openCall(call.id)">查看调用 ↗</button>
                 </div>
-                <div class="limits">
-                  <div class="section-head"><strong>已查范围</strong></div>
-                  <pre class="json">{{ JSON.stringify(progress?.covered || {}, null, 2) }}</pre>
-                </div>
-              </a-tab-pane>
-            </a-tabs>
-          </a-col>
-          <a-col :xs="24" :lg="8">
-            <a-card size="small" title="范围与模型">
-              <a-descriptions :column="1" size="small">
-                <a-descriptions-item label="范围">{{ task.sourceKind }}</a-descriptions-item>
-                <a-descriptions-item label="分支">{{ task.branch || '—' }}</a-descriptions-item>
-                <a-descriptions-item label="固定版本">
-                  <span class="mono">{{ task.headSha || '—' }}</span>
-                </a-descriptions-item>
-                <a-descriptions-item label="模型">{{ task.config?.modelName || '—' }}</a-descriptions-item>
-                <a-descriptions-item label="指导提示词">
-                  {{ task.config?.promptId ? `v${task.config.promptVersionNo}` : '未选择' }}
-                </a-descriptions-item>
-                <a-descriptions-item label="创建时间">{{ formatTime(task.createdAt) }}</a-descriptions-item>
-                <a-descriptions-item label="期限">{{ formatTime(task.deadlineAt) }}</a-descriptions-item>
-              </a-descriptions>
-            </a-card>
-          </a-col>
-        </a-row>
+                <p>第 {{ call.turnNo }} 轮 · 序号 {{ call.ordinal }} · {{ formatTime(call.startedAt) }}</p>
+              </div>
+              <p v-if="!calls.length" class="muted small">尚未保存工具调用。</p>
+              <div v-if="task.state === 'QUEUED' || task.state === 'RUNNING'" class="agent-event">
+                <strong>当前：{{ progress?.currentAction || '准备调查' }}</strong>
+                <p>下一步会追加调用记录，不修改已有记录。</p>
+              </div>
+            </div>
+            <div class="section-top flat"><h3>已查范围</h3></div>
+            <pre class="preview-code">{{ JSON.stringify(progress?.covered || {}, null, 2) }}</pre>
+          </div>
+        </section>
+
+        <section v-show="activeTab === 'calls'" class="card">
+          <div class="section-top">
+            <h2>逐次实际调用</h2>
+            <span class="spacer" />
+            <span class="muted small">完整正文按需打开</span>
+          </div>
+          <a-alert v-if="callError" type="error" show-icon :message="callError" class="pad-alert" />
+          <div v-if="!calls.length" class="empty">尚未发送模型调用，当前没有请求快照。</div>
+          <div v-else class="agent-call-layout">
+            <aside class="agent-call-list">
+              <button
+                v-for="call in calls"
+                :key="call.id"
+                type="button"
+                :class="{ active: selectedCallId === call.id }"
+                @click="openCall(call.id)"
+              >
+                第 {{ call.turnNo }} 轮 · {{ call.ordinal }}
+                <small>{{ call.toolName }} · {{ call.status }}</small>
+              </button>
+            </aside>
+            <div class="agent-call-content">
+              <a-spin :spinning="callLoading">
+                <template v-if="callDetail">
+                  <div class="row wrap">
+                    <strong>{{ callDetail.toolName }}</strong>
+                    <span class="spacer" />
+                    <StatusBadge :tone="callTone(callDetail.status)">{{ callDetail.status }}</StatusBadge>
+                  </div>
+                  <p class="muted small">提供方 {{ callDetail.providerToolCallId }} · {{ formatTime(callDetail.startedAt) }}</p>
+                  <h3>参数</h3>
+                  <pre class="preview-code">{{ pretty(callDetail.arguments) }}</pre>
+                  <h3>返回</h3>
+                  <pre class="preview-code">{{ JSON.stringify(callDetail.envelope, null, 2) }}</pre>
+                  <div v-if="callDetail.materialIds.length" class="row wrap materials">
+                    <a-button v-for="material in callDetail.materialIds" :key="material" size="small" @click="openMaterial(material)">
+                      {{ material }}
+                    </a-button>
+                  </div>
+                </template>
+                <div v-else class="empty">选择左侧一次调用，查看保存的参数与返回。</div>
+              </a-spin>
+            </div>
+          </div>
+          <div class="table-footer">
+            <span>第 {{ callPage }} 页 · 共 {{ callTotal }} 次</span>
+            <div class="row">
+              <a-button size="small" :disabled="callPage <= 1" @click="changeCallPage(-1)">上一页</a-button>
+              <a-button size="small" :disabled="calls.length < callPageSize" @click="changeCallPage(1)">下一页</a-button>
+            </div>
+          </div>
+        </section>
+
+        <section v-show="activeTab === 'input'" class="card">
+          <div class="section-top"><h2>提交时保存的输入</h2><span class="spacer" /><span class="muted small">历史快照</span></div>
+          <div class="pad">
+            <dl class="input-list">
+              <dt>范围</dt>
+              <dd>{{ sourceLabel(task.sourceKind) }}<template v-if="task.branch"> · {{ task.branch }}</template></dd>
+              <dt>固定版本</dt>
+              <dd><code>{{ task.headSha || '—' }}</code></dd>
+              <dt>目标</dt>
+              <dd>
+                <p v-if="!task.targets?.length" class="muted small">任务视图未返回目标路径。</p>
+                <p v-for="target in task.targets || []" :key="target.id"><code>{{ target.path }}</code></p>
+              </dd>
+              <dt>模型与指导提示词</dt>
+              <dd>
+                {{ task.config?.modelName || '—' }}
+                <br />
+                {{ task.config?.promptId ? '提示词 v' + task.config.promptVersionNo : '未选指导提示词' }}
+              </dd>
+              <dt>创建 / 期限</dt>
+              <dd>{{ formatTime(task.createdAt) }} · {{ formatTime(task.deadlineAt) }}</dd>
+            </dl>
+          </div>
+        </section>
       </template>
     </a-spin>
 
     <MaterialReaderModal
+      v-if="task"
       v-model:open="materialOpen"
-      :task-id="taskId"
-      :project-id="task?.projectId || ''"
-      :head-sha="task?.headSha || ''"
+      :task-id="task.id"
+      :project-id="task.projectId"
+      :head-sha="task.headSha || ''"
       :material-id="materialId"
     />
-
-    <a-drawer v-model:open="callOpen" title="工具调用详情" width="720" destroy-on-close>
-      <a-spin :spinning="callLoading">
-        <template v-if="callDetail">
-          <a-descriptions :column="2" size="small" bordered>
-            <a-descriptions-item label="轮次">{{ callDetail.turnNo }}</a-descriptions-item>
-            <a-descriptions-item label="序号">{{ callDetail.ordinal }}</a-descriptions-item>
-            <a-descriptions-item label="工具">{{ callDetail.toolName }}</a-descriptions-item>
-            <a-descriptions-item label="状态">{{ callDetail.status }}</a-descriptions-item>
-            <a-descriptions-item label="提供方 ID" :span="2">
-              <span class="mono">{{ callDetail.providerToolCallId }}</span>
-            </a-descriptions-item>
-          </a-descriptions>
-          <div class="section-head"><strong>参数</strong></div>
-          <pre class="json">{{ pretty(callDetail.arguments) }}</pre>
-          <div class="section-head"><strong>返回</strong></div>
-          <pre class="json">{{ JSON.stringify(callDetail.envelope, null, 2) }}</pre>
-          <div v-if="callDetail.materialIds.length" class="section-head"><strong>材料</strong></div>
-          <a-space wrap>
-            <a-button
-              v-for="material in callDetail.materialIds"
-              :key="material"
-              size="small"
-              @click="openMaterial(material)"
-            >
-              {{ material }}
-            </a-button>
-          </a-space>
-        </template>
-        <a-alert v-else-if="callError" type="error" show-icon :message="callError" />
-      </a-spin>
-    </a-drawer>
   </div>
 </template>
 
@@ -251,6 +313,7 @@ const callError = ref('')
 const callOpen = ref(false)
 const callLoading = ref(false)
 const callDetail = ref<AgentToolCallDetail | null>(null)
+const selectedCallId = ref('')
 
 const materialOpen = ref(false)
 const materialId = ref('')
@@ -266,20 +329,6 @@ const stateTone = computed(() => {
   if (state === 'PARTIAL') return 'amber'
   if (state === 'FAILED' || state === 'CANCELLED') return 'red'
   return 'blue'
-})
-
-const callColumns = [
-  { title: '轮次', dataIndex: 'turnNo', width: 80 },
-  { title: '序号', dataIndex: 'ordinal', width: 70 },
-  { title: '工具', dataIndex: 'toolName', width: 160 },
-  { title: '状态', dataIndex: 'status', width: 140 },
-  { title: '时间', dataIndex: 'startedAt', width: 180 },
-  { title: '操作', key: 'action', width: 80 }
-]
-
-const callRow = (record: AgentToolCallSummary) => ({
-  onClick: () => openCall(record.id),
-  style: { cursor: 'pointer' }
 })
 
 onMounted(() => {
@@ -398,7 +447,51 @@ async function changeCallPage(delta: number) {
   await loadCalls()
 }
 
+function stateLabel(state: string) {
+  return ({
+    QUEUED: '排队中',
+    RUNNING: '执行中',
+    SUCCEEDED: '已完成',
+    PARTIAL: '部分完成',
+    FAILED: '失败',
+    CANCELLED: '已取消'
+  } as Record<string, string>)[state] || state
+}
+
+function sourceLabel(kind: string) {
+  return ({
+    FILES: '文件范围',
+    DIFF: '提交差异',
+    TEXT: '文字范围',
+    COMMITS: '逐提交差异'
+  } as Record<string, string>)[kind] || kind
+}
+
+function limitNumber(key: string) {
+  const value = progress.value?.limits?.[key]
+  return typeof value === 'number' ? value : null
+}
+
+function limitText(key: string) {
+  const value = limitNumber(key)
+  return value === null ? '—' : value.toLocaleString()
+}
+
+function limitMax(key: string) {
+  return Math.max(limitNumber(key) || 1, 1)
+}
+
+function callTone(status: string): 'green' | 'amber' | 'blue' | 'red' | 'default' {
+  const value = status.toUpperCase()
+  if (value === 'OK' || value === 'SUCCEEDED') return 'green'
+  if (value.includes('TRUNC') || value.includes('LIMIT')) return 'amber'
+  if (value.includes('FAIL') || value.includes('ERROR') || value.includes('TIMEOUT')) return 'red'
+  return 'blue'
+}
+
 async function openCall(callId: string) {
+  selectedCallId.value = callId
+  activeTab.value = 'calls'
   callOpen.value = true
   callLoading.value = true
   callDetail.value = null
@@ -456,77 +549,223 @@ function formatTime(value: string | null | undefined) {
 </script>
 
 <style scoped>
-.agent-detail {
-  padding: 16px 20px 40px;
-}
-.back-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.detail-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-.detail-head h2 {
-  margin: 0;
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.wrap {
-  flex-wrap: wrap;
-}
-.muted {
-  color: rgba(0, 0, 0, 0.45);
-}
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-}
-.mb12 {
-  margin-bottom: 12px;
-}
-.result-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 16px 0 8px;
-}
-.unresolved ul {
-  margin: 6px 0 0 18px;
+.agent-page { padding-bottom: 24px; }
+.back-row { margin-bottom: 16px; }
+.back-link, .quiet, .source-link {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--blue);
+  font-weight: 600;
+  cursor: pointer;
   padding: 0;
 }
-.citations {
-  margin-top: 12px;
+.heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
 }
+.heading h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.4;
+}
+.sub { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.wrap { flex-wrap: wrap; }
+.actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spacer { flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.mono { font-family: var(--font-mono); }
+.mb16 { margin: 0 0 16px; }
+.agent-label {
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.agent-meters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 24px;
+}
+.agent-meter {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+}
+.agent-meter strong { display: block; margin: 7px 0; font-size: 18px; font-weight: 700; }
+.agent-meter small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.agent-meter progress { height: 5px; width: 100%; accent-color: var(--blue); }
+.error-line { color: var(--red); font-size: 12px; margin: -12px 0 16px; }
+.tabbar {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 24px;
+  padding: 0 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  overflow: auto;
+}
+.tabbar button {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 15px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tabbar button.active { color: var(--blue); border-bottom: 2px solid var(--blue); font-weight: 600; }
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.agent-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+.agent-article { padding: 28px 32px; line-height: 1.95; }
+.agent-article h2 { margin: 4px 0 14px; font-size: 20px; }
+.result-head { margin-bottom: 16px; }
+.unresolved ul { margin: 6px 0 0 18px; padding: 0; font-size: 13px; }
+.section-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.section-top h2, .section-top h3 { margin: 0; }
+.section-top.flat { border-bottom: 0; padding-bottom: 8px; }
+.pad { padding: 18px 22px; }
+.agent-evidence {
+  display: block;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.agent-evidence:last-child { border-bottom: 0; }
+.source-link {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 7px;
+  background: var(--soft);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  text-align: left;
+  white-space: normal;
+}
+.agent-timeline { padding: 4px 0 0 13px; }
+.agent-event {
+  position: relative;
+  margin-left: 6px;
+  border-left: 1px solid var(--line);
+  padding: 0 0 24px 26px;
+}
+.agent-event:last-child { border-left-color: transparent; padding-bottom: 2px; }
+.agent-event::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 7px;
+  width: 9px;
+  height: 9px;
+  background: #93b4f5;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+.agent-event p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
+.agent-event strong { font-size: 13px; }
+.agent-call-layout { display: grid; grid-template-columns: 215px minmax(0, 1fr); min-height: 420px; }
+.agent-call-list { border-right: 1px solid var(--line); max-height: 610px; overflow: auto; }
+.agent-call-list button {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 16px 20px;
+  font-weight: 500;
+  background: #fff;
+}
+.agent-call-list button.active { background: var(--soft); color: var(--blue); }
+.agent-call-list small { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; }
+.agent-call-content { padding: 20px; min-width: 0; }
+.agent-call-content h3 { margin: 18px 0 8px; font-size: 14px; }
+.agent-call-content .preview-code { max-height: 470px; }
+.preview-code {
+  max-height: 280px;
+  overflow: auto;
+  margin: 0;
+  background: var(--preview);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.materials { margin-top: 14px; }
 .table-footer {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-.limits {
-  margin-top: 16px;
-}
-.json {
-  max-height: 360px;
-  overflow: auto;
-  padding: 10px;
-  background: #fafafa;
-  border-radius: 6px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
   font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
+}
+.input-list { margin: 0; font-size: 13px; }
+.input-list dt { color: var(--muted); margin-top: 14px; font-size: 12px; }
+.input-list dt:first-child { margin-top: 0; }
+.input-list dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.empty { text-align: center; padding: 48px 25px; color: var(--muted); }
+.pad-alert { margin: 16px 24px 0; }
+@media (max-width: 1250px) {
+  .agent-layout { grid-template-columns: minmax(0, 1fr) 260px; }
+  .agent-meters { gap: 10px; }
+  .agent-meter { padding: 14px; }
+  .agent-article { padding: 24px; }
+  .agent-call-layout { grid-template-columns: 180px minmax(0, 1fr); }
+}
+@media (max-width: 1000px) {
+  .agent-layout { grid-template-columns: 1fr; }
+  .agent-meters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agent-call-layout { grid-template-columns: 1fr; }
+  .agent-call-list { display: flex; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); overflow: auto; }
+  .agent-call-list button { min-width: 170px; border-right: 1px solid var(--line); }
+}
+@media (max-width: 760px) {
+  .heading { flex-wrap: wrap; align-items: flex-start; }
+  .heading h1 { font-size: 26px; }
+  .actions { flex-wrap: wrap; }
+  .agent-meters, .agent-layout { grid-template-columns: 1fr; }
+  .agent-article { padding: 20px; }
+  .agent-meter strong { font-size: 16px; }
+  .tabbar { gap: 18px; }
 }
 </style>

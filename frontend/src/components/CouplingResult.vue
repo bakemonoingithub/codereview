@@ -126,7 +126,7 @@ function render() {
       // 标签只显示类名：全限定名挤在一起既重叠又看不清
       short: n.label || shortName(fqcn),
       symbolSize: 36,
-      itemStyle: { color: n.inCycle ? '#f5222d' : n.high ? '#faad14' : '#1677ff' }
+      itemStyle: { color: n.inCycle ? 'var(--red)' : n.high ? 'var(--amber)' : 'var(--blue)' }
     }
   })
   const edges = (props.result?.edges || []).map((e: any) => ({ source: e.source, target: e.target }))

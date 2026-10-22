@@ -11,8 +11,8 @@
         <div class="detail-head">
           <div>
             <div class="row wrap">
-              <h2 :title="task.id">{{ taskLabel(task.name, task.id) }}</h2>
-              <a-tag :color="stateColor(task.state)">{{ stateText(task.state) }}</a-tag>
+              <h1 :title="task.id">{{ taskLabel(task.name, task.id) }}</h1>
+              <StatusBadge :tone="stateTone(task.state)">{{ stateText(task.state) }}</StatusBadge>
             </div>
             <p class="muted">
               {{ projectName }} · {{ typeText(task.specialistType) }} ·
@@ -85,7 +85,7 @@
             >
               <span class="target-path">{{ target.path }}</span>
               <span class="target-meta">
-                <a-tag :color="targetColor(target.state)">{{ stateText(target.state) }}</a-tag>
+                <StatusBadge :tone="stateTone(target.state)">{{ stateText(target.state) }}</StatusBadge>
                 <span v-if="target.errorCode" class="error">{{ target.errorCode }}</span>
                 <span v-else-if="result && target.id === selectedTargetId" class="muted small">
                   {{ issueCount }} 个问题
@@ -95,16 +95,16 @@
           </aside>
 
           <section class="card content">
-            <div class="tabs">
-              <a-button
+            <div class="tabbar">
+              <button
                 v-for="tab in tabs"
                 :key="tab.key"
-                size="small"
-                :type="activeTab === tab.key ? 'primary' : 'default'"
+                type="button"
+                :class="{ active: activeTab === tab.key }"
                 @click="activeTab = tab.key"
               >
                 {{ tab.label }}
-              </a-button>
+              </button>
             </div>
 
             <a-spin :spinning="detailLoading">
@@ -234,6 +234,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import SpecialistResultView from '@/components/SpecialistResultView.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
@@ -616,20 +617,12 @@ function stateText(state: string): string {
   )
 }
 
-function stateColor(state: string): string {
-  return (
-    ({
-      SUCCEEDED: 'green',
-      RUNNING: 'blue',
-      PARTIAL: 'orange',
-      FAILED: 'red',
-      CANCELLED: 'default'
-    } as Record<string, string>)[state] || 'default'
-  )
-}
-
-function targetColor(state: string): string {
-  return stateColor(state)
+function stateTone(state: string): 'green' | 'amber' | 'blue' | 'red' | 'default' {
+  if (state === 'SUCCEEDED') return 'green'
+  if (state === 'PARTIAL' || state === 'CANCELLED') return 'amber'
+  if (state === 'RUNNING' || state === 'QUEUED' || state === 'PREPARING') return 'blue'
+  if (state === 'FAILED') return 'red'
+  return 'default'
 }
 
 function sideText(side: string): string {
@@ -643,19 +636,26 @@ function formatTime(value: string): string {
 
 <style scoped lang="less">
 .back-row {
-  margin-bottom: 4px;
+  margin-bottom: 16px;
 }
 .detail-head {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  align-items: flex-start;
-  margin-bottom: 16px;
+  align-items: center;
+  margin-bottom: 32px;
 }
-.detail-head h2 {
+.detail-head h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.4;
   overflow-wrap: anywhere;
+}
+.detail-head p {
+  margin: 8px 0 0;
+  font-size: 15px;
 }
 .task-id {
   overflow-wrap: anywhere;
@@ -674,7 +674,7 @@ function formatTime(value: string): string {
   flex-wrap: wrap;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -684,13 +684,14 @@ function formatTime(value: string): string {
 }
 .detail-grid {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 20px;
 }
 .card {
   background: #fff;
-  border: 1px solid #e3e9f0;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 .targets {
@@ -700,28 +701,31 @@ function formatTime(value: string): string {
 .section-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border-bottom: 1px solid #e3e9f0;
+  gap: 12px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
 }
 .target {
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: 100%;
-  padding: 12px 14px;
+  padding: 18px 20px;
   border: 0;
-  border-bottom: 1px solid #eef1f6;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
   background: transparent;
   text-align: left;
   cursor: pointer;
 }
 .target:hover {
-  background: #f7f9fc;
+  background: var(--bg);
 }
 .target.selected {
-  background: #edf4ff;
-  box-shadow: inset 3px 0 0 #2463d5;
+  background: var(--soft);
+  border-left: 3px solid var(--blue);
+  padding-left: 17px;
 }
 .target-path {
   overflow-wrap: anywhere;
@@ -733,29 +737,49 @@ function formatTime(value: string): string {
   gap: 6px;
 }
 .error {
-  color: #bd3c37;
+  color: var(--red);
   font-size: 11px;
 }
 .content {
   min-height: 500px;
-  padding: 14px 18px;
 }
-.tabs {
+.tabbar {
   display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 28px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.tabbar button {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 15px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.tabbar button.active {
+  color: var(--blue);
+  border-bottom: 2px solid var(--blue);
+  font-weight: 600;
+}
+.content :deep(.ant-spin-container) {
+  padding: 20px 24px 24px;
 }
 .material-list {
-  border: 1px solid #e3e9f0;
-  border-radius: 7px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
 }
 .material-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid #eef1f6;
+  padding: 17px 20px;
+  border-bottom: 1px solid #edf1f6;
 }
 .material-row:last-child {
   border-bottom: 0;
@@ -774,9 +798,29 @@ function formatTime(value: string): string {
   margin-top: 10px;
 }
 .empty {
-  padding: 40px;
+  padding: 48px 25px;
   text-align: center;
-  color: #69798d;
+  color: var(--muted);
+}
+@media (max-width: 1100px) {
+  .detail-grid {
+    grid-template-columns: 225px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .detail-head {
+    align-items: flex-start;
+  }
+  .detail-head h1 {
+    font-size: 26px;
+  }
+}
+@media (max-width: 760px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .detail-head {
+    flex-wrap: wrap;
+  }
 }
 .spacer {
   flex: 1;

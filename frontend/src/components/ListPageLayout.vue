@@ -74,7 +74,7 @@ withDefaults(
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.8px;
-  line-height: 1.2;
+  line-height: 1.4;
 }
 
 .page-subtitle {
@@ -88,7 +88,7 @@ withDefaults(
   flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .page-notices {

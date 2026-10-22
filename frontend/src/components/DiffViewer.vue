@@ -100,6 +100,6 @@ const extendData = computed(() => buildExtendData(props.comments || []))
 .diff-extend {
   padding: 4px 8px;
   background: #fffbe6;
-  border-left: 3px solid #faad14;
+  border-left: 3px solid var(--amber);
 }
 </style>

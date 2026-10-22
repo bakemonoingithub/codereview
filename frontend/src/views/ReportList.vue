@@ -2,8 +2,8 @@
   <div>
     <div class="page-head">
       <div>
-        <h2>报告</h2>
-        <p class="muted">勾选已完成的审查结果，独立生成可追溯的多结果报告。</p>
+        <h1>报告</h1>
+        <p class="muted">将多个审查结果整理成独立报告，保留各项来源和版本。</p>
       </div>
       <a-button type="primary" @click="router.push('/reports/new')">＋ 生成报告</a-button>
     </div>
@@ -12,7 +12,7 @@
       <template #action><a-button size="small" @click="retry">重试</a-button></template>
     </a-alert>
 
-    <a-card>
+    <a-card class="record-card">
       <div class="section-head">
         <strong>报告记录</strong>
         <span class="spacer" />
@@ -153,28 +153,41 @@ function formatTime(value: string) {
 <style scoped lang="less">
 .page-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 20px;
+  margin-bottom: 32px;
 }
-.page-head h2 {
-  margin: 0 0 4px;
+.page-head h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.4;
+}
+.page-head p {
+  margin: 8px 0 0;
+  font-size: 15px;
 }
 .mb16 {
   margin-bottom: 16px;
 }
+.record-card :deep(.ant-card-body) {
+  padding: 0;
+}
 .section-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 0;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
 }
 .spacer {
   flex: 1;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -185,6 +198,6 @@ function formatTime(value: string) {
   gap: 3px;
 }
 .error {
-  color: #b42318;
+  color: var(--red);
 }
 </style>

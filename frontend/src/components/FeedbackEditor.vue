@@ -168,14 +168,20 @@ function timeText(value: string | null): string {
 </script>
 
 <style scoped lang="less">
-.feedback { margin-top: 16px; padding: 13px 0 2px; border-top: 1px dashed #d3dce8; }
+.feedback {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
 .feedback-head, .feedback-foot, .choices { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .feedback-head { margin-bottom: 10px; }
 .choices { margin-bottom: 9px; }
 .feedback-foot { margin-top: 8px; }
 .spacer { flex: 1; }
 .small { font-size: 12px; }
-.muted { color: #69798d; }
+.muted { color: var(--muted); }
 .feedback-alert, .conflict { margin-top: 10px; }
 .conflict p { margin: 8px 0; white-space: pre-wrap; }
 </style>

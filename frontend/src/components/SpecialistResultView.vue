@@ -280,7 +280,7 @@ function categoryText(category: string): string {
   flex: 1;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -290,9 +290,9 @@ function categoryText(category: string): string {
 }
 .summary {
   padding: 14px 16px;
-  background: #f7f9fc;
-  border: 1px solid #e3e9f0;
-  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
   margin-bottom: 16px;
 }
 .summary-text {
@@ -301,8 +301,8 @@ function categoryText(category: string): string {
   line-height: 1.8;
 }
 .issue {
-  padding: 18px 0;
-  border-bottom: 1px solid #e3e9f0;
+  padding: 24px 2px;
+  border-bottom: 1px solid var(--line);
 }
 .issue:last-of-type {
   border-bottom: 0;
@@ -316,7 +316,7 @@ function categoryText(category: string): string {
 .suggestion {
   font-size: 13px;
   line-height: 1.8;
-  color: #4d5d70;
+  color: var(--muted);
 }
 .locations {
   display: flex;
@@ -327,10 +327,11 @@ function categoryText(category: string): string {
 }
 .limitations {
   margin-top: 18px;
-  padding: 14px 16px;
-  background: #fffaf0;
-  border: 1px solid #efdfbd;
-  border-radius: 7px;
+  padding: 13px 16px;
+  background: var(--notice-amber-bg);
+  border: 1px solid var(--notice-amber-border);
+  border-radius: 14px;
+  color: var(--notice-amber-ink);
 }
 .limitations ul {
   margin: 8px 0 0;

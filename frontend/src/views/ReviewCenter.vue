@@ -1,12 +1,12 @@
 <template>
   <ListPageLayout
     title="审查中心"
-    subtitle="查看逐文件分析结果，跟进反馈，并将已完成结果整理成报告。"
+    subtitle="查看专项审查与 Agent 调查，将完整审查结果整理成报告。"
   >
     <template #actions>
       <a-button @click="router.push('/reports/new')">生成报告</a-button>
-      <a-button @click="router.push('/agents/new')">Agent 调查</a-button>
-      <a-button type="primary" @click="router.push('/reviews/new')">＋ 发起审查</a-button>
+      <a-button @click="router.push('/reviews/new')">发起专项审查</a-button>
+      <a-button type="primary" @click="router.push('/agents/new')">＋ 发起 Agent 分析</a-button>
     </template>
 
     <template #notice>
@@ -35,7 +35,7 @@
       <a-select
         v-model:value="filterType"
         allow-clear
-        placeholder="全部专项类型"
+        placeholder="全部类型"
         style="width: 160px"
         :options="typeOptions"
         @change="load"
@@ -69,18 +69,19 @@
           </div>
         </template>
       </a-table-column>
-      <a-table-column title="类型" key="type" width="110">
-        <template #default="{ record }">{{ typeText(record.specialistType) }}</template>
-      </a-table-column>
-      <a-table-column title="状态" key="state" width="120">
+      <a-table-column title="类型 / 范围" key="type" width="180">
         <template #default="{ record }">
-          <StatusBadge :tone="stateTone(record.state)">{{ stateText(record.state) }}</StatusBadge>
+          {{ typeText(record) }}
+          <span class="cell-sub">{{ record.targetCount }} 个目标</span>
         </template>
       </a-table-column>
-      <a-table-column title="文件完成情况" key="counts" width="170">
+      <a-table-column title="状态" key="state" width="160">
         <template #default="{ record }">
-          {{ record.succeededCount }} / {{ record.targetCount }}
-          <span v-if="record.failedCount" class="cell-sub">失败 {{ record.failedCount }}</span>
+          <StatusBadge :tone="stateTone(record.state)">{{ stateText(record.state) }}</StatusBadge>
+          <span class="cell-sub">
+            {{ record.succeededCount }} / {{ record.targetCount }} 完成
+            <template v-if="record.failedCount"> · 失败 {{ record.failedCount }}</template>
+          </span>
         </template>
       </a-table-column>
       <a-table-column title="发起时间" key="createdAt" width="170">
@@ -140,7 +141,8 @@ const projectOptions = computed(() =>
 const typeOptions = [
   { value: 'ISSUE', label: '问题审查' },
   { value: 'PATTERN', label: '设计模式' },
-  { value: 'COUPLING', label: '耦合度' }
+  { value: 'COUPLING', label: '耦合度' },
+  { value: 'AGENT', label: 'Agent 分析' }
 ]
 const stateOptions = [
   { value: 'QUEUED', label: '排队中' },
@@ -152,8 +154,12 @@ const stateOptions = [
 ]
 
 const list = useListPagination<TaskSummary>('reviews', params => tasksApi.list({
-  ...params, projectId: filterProject.value, type: filterType.value,
-  state: filterState.value, q: search.value.trim() || undefined
+  ...params,
+  projectId: filterProject.value,
+  type: filterType.value === 'AGENT' ? undefined : filterType.value,
+  route: filterType.value === 'AGENT' ? 'AGENT' : undefined,
+  state: filterState.value,
+  q: search.value.trim() || undefined
 }), '任务列表加载失败', filterKey)
 const { items: tasks, loading, error, pageNum, pageSize, retry } = list
 const pagination = computed(() => ({ ...list.pagination.value, onChange: changePage }))
@@ -228,8 +234,9 @@ function copyTask(id: string) {
   router.push({ path: '/reviews/new', query: { copyFrom: id } })
 }
 
-function typeText(type: string): string {
-  return ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度' } as Record<string, string>)[type] || type
+function typeText(task: TaskSummary): string {
+  if (task.route === 'AGENT') return 'Agent 分析'
+  return ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度' } as Record<string, string>)[task.specialistType] || task.specialistType
 }
 
 function stateText(state: string): string {

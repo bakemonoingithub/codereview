@@ -757,7 +757,7 @@ function idempotencyKey(): string {
   width: calc(200% / 3);
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -790,8 +790,8 @@ function idempotencyKey(): string {
 }
 .target-list {
   margin-top: 10px;
-  border: 1px solid #e3e9f0;
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   max-height: 240px;
   overflow: auto;
 }
@@ -801,7 +801,7 @@ function idempotencyKey(): string {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border-bottom: 1px solid #eef1f6;
+  border-bottom: 1px solid #edf1f6;
 }
 .target-row:last-child {
   border-bottom: 0;
@@ -816,9 +816,9 @@ function idempotencyKey(): string {
   gap: 10px;
 }
 .file-note {
-  border: 1px solid #e3e9f0;
-  border-radius: 7px;
-  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
 }
 .note-head {
   justify-content: space-between;
@@ -826,13 +826,13 @@ function idempotencyKey(): string {
 }
 .switch-line {
   display: flex;
-  gap: 10px;
+  gap: 9px;
   align-items: flex-start;
-  margin-top: 16px;
-  padding: 12px 14px;
-  background: #f8fafd;
-  border: 1px solid #e3e9f0;
-  border-radius: 7px;
+  margin-top: 18px;
+  padding: 13px 15px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
   cursor: pointer;
 }
 .switch-line strong {
@@ -843,7 +843,7 @@ function idempotencyKey(): string {
   position: sticky;
   bottom: 0;
   background: #fff;
-  border-top: 1px solid #e3e9f0;
+  border-top: 1px solid var(--line);
   padding: 12px 0;
 }
 .spacer {

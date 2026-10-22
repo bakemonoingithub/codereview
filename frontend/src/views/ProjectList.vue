@@ -219,7 +219,7 @@ onMounted(load)
   font-size: 12px;
 }
 .delete-error {
-  color: #b42318;
+  color: var(--red);
   margin-bottom: 0;
 }
 </style>

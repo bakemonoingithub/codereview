@@ -2,10 +2,8 @@
   <div class="agent-launch">
     <div class="page-head">
       <div>
-        <h2>发起 Agent 调查</h2>
-        <p class="muted">
-          模型使用只读工具自行调查；首版任务内串行执行，命中限制会保留调查记录但不发布完整结果。
-        </p>
+        <h1>发起 Agent 分析</h1>
+        <p class="muted">描述范围与要求。模型只读调查固定版本，命中限制会保留记录但不发布完整结果。</p>
       </div>
       <a-button @click="router.push('/reviews')">返回审查中心</a-button>
     </div>
@@ -20,7 +18,7 @@
     />
     <a-alert v-if="error" type="error" show-icon :message="error" class="mb12" />
 
-    <a-card :bordered="false">
+    <a-card class="launch-card">
       <a-form layout="vertical">
         <a-row :gutter="16">
           <a-col :xs="24" :md="12">
@@ -64,6 +62,7 @@
           </a-col>
         </a-row>
 
+        <div class="step"><span class="num">1</span>审查范围</div>
         <a-row :gutter="16">
           <a-col :xs="24" :md="10">
             <a-form-item label="任务名称（可选）">
@@ -159,6 +158,7 @@
           </div>
         </a-form-item>
 
+        <div class="step"><span class="num">2</span>审查要求 <span class="muted small">必填</span></div>
         <a-form-item label="本次要求" required>
           <a-textarea
             v-model:value="form.requirements"
@@ -171,7 +171,7 @@
 
         <a-space>
           <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
-            开始调查
+            开始 Agent 分析
           </a-button>
           <a-button @click="router.push('/reviews')">取消</a-button>
           <span class="muted">提交后任务在后台执行，可在审查中心查看进度。</span>
@@ -422,20 +422,45 @@ async function submit() {
 
 <style scoped>
 .agent-launch {
-  padding: 16px 20px 40px;
+  padding: 0 0 24px;
 }
 .page-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 20px;
+  margin-bottom: 32px;
 }
-.page-head h2 {
-  margin: 0 0 4px;
+.page-head h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.4;
+}
+.page-head p {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 22px 0 14px;
+  font-weight: 600;
+}
+.step .num {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
 }
 .muted {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--muted);
 }
 .mb12 {
   margin-bottom: 12px;
@@ -450,41 +475,41 @@ async function submit() {
   gap: 6px;
 }
 .commit-list {
+  display: grid;
+  gap: 10px;
   margin-top: 12px;
-  max-height: 320px;
+  max-height: 360px;
   overflow: auto;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
 }
 .commit-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 8px 12px;
-  border: none;
-  border-bottom: 1px solid #f5f5f5;
-  background: transparent;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: none;
   text-align: left;
   cursor: pointer;
 }
-.commit-item:last-child {
-  border-bottom: none;
-}
 .commit-item:hover {
-  background: #fafafa;
+  background: var(--bg);
 }
 .commit-item.selected {
-  background: #e6f4ff;
+  background: var(--soft);
+  border-color: var(--soft-border);
+  color: var(--blue);
 }
 .commit-order {
   width: 34px;
-  font-weight: 600;
-  color: #1677ff;
+  font-weight: 700;
+  color: var(--blue);
 }
 .commit-sha {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #595959;
+  font-family: var(--font-mono);
+  color: #334155;
 }
 .commit-message {
   flex: 1;

@@ -206,17 +206,17 @@ function close() {
   margin-bottom: 12px;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
 }
 .notice {
-  background: #f7f9fc;
-  border: 1px solid #e3e9f0;
-  padding: 8px 10px;
-  border-radius: 6px;
-  color: #4d5d70;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 13px 16px;
+  border-radius: 14px;
+  color: var(--muted);
   font-size: 12px;
 }
 .tabs {
@@ -235,9 +235,9 @@ function close() {
   margin: 0;
   padding: 12px;
   background: #f6f8fc;
-  border: 1px solid #e3e9f0;
-  border-radius: 6px;
-  font: 12px/1.8 Consolas, 'Cascadia Code', monospace;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font: 12px/1.95 Consolas, 'Cascadia Code', monospace;
   white-space: pre;
 }
 </style>

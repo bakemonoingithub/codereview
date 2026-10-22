@@ -114,7 +114,7 @@ function onScroll() {
     margin-bottom: 8px;
   }
   :deep(.commit-row-active) td {
-    background: #e6f4ff !important;
+    background: var(--soft) !important;
   }
 }
 </style>

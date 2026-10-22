@@ -182,6 +182,6 @@ function onResized(event: any) {
   background: transparent;
 }
 :deep(.splitpanes__splitter:hover) {
-  background: #e6f4ff;
+  background: var(--soft);
 }
 </style>

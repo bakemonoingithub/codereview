@@ -43,4 +43,7 @@
   --font: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
   --font-mono: Consolas, "Cascadia Code", monospace;
   --focus: 0 0 0 3px #2563eb1f;
+  --preview: #f6f8fc;
+  --row-line: #edf1f6;
+  --code-ink: #34516e;
 }
