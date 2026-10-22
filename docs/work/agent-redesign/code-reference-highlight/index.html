@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>代码引用定位与多段高亮 · 交互草稿</title>
+<style>
+:root{
+  --ink:#0f172a; --muted:#64748b; --faint:#94a3b8; --line:#e8edf3;
+  --control-border:#e2e8f0; --control-border-hover:#cbd5e1;
+  --bg:#f8fafc; --blue:#2563eb; --blue-hover:#1d4ed8; --soft:#eff4ff;
+  --soft-border:#bfd2fb; --soft-border-2:#dbe6fe; --focus-border:#93b4f5;
+  --green:#059669; --green-soft:#eaf7ef; --amber:#b45309; --amber-soft:#fff4e5;
+  --red:#dc2626; --red-soft:#fff0ef;
+  --notice:#f3f7ff; --notice-border:#d8e6fb; --notice-ink:#46628a;
+  --radius:20px; --radius-modal:24px;
+  --shadow:0 1px 2px #0f172a0a, 0 4px 16px #0f172a08;
+  --shadow-control:0 1px 2px #0f172a0d;
+  --shadow-modal:0 30px 80px #0f172a33;
+  --mask:#0f172a59;
+  --font:"Inter","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;
+  --font-mono:Consolas,"Cascadia Code",monospace;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;color:var(--ink);background:var(--bg);font:14px/1.65 var(--font);-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.45}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+code,.mono{font-family:var(--font-mono)}
+code{font-size:12px;background:#f1f5f9;border:1px solid var(--control-border);border-radius:6px;color:#334155;padding:1px 6px}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.spacer{flex:1}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+[hidden]{display:none!important}
+
+/* ---------- 页面外壳 ---------- */
+.appbar{position:sticky;top:0;z-index:8;display:flex;align-items:center;gap:18px;height:60px;padding:0 32px;background:#ffffffd9;border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+.brand{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;letter-spacing:-.2px}
+.brand-mark{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.3px;box-shadow:0 6px 14px #2563eb33}
+.crumb{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px;white-space:nowrap}
+.crumb b{color:#334760;font-weight:600}
+.crumb .sep{color:#cbd5e1}
+.draft-badge{margin-left:auto;padding:3px 11px;border-radius:999px;background:var(--soft);border:1px solid var(--soft-border-2);color:var(--blue);font-size:11.5px;font-weight:650;white-space:nowrap}
+
+.page{max-width:1600px;margin:0 auto;padding:24px 32px 64px}
+.page-head{display:flex;align-items:flex-end;gap:20px;margin-bottom:18px}
+h1{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1.3}
+.meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;color:var(--muted);font-size:12.5px}
+.meta .dot{color:#cbd5e1}
+.head-tags{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+
+.layout{display:grid;grid-template-columns:296px minmax(0,1fr);gap:20px;align-items:start}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+.panel-head strong{font-size:13px;font-weight:650}
+.panel-head .count{color:var(--muted);font-size:12px}
+.file-item{display:block;width:100%;padding:15px 20px 16px;border:0;border-left:3px solid var(--blue);background:var(--soft);color:var(--ink);text-align:left}
+.file-path{display:block;font:12.5px/1.6 var(--font-mono);color:#334155;overflow-wrap:anywhere}
+.file-meta{display:flex;align-items:center;gap:8px;margin-top:10px}
+
+.tabs{display:flex;gap:8px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.tab{padding:6px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;color:#475569;font-size:13px;font-weight:600;box-shadow:var(--shadow-control)}
+.tab:hover:not(.on){background:var(--bg);border-color:var(--control-border-hover)}
+.tab.on{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 6px 16px #2563eb38}
+
+.result-body{padding:18px 22px 26px}
+.summary{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:15px 18px;margin-bottom:18px}
+.summary-top{display:flex;align-items:center;gap:8px}
+.summary-text{margin-top:10px;font-size:14px;line-height:1.8;color:#1e293b;max-width:980px}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;background:#eef2f7;color:#5d6c80;font-size:11.5px;font-weight:650;line-height:1.7;white-space:nowrap}
+.tag.blue{background:var(--soft);color:var(--blue)}
+.tag.range{font-family:var(--font-mono);letter-spacing:.1px}
+.tag.green{background:var(--green-soft);color:var(--green)}
+.tag.amber{background:var(--amber-soft);color:var(--amber)}
+
+.issue{padding:20px 2px 22px;border-bottom:1px solid var(--line)}
+.issue:last-of-type{border-bottom:0;padding-bottom:6px}
+.issue-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.issue-head strong{font-size:15.5px;font-weight:650;letter-spacing:-.1px}
+.body-text{margin-top:12px;font-size:13.5px;line-height:1.9;color:#334155;max-width:920px}
+.suggestion{margin-top:10px;font-size:13px;line-height:1.85;color:#475569;max-width:920px}
+.suggestion strong{color:#334155}
+.locations{margin-top:14px}
+.loc-label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.loc-count{color:var(--faint);font-variant-numeric:tabular-nums}
+.loc-links{display:flex;flex-direction:column;align-items:flex-start;margin-top:2px}
+.source-link{padding:3px 6px;margin-left:-6px;border:1px solid transparent;border-radius:8px;background:none;color:var(--blue);font:12.5px/1.7 var(--font-mono);text-align:left}
+.source-link:hover{background:var(--soft)}
+.more-issues{margin-top:16px;padding:12px 14px;border:1px dashed #d7dfe9;border-radius:12px;background:#fbfcfe;color:var(--muted);font-size:12.5px;line-height:1.7}
+
+.material-row{display:flex;align-items:center;gap:18px;margin-top:14px;padding:16px 18px;border:1px solid var(--line);border-radius:14px}
+.material-main{min-width:0;flex:1}
+.material-main code{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:none;border:0;padding:0;font-size:12.5px;color:#334155}
+.material-main p{margin-top:6px;font-size:12px}
+.hint{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.7}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 14px;border:1px solid var(--control-border);border-radius:10px;background:#fff;color:var(--ink);font-size:12.5px;font-weight:600;box-shadow:var(--shadow-control);white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--control-border-hover);background:var(--bg)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 6px 16px #2563eb38}
+.mini-table{width:100%;margin-top:12px;border-collapse:collapse;font-size:12.5px}
+.mini-table th{padding:9px 12px;background:#fafbfc;color:var(--muted);font-weight:600;text-align:left;border-bottom:1px solid var(--line)}
+.mini-table td{padding:11px 12px;border-bottom:1px solid #edf1f6}
+.mini-table tr:last-child td{border-bottom:0}
+
+/* ---------- 原型控制 ---------- */
+.scenario{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:22px;padding:14px 18px;border:1px dashed #cbd5e1;border-radius:16px;background:#fff;color:var(--muted);font-size:12.5px}
+.scenario strong{color:var(--ink);font-size:12.5px}
+.scenario label{display:inline-flex;align-items:center;gap:6px}
+.scenario input[type=radio]{accent-color:var(--blue);margin:0}
+.scenario .ghost{height:30px;padding:0 12px;border:1px solid var(--control-border);border-radius:999px;background:#fff;color:var(--ink);font-size:12px;font-weight:600}
+.scenario-note{flex-basis:100%;margin:0;color:var(--faint);font-size:11.5px;line-height:1.6}
+.proto-note{margin-top:14px;color:var(--faint);font-size:11.5px;line-height:1.7}
+
+/* ---------- 代码弹窗 ---------- */
+.code-modal{width:min(1160px,calc(100vw - 40px));height:min(90vh,840px);max-width:none;max-height:none;padding:0;border:0;border-radius:var(--radius-modal);background:#fff;color:var(--ink);box-shadow:var(--shadow-modal);overflow:hidden}
+.code-modal:focus{outline:none}
+.code-modal[open]{display:flex;flex-direction:column}
+.code-modal::backdrop{background:var(--mask);backdrop-filter:blur(4px)}
+.cm-head{display:flex;align-items:flex-start;gap:16px;padding:16px 22px 14px;border-bottom:1px solid var(--line);background:#fff}
+.cm-head-main{min-width:0;flex:1}
+.cm-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cm-title-row h2{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.cm-sub{display:flex;align-items:center;gap:16px;min-width:0;margin-top:3px}
+.cm-path{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font:12.5px/1.6 var(--font-mono)}
+.cm-meta{display:flex;align-items:center;gap:7px;flex:none;color:var(--faint);font-size:11.5px;white-space:nowrap}
+.cm-meta code{font-size:11.5px;padding:0 5px}
+.cm-close{flex:none;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--control-border);border-radius:10px;background:#fff;color:var(--muted);font-size:20px;line-height:1;box-shadow:var(--shadow-control)}
+.cm-close:hover{background:var(--bg);color:var(--ink)}
+
+.cm-bar{display:flex;align-items:center;gap:16px;padding:10px 22px;border-bottom:1px solid var(--line);background:#fff}
+.seg{display:flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.seg button{padding:5px 12px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--blue);color:#fff;box-shadow:0 4px 10px #2563eb33}
+.cm-scope{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.cm-source-note{color:var(--faint);font-size:11.5px;white-space:nowrap}
+.cm-scope b{color:var(--ink);font-weight:650}
+.cm-nav{display:flex;align-items:center;gap:8px;margin-left:auto}
+.nav-btn{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border:1px solid var(--control-border);border-radius:10px;background:#fff;color:var(--ink);font-size:12.5px;font-weight:600;box-shadow:var(--shadow-control)}
+.nav-btn:hover:not(:disabled){border-color:var(--control-border-hover);background:var(--bg)}
+.nav-btn:disabled{box-shadow:none}
+.cm-counter{min-width:58px;text-align:center;color:var(--ink);font-size:12.5px;font-weight:650;font-variant-numeric:tabular-nums}
+
+.cm-banner{display:flex;align-items:center;gap:10px;margin:10px 22px 0;padding:9px 12px;border:1px solid var(--notice-border);border-radius:12px;background:var(--notice);color:var(--notice-ink);font-size:12.5px;line-height:1.6}
+.cm-banner .btn{height:28px;padding:0 10px;font-size:12px;background:#fff;border-color:var(--soft-border-2);color:var(--blue);box-shadow:none}
+
+.cm-code-wrap{position:relative;display:flex;flex:1;min-height:0;background:#fff}
+.cm-code{flex:1;min-width:0;overflow:auto;overscroll-behavior:contain;scroll-behavior:auto;background:#fff}
+.cm-code:focus-visible{outline:2px solid var(--focus-border);outline-offset:-2px}
+.code-body{min-width:max-content;padding:6px 0 36px}
+.code-empty{padding:26px;color:var(--muted);font-size:13px;text-align:center}
+.code-row{display:flex;align-items:stretch;min-height:22px;--row-bg:#fff;background:var(--row-bg);font:12.5px/22px var(--font-mono)}
+.code-row .ln{position:sticky;left:0;z-index:2;flex:none;width:70px;padding:0 14px 0 0;border-left:3px solid transparent;background:var(--row-bg);color:var(--faint);text-align:right;font-variant-numeric:tabular-nums;user-select:none}
+.code-row .ln .n{display:inline-block;min-width:20px;line-height:18px;border-radius:6px}
+.code-row .src{padding:0 32px 0 4px;color:#1e293b;white-space:pre}
+.code-row.hl{--row-bg:#eef4ff}
+.code-row.hl .ln{border-left-color:#a9c4f4;color:#4f6f9f}
+.code-row.cur{--row-bg:#dce9ff}
+.code-row.cur .ln{border-left-color:var(--blue);color:#1d4ed8;font-weight:650}
+.code-row.cur.start .ln .n{padding:0 5px;background:var(--blue);color:#fff}
+.code-row.flash{animation:refPulse .7s ease-out}
+@keyframes refPulse{0%{box-shadow:inset 0 0 0 999px #2563eb2e}100%{box-shadow:inset 0 0 0 999px transparent}}
+.tk-k{color:#1d4ed8}
+.tk-s{color:#047857}
+.tk-c{color:#93a1b3;font-style:italic}
+.tk-a{color:#9a6700}
+.tk-n{color:#b45309}
+
+.sk{width:min(520px,82%);display:flex;flex-direction:column;gap:10px}
+.sk i{display:block;height:10px;border-radius:999px;background:linear-gradient(90deg,#f1f5f9,#e2e8f0,#f1f5f9);background-size:200% 100%;animation:shimmer 1.1s linear infinite}
+.sk i:nth-child(2){width:88%}
+.sk i:nth-child(3){width:72%}
+.sk i:nth-child(4){width:94%}
+.sk i:nth-child(5){width:64%}
+@keyframes shimmer{to{background-position:-200% 0}}
+.cm-state{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:32px;background:#fff;color:var(--muted);font-size:12.5px;text-align:center}
+.cm-state strong{color:var(--ink);font-size:14px}
+.cm-state .icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--red-soft);color:var(--red);font-size:20px;font-weight:700}
+.cm-state p{max-width:460px;line-height:1.7}
+.state-actions{display:flex;gap:8px;margin-top:2px}
+
+.cm-foot{display:flex;align-items:center;gap:16px;padding:11px 22px;border-top:1px solid var(--line);background:#fbfcfe;color:var(--muted);font-size:11.5px}
+.legend{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.sw{display:inline-block;width:11px;height:11px;border:1px solid transparent;border-radius:3px}
+.sw.cur{background:#dce9ff;border-color:#93b4f5}
+.sw.same{background:#eef4ff;border-color:#c7d8f6;margin-left:8px}
+.cm-hint{color:var(--faint);white-space:nowrap}
+.kbd-hint kbd{display:inline-block;min-width:18px;padding:0 4px;border:1px solid var(--control-border);border-bottom-width:2px;border-radius:5px;background:#fff;color:#64748b;font:11px/16px var(--font-mono);text-align:center}
+.cm-foot .btn{height:30px;padding:0 12px;font-size:12px}
+
+.toast{position:fixed;left:50%;bottom:26px;z-index:20;max-width:80vw;padding:10px 18px;border-radius:12px;background:var(--ink);color:#fff;font-size:12.5px;box-shadow:0 12px 30px #0f172a33;opacity:0;transform:translate(-50%,8px);pointer-events:none;transition:opacity .18s,transform .18s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:1200px){
+  .page{padding:20px 22px 56px}
+  .appbar{padding:0 22px}
+  .layout{grid-template-columns:260px minmax(0,1fr)}
+  .kbd-hint,.cm-source-note{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .cm-code,.toast{scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="brand"><span class="brand-mark">CR</span>智能代码分析</div>
+  <nav class="crumb" aria-label="面包屑">
+    工作空间<span class="sep">/</span>审查中心<span class="sep">/</span><b>任务详情</b>
+  </nav>
+  <span class="draft-badge">交互草稿 · 演示数据</span>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <div>
+      <h1>TaskService 规范问题</h1>
+      <p class="meta">
+        <span>codereview</span><span class="dot">·</span>
+        <span>问题审查</span><span class="dot">·</span>
+        <span>refactor/agent</span><span class="dot">·</span>
+        <span>固定版本 <code>b8b0b50</code></span><span class="dot">·</span>
+        <span>2026-10-22 02:35</span>
+      </p>
+    </div>
+    <div class="head-tags">
+      <span class="tag green">已完成</span>
+      <span class="tag blue">问题审查</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="card">
+      <div class="panel-head"><strong>目标文件</strong><span class="count">1 个</span></div>
+      <button class="file-item" type="button" aria-current="true" title="backend/src/main/java/com/codereview/agent/service/TaskService.java">
+        <span class="file-path">backend/src/main/java/com/codereview/agent/service/TaskService.java</span>
+        <span class="file-meta"><span class="tag green">已完成</span><span class="muted small">7 个问题</span></span>
+      </button>
+    </aside>
+
+    <section class="card">
+      <div class="tabs" role="tablist" aria-label="结果视图">
+        <button class="tab on" type="button" role="tab" aria-selected="true" data-tab="result">审查结果</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="materials">材料与边界</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-tab="calls">实际调用</button>
+      </div>
+
+      <div class="result-body" id="panel-result" role="tabpanel">
+        <div class="summary">
+          <div class="summary-top">
+            <span class="tag blue">问题审查</span>
+            <span class="muted small">协议 v1</span>
+            <span class="spacer"></span>
+            <span class="muted small">2026-10-22 02:35:32</span>
+          </div>
+          <p class="summary-text">TaskService 整体结构清晰，但存在 public 方法缺少 Javadoc、异常被静默吞掉、事务边界与取消操作非原子、日志缺失等规范问题。</p>
+        </div>
+        <div id="issues"></div>
+      </div>
+
+      <div class="result-body" id="panel-materials" role="tabpanel" hidden>
+        <div class="material-row">
+          <div class="material-main">
+            <code title="backend/src/main/java/com/codereview/agent/service/TaskService.java">backend/src/main/java/com/codereview/agent/service/TaskService.java</code>
+            <p class="muted small">b8b0b50 · 第 88–430 行 · 文件 · 分析目标 · 已发送</p>
+          </div>
+          <button class="btn" type="button" data-open-material>查看代码</button>
+        </div>
+        <p class="hint">从材料页进入时不带问题上下文，因此不标记任何引用；扩展全文不会改变实际发送内容。</p>
+      </div>
+
+      <div class="result-body" id="panel-calls" role="tabpanel" hidden>
+        <table class="mini-table">
+          <thead><tr><th>尝试</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>传输尝试 1<span class="muted small"> · 单元未记录 · 初次分析</span></td>
+              <td><span class="tag green">成功</span></td>
+              <td class="muted">02:35:12</td>
+              <td><button class="btn" type="button" data-call>完整输入 / 输出</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="hint">本次草稿聚焦问题引用的代码定位；实际调用阅读保持现有入口，未在草稿中重做。</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="scenario">
+    <strong>原型控制</strong>
+    <span>读取状态</span>
+    <label><input type="radio" name="scenario" value="normal" checked> 正常</label>
+    <label><input type="radio" name="scenario" value="error"> 固定版本全文读取失败</label>
+    <span class="spacer"></span>
+    <button class="ghost" type="button" id="scenario-reset">重置演示</button>
+    <p class="scenario-note">仅本次草稿使用，正式实现不会出现此区域。代码取自工作区 TaskService.java（b8b0b50），引用行号已按当前文件对齐。</p>
+  </div>
+  <p class="proto-note">交互草稿 · 2026-10-22 · 演示数据不连接后端；点击「位置」中的任一链接查看定位、多段高亮与上一处／下一处。</p>
+</main>
+
+<dialog class="code-modal" id="code-modal" tabindex="-1" aria-labelledby="cm-title">
+  <div class="cm-head">
+    <div class="cm-head-main">
+      <div class="cm-title-row">
+        <h2 id="cm-title">TaskService.java</h2>
+        <span class="tag" id="cm-kind">问题引用</span>
+        <span class="tag blue range" id="cm-range">定位 第 97 行</span>
+      </div>
+      <div class="cm-sub">
+        <span class="cm-path" id="cm-path">backend/src/main/java/com/codereview/agent/service/TaskService.java</span>
+        <span class="cm-meta"><span>固定版本 <code>b8b0b50</code></span><span>·</span><span>文件侧</span><span>·</span><span id="cm-sent">本次发送第 88–430 行</span></span>
+      </div>
+    </div>
+    <button class="cm-close" type="button" id="cm-close" aria-label="关闭代码阅读">×</button>
+  </div>
+
+  <div class="cm-bar">
+    <div class="seg" role="group" aria-label="代码来源">
+      <button type="button" data-mode="saved">保存片段</button>
+      <button type="button" data-mode="full" class="on" aria-pressed="true">固定版本全文</button>
+    </div>
+    <span class="cm-source-note" id="cm-source-note">扩展阅读 · 不改变实际发送内容</span>
+    <p class="cm-scope" id="cm-scope">本问题在此文件的 <b>8</b> 处引用</p>
+    <div class="cm-nav" id="cm-nav">
+      <button class="nav-btn" type="button" id="cm-prev">↑ 上一处</button>
+      <span class="cm-counter" id="cm-counter" aria-live="polite">1 / 8</span>
+      <button class="nav-btn" type="button" id="cm-next">下一处 ↓</button>
+    </div>
+  </div>
+
+  <div class="cm-banner" id="cm-banner" hidden></div>
+
+  <div class="cm-code-wrap">
+    <div class="cm-code" id="cm-code" tabindex="0" aria-label="代码内容">
+      <div class="code-body" id="code-body"></div>
+    </div>
+    <div class="cm-state" id="cm-state" hidden></div>
+  </div>
+
+  <div class="cm-foot">
+    <span class="legend"><i class="sw cur"></i>当前引用<i class="sw same"></i>本问题其他引用</span>
+    <span class="spacer"></span>
+    <span class="cm-hint" id="cm-foot-hint">同一审查的其他问题引用不标记</span>
+    <span class="cm-hint kbd-hint"><kbd>Alt</kbd> + <kbd>←</kbd>/<kbd>→</kbd> 切换</span>
+    <button class="btn" type="button" id="cm-close-2">关闭</button>
+  </div>
+  <p class="sr-only" aria-live="polite" id="cm-live"></p>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const SOURCE = ["package com.codereview.agent.service;","","import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;","import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;","import com.codereview.agent.api.ApiException;","import com.codereview.agent.api.ErrorCode;","import com.codereview.agent.api.PageResponse;","import com.codereview.agent.db.AgentDatabase;","import com.codereview.agent.dto.TaskDtos;","import com.codereview.agent.entity.AgentCallMaterial;","import com.codereview.agent.entity.AgentExecutionUnit;","import com.codereview.agent.entity.AgentIssue;","import com.codereview.agent.entity.AgentMaterial;","import com.codereview.agent.entity.AgentModelCall;","import com.codereview.agent.entity.AgentReviewResult;","import com.codereview.agent.entity.AgentModelConfig;","import com.codereview.agent.entity.AgentProject;","import com.codereview.agent.entity.AgentPrompt;","import com.codereview.agent.entity.AgentPromptVersion;","import com.codereview.agent.entity.AgentReviewStrategy;","import com.codereview.agent.entity.AgentReviewTask;","import com.codereview.agent.entity.AgentTaskQuota;","import com.codereview.agent.entity.AgentTaskTarget;","import com.codereview.agent.execution.TaskDispatchService;","import com.codereview.agent.execution.TaskProperties;","import com.codereview.agent.execution.TaskStates;","import com.codereview.agent.invocation.ModelInvocationProperties;","import com.codereview.agent.mapper.AgentCallMaterialMapper;","import com.codereview.agent.mapper.AgentExecutionUnitMapper;","import com.codereview.agent.mapper.AgentIssueMapper;","import com.codereview.agent.mapper.AgentMaterialMapper;","import com.codereview.agent.mapper.AgentModelCallMapper;","import com.codereview.agent.mapper.AgentModelConfigMapper;","import com.codereview.agent.mapper.AgentReviewResultMapper;","import com.codereview.agent.mapper.AgentProjectMapper;","import com.codereview.agent.mapper.AgentPromptMapper;","import com.codereview.agent.mapper.AgentPromptVersionMapper;","import com.codereview.agent.mapper.AgentReviewStrategyMapper;","import com.codereview.agent.mapper.AgentReviewTaskMapper;","import com.codereview.agent.mapper.AgentTaskQuotaMapper;","import com.codereview.agent.mapper.AgentTaskTargetMapper;","import com.codereview.agent.repository.RepositoryPaths;","import com.codereview.agent.repository.RepositoryReadService;","import com.codereview.agent.support.AgentIds;","import com.codereview.agent.support.AgentPaging;","import com.codereview.agent.support.AgentTime;","import com.fasterxml.jackson.core.JsonProcessingException;","import com.fasterxml.jackson.databind.JsonNode;","import com.fasterxml.jackson.databind.ObjectMapper;","import com.fasterxml.jackson.databind.node.ObjectNode;","import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;","import org.springframework.dao.DuplicateKeyException;","import org.springframework.stereotype.Service;","","import java.nio.charset.StandardCharsets;","import java.security.MessageDigest;","import java.security.NoSuchAlgorithmException;","import java.time.LocalDateTime;","import java.util.ArrayList;","import java.util.Comparator;","import java.util.HashSet;","import java.util.HexFormat;","import java.util.LinkedHashMap;","import java.util.List;","import java.util.Map;","import java.util.Set;","import java.util.stream.Collectors;","","/**"," * 任务 v2 服务：幂等创建、固定来源快照、目标记录、取消和读取。"," *"," * \u003cp>创建时固定模型、策略、提示词版本和来源 SHA，后续配置修改只影响新任务。"," * 凭据不进入输入或配置快照；复制参数只返回可编辑项。"," */","@Service","@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")","public class TaskService {","","    private final AgentDatabase db;","    private final ObjectMapper mapper;","    private final RepositoryReadService repository;","    private final TaskDispatchService dispatcher;","    private final ModelInvocationProperties modelProperties;","    private final TaskProperties taskProperties;","","    public TaskService(AgentDatabase db, ObjectMapper mapper, RepositoryReadService repository,","                       TaskDispatchService dispatcher, ModelInvocationProperties modelProperties,","                       TaskProperties taskProperties) {","        this.db = db;","        this.mapper = mapper;","        this.repository = repository;","        this.dispatcher = dispatcher;","        this.modelProperties = modelProperties;","        this.taskProperties = taskProperties;","    }","","    public TaskDtos.View create(TaskDtos.Create req, String idempotencyKey) {","        String key = normalizeKey(idempotencyKey);","        String requestHash = sha256(requestJson(req));","        AgentProject project = requireProject(req.projectId());","        if (key != null) {","            AgentReviewTask existing = findByKey(project.getId(), key);","            if (existing != null) {","                return replay(existing, requestHash);","            }","        }","","        String specialistType = normalizeSpecialist(req.specialistType());","        String route = normalizeRoute(req.route());","        ResolvedConfig config = resolveConfig(req, specialistType);","        ResolvedSource source = resolveSource(req.source(), project);","        List\u003cNormalizedTarget> targets = normalizeTargets(req.targets());","","        AgentReviewTask task = new AgentReviewTask();","        task.setId(AgentIds.next());","        task.setProjectId(project.getId());","        task.setName(normalizeName(req.name(), task.getId()));","        task.setRoute(route);","        task.setSpecialistType(specialistType);","        task.setState(TaskStates.QUEUED);","        task.setInputSnapshot(inputSnapshot(project, source, targets, Boolean.TRUE.equals(req.smartSplit())));","        task.setConfigSnapshot(configSnapshot(config));","        task.setIdempotencyKey(key);","        task.setRequestHash(key == null ? null : requestHash);","        task.setRevision(0);","        task.setCreatedAt(AgentTime.now());","        task.setUpdatedAt(AgentTime.now());","        task.setDeadlineAt(AgentTime.now().plusMinutes(Math.max(1, taskProperties.getDeadlineMinutes())));","","        try {","            db.inTransaction(() -> {","                db.mapper(AgentReviewTaskMapper.class).insert(task);","                insertTargets(task, source, targets);","                insertQuota(task.getId());","                return null;","            });","        } catch (DuplicateKeyException race) {","            if (key != null) {","                AgentReviewTask existing = findByKey(project.getId(), key);","                if (existing != null) {","                    return replay(existing, requestHash);","                }","            }","            throw race;","        }","        dispatcher.dispatch(task.getId());","        return toView(task);","    }","","    public PageResponse\u003cTaskDtos.Summary> list(String projectId, String route, String type, String state,","                                               String q, String cursor, Integer limit) {","        return list(projectId, route, type, state, q, cursor, limit, null, null);","    }","","    public PageResponse\u003cTaskDtos.Summary> list(String projectId, String route, String type, String state,","                                               String q, String cursor, Integer limit, Integer pageNum, Integer pageSize) {","        LambdaQueryWrapper\u003cAgentReviewTask> wrapper = new LambdaQueryWrapper\u003c>();","        if (projectId != null && !projectId.isBlank()) {","            wrapper.eq(AgentReviewTask::getProjectId, projectId.trim());","        }","        if (q != null && !q.isBlank()) {","            String keyword = q.trim();","            wrapper.and(nested -> nested.likeRight(AgentReviewTask::getId, keyword.toUpperCase())","                    .or()","                    .like(AgentReviewTask::getName, keyword));","        }","        if (route != null && !route.isBlank()) {","            wrapper.eq(AgentReviewTask::getRoute, route.trim().toUpperCase());","        }","        if (type != null && !type.isBlank()) {","            wrapper.eq(AgentReviewTask::getSpecialistType, type.trim().toUpperCase());","        }","        if (state != null && !state.isBlank()) {","            wrapper.eq(AgentReviewTask::getState, state.trim().toUpperCase());","        }","        PageResponse\u003cAgentReviewTask> page = AgentPaging.query(","                db.mapper(AgentReviewTaskMapper.class), wrapper, cursor, limit, pageNum, pageSize,","                AgentReviewTask::getCreatedAt, AgentReviewTask::getId);","        List\u003cString> ids = page.items().stream().map(AgentReviewTask::getId).toList();","        Map\u003cString, List\u003cAgentTaskTarget>> targets = targetsByTask(ids);","        List\u003cTaskDtos.Summary> summaries = page.items().stream()","                .map(task -> summary(task, targets.getOrDefault(task.getId(), List.of())))","                .toList();","        return page.withItems(summaries);","    }","","    public TaskDtos.View detail(String id) {","        return toView(requireTask(id));","    }","","    public TaskDtos.View cancel(String id, int expectedRevision) {","        AgentReviewTask task = requireTask(id);","        if (TaskStates.isTerminal(task.getState())) {","            return toView(task);","        }","        if (task.getRevision() != expectedRevision) {","            throw revisionConflict(task.getRevision());","        }","        LocalDateTime now = AgentTime.now();","        int affected = db.mapper(AgentReviewTaskMapper.class).update(null,","                new LambdaUpdateWrapper\u003cAgentReviewTask>()","                        .eq(AgentReviewTask::getId, id)","                        .eq(AgentReviewTask::getRevision, expectedRevision)","                        .in(AgentReviewTask::getState, TaskStates.QUEUED, TaskStates.RUNNING)","                        .set(AgentReviewTask::getState, TaskStates.CANCELLED)","                        .set(AgentReviewTask::getStopReason, TaskStates.STOP_USER_CANCELLED)","                        .set(AgentReviewTask::getCancelRequestedAt, now)","                        .set(AgentReviewTask::getFinishedAt, now)","                        .set(AgentReviewTask::getUpdatedAt, now)","                        .setSql(\"revision = revision + 1\"));","        if (affected == 0) {","            AgentReviewTask current = requireTask(id);","            if (TaskStates.isTerminal(current.getState())) {","                return toView(current);","            }","            throw revisionConflict(current.getRevision());","        }","        db.mapper(AgentTaskTargetMapper.class).update(null,","                new LambdaUpdateWrapper\u003cAgentTaskTarget>()","                        .eq(AgentTaskTarget::getTaskId, id)","                        .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)","                        .set(AgentTaskTarget::getState, TaskStates.CANCELLED)","                        .set(AgentTaskTarget::getErrorCode, TaskStates.STOP_USER_CANCELLED)","                        .set(AgentTaskTarget::getUpdatedAt, now)","                        .setSql(\"revision = revision + 1\"));","        return toView(requireTask(id));","    }","","    public TaskDtos.CopyInput copyInput(String id) {","        AgentReviewTask task = requireTask(id);","        JsonNode input = readJson(task.getInputSnapshot());","        JsonNode source = input.path(\"source\");","        List\u003cTaskDtos.TargetCopy> targets = new ArrayList\u003c>();","        for (JsonNode target : input.path(\"targets\")) {","            targets.add(new TaskDtos.TargetCopy(target.path(\"path\").asText(),","                    textOrNull(target, \"oldPath\"), textOrNull(target, \"note\")));","        }","        JsonNode config = readJson(task.getConfigSnapshot());","        String strategyId = textOrNull(config.path(\"strategy\"), \"id\");","        String modelId = textOrNull(config.path(\"model\"), \"id\");","        String kind = source.path(\"kind\").asText(\"FILES\");","        return new TaskDtos.CopyInput(task.getProjectId(), task.getRoute(), task.getSpecialistType(),","                kind, textOrNull(source, \"branch\"), textOrNull(source, \"commitSha\"),","                textOrNull(source, \"baseSha\"), targets, strategyId, modelId,","                input.path(\"smartSplit\").asBoolean(false), \"FILES\".equals(kind),","                TaskNames.display(task.getName(), task.getId()));","    }","","    public PageResponse\u003cTaskDtos.CallSummary> calls(String taskId, String targetId, String unitId,","                                                    String cursor, Integer limit) {","        requireTask(taskId);","        int size = AgentPaging.limit(limit);","        LambdaQueryWrapper\u003cAgentModelCall> wrapper = new LambdaQueryWrapper\u003cAgentModelCall>()","                .select(AgentModelCall::getId, AgentModelCall::getTargetId, AgentModelCall::getUnitId,","                        AgentModelCall::getPurpose, AgentModelCall::getAttempt, AgentModelCall::getState,","                        AgentModelCall::getErrorCode, AgentModelCall::getCreatedAt,","                        AgentModelCall::getStartedAt, AgentModelCall::getFinishedAt)","                .eq(AgentModelCall::getTaskId, taskId);","        if (targetId != null && !targetId.isBlank()) {","            wrapper.eq(AgentModelCall::getTargetId, targetId.trim());","        }","        if (unitId != null && !unitId.isBlank()) {","            wrapper.eq(AgentModelCall::getUnitId, unitId.trim());","        }","        AgentPaging.applyCursor(wrapper, cursor, AgentModelCall::getCreatedAt, AgentModelCall::getId);","        AgentPaging.applyOrder(wrapper, AgentModelCall::getCreatedAt, AgentModelCall::getId);","        wrapper.last(\"limit \" + (size + 1));","        PageResponse\u003cAgentModelCall> page = AgentPaging.assemble(","                db.mapper(AgentModelCallMapper.class).selectList(wrapper), size,","                AgentModelCall::getCreatedAt, AgentModelCall::getId);","        List\u003cString> unitIds = page.items().stream().map(AgentModelCall::getUnitId)","                .filter(java.util.Objects::nonNull).distinct().toList();","        Map\u003cString, AgentExecutionUnit> units = unitIds.isEmpty() ? Map.of()","                : db.mapper(AgentExecutionUnitMapper.class).selectList(","                        new LambdaQueryWrapper\u003cAgentExecutionUnit>().in(AgentExecutionUnit::getId, unitIds))","                .stream().collect(Collectors.toMap(AgentExecutionUnit::getId, value -> value));","        List\u003cTaskDtos.CallSummary> items = page.items().stream()","                .map(call -> new TaskDtos.CallSummary(call.getId(), call.getTargetId(), call.getUnitId(),","                        call.getPurpose(), call.getAttempt() == null ? 1 : call.getAttempt(),","                        call.getState(), call.getErrorCode(), call.getCreatedAt(),","                        call.getStartedAt(), call.getFinishedAt(),","                        call.getUnitId() != null && units.containsKey(call.getUnitId()) ? units.get(call.getUnitId()).getGeneration() : null,","                        call.getUnitId() != null && units.containsKey(call.getUnitId()) ? units.get(call.getUnitId()).getOrdinal() : null))","                .toList();","        return new PageResponse\u003c>(items, page.nextCursor(), page.hasMore());","    }","","    public TaskDtos.CallDetail callDetail(String callId, String part) {","        AgentModelCall call = db.mapper(AgentModelCallMapper.class)","                .selectById(AgentIds.requireValid(callId, \"调用 ID\"));","        if (call == null) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"调用记录不存在：\" + callId);","        }","        String normalized = part == null ? \"response\" : part.trim().toLowerCase();","        String content;","        if (\"request\".equals(normalized)) {","            content = call.getRequestBody();","        } else if (\"response\".equals(normalized)) {","            content = call.getResponseBody();","        } else {","            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"part 只能是 request 或 response\",","                    Map.of(\"part\", part));","        }","        boolean complete = content != null;","        String text = content == null ? \"\" : content;","        return new TaskDtos.CallDetail(call.getId(), normalized, text,","                text.getBytes(StandardCharsets.UTF_8).length, sha256(text), complete);","    }","","    /**","     * 统一详情：按目标读取最近一次结果。结果正文和来源都是发布时保存的 JSON，","     * 不按当前提示词或最新源码重建。","     */","    public TaskDtos.ResultView result(String taskId, String targetId) {","        requireTask(taskId);","        requireTarget(taskId, targetId);","        List\u003cAgentReviewResult> rows = db.mapper(AgentReviewResultMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentReviewResult>()","                        .eq(AgentReviewResult::getTaskId, taskId)","                        .eq(AgentReviewResult::getTargetId, targetId)","                        .orderByDesc(AgentReviewResult::getCreatedAt)","                        .last(\"limit 1\"));","        if (rows.isEmpty()) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"该目标还没有已发布结果\");","        }","        AgentReviewResult row = rows.get(0);","        List\u003cAgentIssue> issues = db.mapper(AgentIssueMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentIssue>()","                        .eq(AgentIssue::getResultId, row.getId())","                        .orderByAsc(AgentIssue::getOrdinal));","        List\u003cTaskDtos.IssueView> issueViews = issues.stream()","                .map(issue -> new TaskDtos.IssueView(issue.getId(), issue.getOrdinal() == null ? 0 : issue.getOrdinal(),","                        issue.getCategory(), issue.getSeverity(), issue.getTitle(), issue.getReason(),","                        issue.getSuggestion(), readStoredJson(issue.getLocations(), true),","                        readStoredJson(issue.getSourceUnits(), true)))","                .toList();","        return new TaskDtos.ResultView(row.getId(), row.getTargetId(), row.getKind(),","                row.getSchemaVersion(), row.getCompleteness(), row.getCreatedAt(),","                readStoredJson(row.getBody(), false), issueViews, readStoredJson(row.getProvenance(), false));","    }","","    /** 目标实际发送过的材料；同一材料被多次调用引用时合并为一条。 */","    public List\u003cTaskDtos.MaterialView> materials(String taskId, String targetId) {","        requireTask(taskId);","        requireTarget(taskId, targetId);","        List\u003cAgentModelCall> calls = db.mapper(AgentModelCallMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentModelCall>()","                        .select(AgentModelCall::getId)","                        .eq(AgentModelCall::getTaskId, taskId)","                        .eq(AgentModelCall::getTargetId, targetId)","                        .orderByAsc(AgentModelCall::getCreatedAt));","        if (calls.isEmpty()) {","            return List.of();","        }","        List\u003cString> callIds = calls.stream().map(AgentModelCall::getId).toList();","        List\u003cAgentCallMaterial> links = db.mapper(AgentCallMaterialMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentCallMaterial>().in(AgentCallMaterial::getCallId, callIds));","        if (links.isEmpty()) {","            return List.of();","        }","        Map\u003cString, List\u003cAgentCallMaterial>> byMaterial = links.stream()","                .collect(Collectors.groupingBy(AgentCallMaterial::getMaterialId, LinkedHashMap::new,","                        Collectors.toList()));","        List\u003cAgentMaterial> rows = db.mapper(AgentMaterialMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentMaterial>().in(AgentMaterial::getId, byMaterial.keySet()));","        Map\u003cString, AgentMaterial> byId = rows.stream()","                .collect(Collectors.toMap(AgentMaterial::getId, material -> material));","        List\u003cTaskDtos.MaterialView> views = new ArrayList\u003c>();","        for (Map.Entry\u003cString, List\u003cAgentCallMaterial>> entry : byMaterial.entrySet()) {","            AgentMaterial material = byId.get(entry.getKey());","            if (material == null) {","                continue;","            }","            views.add(materialView(material, entry.getValue()));","        }","        views.sort(Comparator.comparing(TaskDtos.MaterialView::path)","                .thenComparing(TaskDtos.MaterialView::side)","                .thenComparingInt(TaskDtos.MaterialView::startLine));","        return views;","    }","","    /** 材料原文；只允许读取本任务调用实际关联过的材料。 */","    public TaskDtos.MaterialDetail material(String taskId, String materialId) {","        requireTask(taskId);","        String id = AgentIds.requireValid(materialId, \"材料 ID\");","        List\u003cString> callIds = db.mapper(AgentModelCallMapper.class).selectList(","                        new LambdaQueryWrapper\u003cAgentModelCall>()","                                .select(AgentModelCall::getId)","                                .eq(AgentModelCall::getTaskId, taskId))","                .stream().map(AgentModelCall::getId).toList();","        if (callIds.isEmpty()) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"材料不属于当前任务：\" + materialId);","        }","        List\u003cAgentCallMaterial> links = db.mapper(AgentCallMaterialMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentCallMaterial>()","                        .eq(AgentCallMaterial::getMaterialId, id)","                        .in(AgentCallMaterial::getCallId, callIds));","        if (links.isEmpty()) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"材料不属于当前任务：\" + materialId);","        }","        AgentMaterial row = db.mapper(AgentMaterialMapper.class).selectById(id);","        if (row == null) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"材料不存在：\" + materialId);","        }","        TaskDtos.MaterialView metadata = materialView(row, links);","        return new TaskDtos.MaterialDetail(metadata, row.getContent(), row.getContent() != null);","    }","","    /** 一次实际调用的完整输入/输出/错误；调用必须属于本任务。 */","    public TaskDtos.CallDetailFull callDetailFull(String taskId, String callId) {","        requireTask(taskId);","        AgentModelCall call = db.mapper(AgentModelCallMapper.class)","                .selectById(AgentIds.requireValid(callId, \"调用 ID\"));","        if (call == null || !taskId.equals(call.getTaskId())) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"调用记录不属于当前任务：\" + callId);","        }","        return new TaskDtos.CallDetailFull(call.getId(), call.getTargetId(), call.getUnitId(),","                call.getPurpose(), call.getAttempt() == null ? 1 : call.getAttempt(),","                call.getState(), call.getErrorCode(), call.getErrorMessage(), call.getRequestBody(),","                call.getResponseBody(), call.getUsageJson(), call.getCreatedAt(), call.getStartedAt(),","                call.getFinishedAt());","    }","","    private AgentTaskTarget requireTarget(String taskId, String targetId) {","        AgentTaskTarget target = db.mapper(AgentTaskTargetMapper.class)","                .selectById(AgentIds.requireValid(targetId, \"目标 ID\"));","        if (target == null || !taskId.equals(target.getTaskId())) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"目标不属于当前任务：\" + targetId);","        }","        return target;","    }","","    private TaskDtos.MaterialView materialView(AgentMaterial row, List\u003cAgentCallMaterial> links) {","        boolean sent = links.stream().anyMatch(link -> \"SENT\".equals(link.getDisposition()));","        String role = links.stream().anyMatch(link -> \"TARGET\".equals(link.getRole()))","                ? \"TARGET\" : links.get(0).getRole();","        return new TaskDtos.MaterialView(row.getId(), row.getPath(), row.getSha(), row.getSide(),","                row.getStartLine(), row.getEndLine(), role, sent ? \"SENT\" : links.get(0).getDisposition(),","                row.getCompleteness(), row.getDiagnostic(), row.getContentHash(), byteSize(row.getContent()), sent);","    }","","    private JsonNode readStoredJson(String value, boolean array) {","        try {","            JsonNode node = value == null ? null : mapper.readTree(value);","            if (node != null && (array ? node.isArray() : node.isObject())) return node;","        } catch (JsonProcessingException ignored) {","            // 保存数据损坏不能伪装为空结果。","        }","        throw new ApiException(ErrorCode.INTERNAL_ERROR, \"保存的结果或来源数据损坏，无法读取\");","    }","","    private static int byteSize(String content) {","        return content == null ? 0 : content.getBytes(StandardCharsets.UTF_8).length;","    }","","    private TaskDtos.View replay(AgentReviewTask existing, String requestHash) {","        if (existing.getRequestHash() != null && !existing.getRequestHash().equals(requestHash)) {","            throw new ApiException(ErrorCode.IDEMPOTENCY_CONFLICT,","                    \"同一 Idempotency-Key 已用于不同请求\", Map.of(\"taskId\", existing.getId()));","        }","        return toView(existing);","    }","","    private AgentReviewTask findByKey(String projectId, String key) {","        List\u003cAgentReviewTask> rows = db.mapper(AgentReviewTaskMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentReviewTask>()","                        .eq(AgentReviewTask::getProjectId, projectId)","                        .eq(AgentReviewTask::getIdempotencyKey, key)","                        .last(\"limit 1\"));","        return rows.isEmpty() ? null : rows.get(0);","    }","","    private ResolvedConfig resolveConfig(TaskDtos.Create req, String specialistType) {","        AgentReviewStrategy strategy = null;","        if (req.strategyId() != null && !req.strategyId().isBlank()) {","            strategy = db.mapper(AgentReviewStrategyMapper.class)","                    .selectById(AgentIds.requireValid(req.strategyId(), \"策略 ID\"));","            if (strategy == null) {","                throw new ApiException(ErrorCode.NOT_FOUND, \"策略不存在：\" + req.strategyId());","            }","            if (!specialistType.equals(strategy.getSpecialistType())) {","                throw new ApiException(ErrorCode.VALIDATION_FAILED,","                        \"策略类型与本次专项不一致：策略为 \" + strategy.getSpecialistType(),","                        Map.of(\"expected\", specialistType, \"actual\", strategy.getSpecialistType()));","            }","        }","        String requestedModel = req.modelConfigId() == null || req.modelConfigId().isBlank()","                ? null : req.modelConfigId().trim();","        String strategyModel = strategy == null ? null : strategy.getModelConfigId();","        if (requestedModel != null && strategyModel != null && !requestedModel.equals(strategyModel)) {","            throw new ApiException(ErrorCode.VALIDATION_FAILED,","                    \"选择策略时由策略带入模型，不能再指定另一个模型\",","                    Map.of(\"strategyModelId\", strategyModel, \"modelConfigId\", requestedModel));","        }","        String modelId = requestedModel != null ? requestedModel : strategyModel;","        if (modelId == null) {","            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"未选择策略时必须指定模型\");","        }","        AgentModelConfig model = db.mapper(AgentModelConfigMapper.class)","                .selectById(AgentIds.requireValid(modelId, \"模型 ID\"));","        if (model == null) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"模型不存在：\" + modelId);","        }","        AgentPrompt prompt = null;","        AgentPromptVersion promptVersion = null;","        if (strategy != null && strategy.getPromptId() != null) {","            prompt = db.mapper(AgentPromptMapper.class).selectById(strategy.getPromptId());","            if (prompt == null) {","                throw new ApiException(ErrorCode.NOT_FOUND, \"策略引用的提示词不存在\");","            }","            if (prompt.getCurrentVersionId() != null) {","                promptVersion = db.mapper(AgentPromptVersionMapper.class)","                        .selectById(prompt.getCurrentVersionId());","            }","        }","        return new ResolvedConfig(model, strategy, prompt, promptVersion);","    }","","    private ResolvedSource resolveSource(TaskDtos.Source source, AgentProject project) {","        String kind = source.kind() == null ? \"\" : source.kind().trim().toUpperCase();","        if (\"FILES\".equals(kind)) {","            String branch = source.branch() == null || source.branch().isBlank()","                    ? project.getCurrentBranch() : source.branch().trim();","            if (branch == null || branch.isBlank()) {","                throw new ApiException(ErrorCode.VALIDATION_FAILED, \"文件来源缺少分支\");","            }","            if (source.observedSha() == null || source.observedSha().isBlank()) {","                throw new ApiException(ErrorCode.VALIDATION_FAILED,","                        \"文件来源缺少 observedSha；发起前必须先取得确认过的提交\");","            }","            String observed = RepositoryPaths.requireFixedSha(source.observedSha());","            String head = repository.resolveBranchHead(project.getId(), branch);","            if (head == null || !head.equalsIgnoreCase(observed)) {","                throw new ApiException(ErrorCode.SOURCE_MOVED,","                        \"分支 \" + branch + \" 在确认后已移动，请刷新范围后重新提交\",","                        Map.of(\"branch\", branch, \"observedSha\", observed,","                                \"currentSha\", head == null ? \"UNKNOWN\" : head));","            }","            return new ResolvedSource(\"FILES\", branch, head.toLowerCase(), null);","        }","        if (\"DIFF\".equals(kind)) {","            String commit = RepositoryPaths.requireFixedSha(source.commitSha());","            String base = source.baseSha() == null || source.baseSha().isBlank()","                    ? null : RepositoryPaths.requireFixedSha(source.baseSha());","            if (base != null && base.equalsIgnoreCase(commit)) {","                throw new ApiException(ErrorCode.VALIDATION_FAILED, \"比较基线与目标提交不能相同\");","            }","            String branch = source.branch() == null ? null : source.branch().trim();","            return new ResolvedSource(\"DIFF\", branch, commit, base);","        }","        throw new ApiException(ErrorCode.VALIDATION_FAILED, \"source.kind 只能是 FILES 或 DIFF\",","                Map.of(\"kind\", source.kind()));","    }","","    private List\u003cNormalizedTarget> normalizeTargets(List\u003cTaskDtos.Target> targets) {","        List\u003cNormalizedTarget> normalized = new ArrayList\u003c>();","        Set\u003cString> seen = new HashSet\u003c>();","        for (TaskDtos.Target target : targets) {","            String path = RepositoryPaths.requireSafePath(target.path());","            if (!seen.add(path)) {","                throw new ApiException(ErrorCode.VALIDATION_FAILED, \"目标文件重复：\" + path);","            }","            String oldPath = target.oldPath() == null || target.oldPath().isBlank()","                    ? null : RepositoryPaths.requireSafePath(target.oldPath());","            String note = target.note() == null ? null : target.note().trim();","            if (note != null && note.length() > 4000) {","                throw new ApiException(ErrorCode.VALIDATION_FAILED, \"逐文件说明过长：\" + path);","            }","            normalized.add(new NormalizedTarget(path, oldPath, note == null || note.isEmpty() ? null : note));","        }","        return normalized;","    }","","    private void insertTargets(AgentReviewTask task, ResolvedSource source,","                               List\u003cNormalizedTarget> targets) {","        LocalDateTime now = AgentTime.now();","        int ordinal = 1;","        for (NormalizedTarget target : targets) {","            AgentTaskTarget row = new AgentTaskTarget();","            row.setId(AgentIds.next());","            row.setTaskId(task.getId());","            row.setOrdinal(ordinal++);","            row.setPath(target.path());","            row.setOldPath(target.oldPath());","            row.setBaseSha(source.baseSha());","            row.setHeadSha(source.headSha());","            row.setNote(target.note());","            row.setState(TaskStates.QUEUED);","            row.setRevision(0);","            row.setCreatedAt(now);","            row.setUpdatedAt(now);","            db.mapper(AgentTaskTargetMapper.class).insert(row);","        }","    }","","    private void insertQuota(String taskId) {","        LocalDateTime now = AgentTime.now();","        AgentTaskQuota quota = new AgentTaskQuota();","        quota.setTaskId(taskId);","        quota.setHardLimit(modelProperties.getTaskCallLimit());","        quota.setReserved(0);","        quota.setCreatedAt(now);","        quota.setUpdatedAt(now);","        db.mapper(AgentTaskQuotaMapper.class).insert(quota);","    }","","    private String inputSnapshot(AgentProject project, ResolvedSource source,","                                 List\u003cNormalizedTarget> targets, boolean smartSplit) {","        ObjectNode root = mapper.createObjectNode();","        ObjectNode projectNode = root.putObject(\"project\");","        projectNode.put(\"id\", project.getId());","        projectNode.put(\"name\", project.getName());","        projectNode.put(\"repoUrl\", project.getRepoUrl());","        ObjectNode sourceNode = root.putObject(\"source\");","        sourceNode.put(\"kind\", source.kind());","        putNullable(sourceNode, \"branch\", source.branch());","        sourceNode.put(\"headSha\", source.headSha());","        putNullable(sourceNode, \"baseSha\", source.baseSha());","        putNullable(sourceNode, \"commitSha\", \"DIFF\".equals(source.kind()) ? source.headSha() : null);","        var targetArray = root.putArray(\"targets\");","        for (NormalizedTarget target : targets) {","            ObjectNode node = targetArray.addObject();","            node.put(\"path\", target.path());","            putNullable(node, \"oldPath\", target.oldPath());","            putNullable(node, \"note\", target.note());","        }","        root.put(\"smartSplit\", smartSplit);","        return toJson(root);","    }","","    private String configSnapshot(ResolvedConfig config) {","        ObjectNode root = mapper.createObjectNode();","        AgentModelConfig model = config.model();","        ObjectNode modelNode = root.putObject(\"model\");","        modelNode.put(\"id\", model.getId());","        modelNode.put(\"name\", model.getName());","        modelNode.put(\"baseUrl\", model.getBaseUrl());","        modelNode.put(\"modelName\", model.getModelName());","        putNullable(modelNode, \"contextWindow\", model.getContextWindow());","        putNullable(modelNode, \"maxOutput\", model.getMaxOutput());","        putNullable(modelNode, \"tokenizer\", model.getTokenizer());","        modelNode.put(\"protocol\", model.getProtocol());","        modelNode.put(\"revision\", model.getRevision());","        if (config.strategy() != null) {","            ObjectNode strategyNode = root.putObject(\"strategy\");","            strategyNode.put(\"id\", config.strategy().getId());","            strategyNode.put(\"name\", config.strategy().getName());","            strategyNode.put(\"revision\", config.strategy().getRevision());","            putNullable(strategyNode, \"promptId\", config.strategy().getPromptId());","        }","        if (config.prompt() != null) {","            ObjectNode promptNode = root.putObject(\"prompt\");","            promptNode.put(\"id\", config.prompt().getId());","            promptNode.put(\"name\", config.prompt().getName());","            if (config.promptVersion() != null) {","                promptNode.put(\"versionId\", config.promptVersion().getId());","                promptNode.put(\"versionNo\", config.promptVersion().getVersionNo());","                promptNode.put(\"content\", config.promptVersion().getContent());","            }","        }","        return toJson(root);","    }","","    private TaskDtos.View toView(AgentReviewTask task) {","        List\u003cAgentTaskTarget> targets = db.mapper(AgentTaskTargetMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentTaskTarget>()","                        .eq(AgentTaskTarget::getTaskId, task.getId())","                        .orderByAsc(AgentTaskTarget::getOrdinal));","        JsonNode input = readJson(task.getInputSnapshot());","        JsonNode source = input.path(\"source\");","        JsonNode config = readJson(task.getConfigSnapshot());","        JsonNode model = config.path(\"model\");","        JsonNode strategy = config.path(\"strategy\");","        JsonNode prompt = config.path(\"prompt\");","        TaskDtos.ConfigView configView = new TaskDtos.ConfigView(","                textOrNull(model, \"id\"), textOrNull(model, \"name\"), integerOrNull(model, \"revision\"),","                textOrNull(strategy, \"id\"), textOrNull(strategy, \"name\"),","                integerOrNull(strategy, \"revision\"), textOrNull(prompt, \"id\"),","                integerOrNull(prompt, \"versionNo\"));","        List\u003cTaskDtos.TargetView> targetViews = targets.stream()","                .map(target -> new TaskDtos.TargetView(target.getId(), target.getOrdinal(),","                        target.getPath(), target.getOldPath(), target.getBaseSha(), target.getHeadSha(),","                        target.getNote(), target.getState(), target.getErrorCode(),","                        target.getRevision() == null ? 0 : target.getRevision(),","                        target.getCreatedAt(), target.getUpdatedAt()))","                .toList();","        return new TaskDtos.View(task.getId(), TaskNames.display(task.getName(), task.getId()),","                task.getProjectId(), task.getRoute(),","                task.getSpecialistType(), task.getState(), task.getStopReason(),","                source.path(\"kind\").asText(null), textOrNull(source, \"branch\"),","                textOrNull(source, \"headSha\"), textOrNull(source, \"baseSha\"),","                input.path(\"smartSplit\").asBoolean(false), task.getRevision(), task.getCreatedAt(),","                task.getUpdatedAt(), task.getStartedAt(), task.getFinishedAt(), task.getDeadlineAt(),","                task.getCancelRequestedAt(), targetViews, configView);","    }","","    private TaskDtos.Summary summary(AgentReviewTask task, List\u003cAgentTaskTarget> targets) {","        int succeeded = 0;","        int failed = 0;","        int running = 0;","        int queued = 0;","        for (AgentTaskTarget target : targets) {","            switch (target.getState()) {","                case TaskStates.SUCCEEDED -> succeeded++;","                case TaskStates.FAILED, TaskStates.PARTIAL, TaskStates.CANCELLED -> failed++;","                case TaskStates.RUNNING, TaskStates.PREPARING -> running++;","                default -> queued++;","            }","        }","        return new TaskDtos.Summary(task.getId(), TaskNames.display(task.getName(), task.getId()),","                task.getProjectId(), task.getRoute(),","                task.getSpecialistType(), task.getState(), task.getStopReason(),","                task.getCreatedAt(), task.getDeadlineAt(), targets.size(), succeeded, failed,","                running, queued);","    }","","    private Map\u003cString, List\u003cAgentTaskTarget>> targetsByTask(List\u003cString> taskIds) {","        if (taskIds.isEmpty()) {","            return Map.of();","        }","        List\u003cAgentTaskTarget> rows = db.mapper(AgentTaskTargetMapper.class).selectList(","                new LambdaQueryWrapper\u003cAgentTaskTarget>()","                        .in(AgentTaskTarget::getTaskId, taskIds)","                        .orderByAsc(AgentTaskTarget::getOrdinal));","        return rows.stream().collect(Collectors.groupingBy(AgentTaskTarget::getTaskId,","                LinkedHashMap::new, Collectors.toList()));","    }","","    private AgentProject requireProject(String projectId) {","        AgentProject project = db.mapper(AgentProjectMapper.class)","                .selectById(AgentIds.requireValid(projectId, \"项目 ID\"));","        if (project == null) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"项目不存在：\" + projectId);","        }","        return project;","    }","","    private AgentReviewTask requireTask(String id) {","        AgentReviewTask task = db.mapper(AgentReviewTaskMapper.class)","                .selectById(AgentIds.requireValid(id, \"任务 ID\"));","        if (task == null) {","            throw new ApiException(ErrorCode.NOT_FOUND, \"任务不存在：\" + id);","        }","        return task;","    }","","    private static String normalizeName(String requested, String id) {","        if (requested == null || requested.isBlank()) {","            return TaskNames.display(null, id);","        }","        String trimmed = requested.trim();","        if (trimmed.length() > 200) {","            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"审查名称不能超过 200 个字符\",","                    Map.of(\"field\", \"name\"));","        }","        return trimmed;","    }","","    private static String normalizeSpecialist(String value) {","        String type = value == null ? \"\" : value.trim().toUpperCase();","        if (!List.of(\"ISSUE\", \"PATTERN\", \"COUPLING\").contains(type)) {","            throw new ApiException(ErrorCode.VALIDATION_FAILED,","                    \"专项类型只能是 ISSUE、PATTERN 或 COUPLING\", Map.of(\"specialistType\", value));","        }","        return type;","    }","","    private static String normalizeRoute(String value) {","        String route = value == null || value.isBlank() ? \"SPECIALIST\" : value.trim().toUpperCase();","        if (\"AGENT\".equals(route)) {","            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"Agent 任务在 P33 接入，当前只支持专项\");","        }","        if (!\"SPECIALIST\".equals(route)) {","            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"route 只能是 SPECIALIST\");","        }","        return route;","    }","","    private static String normalizeKey(String key) {","        if (key == null || key.isBlank()) {","            return null;","        }","        String trimmed = key.trim();","        if (trimmed.length() > 100) {","            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"Idempotency-Key 不能超过 100 字符\");","        }","        return trimmed;","    }","","    private static ApiException revisionConflict(int currentRevision) {","        return new ApiException(ErrorCode.REVISION_CONFLICT, \"任务已被其他操作修改，请刷新后重试\",","                Map.of(\"currentRevision\", currentRevision));","    }","","    private String requestJson(TaskDtos.Create req) {","        try {","            return mapper.writeValueAsString(req);","        } catch (JsonProcessingException e) {","            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"请求序列化失败\");","        }","    }","","    private String toJson(Object value) {","        try {","            return mapper.writeValueAsString(value);","        } catch (JsonProcessingException e) {","            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"快照序列化失败\");","        }","    }","","    private JsonNode readJson(String value) {","        if (value == null || value.isBlank()) {","            return mapper.createObjectNode();","        }","        try {","            return mapper.readTree(value);","        } catch (JsonProcessingException e) {","            return mapper.createObjectNode();","        }","    }","","    private static void putNullable(ObjectNode node, String field, Object value) {","        if (value == null) {","            node.putNull(field);","        } else if (value instanceof Integer number) {","            node.put(field, number);","        } else {","            node.put(field, String.valueOf(value));","        }","    }","","    private static String textOrNull(JsonNode node, String field) {","        JsonNode value = node.path(field);","        return value.isMissingNode() || value.isNull() || value.asText().isBlank() ? null : value.asText();","    }","","    private static Integer integerOrNull(JsonNode node, String field) {","        JsonNode value = node.path(field);","        return value.isNumber() ? value.asInt() : null;","    }","","    private static String sha256(String value) {","        try {","            MessageDigest digest = MessageDigest.getInstance(\"SHA-256\");","            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));","        } catch (NoSuchAlgorithmException e) {","            throw new IllegalStateException(\"SHA-256 不可用\", e);","        }","    }","","    private record ResolvedConfig(AgentModelConfig model, AgentReviewStrategy strategy,","                                  AgentPrompt prompt, AgentPromptVersion promptVersion) {","    }","","    private record ResolvedSource(String kind, String branch, String headSha, String baseSha) {","    }","","    private record NormalizedTarget(String path, String oldPath, String note) {","    }","}"];
+
+const FILE = {
+  path: 'backend/src/main/java/com/codereview/agent/service/TaskService.java',
+  name: 'TaskService.java',
+  sha: 'b8b0b50',
+  side: 'FILE',
+  sent: { start: 88, end: 430 }
+};
+
+const ISSUES = [
+  {
+    severity: 'MEDIUM',
+    category: '可维护性',
+    title: '多个 public 方法缺少 Javadoc',
+    reason: '规范第 4 条要求 public 类与 public 方法必须有 Javadoc 说明用途、参数与返回值。create、list、detail、cancel、copyInput、calls、callDetail 均为 public 方法但无 Javadoc；callDetailFull 只有一句注释，未说明参数与返回。',
+    suggestion: '为上述 public 方法补充 Javadoc，至少说明用途、关键参数（如 idempotencyKey、cursor、expectedRevision）与返回值语义；可参照 result 的注释写法。',
+    locations: [
+      { startLine: 97, endLine: 97 },
+      { startLine: 150, endLine: 151 },
+      { startLine: 187, endLine: 187 },
+      { startLine: 191, endLine: 191 },
+      { startLine: 229, endLine: 229 },
+      { startLine: 249, endLine: 250 },
+      { startLine: 288, endLine: 288 },
+      { startLine: 410, endLine: 410 }
+    ],
+    evidence: [
+      { startLine: 310, endLine: 313 }
+    ]
+  },
+  {
+    severity: 'LOW',
+    category: '可靠性',
+    title: '分页参数缺少服务层校验',
+    reason: 'list 的 pageNum／pageSize 由调用方直接传入，服务层没有校验上界与负数；超限时依赖 AgentPaging 的默认处理，接口层也不会明确拒绝，调用方难以区分“被截断”与“实际只有这些数据”。',
+    suggestion: '在入口校验 pageNum ≥ 1、pageSize ≤ 50，超限时返回明确错误；若保留静默截断，应在响应中说明实际生效的分页参数。',
+    locations: [
+      { startLine: 155, endLine: 156 },
+      { startLine: 176, endLine: 178 }
+    ]
+  },
+  {
+    severity: 'LOW',
+    category: '可维护性',
+    title: 'callDetailFull 注释未说明返回字段',
+    reason: '方法注释只说明“完整输入／输出／错误”，但返回结构还包含材料、分页与调用元数据；阅读方无法从注释判断哪些字段可能为空。',
+    suggestion: '补充返回结构中各字段的来源与可为空的条件，尤其是材料缺失和分页未记录的情况。',
+    locations: [
+      { startLine: 409, endLine: 409 }
+    ]
+  }
+];
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const esc = (value) => String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/* ---------- 语法着色（离线、无依赖） ---------- */
+const KEYWORDS = new Set(('package import public private protected class interface record enum static final abstract ' +
+  'extends implements new return if else for while do switch case default try catch finally throw throws ' +
+  'this super null true false int long double float char byte short boolean void var instanceof synchronized volatile transient native').split(' '));
+
+function highlightLine(line, block) {
+  let out = '';
+  let i = 0;
+  const span = (kind, text) => '<span class="tk-' + kind + '">' + esc(text) + '</span>';
+  while (i < line.length) {
+    if (block) {
+      const end = line.indexOf('*/', i);
+      if (end < 0) { out += span('c', line.slice(i)); i = line.length; break; }
+      out += span('c', line.slice(i, end + 2));
+      i = end + 2;
+      block = false;
+      continue;
+    }
+    const ch = line[i];
+    if (ch === '/' && line[i + 1] === '/') { out += span('c', line.slice(i)); break; }
+    if (ch === '/' && line[i + 1] === '*') {
+      const end = line.indexOf('*/', i + 2);
+      if (end < 0) { out += span('c', line.slice(i)); block = true; break; }
+      out += span('c', line.slice(i, end + 2));
+      i = end + 2;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      let j = i + 1;
+      while (j < line.length) {
+        if (line[j] === '\\') { j += 2; continue; }
+        if (line[j] === ch) { j += 1; break; }
+        j += 1;
+      }
+      out += span('s', line.slice(i, j));
+      i = j;
+      continue;
+    }
+    if (ch === '@' && /[A-Za-z]/.test(line[i + 1] || '')) {
+      let j = i + 1;
+      while (j < line.length && /[\w.]/.test(line[j])) j += 1;
+      out += span('a', line.slice(i, j));
+      i = j;
+      continue;
+    }
+    if (/[A-Za-z_$]/.test(ch)) {
+      let j = i + 1;
+      while (j < line.length && /[\w$]/.test(line[j])) j += 1;
+      const word = line.slice(i, j);
+      out += KEYWORDS.has(word) ? span('k', word) : esc(word);
+      i = j;
+      continue;
+    }
+    if (/[0-9]/.test(ch)) {
+      let j = i + 1;
+      while (j < line.length && /[\w.]/.test(line[j])) j += 1;
+      out += span('n', line.slice(i, j));
+      i = j;
+      continue;
+    }
+    out += esc(ch);
+    i += 1;
+  }
+  return { html: out, block };
+}
+
+const HIGHLIGHTED = (() => {
+  let block = false;
+  return SOURCE.map((line) => {
+    const result = highlightLine(line, block);
+    block = result.block;
+    return result.html;
+  });
+})();
+
+/* ---------- 状态与工具 ---------- */
+const state = {
+  open: false,
+  material: false,
+  issue: -1,
+  refs: [],
+  active: 0,
+  mode: 'full',
+  loading: false,
+  error: false,
+  simulateError: false
+};
+
+const dialog = $('#code-modal');
+const code = $('#cm-code');
+const body = $('#code-body');
+const toastEl = $('#toast');
+let toastTimer = 0;
+
+function fmtRange(ref) {
+  return ref.startLine === ref.endLine ? String(ref.startLine) : ref.startLine + '–' + ref.endLine;
+}
+function currentView() {
+  if (state.mode === 'saved') {
+    return { from: FILE.sent.start, to: Math.min(FILE.sent.end, SOURCE.length) };
+  }
+  return { from: 1, to: SOURCE.length };
+}
+function currentRef() {
+  return state.refs[state.active] || null;
+}
+function inView(ref, view) {
+  return ref.startLine >= view.from && ref.endLine <= view.to;
+}
+function toast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+function normalizeRefs(locations) {
+  const seen = new Set();
+  const refs = [];
+  locations.forEach((item) => {
+    const key = item.startLine + '-' + item.endLine;
+    if (seen.has(key)) return;
+    seen.add(key);
+    refs.push({ startLine: item.startLine, endLine: item.endLine });
+  });
+  return refs.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine);
+}
+
+/* ---------- 页面：问题列表 ---------- */
+function renderIssues() {
+  const host = $('#issues');
+  host.innerHTML = ISSUES.map((issue, issueIndex) => {
+    const refLink = (ref) => {
+      const label = ref.startLine + '–' + ref.endLine;
+      return '<button class="source-link" type="button" data-issue="' + issueIndex + '" data-start="' + ref.startLine +
+        '" data-end="' + ref.endLine + '" title="打开代码：' + esc(FILE.path) + ' 第 ' + esc(label) + ' 行">' +
+        esc(FILE.path) + ' : ' + esc(label) + ' · 文件</button>';
+    };
+    const links = issue.locations.map(refLink).join('');
+    const evidenceLinks = (issue.evidence || []).map(refLink).join('');
+    return '<article class="issue">' +
+      '<div class="issue-head">' +
+        '<span class="tag ' + (issue.severity === 'MEDIUM' ? 'amber' : '') + '">' + esc(issue.severity) + '</span>' +
+        '<span class="tag">' + esc(issue.category) + '</span>' +
+        '<strong>' + esc(issue.title) + '</strong>' +
+      '</div>' +
+      '<p class="body-text">' + esc(issue.reason) + '</p>' +
+      '<p class="suggestion"><strong>建议：</strong>' + esc(issue.suggestion) + '</p>' +
+      '<div class="locations">' +
+        '<span class="loc-label">位置 <span class="loc-count">' + issue.locations.length + ' 处</span></span>' +
+        '<div class="loc-links">' + links + '</div>' +
+      '</div>' +
+      (evidenceLinks ? '<div class="locations">' +
+        '<span class="loc-label">辅助证据 <span class="loc-count">' + issue.evidence.length + ' 处</span></span>' +
+        '<div class="loc-links">' + evidenceLinks + '</div>' +
+      '</div>' : '') +
+    '</article>';
+  }).join('') +
+  '<p class="more-issues">另有 4 个问题未在此草稿展开。从任一问题进入代码后，只有当前问题的范围会被标记；相邻问题的引用保持普通样式。</p>';
+}
+
+/* ---------- 弹窗：渲染 ---------- */
+function openIssueRef(issueIndex, startLine, endLine) {
+  const issue = ISSUES[issueIndex];
+  if (!issue) return;
+  const refs = normalizeRefs([...(issue.locations || []), ...(issue.evidence || [])]);
+  const active = Math.max(0, refs.findIndex((ref) => ref.startLine === startLine && ref.endLine === endLine));
+
+  state.material = false;
+  state.issue = issueIndex;
+  state.refs = refs;
+  state.active = active;
+  state.mode = 'full';
+  state.error = state.simulateError;
+  state.loading = false;
+
+  renderModal();
+  openDialog();
+  requestAnimationFrame(() => scrollToActive(true));
+}
+
+function openMaterial() {
+  state.material = true;
+  state.issue = -1;
+  state.refs = [];
+  state.active = 0;
+  state.mode = 'saved';
+  state.error = false;
+  state.loading = false;
+  renderModal();
+  openDialog();
+  requestAnimationFrame(() => {
+    code.scrollTop = 0;
+    code.focus({ preventScroll: true });
+  });
+}
+
+function openDialog() {
+  if (!dialog.open) dialog.showModal();
+  dialog.focus({ preventScroll: true });
+  state.open = true;
+}
+
+function renderModal() {
+  const refs = state.refs;
+  $('#cm-kind').textContent = state.material ? '材料阅读' : '问题引用';
+  $('#cm-path').textContent = FILE.path;
+  $('#cm-path').title = FILE.path;
+  $('#cm-title').textContent = FILE.name;
+  $('#cm-sent').textContent = '本次发送第 ' + FILE.sent.start + '–' + FILE.sent.end + ' 行';
+
+  $('#cm-nav').hidden = state.material || refs.length === 0;
+  if (state.material) {
+    $('#cm-scope').textContent = '材料阅读 · 不标记引用';
+    $('#cm-foot-hint').textContent = '从材料页进入，不标记问题引用';
+  } else {
+    const evidenceCount = (ISSUES[state.issue] && ISSUES[state.issue].evidence || []).length;
+    $('#cm-scope').innerHTML = '本问题在此文件的 <b>' + refs.length + '</b> 处引用' +
+      (evidenceCount ? '（含 ' + evidenceCount + ' 处辅助证据）' : '');
+    $('#cm-foot-hint').textContent = '同一审查的其他问题引用不标记';
+  }
+
+  renderModeButtons();
+  renderCode();
+  applyHighlight();
+  updateNav();
+  renderState();
+}
+
+function renderModeButtons() {
+  $$('.seg button').forEach((button) => {
+    const on = button.dataset.mode === state.mode;
+    button.classList.toggle('on', on);
+    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  const savedEnabled = SOURCE.length > 0;
+  $$('.seg button').forEach((button) => { if (button.dataset.mode === 'saved') button.disabled = !savedEnabled; });
+  const total = SOURCE.length;
+  const sentEnd = Math.min(FILE.sent.end, total);
+  $('#cm-source-note').textContent = state.mode === 'saved'
+    ? '实际发送 · 第 ' + FILE.sent.start + '–' + sentEnd + ' 行'
+    : '全文件 1–' + total + ' 行 · 扩展阅读，不改变发送内容';
+}
+
+function renderCode() {
+  const view = currentView();
+  if (!SOURCE.length) {
+    body.innerHTML = '<div class="code-empty">该版本文件为空，没有可定位的代码行。</div>';
+    code.scrollTop = 0;
+    code.scrollLeft = 0;
+    return;
+  }
+  const rows = [];
+  for (let line = view.from; line <= view.to; line += 1) {
+    rows.push('<div class="code-row" id="L' + line + '" data-line="' + line + '">' +
+      '<span class="ln" aria-hidden="true"><span class="n">' + line + '</span></span>' +
+      '<span class="src">' + (HIGHLIGHTED[line - 1] || ' ') + '</span>' +
+    '</div>');
+  }
+  body.innerHTML = rows.join('');
+  code.scrollTop = 0;
+  code.scrollLeft = 0;
+}
+
+function applyHighlight() {
+  $$('.code-row.hl,.code-row.cur,.code-row.start').forEach((row) => row.classList.remove('hl', 'cur', 'start'));
+  const view = currentView();
+  const refs = state.refs;
+
+  refs.forEach((ref) => {
+    if (!inView(ref, view)) return;
+    for (let line = Math.max(ref.startLine, view.from); line <= Math.min(ref.endLine, view.to); line += 1) {
+      const row = body.querySelector('[data-line="' + line + '"]');
+      if (row) row.classList.add('hl');
+    }
+  });
+
+  const active = currentRef();
+  const banner = $('#cm-banner');
+  if (!active) {
+    banner.hidden = true;
+    return;
+  }
+
+  if (active.startLine > SOURCE.length || active.endLine > SOURCE.length) {
+    banner.hidden = false;
+    banner.innerHTML = '<span>引用行号超出固定版本范围：第 ' + esc(fmtRange(active)) + ' 行，文件共 ' +
+      SOURCE.length + ' 行。请核对引用或切换其他位置。</span>';
+    return;
+  }
+
+  if (!inView(active, view)) {
+    banner.hidden = false;
+    banner.innerHTML = '<span>当前引用第 ' + esc(fmtRange(active)) + ' 行不在本次发送的片段（第 ' +
+      FILE.sent.start + '–' + FILE.sent.end + ' 行）内。</span><span class="spacer"></span>' +
+      '<button class="btn" type="button" data-banner-full>查看固定版本全文</button>';
+    banner.querySelector('[data-banner-full]').onclick = () => setMode('full');
+  } else {
+    banner.hidden = true;
+    for (let line = active.startLine; line <= active.endLine; line += 1) {
+      const row = body.querySelector('[data-line="' + line + '"]');
+      if (!row) continue;
+      row.classList.add('cur');
+      if (line === active.startLine) row.classList.add('start');
+    }
+  }
+}
+
+function updateNav() {
+  const total = state.refs.length;
+  const active = currentRef();
+  const prev = $('#cm-prev');
+  const next = $('#cm-next');
+  const counter = $('#cm-counter');
+
+  if (!total || state.material) {
+    counter.textContent = '—';
+    prev.disabled = true;
+    next.disabled = true;
+    $('#cm-range').hidden = true;
+    $('#cm-live').textContent = state.material ? '材料阅读，未标记问题引用' : '';
+    return;
+  }
+
+  $('#cm-range').hidden = false;
+  $('#cm-range').textContent = '定位 第 ' + fmtRange(active) + ' 行';
+  counter.textContent = (state.active + 1) + ' / ' + total;
+  const view = currentView();
+  const outside = state.mode === 'saved' ? state.refs.filter((ref) => !inView(ref, view)).length : 0;
+  $('#cm-foot-hint').textContent = outside
+    ? outside + ' 处引用不在发送片段内 · 其他问题引用不标记'
+    : '同一审查的其他问题引用不标记';
+  prev.disabled = state.loading || state.error || state.active === 0;
+  next.disabled = state.loading || state.error || state.active === total - 1;
+  prev.title = state.active === 0 ? '已是第一处引用' : '上一处：第 ' + fmtRange(state.refs[state.active - 1]) + ' 行';
+  next.title = state.active === total - 1 ? '已是最后一处引用' : '下一处：第 ' + fmtRange(state.refs[state.active + 1]) + ' 行';
+  $('#cm-live').textContent = '第 ' + (state.active + 1) + ' / ' + total + ' 处引用，第 ' + fmtRange(active) + ' 行';
+}
+
+function renderState() {
+  const host = $('#cm-state');
+  code.setAttribute('aria-busy', state.loading ? 'true' : 'false');
+  if (state.loading) {
+    host.hidden = false;
+    host.innerHTML = '<div class="sk" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>' +
+      '<p>正在读取' + (state.mode === 'saved' ? '保存片段' : '固定版本全文') + '…</p>';
+    return;
+  }
+  if (state.error) {
+    host.hidden = false;
+    host.innerHTML = '<span class="icon" aria-hidden="true">!</span>' +
+      '<strong>固定版本全文读取失败</strong>' +
+      '<p>已保留当前问题的引用与已发送片段。可以重试，或先回到保存片段继续阅读。</p>' +
+      '<div class="state-actions">' +
+        '<button class="btn primary" type="button" data-retry>重试</button>' +
+        '<button class="btn" type="button" data-back-saved>返回保存片段</button>' +
+      '</div>';
+    host.querySelector('[data-retry]').onclick = retryFull;
+    host.querySelector('[data-back-saved]').onclick = () => setMode('saved');
+    return;
+  }
+  host.hidden = true;
+  host.innerHTML = '';
+}
+
+function scrollToActive(instant) {
+  const ref = currentRef();
+  if (!ref || state.loading || state.error) return;
+  const view = currentView();
+  if (!inView(ref, view)) return;
+  const row = body.querySelector('[data-line="' + ref.startLine + '"]');
+  if (!row) return;
+  const rowRect = row.getBoundingClientRect();
+  const codeRect = code.getBoundingClientRect();
+  const top = code.scrollTop + rowRect.top - codeRect.top;
+  const distance = Math.abs(top - code.scrollTop);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const behavior = instant || reduce || distance > 900 ? 'auto' : 'smooth';
+  code.scrollTo({ top: Math.max(0, top), behavior });
+  row.classList.remove('flash');
+  void row.offsetWidth;
+  row.classList.add('flash');
+  setTimeout(() => row.classList.remove('flash'), 720);
+}
+
+/* ---------- 交互 ---------- */
+function goTo(index, announce) {
+  if (state.loading || state.error) return;
+  if (index < 0 || index >= state.refs.length) return;
+  const ref = state.refs[index];
+  const view = currentView();
+  state.active = index;
+
+  if (!inView(ref, view)) {
+    state.mode = 'full';
+    renderModeButtons();
+    renderCode();
+    applyHighlight();
+    updateNav();
+    scrollToActive(true);
+    if (announce) toast('该引用不在已发送片段内，已切换到固定版本全文');
+    return;
+  }
+
+  applyHighlight();
+  updateNav();
+  scrollToActive(false);
+}
+
+function setMode(mode) {
+  if (state.material) {
+    if (mode === state.mode) return;
+    state.mode = mode;
+    renderModeButtons();
+    state.loading = true;
+    renderState();
+    setTimeout(() => {
+      state.loading = false;
+      renderCode();
+      applyHighlight();
+      updateNav();
+      renderState();
+      code.scrollTop = 0;
+    }, 160);
+    return;
+  }
+  if (mode === state.mode || state.loading) return;
+  state.mode = mode;
+  renderModeButtons();
+
+  if (mode === 'full' && state.simulateError) {
+    state.error = true;
+    renderState();
+    updateNav();
+    return;
+  }
+
+  state.loading = true;
+  state.error = false;
+  renderState();
+  updateNav();
+  setTimeout(() => {
+    state.loading = false;
+    renderCode();
+    applyHighlight();
+    updateNav();
+    renderState();
+    scrollToActive(true);
+  }, 220);
+}
+
+function retryFull() {
+  state.simulateError = false;
+  const normal = document.querySelector('input[name="scenario"][value="normal"]');
+  if (normal) normal.checked = true;
+  state.error = false;
+  state.loading = true;
+  renderState();
+  updateNav();
+  setTimeout(() => {
+    state.loading = false;
+    renderCode();
+    applyHighlight();
+    updateNav();
+    renderState();
+    scrollToActive(true);
+  }, 360);
+}
+
+function closeModal() {
+  if (dialog.open) dialog.close();
+}
+
+/* ---------- 页面交互 ---------- */
+function selectTab(name) {
+  $$('.tab').forEach((tab) => {
+    const on = tab.dataset.tab === name;
+    tab.classList.toggle('on', on);
+    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  $('#panel-result').hidden = name !== 'result';
+  $('#panel-materials').hidden = name !== 'materials';
+  $('#panel-calls').hidden = name !== 'calls';
+}
+
+function bindEvents() {
+  $('#issues').addEventListener('click', (event) => {
+    const link = event.target.closest('.source-link');
+    if (!link) return;
+    openIssueRef(Number(link.dataset.issue), Number(link.dataset.start), Number(link.dataset.end));
+  });
+
+  $$('.tab').forEach((tab) => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
+  $('[data-open-material]').addEventListener('click', openMaterial);
+  $('[data-call]').addEventListener('click', () => toast('本次草稿聚焦问题引用；实际调用阅读保持现有入口。'));
+
+  $$('.seg button').forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
+  $('#cm-prev').addEventListener('click', () => goTo(state.active - 1, true));
+  $('#cm-next').addEventListener('click', () => goTo(state.active + 1, true));
+
+  $('#cm-close').addEventListener('click', closeModal);
+  $('#cm-close-2').addEventListener('click', closeModal);
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) closeModal();
+  });
+  dialog.addEventListener('close', () => {
+    state.open = false;
+  });
+  dialog.addEventListener('keydown', (event) => {
+    if (!event.altKey) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); goTo(state.active + 1, false); }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); goTo(state.active - 1, false); }
+  });
+
+  $$('input[name="scenario"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      state.simulateError = input.value === 'error' && input.checked;
+      if (state.simulateError && state.mode === 'full' && dialog.open) {
+        state.error = true;
+        state.loading = false;
+        renderState();
+        updateNav();
+      } else if (!state.simulateError && state.error) {
+        state.error = false;
+        renderState();
+        updateNav();
+        scrollToActive(true);
+      }
+    });
+  });
+
+  $('#scenario-reset').addEventListener('click', () => {
+    state.simulateError = false;
+    state.error = false;
+    state.loading = false;
+    document.querySelector('input[name="scenario"][value="normal"]').checked = true;
+    closeModal();
+    selectTab('result');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast('已重置演示');
+  });
+}
+
+function openFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  if (tab) selectTab(tab);
+  if (params.get('scenario') === 'error') {
+    state.simulateError = true;
+    const errorInput = document.querySelector('input[name="scenario"][value="error"]');
+    if (errorInput) errorInput.checked = true;
+  }
+  const issue = params.has('issue') ? Number(params.get('issue')) : 1;
+  const openValue = Number(params.get('open'));
+  const ref = params.has('ref') ? Number(params.get('ref')) : (Number.isFinite(openValue) && openValue > 0 ? openValue : 1);
+  if (params.has('open')) {
+    const issueIndex = Math.max(0, issue - 1);
+    const refIndex = Math.max(0, ref - 1);
+    if (ISSUES[issueIndex]) {
+      const all = normalizeRefs([...(ISSUES[issueIndex].locations || []), ...(ISSUES[issueIndex].evidence || [])]);
+      const target = all[Math.min(refIndex, all.length - 1)];
+      if (target) openIssueRef(issueIndex, target.startLine, target.endLine);
+    }
+    if (params.get('mode') === 'saved' && dialog.open) {
+      state.mode = 'saved';
+      renderModal();
+      requestAnimationFrame(() => scrollToActive(true));
+    }
+    if (params.get('state') === 'loading' && dialog.open) {
+      state.loading = true;
+      renderState();
+      updateNav();
+    }
+  }
+}
+
+renderIssues();
+bindEvents();
+renderModal();
+openFromQuery();
+</script>
+</body>
+</html>
