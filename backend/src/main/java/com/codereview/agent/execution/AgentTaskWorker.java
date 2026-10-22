@@ -43,6 +43,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -310,7 +311,9 @@ public class AgentTaskWorker implements TaskWorker {
             return;
         }
         for (AgentSubmission.SentMaterial material : execution.pending.values()) {
-            execution.sent.putIfAbsent(material.materialId(), material);
+            if (execution.sent.containsKey(material.materialId())) {
+                continue;
+            }
             try {
                 AgentCallMaterial row = new AgentCallMaterial();
                 row.setCallId(callId);
@@ -318,9 +321,11 @@ public class AgentTaskWorker implements TaskWorker {
                 row.setRole("TOOL");
                 row.setDisposition("SENT");
                 db.mapper(AgentCallMaterialMapper.class).insert(row);
-            } catch (RuntimeException duplicate) {
-                // 同一材料可能被多轮引用；关联已存在时不阻断执行。
+            } catch (DuplicateKeyException duplicate) {
+                // 同一调用已经记下这份材料时不阻断；其他写入失败必须中止，
+                // 否则未落库的材料仍会被当成“已送入模型”而允许引用。
             }
+            execution.sent.put(material.materialId(), material);
         }
         execution.pending.clear();
     }
@@ -413,14 +418,21 @@ public class AgentTaskWorker implements TaskWorker {
         run.setState(state);
         run.setStopReason(stopReason);
         run.setCurrentAction(state);
+        run.setCoveredJson(fileCoverage(run));
         run.setUpdatedAt(AgentTime.now());
+        // 结束轮次的计数只写在内存里，updateRun 还没来得及落库；这里必须一并写入，
+        // 否则进度接口会少记最后一轮（例如直接提交，或协议错误耗尽时的最后一次调用）。
         db.mapper(AgentRunMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentRun>()
                         .eq(AgentRun::getTaskId, run.getTaskId())
+                        .set(AgentRun::getTurnNo, run.getTurnNo())
+                        .set(AgentRun::getToolAttempts, run.getToolAttempts())
+                        .set(AgentRun::getNetworkAttempts, run.getNetworkAttempts())
+                        .set(AgentRun::getCurrentAction, state)
+                        .set(AgentRun::getCoveredJson, run.getCoveredJson())
                         .set(AgentRun::getState, state)
                         .set(AgentRun::getStopReason, stopReason)
-                        .set(AgentRun::getCurrentAction, state)
-                        .set(AgentRun::getUpdatedAt, AgentTime.now())
+                        .set(AgentRun::getUpdatedAt, run.getUpdatedAt())
                         .setSql("revision = revision + 1"));
     }
 

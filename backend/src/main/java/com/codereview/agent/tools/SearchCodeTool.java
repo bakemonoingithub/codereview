@@ -200,6 +200,17 @@ public class SearchCodeTool {
             int start = Math.max(1, hit.lineNumber() - ToolLimits.SEARCH_CONTEXT_LINES);
             int end = Math.min(lines.length, hit.lineNumber() + ToolLimits.SEARCH_CONTEXT_LINES);
             String content = ToolTexts.joinLines(lines, start, end);
+            // 先按行缩小窗口，使声明的行号与实际保存的正文一致；只有命中行本身超过字节上限时才截短。
+            while (ToolTexts.utf8Bytes(content) > ToolLimits.MATERIAL_MAX_BYTES && end > start) {
+                if (end > hit.lineNumber()) {
+                    end--;
+                } else if (start < hit.lineNumber()) {
+                    start++;
+                } else {
+                    break;
+                }
+                content = ToolTexts.joinLines(lines, start, end);
+            }
             String completeness = ToolEnvelope.COMPLETE;
             if (ToolTexts.utf8Bytes(content) > ToolLimits.MATERIAL_MAX_BYTES) {
                 content = ToolTexts.clampToBytes(content, ToolLimits.MATERIAL_MAX_BYTES);

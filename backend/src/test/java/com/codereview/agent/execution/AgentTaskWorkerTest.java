@@ -1,5 +1,6 @@
 package com.codereview.agent.execution;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
@@ -21,6 +22,7 @@ import com.codereview.agent.tools.AgentSubmission;
 import com.codereview.agent.tools.ReadOnlyToolService;
 import com.codereview.agent.tools.ToolEnvelope;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.dao.DuplicateKeyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +41,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -159,6 +163,60 @@ class AgentTaskWorkerTest {
         assertEquals(TaskStates.FAILED, outcome.state());
         assertEquals(TaskStates.STOP_PROTOCOL_INVALID, outcome.stopReason());
         verify(invocation, org.mockito.Mockito.times(3)).invoke(any());
+    }
+
+    @Test
+    void finishingPersistsTheTurnThatEndedTheRun() {
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-1", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-2", "submit_result", submitJson()));
+
+        worker.execute(task);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaUpdateWrapper<AgentRun>> updates =
+                ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
+        verify(runMapper, atLeastOnce()).update(isNull(), updates.capture());
+        LambdaUpdateWrapper<AgentRun> last = updates.getAllValues().get(updates.getAllValues().size() - 1);
+        String sql = last.getSqlSet();
+        assertTrue(sql.contains("turn_no"), sql);
+        assertTrue(sql.contains("tool_attempts"), sql);
+        assertTrue(sql.contains("network_attempts"), sql);
+        assertTrue(sql.contains("covered_json"), sql);
+        assertTrue(last.getParamNameValuePairs().containsValue(2), last.getParamNameValuePairs().toString());
+        assertTrue(last.getParamNameValuePairs().containsValue(1), last.getParamNameValuePairs().toString());
+    }
+
+    @Test
+    void sentLinkFailureDoesNotLetTheModelCiteUnrecordedMaterials() {
+        when(callMaterialMapper.insert(any(com.codereview.agent.entity.AgentCallMaterial.class)))
+                .thenThrow(new RuntimeException("关联写入失败"));
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-1", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-2", "submit_result", submitJson()));
+
+        TaskWorker.TaskOutcome outcome = worker.execute(task);
+
+        assertEquals(TaskStates.FAILED, outcome.state());
+        assertEquals(TaskStates.STOP_EXECUTION_ERROR, outcome.stopReason());
+        verify(publisher, never()).publish(anyString(), any(), any(), any(), anyInt());
+    }
+
+    @Test
+    void duplicateSentLinkStillAllowsTheAlreadyRecordedMaterial() {
+        when(callMaterialMapper.insert(any(com.codereview.agent.entity.AgentCallMaterial.class)))
+                .thenThrow(new DuplicateKeyException("已存在"));
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-1", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-2", "submit_result", submitJson()));
+
+        TaskWorker.TaskOutcome outcome = worker.execute(task);
+
+        assertEquals(TaskStates.SUCCEEDED, outcome.state());
+        verify(publisher).publish(eq(TASK_ID), any(), any(), any(), anyInt());
     }
 
     @Test
