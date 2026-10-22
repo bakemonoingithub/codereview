@@ -66,11 +66,11 @@
             <a-radio-button value="COUPLING">耦合度</a-radio-button>
           </a-radio-group>
         </div>
-        <div v-if="form.specialistType === 'ISSUE'" class="field full">
+        <div v-if="form.specialistType === 'ISSUE'" class="field source-switch">
           <label>审查范围</label>
-          <a-radio-group v-model:value="form.sourceKind" @change="onSourceKindChange">
-            <a-radio value="FILES">文件内容</a-radio>
-            <a-radio value="DIFF">提交差异</a-radio>
+          <a-radio-group v-model:value="form.sourceKind" button-style="solid" @change="onSourceKindChange">
+            <a-radio-button value="FILES">文件内容</a-radio-button>
+            <a-radio-button value="DIFF">提交差异</a-radio-button>
           </a-radio-group>
           <p class="muted small">提交差异归在问题审查下；其他专项只接受文件内容。</p>
         </div>
@@ -737,17 +737,24 @@ function idempotencyKey(): string {
 .intro {
   margin: 0 0 16px;
 }
-.type-switch {
+.type-switch,
+.source-switch {
   grid-column: 1 / -1;
 }
-.type-switch :deep(.ant-radio-group) {
+.type-switch :deep(.ant-radio-group),
+.source-switch :deep(.ant-radio-group) {
   display: flex;
   flex-flow: row nowrap;
   width: 100%;
 }
-.type-switch :deep(.ant-radio-button-wrapper) {
+.type-switch :deep(.ant-radio-button-wrapper),
+.source-switch :deep(.ant-radio-button-wrapper) {
   flex: 1 1 0;
   text-align: center;
+}
+/* 两个选项各占一栏；整组取专项类型两栏宽，与上方三等分栏对齐。 */
+.source-switch :deep(.ant-radio-group) {
+  width: calc(200% / 3);
 }
 .muted {
   color: #69798d;
