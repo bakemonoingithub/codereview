@@ -23,6 +23,14 @@ public final class TaskStates {
     public static final String STOP_INTERRUPTED = "INTERRUPTED";
     public static final String STOP_EXECUTOR_UNAVAILABLE = "EXECUTOR_UNAVAILABLE";
     public static final String STOP_EXECUTION_ERROR = "EXECUTION_ERROR";
+    public static final String STOP_INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE";
+    public static final String STOP_MODEL_OUTPUT_INVALID = "MODEL_OUTPUT_INVALID";
+    public static final String STOP_CONTEXT_LIMIT = "CONTEXT_LIMIT";
+    public static final String STOP_TURN_LIMIT = "TURN_LIMIT";
+    public static final String STOP_TOOL_LIMIT = "TOOL_LIMIT";
+    public static final String STOP_NETWORK_LIMIT = "NETWORK_LIMIT";
+    public static final String STOP_NO_PROGRESS_LIMIT = "NO_PROGRESS_LIMIT";
+    public static final String STOP_PROTOCOL_INVALID = "PROTOCOL_INVALID";
 
     private TaskStates() {
     }

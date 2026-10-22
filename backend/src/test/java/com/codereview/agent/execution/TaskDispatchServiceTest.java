@@ -61,7 +61,8 @@ class TaskDispatchServiceTest {
         when(db.inTransaction(any())).thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
         when(taskMapper.selectById(any())).thenReturn(task());
         when(taskMapper.update(any(), any())).thenReturn(1);
-        when(workers.getIfUnique()).thenReturn(worker);
+        when(workers.orderedStream()).thenReturn(java.util.stream.Stream.of(worker));
+        when(worker.route()).thenReturn("SPECIALIST");
         when(worker.execute(any())).thenReturn(TaskWorker.TaskOutcome.succeeded());
     }
 
@@ -72,7 +73,7 @@ class TaskDispatchServiceTest {
 
     @Test
     void missingWorkerFailsTheTaskExplicitly() {
-        when(workers.getIfUnique()).thenReturn(null);
+        when(workers.orderedStream()).thenReturn(java.util.stream.Stream.empty());
         doReturn(true).when(dispatcher).finish(any(), any(), any());
 
         dispatcher.run("task-1");
@@ -108,7 +109,7 @@ class TaskDispatchServiceTest {
 
         dispatcher.run("task-1");
 
-        verify(workers, never()).getIfUnique();
+        verify(workers, never()).orderedStream();
         verify(taskMapper, never()).update(any(), any());
     }
 
@@ -133,7 +134,7 @@ class TaskDispatchServiceTest {
 
     @Test
     void missingWorkerClosesOpenTargetsAndPreservesTerminalOnes() {
-        when(workers.getIfUnique()).thenReturn(null);
+        when(workers.orderedStream()).thenReturn(java.util.stream.Stream.empty());
         dispatcher.run("task-1");
         assertOpenTargetsClosedAs(TaskStates.FAILED);
         verify(db).inTransaction(any());

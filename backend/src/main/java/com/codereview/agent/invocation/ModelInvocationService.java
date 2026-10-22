@@ -83,20 +83,20 @@ public class ModelInvocationService {
         for (int attempt = 1; attempt <= attempts; attempt++) {
             boolean last = attempt == attempts;
             scope = activeScope(scope);
-            timeoutFor(scope);
+            timeoutFor(scope, request.timeoutSeconds());
             ModelCallConcurrencyLimiter.Permit permit = limiter.acquire(scope.taskId(), scope.deadlineAt());
             try {
                 scope = activeScope(scope);
-                timeoutFor(scope);
+                timeoutFor(scope, request.timeoutSeconds());
                 if (scope.taskId() != null) {
                     reserveQuota(scope.taskId());
                 }
-                AgentModelCall call = startCall(scope, request.reportId(), prompt, body, attempt, estimate);
+                AgentModelCall call = startCall(scope, request.reportId(), request.turnNo(), prompt, body, attempt, estimate);
                 Duration timeout;
                 try {
                     // 等待许可和请求落盘都可能跨过取消或期限；以真正发送前的状态为准。
                     scope = activeScope(scope);
-                    timeout = timeoutFor(scope);
+                    timeout = timeoutFor(scope, request.timeoutSeconds());
                 } catch (ApiException stopped) {
                     finishFailure(call, stopped, null);
                     throw stopped;
@@ -162,7 +162,8 @@ public class ModelInvocationService {
         }
     }
 
-    private AgentModelCall startCall(InvocationScope scope, String reportId, AssembledPrompt prompt,
+    private AgentModelCall startCall(InvocationScope scope, String reportId, Integer turnNo,
+                                     AssembledPrompt prompt,
                                      String body, int attempt, CapacityEstimate estimate) {
         LocalDateTime now = AgentTime.now();
         AgentModelCall call = new AgentModelCall();
@@ -173,6 +174,7 @@ public class ModelInvocationService {
         call.setUnitId(scope.unitId());
         call.setPurpose(prompt.purpose().wireName());
         call.setAttempt(attempt);
+        call.setTurnNo(turnNo);
         call.setState("RUNNING");
         call.setRequestBody(body);
         call.setAdapterVersion(prompt.adapterVersion());
@@ -372,8 +374,11 @@ public class ModelInvocationService {
         return new InvocationScope(scope.taskId(), scope.targetId(), scope.unitId(), deadline);
     }
 
-    private Duration timeoutFor(InvocationScope scope) {
+    private Duration timeoutFor(InvocationScope scope, Integer requestedTimeoutSeconds) {
         Duration limit = Duration.ofSeconds(properties.getMaxReadTimeoutSeconds());
+        if (requestedTimeoutSeconds != null) {
+            limit = Duration.ofSeconds(Math.min(limit.getSeconds(), requestedTimeoutSeconds));
+        }
         if (scope.deadlineAt() == null) {
             return limit;
         }

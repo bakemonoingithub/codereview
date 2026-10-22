@@ -21,6 +21,7 @@ public class AgentModelCall {
     private String unitId;
     private String purpose;
     private Integer attempt;
+    private Integer turnNo;
     private String state;
     private String requestBody;
     private String responseBody;

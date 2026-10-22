@@ -67,7 +67,7 @@ public class TaskDispatchService {
         if (!markRunning(task)) {
             return;
         }
-        TaskWorker worker = workers.getIfUnique();
+        TaskWorker worker = selectWorker(task);
         if (worker == null) {
             finish(taskId, TaskStates.FAILED, TaskStates.STOP_EXECUTOR_UNAVAILABLE);
             return;
@@ -87,6 +87,15 @@ public class TaskDispatchService {
             log.error("任务 {} 执行异常", taskId, e);
             finish(taskId, TaskStates.FAILED, TaskStates.STOP_EXECUTION_ERROR);
         }
+    }
+
+    /** 按任务路线选择执行器；没有匹配执行器时明确失败，不猜默认实现。 */
+    private TaskWorker selectWorker(AgentReviewTask task) {
+        String route = task.getRoute() == null ? "SPECIALIST" : task.getRoute();
+        return workers.orderedStream()
+                .filter(candidate -> candidate.route().equals(route))
+                .findFirst()
+                .orElse(null);
     }
 
     private boolean markRunning(AgentReviewTask task) {

@@ -13,6 +13,11 @@ public interface TaskWorker {
 
     TaskOutcome execute(AgentReviewTask task);
 
+    /** 本执行器负责的路线；调度层按任务 route 选择，不再假设只有一个执行器。 */
+    default String route() {
+        return "SPECIALIST";
+    }
+
     record TaskOutcome(String state, String stopReason) {
 
         public TaskOutcome {

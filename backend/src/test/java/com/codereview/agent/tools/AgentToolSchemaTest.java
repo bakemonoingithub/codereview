@@ -52,6 +52,23 @@ class AgentToolSchemaTest {
     }
 
     @Test
+    void agentExecutionExposesSubmitResultAlongsideReadOnlyTools() {
+        List<Map<String, Object>> tools = AgentToolSchema.agentTools();
+
+        assertEquals(6, tools.size());
+        Map<String, Object> submit = tools.stream()
+                .filter(tool -> ((Map<?, ?>) tool.get("function")).get("name")
+                        .equals(AgentToolNames.SUBMIT_RESULT))
+                .findFirst().orElseThrow();
+        Map<?, ?> parameters = (Map<?, ?>) ((Map<?, ?>) submit.get("function")).get("parameters");
+        assertEquals(false, parameters.get("additionalProperties"));
+        assertTrue(((List<?>) parameters.get("required")).contains("answerStatus"));
+        Map<?, ?> properties = (Map<?, ?>) parameters.get("properties");
+        Map<?, ?> citations = (Map<?, ?>) properties.get("citations");
+        assertEquals(100, citations.get("maxItems"));
+    }
+
+    @Test
     void schemaVersionIsBoundToTheCacheAndValidationKeys() {
         assertEquals("agent-tools-v1", AgentToolSchema.version());
         assertTrue(AgentToolNames.SCHEMA_VERSION.startsWith("agent-tools-"));

@@ -14,6 +14,7 @@ import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentTaskQuota;
 import com.codereview.agent.execution.AgentBudget;
+import com.codereview.agent.execution.TaskDispatchService;
 import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.invocation.ModelInvocationProperties;
 import com.codereview.agent.invocation.ModelSnapshot;
@@ -72,14 +73,25 @@ public class AgentTaskService {
     private final ObjectMapper mapper;
     private final RepositoryReadService repository;
     private final ModelInvocationProperties modelProperties;
+    private final TaskDispatchService dispatcher;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AgentTaskService(AgentDatabase db, ObjectMapper mapper,
                             RepositoryReadService repository,
-                            ModelInvocationProperties modelProperties) {
+                            ModelInvocationProperties modelProperties,
+                            TaskDispatchService dispatcher) {
         this.db = db;
         this.mapper = mapper;
         this.repository = repository;
         this.modelProperties = modelProperties;
+        this.dispatcher = dispatcher;
+    }
+
+    /** 兼容既有测试与手工装配：不注入调度时只创建任务，不派发。 */
+    public AgentTaskService(AgentDatabase db, ObjectMapper mapper,
+                            RepositoryReadService repository,
+                            ModelInvocationProperties modelProperties) {
+        this(db, mapper, repository, modelProperties, null);
     }
 
     public AgentTaskDtos.Created create(AgentTaskDtos.Create req, String idempotencyKey) {
@@ -133,6 +145,9 @@ public class AgentTaskService {
                 }
             }
             throw race;
+        }
+        if (dispatcher != null) {
+            dispatcher.dispatch(task.getId());
         }
         return new AgentTaskDtos.Created(task.getId(), task.getState(), ROUTE,
                 "/api/v2/review-tasks/" + task.getId());

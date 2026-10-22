@@ -84,6 +84,52 @@ public final class AgentToolSchema {
         return List.copyOf(tools);
     }
 
+    /**
+     * Agent 执行使用的工具清单：五类只读工具 + 显式提交动作。
+     *
+     * <p>{@code submit_result} 只在执行循环里暴露，不进入只读工具参数解析；
+     * 它与其他工具同批出现时整批不执行。
+     */
+    public static List<Map<String, Object>> agentTools() {
+        List<Map<String, Object>> tools = new ArrayList<>(definitions());
+        tools.add(submitResult());
+        return List.copyOf(tools);
+    }
+
+    private static Map<String, Object> submitResult() {
+        Map<String, Object> citation = new LinkedHashMap<>();
+        citation.put("type", "object");
+        citation.put("additionalProperties", false);
+        citation.put("required", List.of("id", "materialId", "startLine", "endLine"));
+        Map<String, Object> citationProperties = new LinkedHashMap<>();
+        citationProperties.put("id", Map.of("type", "string", "pattern", "^E[0-9]{1,3}$"));
+        citationProperties.put("materialId", Map.of("type", "string", "maxLength", 26));
+        citationProperties.put("startLine", Map.of("type", "integer", "minimum", 1));
+        citationProperties.put("endLine", Map.of("type", "integer", "minimum", 1));
+        citation.put("properties", citationProperties);
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("title", Map.of("type", "string", "maxLength", 200));
+        properties.put("summary", Map.of("type", "string", "maxLength", 1000));
+        properties.put("answerStatus", Map.of("type", "string",
+                "enum", List.of(AgentSubmission.ANSWERED, AgentSubmission.INSUFFICIENT_EVIDENCE)));
+        properties.put("markdown", Map.of("type", "string", "maxLength", 24000));
+        properties.put("citations", Map.of("type", "array", "maxItems", 100, "items", citation));
+        properties.put("unresolved", Map.of("type", "array", "maxItems", 20,
+                "items", Map.of("type", "string", "maxLength", 1000)));
+
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("type", "object");
+        parameters.put("additionalProperties", false);
+        parameters.put("properties", properties);
+        parameters.put("required", List.of("title", "summary", "answerStatus", "markdown"));
+        return function(AgentToolNames.SUBMIT_RESULT,
+                "结束调查并提交结果，必须单独调用，不能与其他工具同批。"
+                        + "引用只能使用实际返回材料的 materialId 与原始行号；"
+                        + "ANSWERED 至少一个引用，INSUFFICIENT_EVIDENCE 必须写明未解决事项。",
+                parameters);
+    }
+
     private static Map<String, Object> function(String name, String description,
                                                 Map<String, Object> parameters) {
         Map<String, Object> function = new LinkedHashMap<>();
