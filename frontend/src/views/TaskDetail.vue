@@ -114,7 +114,7 @@
                   v-if="result"
                   :task-id="task.id"
                   :result="result"
-                  @open-code="openMaterial"
+                  @open-code="openCodeReference"
                 />
                 <div v-else-if="!resultError" class="empty">该文件还没有已发布结果。</div>
               </template>
@@ -206,6 +206,20 @@
       :head-sha="task.headSha || ''"
       :material-id="materialId"
     />
+    <CodeReferenceModal
+      v-if="task && codePayload"
+      v-model:open="codeOpen"
+      :task-id="task.id"
+      :project-id="task.projectId"
+      :scope="codePayload.scope"
+      :path="codePayload.path"
+      :sha="codePayload.sha || ''"
+      :side="codePayload.side"
+      :references="codePayload.references"
+      :active-start="codePayload.startLine"
+      :active-end="codePayload.endLine"
+      :evidence-count="codePayload.evidenceCount || 0"
+    />
     <CallReaderModal
       v-if="task"
       v-model:open="callOpen"
@@ -222,9 +236,11 @@ import { message, Modal } from 'ant-design-vue'
 import SpecialistResultView from '@/components/SpecialistResultView.vue'
 import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
+import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
 import { discardFeedbackDrafts, hasDirtyFeedbackDrafts, feedbackSaveVersion } from '@/components/feedbackDrafts'
 import { taskLabel } from '@/utils/taskLabel'
+import type { CodeReferencePayload } from '@/utils/codeReferences'
 import {
   projectsApi,
   tasksApi,
@@ -258,6 +274,8 @@ const callsLoadingMore = ref(false)
 const detailLoading = ref(false)
 const materialOpen = ref(false)
 const materialId = ref('')
+const codeOpen = ref(false)
+const codePayload = ref<CodeReferencePayload | null>(null)
 const callOpen = ref(false)
 const callId = ref('')
 let loadEpoch = 0
@@ -334,6 +352,8 @@ watch(() => route.params.id, () => {
   callsHasMore.value = false
   callsPages = 1
   materialOpen.value = false
+  codeOpen.value = false
+  codePayload.value = null
   callOpen.value = false
   try {
     const saved = JSON.parse(sessionStorage.getItem(`review-detail-${String(route.params.id)}`) || 'null')
@@ -374,6 +394,8 @@ async function loadTask() {
       calls.value = []
       callsCursor.value = null
       callsHasMore.value = false
+      codeOpen.value = false
+      codePayload.value = null
     }
     void loadStatistics(loaded.id)
     await loadTarget()
@@ -433,6 +455,8 @@ async function selectTarget(targetId: string) {
   materials.value = []
   calls.value = []
   materialOpen.value = false
+  codeOpen.value = false
+  codePayload.value = null
   callOpen.value = false
   await loadTarget()
 }
@@ -546,10 +570,13 @@ function copyTask() {
   router.push({ path: '/reviews/new', query: { copyFrom: task.value.id } })
 }
 
-function openMaterial(value: { materialId?: string; path: string; sha?: string; side: string; startLine: number; endLine: number }) {
-  if (value.materialId) {
-    openMaterialById(value.materialId)
+function openCodeReference(value: CodeReferencePayload) {
+  if (value.references?.length && value.path) {
+    codePayload.value = value
+    codeOpen.value = true
+    return
   }
+  if (value.materialId) openMaterialById(value.materialId)
 }
 
 function openMaterialById(id: string) {

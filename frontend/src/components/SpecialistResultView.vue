@@ -41,7 +41,7 @@
             :key="locationIndex"
             size="small"
             type="link"
-            @click="openModelLocation(location)"
+            @click="openIssueLocation(issue, location)"
           >
             {{ modelLocationLabel(location) }}
           </a-button>
@@ -53,7 +53,7 @@
             :key="'e-' + evidenceIndex"
             size="small"
             type="link"
-            @click="openModelLocation(evidence)"
+            @click="openIssueLocation(issue, evidence)"
           >
             {{ modelLocationLabel(evidence) }}
           </a-button>
@@ -80,7 +80,7 @@
             :key="evidenceIndex"
             size="small"
             type="link"
-            @click="openModelLocation(evidence)"
+            @click="openPatternEvidence(pattern, evidence)"
           >
             {{ modelLocationLabel(evidence) }}
           </a-button>
@@ -118,7 +118,7 @@
             :key="evidenceIndex"
             size="small"
             type="link"
-            @click="openModelLocation(evidence)"
+            @click="openObservationEvidence(observation, evidence)"
           >
             {{ modelLocationLabel(evidence) }}
           </a-button>
@@ -143,18 +143,23 @@
 import { computed } from 'vue'
 import type { ResultView } from '@/api/v2'
 import FeedbackEditor from '@/components/FeedbackEditor.vue'
+import { dedupeReferences, sameFileSide, type CodeReference, type CodeReferencePayload } from '@/utils/codeReferences'
 
-interface CodeRef {
-  materialId?: string
-  path: string
-  sha?: string
-  side: string
+interface ModelLocation {
+  materialId: string
   startLine: number
   endLine: number
 }
 
+type BodyIssue = NonNullable<ResultView['body']['issues']>[number]
+type BodyPattern = NonNullable<ResultView['body']['patterns']>[number]
+type BodyObservation = NonNullable<ResultView['body']['observations']>[number]
+
 const props = defineProps<{ result: ResultView; taskId: string }>()
-const emit = defineEmits<{ (event: 'open-code', value: CodeRef): void; (event: 'feedback-saved'): void }>()
+const emit = defineEmits<{
+  (event: 'open-code', value: CodeReferencePayload): void
+  (event: 'feedback-saved'): void
+}>()
 
 const kindText = computed(() => ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度' } as Record<string, string>)[props.result.kind] || props.result.kind)
 
@@ -171,26 +176,72 @@ function dependencyLabel(id: string): string {
   return edge ? `${edge.sourceType} → ${edge.targetType}（${edge.relation}）` : id
 }
 
-function openModelLocation(location: { materialId: string; startLine: number; endLine: number }) {
+/** 把结果里的 materialId 位置还原成固定版本坐标；材料缺失时不发射事件。 */
+function resolveReference(location: ModelLocation): CodeReference | null {
   const material = props.result.provenance.materials?.find((item) => item.id === location.materialId)
-  if (!material) {
-    return
-  }
-  emit('open-code', {
+  if (!material) return null
+  return {
     materialId: material.id,
     path: material.path,
     sha: material.sha,
     side: material.side,
     startLine: location.startLine,
     endLine: location.endLine
-  })
+  }
 }
 
-function locationLabel(location: { materialId: string; startLine: number; endLine: number }): string {
+/**
+ * 一次点击只阅读同一个文件、同一版本侧的引用；同问题其他文件的引用
+ * 关闭弹窗后再从对应链接打开。
+ */
+function openReference(
+  location: ModelLocation,
+  all: ModelLocation[],
+  scope: 'issue' | 'result',
+  evidence: ModelLocation[] = []
+) {
+  const target = resolveReference(location)
+  if (!target) return
+
+  const references = dedupeReferences(all
+    .map(resolveReference)
+    .filter((ref): ref is CodeReference => !!ref)
+    .filter((ref) => sameFileSide(ref, target)))
+  // 同范围可能来自另一个材料片段；保留去重后的一行，但必须用点击处
+  // 的材料上下文，保存片段和发送范围才不会指到别的单元。
+  const existing = references.findIndex((ref) => ref.startLine === target.startLine && ref.endLine === target.endLine)
+  if (existing >= 0) {
+    references[existing] = target
+  } else {
+    references.push(target)
+    references.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine)
+  }
+
+  const evidenceCount = dedupeReferences(evidence
+    .map(resolveReference)
+    .filter((ref): ref is CodeReference => !!ref)
+    .filter((ref) => sameFileSide(ref, target))).length
+
+  emit('open-code', { ...target, references, evidenceCount, scope })
+}
+
+function openIssueLocation(issue: BodyIssue, location: ModelLocation) {
+  openReference(location, [...issue.locations, ...(issue.evidence || [])], 'issue', issue.evidence || [])
+}
+
+function openPatternEvidence(pattern: BodyPattern, location: ModelLocation) {
+  openReference(location, pattern.evidence, 'result')
+}
+
+function openObservationEvidence(observation: BodyObservation, location: ModelLocation) {
+  openReference(location, observation.evidence, 'result')
+}
+
+function locationLabel(location: ModelLocation): string {
   return `${location.materialId.slice(0, 8)}… : ${location.startLine}-${location.endLine}`
 }
 
-function modelLocationLabel(location: { materialId: string; startLine: number; endLine: number }): string {
+function modelLocationLabel(location: ModelLocation): string {
   const material = props.result.provenance.materials?.find((item) => item.id === location.materialId)
   return material
     ? `${material.path} : ${location.startLine}-${location.endLine} · ${sideText(material.side)}`

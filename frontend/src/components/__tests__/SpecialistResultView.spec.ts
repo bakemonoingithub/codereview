@@ -79,6 +79,48 @@ describe('专项结果阅读', () => {
       startLine: 10,
       endLine: 12
     })
+    const payload = wrapper.emitted('open-code')?.[0]?.[0] as any
+    expect(payload.scope).toBe('issue')
+    expect(payload.evidenceCount).toBe(0)
+    expect(payload.references).toEqual([{
+      materialId: 'm1',
+      path: 'src/Order.java',
+      sha: 'a'.repeat(40),
+      side: 'FILE',
+      startLine: 10,
+      endLine: 12
+    }])
+  })
+
+  it('同一问题的位置与辅助证据合并，跨文件引用不混入', async () => {
+    const result = issueResult()
+    const issue = result.body.issues![0]
+    issue.locations.push({ materialId: 'm1', startLine: 20, endLine: 21 })
+    issue.evidence = [{ materialId: 'm1', startLine: 30, endLine: 31 }]
+    result.provenance.materials!.push({
+      id: 'm2', path: 'src/Other.java', sha: 'b'.repeat(40), side: 'FILE', role: 'AUX'
+    })
+    issue.locations.push({ materialId: 'm2', startLine: 5, endLine: 5 })
+
+    const wrapper = mount(SpecialistResultView, {
+      props: { result, taskId: 't1' },
+      global: { stubs: { ...namedAntStubs, FeedbackEditor: true } }
+    })
+    const locationButton = wrapper.findAll('a-button-stub')
+      .find((button) => button.text().includes('src/Order.java : 10-12'))
+    await locationButton!.trigger('click')
+
+    const payload = wrapper.emitted('open-code')?.[0]?.[0] as any
+    expect(payload.scope).toBe('issue')
+    expect(payload.evidenceCount).toBe(1)
+    expect(payload.references).toHaveLength(3)
+    expect(payload.references.map((ref: any) => [ref.path, ref.startLine, ref.endLine])).toEqual([
+      ['src/Order.java', 10, 12],
+      ['src/Order.java', 20, 21],
+      ['src/Order.java', 30, 31]
+    ])
+    expect(payload.references.some((ref: any) => ref.path === 'src/Other.java')).toBe(false)
+    wrapper.unmount()
   })
 
   it('未完成结果明确提示不能作为完整结论', () => {

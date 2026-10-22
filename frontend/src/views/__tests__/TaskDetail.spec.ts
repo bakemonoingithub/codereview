@@ -35,7 +35,7 @@ const statistics = (type = 'ISSUE', overrides: Record<string, unknown> = {}) => 
 const state = (w: any) => w.vm.$.setupState as any
 async function start() { const w = mount(TaskDetail, { global: { stubs: { ...namedAntStubs,
   SpecialistResultView: { props: ['result'], template: '<div>{{ result.id }}</div>' },
-  MaterialReaderModal: true, CallReaderModal: true, 'a-table-column': { template: '<span />' }
+  MaterialReaderModal: true, CodeReferenceModal: true, CallReaderModal: true, 'a-table-column': { template: '<span />' }
 } } }); await flushPromises(); return w }
 beforeEach(() => {
   vi.useRealTimers(); vi.resetAllMocks(); sessionStorage.clear()
@@ -156,6 +156,30 @@ describe('任务详情的轮询与目标隔离', () => {
     expect(w.text()).toContain('— · 暂无明确判定')
     expect(w.text()).not.toContain('0%')
     expect(w.text()).not.toContain('100%')
+    w.unmount()
+  })
+  it('问题引用走专用代码阅读，材料入口仍走材料弹窗', async () => {
+    const w = await start(); const s = state(w)
+    s.openCodeReference({
+      materialId: 'm1', path: 'A.java', sha: 'fixed', side: 'FILE', startLine: 10, endLine: 12,
+      scope: 'issue', evidenceCount: 1,
+      references: [{ materialId: 'm1', path: 'A.java', sha: 'fixed', side: 'FILE', startLine: 10, endLine: 12 }]
+    })
+    expect(s.codeOpen).toBe(true)
+    expect(s.codePayload.path).toBe('A.java')
+    expect(s.codePayload.references).toHaveLength(1)
+
+    s.openMaterialById('m2')
+    expect(s.materialOpen).toBe(true)
+    expect(s.materialId).toBe('m2')
+    w.unmount()
+  })
+  it('没有可阅读引用时退回材料弹窗', async () => {
+    const w = await start(); const s = state(w)
+    s.openCodeReference({ materialId: 'm3', path: 'A.java', side: 'FILE', startLine: 1, endLine: 1, references: [], scope: 'issue' })
+    expect(s.materialOpen).toBe(true)
+    expect(s.materialId).toBe('m3')
+    expect(s.codeOpen).toBe(false)
     w.unmount()
   })
 })
