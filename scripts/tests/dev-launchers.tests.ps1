@@ -159,6 +159,31 @@ function New-FakeProcess([DateTime]$Start) {
     return $process
 }
 & {
+    $mavenMain = 'org.codehaus.plexus.classworlds.launcher.Launcher'
+    $backend = Join-Path $repoRoot 'backend'
+    $commands = @(
+        "java `"-Dmaven.multiModuleProjectDirectory=$backend`" $mavenMain spring-boot:run",
+        "java -Dmaven.multiModuleProjectDirectory=`"$backend`" $mavenMain spring-boot:run",
+        "java -Dmaven.multiModuleProjectDirectory=$backend $mavenMain spring-boot:run",
+        "java `"-Dmaven.multiModuleProjectDirectory=$backend-other`" $mavenMain spring-boot:run",
+        "java `"-Dmaven.multiModuleProjectDirectory=$backend`" $mavenMain test",
+        "java com.codereview.CodeReviewApplication --server.port=8081"
+    )
+    $directSnapshots = @(for ($i = 0; $i -lt $commands.Count; $i++) {
+        [pscustomobject]@{ Name = 'java.exe'; ProcessId = 920001 + $i; CommandLine = $commands[$i]; CreationDate = $created }
+    })
+    function Get-CimInstance { param($ClassName) return $directSnapshots }
+    function Get-Process { throw 'CheckOnly 不允许终止进程' }
+    $output = (& $stopScript -CheckOnly 6>&1) -join "`n"
+    Assert-True ($output -match '920001' -and $output -match '920002' -and $output -match '920003') '识别本仓库直接 Maven 启动的后端及三种路径引号形式'
+    Assert-True ($output -notmatch '920004|920005|920006') '不按路径前缀、普通 Maven 构建或应用名和端口误选进程'
+    $fakeProcess = New-FakeProcess $created
+    function Get-CimInstance { param($ClassName) return @($directSnapshots[0]) }
+    function Get-Process { param($Id, $ErrorAction) return $fakeProcess }
+    & $stopScript
+    Assert-True $fakeProcess.WasKilled '直接 Maven 后端经过身份核对后终止进程树'
+}
+& {
     $fakeProcess = New-FakeProcess ($created.AddSeconds(1))
     function Get-CimInstance { param($ClassName) return @($mine) }
     function Get-Process { param($Id, $ErrorAction) return $fakeProcess }

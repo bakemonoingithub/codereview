@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  停止当前仓库 start-dev.ps1 启动的前后端；-CheckOnly 仅显示匹配的进程。
+  停止当前仓库启动器登记的前后端及直接通过 Maven 启动的后端；-CheckOnly 仅显示匹配的进程。
 .EXAMPLE
   .\stop-dev.ps1
 #>
@@ -28,6 +28,22 @@ $backendLocation = "Set-Location -LiteralPath '" + (Join-Path $repoRoot 'backend
 $snapshots = @(Get-CimInstance Win32_Process)
 $targets = @{}
 $runDirectories = @{}
+
+# Direct Maven launches have no launcher record. Match the exact project
+# property and Maven entry point, never a listening port or application name.
+$backendProject = Join-Path $repoRoot 'backend'
+foreach ($snapshot in $snapshots) {
+    if ($snapshot.Name -ne 'java.exe' -or -not $snapshot.CommandLine) { continue }
+    $command = $snapshot.CommandLine
+    if ($command -notmatch '\borg\.codehaus\.plexus\.classworlds\.launcher\.Launcher\b' -or
+        $command -notmatch '(?:^|\s)spring-boot:run(?:\s|$)') { continue }
+    $project = [regex]::Match($command, '(?:^|\s)(?:"-Dmaven\.multiModuleProjectDirectory=([^"]+)"|-Dmaven\.multiModuleProjectDirectory="([^"]+)"|-Dmaven\.multiModuleProjectDirectory=([^\s"]+))(?=\s|$)')
+    if (-not $project.Success) { continue }
+    $projectPath = @($project.Groups[1].Value, $project.Groups[2].Value, $project.Groups[3].Value) | Where-Object { $_ }
+    try { $resolvedProject = [System.IO.Path]::GetFullPath([string]$projectPath).TrimEnd('\', '/') } catch { continue }
+    if (-not [string]::Equals($resolvedProject, $backendProject.TrimEnd('\', '/'), [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+    $targets[[int]$snapshot.ProcessId] = $snapshot
+}
 
 # Match the encoded backend command used by start-dev, including older runs
 # that predate processes.json. Never select services by port alone.
