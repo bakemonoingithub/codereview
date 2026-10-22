@@ -10,6 +10,7 @@ import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * <p>凭据只交给 JGit 的 {@link CredentialsProvider}，不进入镜像地址、目录名或诊断正文。
  * 不同站点同名仓库通过 cloneUrl 哈希分目录，不会互相污染。
  */
+@Component
 public class GitMirror {
 
     private static final Logger LOG = LoggerFactory.getLogger(GitMirror.class);
@@ -41,6 +43,7 @@ public class GitMirror {
     private final File workDir;
     private final int timeoutSeconds;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public GitMirror(GiteaProperties properties) {
         this(properties.resolvedWorkDir(), properties.getMirrorTimeoutSeconds());
     }

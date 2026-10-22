@@ -43,6 +43,7 @@ public class AgentModelService {
     private final ObjectMapper objectMapper;
     private final AgentToolLoopValidator toolLoopValidator;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AgentModelService(AgentDatabase db, ModelInvocationService invocation,
                              ObjectMapper objectMapper, AgentToolLoopValidator toolLoopValidator) {
         this.db = db;

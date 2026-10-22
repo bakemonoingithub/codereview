@@ -44,6 +44,8 @@ public class GiteaGitMirror {
         this(properties, new GitMirror(properties));
     }
 
+    /** 生产装配使用共享的镜像组件；测试仍可用单参构造自建。 */
+    @org.springframework.beans.factory.annotation.Autowired
     public GiteaGitMirror(GiteaProperties properties, GitMirror mirror) {
         this.mirror = mirror;
     }

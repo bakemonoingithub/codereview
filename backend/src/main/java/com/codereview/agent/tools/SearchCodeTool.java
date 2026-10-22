@@ -39,20 +39,28 @@ public class SearchCodeTool {
     private final Semaphore slots;
     private final Cache<String, CachedSearch> cache;
 
+    /** 生产装配使用共享镜像组件；测试与手工装配可用下一个构造自建。 */
+    @org.springframework.beans.factory.annotation.Autowired
     public SearchCodeTool(RepositoryReadService repository, ToolMaterialStore materials,
-                          GiteaProperties giteaProperties, GitGrepRunner grep,
-                          ToolProperties properties) {
+                          GitMirror mirror, GitGrepRunner grep, ToolProperties properties) {
         this.repository = repository;
         this.materials = materials;
         this.grep = grep;
         this.properties = properties;
-        this.mirror = new GitMirror(giteaProperties);
+        this.mirror = mirror;
         this.slots = new Semaphore(Math.max(1, properties.getSearchGlobalConcurrency()), true);
         this.cache = Caffeine.newBuilder()
                 .maximumWeight(Math.max(1, properties.getSearchCacheWeightBytes()))
                 .weigher((String key, CachedSearch value) -> Math.max(1, value.weight()))
                 .expireAfterWrite(Duration.ofMinutes(Math.max(1, properties.getSearchCacheMinutes())))
                 .build();
+    }
+
+    /** 兼容既有测试与手工装配：按 Gitea 镜像配置自建共享镜像。 */
+    public SearchCodeTool(RepositoryReadService repository, ToolMaterialStore materials,
+                          GiteaProperties giteaProperties, GitGrepRunner grep,
+                          ToolProperties properties) {
+        this(repository, materials, new GitMirror(giteaProperties), grep, properties);
     }
 
     public ToolEnvelope execute(String toolCallId, ToolInvocation invocation, AgentToolScope scope) {
