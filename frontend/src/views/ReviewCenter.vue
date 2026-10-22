@@ -6,7 +6,7 @@
     <template #actions>
       <a-button @click="router.push('/reports/new')">生成报告</a-button>
       <a-button @click="router.push('/reviews/new')">发起专项审查</a-button>
-      <a-button type="primary" @click="router.push('/agents/new')">＋ 发起 Agent 分析</a-button>
+      <a-button type="primary" @click="agentLaunchOpen = true">＋ 发起 Agent 分析</a-button>
     </template>
 
     <template #notice>
@@ -105,6 +105,7 @@
     <div class="table-footer">
       <span>按发起时间排序</span>
     </div>
+    <AgentLaunch v-model:open="agentLaunchOpen" />
   </ListPageLayout>
 </template>
 
@@ -119,6 +120,7 @@ import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import PageNotice from '@/components/PageNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import AgentLaunch from '@/views/AgentLaunch.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -131,6 +133,7 @@ const filterProject = ref<string | undefined>()
 const filterType = ref<string | undefined>()
 const filterState = ref<string | undefined>()
 const search = ref('')
+const agentLaunchOpen = ref(false)
 const hasFilters = computed(
   () => !!(filterProject.value || filterType.value || filterState.value || search.value)
 )

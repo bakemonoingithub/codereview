@@ -1,11 +1,18 @@
 <template>
+  <a-modal
+    :open="open"
+    title="发起 Agent 分析"
+    width="min(1040px, calc(100vw - 32px))"
+    :footer="null"
+    :destroy-on-close="false"
+    wrap-class-name="agent-launch-modal"
+    @cancel="close"
+  >
   <div class="agent-launch">
     <div class="page-head">
       <div>
-        <h1>发起 Agent 分析</h1>
         <p class="muted">描述范围与要求。模型只读调查固定版本，命中限制会保留记录但不发布完整结果。</p>
       </div>
-      <a-button @click="router.push('/reviews')">返回审查中心</a-button>
     </div>
 
     <a-alert
@@ -173,7 +180,7 @@
           <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
             开始 Agent 分析
           </a-button>
-          <a-button @click="router.push('/reviews')">取消</a-button>
+          <a-button @click="close">取消</a-button>
           <span class="muted">提交后任务在后台执行，可在审查中心查看进度。</span>
         </a-space>
       </a-form>
@@ -189,11 +196,12 @@
       @confirm="onScopeConfirm"
     />
   </div>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
 import {
@@ -208,7 +216,10 @@ import {
   type PromptSummary
 } from '@/api/v2'
 
+withDefaults(defineProps<{ open?: boolean }>(), { open: true })
+const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const router = useRouter()
+const route = useRoute()
 
 const projectOptions = ref<Array<{ label: string; value: string }>>([])
 const projects = ref<ProjectView[]>([])
@@ -258,20 +269,20 @@ const canSubmit = computed(() => {
 
 onMounted(async () => {
   try {
-    const [projectPage, modelPage, promptPage] = await Promise.all([
-      projectsApi.list({ pageNum: 1, pageSize: 100 }),
-      modelsApi.list({ pageNum: 1, pageSize: 100 }),
-      promptsApi.list({ pageNum: 1, pageSize: 100 })
+    const [projectItems, modelItems, promptItems] = await Promise.all([
+      loadAllPages((pageNum) => projectsApi.list({ pageNum, pageSize: 50 })),
+      loadAllPages((pageNum) => modelsApi.list({ pageNum, pageSize: 50 })),
+      loadAllPages((pageNum) => promptsApi.list({ pageNum, pageSize: 50 }))
     ])
-    projects.value = projectPage.items
-    projectOptions.value = projectPage.items.map((project) => ({
+    projects.value = projectItems
+    projectOptions.value = projectItems.map((project) => ({
       label: project.name,
       value: project.id
     }))
-    agentModels.value = modelPage.items.filter(
+    agentModels.value = modelItems.filter(
       (model) => model.agentValidationStatus === 'PASSED'
     )
-    prompts.value = promptPage.items.filter((prompt) => prompt.purpose === 'AGENT')
+    prompts.value = promptItems.filter((prompt) => prompt.purpose === 'AGENT')
     if (!form.projectId && projects.value.length) {
       await selectProject(projects.value[0].id)
     }
@@ -285,6 +296,21 @@ onMounted(async () => {
 
 async function onProjectChange(value: string) {
   await selectProject(value)
+}
+
+async function loadAllPages<T>(fetchPage: (pageNum: number) => Promise<{ items: T[]; hasMore: boolean }>): Promise<T[]> {
+  const items: T[] = []
+  let pageNum = 1
+  while (true) {
+    const page = await fetchPage(pageNum++)
+    items.push(...page.items)
+    if (!page.hasMore) return items
+  }
+}
+
+function close() {
+  emit('update:open', false)
+  if (route.path === '/agents/new') router.push('/reviews')
 }
 
 async function selectProject(projectId: string) {
@@ -438,6 +464,7 @@ async function submit() {
   letter-spacing: -0.8px;
   line-height: 1.4;
 }
+.page-head { margin-bottom: 20px; }
 .page-head p {
   margin: 8px 0 0;
   font-size: 15px;
@@ -516,5 +543,16 @@ async function submit() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+</style>
+
+<style lang="less">
+.agent-launch-modal .ant-modal {
+  top: 24px;
+  padding-bottom: 24px;
+}
+.agent-launch-modal .ant-modal-body {
+  max-height: calc(100vh - 120px);
+  overflow: auto;
 }
 </style>
