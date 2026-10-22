@@ -99,16 +99,15 @@ public class ReportGenerationService {
     }
 
     public PageResponse<ReportDtos.ReportSummary> list(String cursor, Integer limit) {
-        int size = AgentPaging.limit(limit);
+        return list(cursor, limit, null, null);
+    }
+
+    public PageResponse<ReportDtos.ReportSummary> list(String cursor, Integer limit, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AgentReport> wrapper = new LambdaQueryWrapper<>();
-        AgentPaging.applyCursor(wrapper, cursor, AgentReport::getCreatedAt, AgentReport::getId);
-        AgentPaging.applyOrder(wrapper, AgentReport::getCreatedAt, AgentReport::getId);
-        wrapper.last("limit " + (size + 1));
-        PageResponse<AgentReport> page = AgentPaging.assemble(
-                db.mapper(AgentReportMapper.class).selectList(wrapper), size,
+        PageResponse<AgentReport> page = AgentPaging.query(
+                db.mapper(AgentReportMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentReport::getCreatedAt, AgentReport::getId);
-        return new PageResponse<>(page.items().stream().map(this::summary).toList(),
-                page.nextCursor(), page.hasMore());
+        return page.withItems(page.items().stream().map(this::summary).toList());
     }
 
     public ReportDtos.ReportDetail detail(String reportId) {

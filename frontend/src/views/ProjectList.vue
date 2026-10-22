@@ -20,9 +20,9 @@
       <span class="filter-hint">管理可复用配置</span>
     </template>
 
-    <LoadErrorAlert :message="loadError" @retry="load" />
+    <LoadErrorAlert :message="loadError" @retry="retry" />
 
-    <a-table :data-source="projects" row-key="id" :loading="loading" :pagination="false">
+    <a-table :data-source="projects" row-key="id" :loading="loading" :pagination="pagination">
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的项目' : '还没有项目'"
@@ -56,9 +56,7 @@
       </a-table-column>
     </a-table>
 
-    <div v-if="hasMore" class="load-more">
-      <a-button :loading="loading" @click="loadMore">加载更多</a-button>
-    </div>
+
 
     <a-modal
       v-model:open="modalOpen"
@@ -109,21 +107,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { projectsApi, type ProjectView } from '@/api/v2'
+import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import PageNotice from '@/components/PageNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
-const projects = ref<ProjectView[]>([])
-const loading = ref(false)
-const loadError = ref('')
 const keyword = ref('')
-const nextCursor = ref<string | null>(null)
-const hasMore = computed(() => !!nextCursor.value)
 const modalOpen = ref(false)
 const confirmOpen = ref(false)
 const deleting = ref(false)
@@ -133,36 +127,11 @@ const saving = ref(false)
 const editing = ref<ProjectView | null>(null)
 const credentialConfigured = ref(false)
 const form = ref({ name: '', repoUrl: '', credential: '', currentBranch: 'main' })
-let listGeneration = 0
 
-async function load(cursor?: string) {
-  if (cursor && loading.value) return
-  const generation = ++listGeneration
-  if (!cursor) nextCursor.value = null
-  loading.value = true
-  loadError.value = ''
-  try {
-    const page = await projectsApi.list({
-      q: keyword.value.trim() || undefined,
-      cursor,
-      limit: 100
-    })
-    if (generation !== listGeneration) return
-    projects.value = cursor ? [...projects.value, ...page.items] : page.items
-    nextCursor.value = page.nextCursor
-  } catch (e: any) {
-    if (generation !== listGeneration) return
-    loadError.value = e?.message || '项目列表加载失败'
-  } finally {
-    if (generation === listGeneration) loading.value = false
-  }
-}
-
+const { items: projects, loading, error: loadError, pagination, load, refresh, retry } = useListPagination<ProjectView>(
+  'projects', params => projectsApi.list({ ...params, q: keyword.value.trim() || undefined }), '项目列表加载失败', () => keyword.value.trim()
+)
 function reload() { return load() }
-
-function loadMore() {
-  if (nextCursor.value) load(nextCursor.value)
-}
 
 function openCreate() {
   editing.value = null
@@ -186,7 +155,7 @@ async function confirmDelete() {
     message.success('已删除')
     confirmOpen.value = false
     pendingDelete.value = null
-    await load()
+    await refresh()
   } catch (e: any) {
     deleteError.value = e?.message || '删除失败'
     message.error(deleteError.value)
@@ -232,7 +201,7 @@ async function onSave() {
       message.success('创建成功')
     }
     modalOpen.value = false
-    await load()
+    await (editing.value ? refresh() : load())
   } catch (e: any) {
     message.error(e?.message || '保存失败')
   } finally {
@@ -244,11 +213,6 @@ onMounted(load)
 </script>
 
 <style scoped lang="less">
-.load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-}
 .field-hint {
   margin-top: 4px;
   color: var(--muted);

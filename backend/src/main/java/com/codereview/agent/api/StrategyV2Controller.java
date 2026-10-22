@@ -33,8 +33,10 @@ public class StrategyV2Controller {
     public PageResponse<StrategyDtos.View> list(@RequestParam(required = false) String q,
                                                 @RequestParam(required = false) String type,
                                                 @RequestParam(required = false) String cursor,
-                                                @RequestParam(required = false) Integer limit) {
-        return service.list(q, type, cursor, limit);
+                                                @RequestParam(required = false) Integer limit,
+                                               @RequestParam(required = false) Integer pageNum,
+                                               @RequestParam(required = false) Integer pageSize) {
+        return service.list(q, type, cursor, limit, pageNum, pageSize);
     }
 
     @GetMapping("/{id}")

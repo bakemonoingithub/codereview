@@ -32,8 +32,10 @@ public class ProjectV2Controller {
     @GetMapping
     public PageResponse<ProjectDtos.View> list(@RequestParam(required = false) String q,
                                                @RequestParam(required = false) String cursor,
-                                               @RequestParam(required = false) Integer limit) {
-        return service.list(q, cursor, limit);
+                                               @RequestParam(required = false) Integer limit,
+                                               @RequestParam(required = false) Integer pageNum,
+                                               @RequestParam(required = false) Integer pageSize) {
+        return service.list(q, cursor, limit, pageNum, pageSize);
     }
 
     @GetMapping("/{id}")

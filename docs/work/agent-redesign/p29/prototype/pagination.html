@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>列表分页 · 交互原型</title>
+<style>
+:root{--ink:#182435;--muted:#69798d;--line:#e3e9f0;--bg:#f5f7fb;--blue:#2463d5;--nav:#14253b}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:var(--bg);font:14px/1.6 "Segoe UI","Microsoft YaHei",sans-serif}button,input,select{font:inherit}button{cursor:pointer;background:white;color:var(--ink);border:1px solid #d6deea;border-radius:6px;padding:6px 12px}button:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}button:disabled{opacity:.4;cursor:not-allowed}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:3px}input,select{padding:7px 10px;border:1px solid #d6deea;border-radius:6px;background:white;color:var(--ink)}a{color:var(--blue);cursor:pointer}aside{position:fixed;inset:0 auto 0 0;width:216px;background:var(--nav);padding:28px 16px;color:#becadd}.brand{font-weight:650;color:white;font-size:18px;padding:0 12px 28px}.nav-label{font-size:11px;letter-spacing:1.6px;padding:16px 12px 8px;color:#8296b1}nav button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#c4d0e1;padding:11px 14px;margin:4px 0}nav button.active{color:white;background:#2a4161}nav button:hover:not(:disabled){background:#233c5c;color:white}main{margin-left:216px}.topbar{height:66px;border-bottom:1px solid var(--line);background:white;display:flex;align-items:center;justify-content:space-between;padding:0 32px;color:var(--muted)}.prototype{font-size:12px;color:var(--blue);background:#edf4ff;border-radius:20px;padding:4px 12px}.content{padding:30px 32px 48px;max-width:1600px;margin:auto}.heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:16px}h1{font-size:26px;margin:0 0 5px}p{margin:0}.muted{color:var(--muted)}.primary{background:var(--blue);color:white;border-color:var(--blue)}.notice{margin-bottom:20px;border:1px solid #d8e5fb;border-radius:8px;background:#edf4ff;color:#3d5c8d;padding:12px 16px}.card{background:white;border:1px solid var(--line);border-radius:10px;overflow:hidden}.filters{display:flex;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line);align-items:center}.filters input{width:300px;max-width:70%}.spacer{flex:1}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;background:#fafbfc;color:#64748b;font-weight:600}th,td{padding:14px 22px;border-bottom:1px solid var(--line)}tbody tr:hover{background:#f8fafc}td strong,td .sub{display:block}.sub{font-size:12px;color:var(--muted);margin-top:2px}.badge{font-size:12px;border-radius:20px;padding:3px 10px;color:#177958;background:#eaf7ef}.badge.blue{color:var(--blue);background:#edf4ff}.pager{display:flex;gap:10px;align-items:center;padding:18px 22px;flex-wrap:wrap}.pages{display:flex;align-items:center;gap:7px}.pages button{min-width:32px;padding:4px 9px}.pages .selected{border-color:var(--blue);color:var(--blue);font-weight:600}.ellipsis{color:var(--muted);padding:0 4px}.pager select{padding:5px 9px}.jump{display:flex;align-items:center;gap:7px;color:var(--muted)}.jump input{width:64px;padding:5px 8px}.help{font-size:12px;color:var(--muted);margin-top:12px}.empty{text-align:center;padding:48px;color:var(--muted)}dialog{border:1px solid var(--line);border-radius:12px;width:520px;max-width:90vw;padding:28px;box-shadow:0 16px 60px #14253b33}dialog::backdrop{background:#14253b66}dialog h2{margin-top:0}dialog button{margin-top:24px}@media(max-width:1000px){aside{width:172px}.brand{font-size:16px}main{margin-left:172px}.content{padding:24px 20px}.pager .spacer{display:none}.topbar{padding:0 20px}.heading{align-items:flex-start}.pager{justify-content:flex-start}}
+</style>
+</head>
+<body>
+<aside><div class="brand">智能代码分析工具</div><nav aria-label="主导航"><div class="nav-label">WORKSPACE</div><div id="workspace-nav"></div><div class="nav-label">MANAGE</div><div id="manage-nav"></div></nav></aside>
+<main><div class="topbar"><span id="breadcrumb">工作台 / 审查中心</span><span class="prototype">分页交互原型 · 示例数据</span></div>
+<div class="content"><div class="heading"><div><h1 id="title"></h1><p id="subtitle" class="muted"></p></div><button id="create" class="primary" type="button"></button></div>
+<div class="notice">每页可显示 10、20 或 50 条。各页面分别记住选择，重新打开后仍使用上次的条数。</div>
+<section class="card"><div class="filters"><input id="search" type="search" aria-label="搜索当前列表" placeholder="搜索名称或 ID"><button id="search-button" type="button">搜索</button><span class="spacer"></span><button id="refresh" type="button">刷新</button></div>
+<div class="table-wrap"><table><thead id="table-head"></thead><tbody id="table-body"></tbody></table></div>
+<div class="pager" aria-label="列表分页"><span id="total" class="muted" aria-live="polite"></span><span class="spacer"></span><div id="pages" class="pages"></div><select id="page-size" aria-label="每页条数"><option value="10">10 条 / 页</option><option value="20">20 条 / 页</option><option value="50">50 条 / 页</option></select><form id="jump-form" class="jump"><label for="jump">跳至</label><input id="jump" type="number" min="1" value="1" required aria-label="目标页码"><span>页</span><button type="submit">确定</button></form></div></section>
+<p class="help">可切换左侧页面检查独立记忆；切换每页条数或搜索时回到第 1 页。点击列表中的「查看」后返回可保留当前页。</p>
+</div></main>
+<dialog id="detail"><h2 id="detail-title"></h2><p class="muted">这是列表分页演示。正式页面继续使用已有详情或编辑界面。</p><button id="close-detail" type="button">返回列表</button></dialog>
+<script>
+'use strict';
+const definitions = {
+  reviews: { title:'审查中心', subtitle:'查看逐文件分析结果，跟进反馈，并将已完成结果整理成报告。', action:'＋ 发起审查', count:137, noun:'审查任务', columns:['任务','类型','状态','文件完成情况','发起时间','操作'] },
+  reports: { title:'报告', subtitle:'勾选已完成的审查结果，独立生成可追溯的多结果报告。', action:'＋ 生成报告', count:63, noun:'审查报告', columns:['报告名称','选取材料','状态','时间','操作'] },
+  projects: { title:'项目管理', subtitle:'维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读。', action:'＋ 新建项目', count:34, noun:'项目', columns:['名称','仓库地址','当前分支','访问令牌','操作'] },
+  models: { title:'模型管理', subtitle:'维护模型连接、容量档案与验证状态。', action:'＋ 新建模型', count:26, noun:'模型配置', columns:['名称','模型','窗口 / 最大输出','验证状态','操作'] },
+  prompts: { title:'提示词管理', subtitle:'维护可复用的审查规则、用途与正文版本。', action:'＋ 新建提示词', count:74, noun:'提示词', columns:['名称','用途','版本','更新时间','操作'] },
+  strategies: { title:'策略管理', subtitle:'组合专项类型、模型与可选提示词，供发起审查时选择。', action:'＋ 新建策略', count:42, noun:'审查策略', columns:['名称','专项类型','模型','提示词','操作'] }
+};
+const $ = id => document.getElementById(id);
+const validSizes = [10,20,50];
+function readSize(key) {
+  try {
+    const cookie = document.cookie.split(';').map(value => value.trim()).find(value => value.startsWith('ai-review-page-size-' + key + '='));
+    const value = Number(cookie?.split('=')[1]);
+    return validSizes.includes(value) ? value : 20;
+  } catch { return 20; }
+}
+function writeSize(key, size) {
+  try { document.cookie = 'ai-review-page-size-' + key + '=' + size + '; Max-Age=31536000; Path=/; SameSite=Lax'; } catch { /* 本次页面仍可分页 */ }
+}
+const states = Object.fromEntries(Object.keys(definitions).map(key => [key,{page:1,size:readSize(key),query:''}]));
+let active = 'reviews';
+function button(label, onClick, disabled = false, selected = false) {
+  const node = document.createElement('button'); node.type = 'button'; node.textContent = label; node.disabled = disabled;
+  if (selected) { node.className = 'selected'; node.setAttribute('aria-current','page'); }
+  node.addEventListener('click', onClick); return node;
+}
+function switchPage(key) { active = key; $('search').value = states[key].query; render(); }
+for (const [key, config] of Object.entries(definitions)) {
+  const node = button(config.title, () => switchPage(key)); node.dataset.page = key;
+  $(['reviews','reports'].includes(key) ? 'workspace-nav' : 'manage-nav').append(node);
+}
+function rowsFor(key) {
+  const config = definitions[key];
+  const names = ['订单服务','支付网关','用户中心','消息服务','结算平台'];
+  return Array.from({length:config.count}, (_, index) => ({ id:index + 1, name:names[index % names.length] + ' · ' + config.noun + ' ' + String(index + 1).padStart(3,'0') }));
+}
+function cell(value, className) { const td = document.createElement('td'); td.textContent = value; if (className) td.className = className; return td; }
+function render() {
+  const config = definitions[active], state = states[active];
+  const rows = rowsFor(active).filter(row => !state.query || row.name.toLowerCase().includes(state.query.toLowerCase()) || String(row.id) === state.query);
+  const maxPage = Math.max(1, Math.ceil(rows.length / state.size));
+  state.page = Math.min(maxPage, Math.max(1, state.page));
+  $('title').textContent = config.title; $('subtitle').textContent = config.subtitle; $('create').textContent = config.action;
+  $('breadcrumb').textContent = (['reviews','reports'].includes(active) ? '工作台' : '管理') + ' / ' + config.title;
+  document.querySelectorAll('nav button').forEach(node => { node.classList.toggle('active',node.dataset.page === active); if (node.dataset.page === active) node.setAttribute('aria-current','page'); else node.removeAttribute('aria-current'); });
+  const head = document.createElement('tr'); for (const title of config.columns) { const th = document.createElement('th'); th.scope='col'; th.textContent=title; head.append(th); } $('table-head').replaceChildren(head);
+  $('table-body').replaceChildren();
+  for (const row of rows.slice((state.page - 1)*state.size, state.page*state.size)) {
+    const tr = document.createElement('tr');
+    tr.append(cell(row.name));
+    let values;
+    if (active === 'reviews') values = [['问题审查','设计模式','耦合度'][(row.id-1)%3], '已完成','3 / 3','2026-10-22 09:30'];
+    else if (active === 'reports') values = ['4 个审查结果','已完成','2026-10-22 09:30'];
+    else if (active === 'projects') values = ['https://git.example.com/team/service-' + row.id,'main','已配置'];
+    else if (active === 'models') values = ['示例模型 ' + row.id,'128K / 16K','验证通过'];
+    else if (active === 'prompts') values = ['专项通用规则','v3','2026-10-22 09:30'];
+    else values = ['问题审查','示例模型','通用审查规则'];
+    for (const value of values) tr.append(cell(value));
+    const action = document.createElement('td'), link = document.createElement('a'); link.href='#detail'; link.textContent = '查看';
+    link.addEventListener('click', event => { event.preventDefault(); $('detail-title').textContent = row.name; $('detail').showModal(); });
+    action.append(link); tr.append(action); $('table-body').append(tr);
+  }
+  if (!rows.length) { const tr=document.createElement('tr'), td=cell('没有匹配的记录','empty'); td.colSpan=config.columns.length; tr.append(td); $('table-body').append(tr); }
+  const first = rows.length ? (state.page - 1)*state.size + 1 : 0, last = Math.min(state.page*state.size, rows.length);
+  $('total').textContent = '共 ' + rows.length + ' 条 · 当前 ' + first + '–' + last + ' 条';
+  $('page-size').value = String(state.size); $('jump').value = String(state.page); $('jump').max = String(maxPage);
+  const pageNodes = [button('‹', () => move(state.page - 1),state.page===1)]; pageNodes[0].setAttribute('aria-label','上一页');
+  const visible = [...new Set([1, maxPage, state.page-1, state.page, state.page+1])].filter(n => n>=1 && n<=maxPage).sort((a,b)=>a-b);
+  let previous = 0;
+  for (const n of visible) { if (previous && n - previous > 1) { const dots=document.createElement('span'); dots.className='ellipsis'; dots.textContent='…'; pageNodes.push(dots); } const node=button(String(n),()=>move(n),false,n===state.page); node.setAttribute('aria-label','第 ' + n + ' 页'); pageNodes.push(node); previous=n; }
+  const next=button('›',()=>move(state.page+1),state.page===maxPage); next.setAttribute('aria-label','下一页'); pageNodes.push(next); $('pages').replaceChildren(...pageNodes);
+}
+function move(page) { states[active].page=page; render(); }
+function search() { states[active].query=$('search').value.trim(); states[active].page=1; render(); }
+$('search-button').addEventListener('click',search);
+$('search').addEventListener('keydown',event=>{ if(event.key==='Enter') search(); });
+$('search').addEventListener('search',search);
+$('page-size').addEventListener('change',event=>{ const size=Number(event.target.value); if(!validSizes.includes(size))return; states[active].size=size; states[active].page=1; writeSize(active,size); render(); });
+$('jump-form').addEventListener('submit',event=>{ event.preventDefault(); move(Number($('jump').value)||1); });
+$('refresh').addEventListener('click',render);
+$('close-detail').addEventListener('click',()=>$('detail').close());
+$('create').addEventListener('click',()=>{ $('detail-title').textContent=definitions[active].action; $('detail').showModal(); });
+render();
+</script>
+</body>
+</html>

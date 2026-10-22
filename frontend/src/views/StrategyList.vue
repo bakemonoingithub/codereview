@@ -27,9 +27,9 @@
       />
     </template>
 
-    <LoadErrorAlert :message="loadError" @retry="load" />
+    <LoadErrorAlert :message="loadError" @retry="retry" />
 
-    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
+    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="pagination">
       <template #emptyText>
         <EmptyGuide
           :title="keyword || specialistFilter ? '没有匹配的策略' : '还没有审查策略'"
@@ -70,9 +70,7 @@
       </a-table-column>
     </a-table>
 
-    <div v-if="hasMore" class="load-more">
-      <a-button :loading="loading" @click="loadMore">加载更多</a-button>
-    </div>
+
 
     <a-modal
       v-model:open="modalOpen"
@@ -137,19 +135,16 @@ import {
   type PromptSummary,
   type StrategyView
 } from '@/api/v2'
+import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import PageNotice from '@/components/PageNotice.vue'
 
-const records = ref<StrategyView[]>([])
 const models = ref<ModelView[]>([])
 const prompts = ref<PromptSummary[]>([])
-const loading = ref(false)
-const loadError = ref('')
 const keyword = ref('')
 const specialistFilter = ref<string | undefined>(undefined)
-const nextCursor = ref<string | null>(null)
 const modalOpen = ref(false)
 const saving = ref(false)
 const editing = ref<StrategyView | null>(null)
@@ -174,8 +169,6 @@ const promptOptions = computed(() =>
     .filter((p) => p.purpose === 'SPECIALIST')
     .map((p) => ({ value: p.id, label: p.name }))
 )
-const hasMore = computed(() => !!nextCursor.value)
-let listGeneration = 0
 
 function specialistLabel(value: string) {
   return specialistOptions.find((s) => s.value === value)?.label || value
@@ -197,35 +190,10 @@ function promptRevision(id: string | null): number | null {
   return prompt && typeof prompt.revision === 'number' ? prompt.revision : null
 }
 
-async function load(cursor?: string) {
-  if (cursor && loading.value) return
-  const generation = ++listGeneration
-  if (!cursor) nextCursor.value = null
-  loading.value = true
-  loadError.value = ''
-  try {
-    const page = await strategiesApi.list({
-      q: keyword.value.trim() || undefined,
-      specialistType: specialistFilter.value || undefined,
-      cursor,
-      limit: 100
-    })
-    if (generation !== listGeneration) return
-    records.value = cursor ? [...records.value, ...page.items] : page.items
-    nextCursor.value = page.nextCursor
-  } catch (e: any) {
-    if (generation !== listGeneration) return
-    loadError.value = e?.message || '策略列表加载失败'
-  } finally {
-    if (generation === listGeneration) loading.value = false
-  }
-}
-
+const { items: records, loading, error: loadError, pagination, load, refresh, retry } = useListPagination<StrategyView>(
+  'strategies', params => strategiesApi.list({ ...params, q: keyword.value.trim() || undefined, specialistType: specialistFilter.value || undefined }), '策略列表加载失败', () => JSON.stringify([keyword.value.trim(), specialistFilter.value])
+)
 function reload() { return load() }
-
-function loadMore() {
-  if (nextCursor.value) load(nextCursor.value)
-}
 
 async function loadModels() {
   modelLoadError.value = ''
@@ -303,7 +271,7 @@ async function onSave() {
       message.success('创建成功')
     }
     modalOpen.value = false
-    await load()
+    await (editing.value ? refresh() : load())
   } catch (e: any) {
     message.error(e?.message || '保存失败')
   } finally {
@@ -315,7 +283,7 @@ async function onDelete(id: string) {
   try {
     await strategiesApi.remove(id)
     message.success('删除成功')
-    await load()
+    await refresh()
   } catch (e: any) {
     message.error(e?.message || '删除失败')
   }
@@ -348,10 +316,5 @@ onMounted(async () => {
   a {
     margin-left: 6px;
   }
-}
-.load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
 }
 </style>

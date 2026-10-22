@@ -21,9 +21,9 @@
       />
     </template>
 
-    <LoadErrorAlert :message="loadError" @retry="load" />
+    <LoadErrorAlert :message="loadError" @retry="retry" />
 
-    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
+    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="pagination">
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的模型' : '还没有接入模型'"
@@ -79,9 +79,7 @@
       </a-table-column>
     </a-table>
 
-    <div v-if="hasMore" class="load-more">
-      <a-button :loading="loading" @click="loadMore">加载更多</a-button>
-    </div>
+
 
     <a-modal
       v-model:open="modalOpen"
@@ -130,20 +128,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { modelsApi, type ModelView } from '@/api/v2'
+import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import PageNotice from '@/components/PageNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
-const records = ref<ModelView[]>([])
-const loading = ref(false)
-const loadError = ref('')
 const keyword = ref('')
-const nextCursor = ref<string | null>(null)
 const modalOpen = ref(false)
 const saving = ref(false)
 const validatingId = ref('')
@@ -160,8 +155,6 @@ const form = ref({
   protocol: 'OPENAI_CHAT'
 })
 const protocolOptions = [{ value: 'OPENAI_CHAT', label: 'OpenAI Chat 兼容' }]
-const hasMore = computed(() => !!nextCursor.value)
-let listGeneration = 0
 
 const validationLabels: Record<string, { label: string; tone: 'green' | 'amber' | 'red' | 'default' }> = {
   PASSED: { label: '验证通过', tone: 'green' },
@@ -182,34 +175,10 @@ function formatNumber(value: number | null) {
   return value == null ? '未填写' : value.toLocaleString()
 }
 
-async function load(cursor?: string) {
-  if (cursor && loading.value) return
-  const generation = ++listGeneration
-  if (!cursor) nextCursor.value = null
-  loading.value = true
-  loadError.value = ''
-  try {
-    const page = await modelsApi.list({
-      q: keyword.value.trim() || undefined,
-      cursor,
-      limit: 100
-    })
-    if (generation !== listGeneration) return
-    records.value = cursor ? [...records.value, ...page.items] : page.items
-    nextCursor.value = page.nextCursor
-  } catch (e: any) {
-    if (generation !== listGeneration) return
-    loadError.value = e?.message || '模型列表加载失败'
-  } finally {
-    if (generation === listGeneration) loading.value = false
-  }
-}
-
+const { items: records, loading, error: loadError, pagination, load, refresh, retry } = useListPagination<ModelView>(
+  'models', params => modelsApi.list({ ...params, q: keyword.value.trim() || undefined }), '模型列表加载失败', () => keyword.value.trim()
+)
 function reload() { return load() }
-
-function loadMore() {
-  if (nextCursor.value) load(nextCursor.value)
-}
 
 function openCreate() {
   editing.value = null
@@ -278,7 +247,7 @@ async function onSave() {
       message.success('创建成功')
     }
     modalOpen.value = false
-    await load()
+    await (editing.value ? refresh() : load())
   } catch (e: any) {
     message.error(e?.message || '保存失败')
   } finally {
@@ -300,7 +269,7 @@ async function onValidate(record: ModelView) {
     message.error(e?.message || '验证失败')
   } finally {
     validatingId.value = ''
-    await load()
+    await refresh()
   }
 }
 
@@ -308,7 +277,7 @@ async function onDelete(id: string) {
   try {
     await modelsApi.remove(id)
     message.success('删除成功')
-    await load()
+    await refresh()
   } catch (e: any) {
     message.error(e?.message || '删除失败')
   }
@@ -322,10 +291,5 @@ onMounted(load)
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
-}
-.load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
 }
 </style>

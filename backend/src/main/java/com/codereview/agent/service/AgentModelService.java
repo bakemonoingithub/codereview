@@ -48,20 +48,19 @@ public class AgentModelService {
     }
 
     public PageResponse<ModelDtos.View> list(String q, String cursor, Integer limit) {
-        int size = AgentPaging.limit(limit);
+        return list(q, cursor, limit, null, null);
+    }
+
+    public PageResponse<ModelDtos.View> list(String q, String cursor, Integer limit, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AgentModelConfig> wrapper = new LambdaQueryWrapper<>();
         if (q != null && !q.isBlank()) {
             wrapper.and(w -> w.like(AgentModelConfig::getName, q.trim())
                     .or().like(AgentModelConfig::getModelName, q.trim()));
         }
-        AgentPaging.applyCursor(wrapper, cursor, AgentModelConfig::getCreatedAt, AgentModelConfig::getId);
-        AgentPaging.applyOrder(wrapper, AgentModelConfig::getCreatedAt, AgentModelConfig::getId);
-        wrapper.last("limit " + (size + 1));
-        PageResponse<AgentModelConfig> page = AgentPaging.assemble(
-                db.mapper(AgentModelConfigMapper.class).selectList(wrapper), size,
+        PageResponse<AgentModelConfig> page = AgentPaging.query(
+                db.mapper(AgentModelConfigMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentModelConfig::getCreatedAt, AgentModelConfig::getId);
-        return new PageResponse<>(page.items().stream().map(this::toView).toList(),
-                page.nextCursor(), page.hasMore());
+        return page.withItems(page.items().stream().map(this::toView).toList());
     }
 
     public ModelDtos.View create(ModelDtos.Create req) {

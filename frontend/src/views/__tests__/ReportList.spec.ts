@@ -25,27 +25,27 @@ const stubs = {
 }
 
 beforeEach(() => {
+  sessionStorage.clear()
   vi.resetAllMocks()
   vi.mocked(reportsApi.list).mockResolvedValue({ items: [summary], nextCursor: null, hasMore: false })
 })
 
 describe('报告列表', () => {
-  it('刷新使旧分页失效，后续仍可加载更多', async () => {
+  it('刷新使旧翻页请求失效，后续仍可切换页码', async () => {
     const wrapper = mount(ReportList, { global: { stubs } })
     await flushPromises()
     const s = (wrapper.vm as any).$.setupState
-    s.nextCursor = 'old'
     let resolve!: (value: any) => void
-    vi.mocked(reportsApi.list).mockImplementationOnce(() => new Promise((done) => { resolve = done }))
-    const pending = s.loadMore()
-    vi.mocked(reportsApi.list).mockResolvedValueOnce({ items: [summary], nextCursor: 'new', hasMore: true })
-    await s.load()
-    resolve({ items: [{ ...summary, id: 'stale' }], nextCursor: null, hasMore: false })
+    vi.mocked(reportsApi.list).mockImplementationOnce(() => new Promise(done => { resolve = done }))
+    const pending = s.pagination.onChange(2, 20)
+    vi.mocked(reportsApi.list).mockResolvedValueOnce({ items: [summary], nextCursor: null, hasMore: true, total: 60, pageNum: 1, pageSize: 20 })
+    await s.refresh()
+    resolve({ items: [{ ...summary, id: 'stale' }], total: 60, pageNum: 2, pageSize: 20 })
     await pending
-    expect(s.loadingMore).toBe(false)
-    expect(s.reports).toHaveLength(1)
-    await s.loadMore()
-    expect(reportsApi.list).toHaveBeenLastCalledWith({ cursor: 'new', limit: 20 })
+    expect(s.loading).toBe(false)
+    expect(s.reports[0].id).toBe('report-1')
+    await s.pagination.onChange(2, 20)
+    expect(reportsApi.list).toHaveBeenLastCalledWith({ pageNum: 2, pageSize: 20 })
     wrapper.unmount()
   })
   it('展示来源、类型与状态，并可进入报告阅读', async () => {

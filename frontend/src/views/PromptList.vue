@@ -21,9 +21,9 @@
       />
     </template>
 
-    <LoadErrorAlert :message="loadError" @retry="load" />
+    <LoadErrorAlert :message="loadError" @retry="retry" />
 
-    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
+    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="pagination">
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的提示词' : '还没有提示词'"
@@ -65,9 +65,7 @@
       </a-table-column>
     </a-table>
 
-    <div v-if="hasMore" class="load-more">
-      <a-button :loading="loading" @click="loadMore">加载更多</a-button>
-    </div>
+
 
     <a-modal
       v-model:open="modalOpen"
@@ -151,6 +149,7 @@ import {
   type PromptSummary,
   type PromptVersion
 } from '@/api/v2'
+import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
@@ -158,11 +157,7 @@ import PageNotice from '@/components/PageNotice.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { hasChanges, toUnifiedPatch } from '@/utils/promptDiff'
 
-const records = ref<PromptSummary[]>([])
-const loading = ref(false)
-const loadError = ref('')
 const keyword = ref('')
-const nextCursor = ref<string | null>(null)
 const modalOpen = ref(false)
 const saving = ref(false)
 const editingId = ref('')
@@ -181,8 +176,6 @@ const purposeOptions = [
   { value: 'REPORT', label: '报告生成' },
   { value: 'AGENT', label: 'Agent 指导（P33 接入）' }
 ]
-const hasMore = computed(() => !!nextCursor.value)
-let listGeneration = 0
 
 const versionOpen = ref(false)
 const versionPromptId = ref('')
@@ -217,34 +210,10 @@ function formatWhen(value: string) {
   return value ? value.replace('T', ' ').slice(0, 16) : '—'
 }
 
-async function load(cursor?: string) {
-  if (cursor && loading.value) return
-  const generation = ++listGeneration
-  if (!cursor) nextCursor.value = null
-  loading.value = true
-  loadError.value = ''
-  try {
-    const page = await promptsApi.list({
-      q: keyword.value.trim() || undefined,
-      cursor,
-      limit: 100
-    })
-    if (generation !== listGeneration) return
-    records.value = cursor ? [...records.value, ...page.items] : page.items
-    nextCursor.value = page.nextCursor
-  } catch (e: any) {
-    if (generation !== listGeneration) return
-    loadError.value = e?.message || '提示词列表加载失败'
-  } finally {
-    if (generation === listGeneration) loading.value = false
-  }
-}
-
+const { items: records, loading, error: loadError, pagination, load, refresh, retry } = useListPagination<PromptSummary>(
+  'prompts', params => promptsApi.list({ ...params, q: keyword.value.trim() || undefined }), '提示词列表加载失败', () => keyword.value.trim()
+)
 function reload() { return load() }
-
-function loadMore() {
-  if (nextCursor.value) load(nextCursor.value)
-}
 
 function openCreate() {
   editingId.value = ''
@@ -334,7 +303,7 @@ async function onSave() {
       message.success('创建成功')
     }
     modalOpen.value = false
-    await load()
+    await (editingId.value ? refresh() : load())
   } catch (e: any) {
     message.error(e?.message || '保存失败')
   } finally {
@@ -346,7 +315,7 @@ async function onDelete(id: string) {
   try {
     await promptsApi.remove(id)
     message.success('删除成功')
-    await load()
+    await refresh()
   } catch (e: any) {
     message.error(e?.message || '删除失败')
   }
@@ -406,11 +375,6 @@ onMounted(load)
   margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
-}
-.load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
 }
 </style>
 

@@ -43,7 +43,7 @@ describe.each([
   ['项目', ProjectList, projectsApi], ['模型', ModelConfigList, modelsApi],
   ['提示词', PromptList, promptsApi], ['策略', StrategyList, strategiesApi]
 ] as const)('%s列表请求顺序', (_name, component, api) => {
-  it('旧响应不能覆盖新筛选的结果和分页游标', async () => {
+  it('旧响应不能覆盖新筛选的结果和分页状态', async () => {
     let resolveOld!: (value: unknown) => void
     vi.mocked(api.list).mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve }) as any)
       .mockResolvedValueOnce(page('新结果') as any)
@@ -75,14 +75,15 @@ describe.each([
     expect(wrapper.text()).toContain('新结果')
   })
 
-  it('新筛选开始后不追加上一筛选的下一页', async () => {
+  it('新筛选开始后忽略上一筛选的翻页结果', async () => {
     let resolveMore!: (value: unknown) => void
     vi.mocked(api.list).mockResolvedValueOnce(page('第一页', 'next') as any)
       .mockReturnValueOnce(new Promise((resolve) => { resolveMore = resolve }) as any)
       .mockResolvedValueOnce(page('新结果') as any)
     wrapper = mount(component, options)
     await flush()
-    await wrapper.findAll('a-button-stub').find((b) => b.text() === '加载更多')!.trigger('click')
+    void (wrapper.findComponent({ name: 'ATable' }).props('pagination') as any).onChange(2, 20)
+    await flush()
     await search()
     resolveMore(page('旧第二页'))
     await flush()

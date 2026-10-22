@@ -41,19 +41,18 @@ public class AgentProjectService {
     }
 
     public PageResponse<ProjectDtos.View> list(String q, String cursor, Integer limit) {
-        int size = AgentPaging.limit(limit);
+        return list(q, cursor, limit, null, null);
+    }
+
+    public PageResponse<ProjectDtos.View> list(String q, String cursor, Integer limit, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AgentProject> wrapper = new LambdaQueryWrapper<>();
         if (q != null && !q.isBlank()) {
             wrapper.like(AgentProject::getName, q.trim());
         }
-        AgentPaging.applyCursor(wrapper, cursor, AgentProject::getCreatedAt, AgentProject::getId);
-        AgentPaging.applyOrder(wrapper, AgentProject::getCreatedAt, AgentProject::getId);
-        wrapper.last("limit " + (size + 1));
-        PageResponse<AgentProject> page = AgentPaging.assemble(
-                db.mapper(AgentProjectMapper.class).selectList(wrapper), size,
+        PageResponse<AgentProject> page = AgentPaging.query(
+                db.mapper(AgentProjectMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentProject::getCreatedAt, AgentProject::getId);
-        return new PageResponse<>(page.items().stream().map(this::toView).toList(),
-                page.nextCursor(), page.hasMore());
+        return page.withItems(page.items().stream().map(this::toView).toList());
     }
 
     public ProjectDtos.View create(ProjectDtos.Create req) {

@@ -44,23 +44,23 @@ public class AgentPromptService {
     }
 
     public PageResponse<PromptDtos.Summary> list(String q, String cursor, Integer limit) {
-        int size = AgentPaging.limit(limit);
+        return list(q, cursor, limit, null, null);
+    }
+
+    public PageResponse<PromptDtos.Summary> list(String q, String cursor, Integer limit, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AgentPrompt> wrapper = new LambdaQueryWrapper<>();
         if (q != null && !q.isBlank()) {
             wrapper.and(w -> w.like(AgentPrompt::getName, q.trim())
                     .or().like(AgentPrompt::getTags, q.trim())
                     .or().like(AgentPrompt::getDescription, q.trim()));
         }
-        AgentPaging.applyCursor(wrapper, cursor, AgentPrompt::getCreatedAt, AgentPrompt::getId);
-        AgentPaging.applyOrder(wrapper, AgentPrompt::getCreatedAt, AgentPrompt::getId);
-        wrapper.last("limit " + (size + 1));
-        PageResponse<AgentPrompt> page = AgentPaging.assemble(
-                db.mapper(AgentPromptMapper.class).selectList(wrapper), size,
+        PageResponse<AgentPrompt> page = AgentPaging.query(
+                db.mapper(AgentPromptMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentPrompt::getCreatedAt, AgentPrompt::getId);
-        return new PageResponse<>(page.items().stream()
+        return page.withItems(page.items().stream()
                 .map(p -> new PromptDtos.Summary(p.getId(), p.getName(), p.getPurpose(),
                         splitTags(p.getTags()), p.getRevision(), p.getUpdatedAt()))
-                .toList(), page.nextCursor(), page.hasMore());
+                .toList());
     }
 
     public PromptDtos.View create(PromptDtos.Create req) {

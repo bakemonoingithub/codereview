@@ -149,7 +149,11 @@ public class TaskService {
 
     public PageResponse<TaskDtos.Summary> list(String projectId, String route, String type, String state,
                                                String q, String cursor, Integer limit) {
-        int size = AgentPaging.limit(limit);
+        return list(projectId, route, type, state, q, cursor, limit, null, null);
+    }
+
+    public PageResponse<TaskDtos.Summary> list(String projectId, String route, String type, String state,
+                                               String q, String cursor, Integer limit, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AgentReviewTask> wrapper = new LambdaQueryWrapper<>();
         if (projectId != null && !projectId.isBlank()) {
             wrapper.eq(AgentReviewTask::getProjectId, projectId.trim());
@@ -169,18 +173,15 @@ public class TaskService {
         if (state != null && !state.isBlank()) {
             wrapper.eq(AgentReviewTask::getState, state.trim().toUpperCase());
         }
-        AgentPaging.applyCursor(wrapper, cursor, AgentReviewTask::getCreatedAt, AgentReviewTask::getId);
-        AgentPaging.applyOrder(wrapper, AgentReviewTask::getCreatedAt, AgentReviewTask::getId);
-        wrapper.last("limit " + (size + 1));
-        PageResponse<AgentReviewTask> page = AgentPaging.assemble(
-                db.mapper(AgentReviewTaskMapper.class).selectList(wrapper), size,
+        PageResponse<AgentReviewTask> page = AgentPaging.query(
+                db.mapper(AgentReviewTaskMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentReviewTask::getCreatedAt, AgentReviewTask::getId);
         List<String> ids = page.items().stream().map(AgentReviewTask::getId).toList();
         Map<String, List<AgentTaskTarget>> targets = targetsByTask(ids);
         List<TaskDtos.Summary> summaries = page.items().stream()
                 .map(task -> summary(task, targets.getOrDefault(task.getId(), List.of())))
                 .toList();
-        return new PageResponse<>(summaries, page.nextCursor(), page.hasMore());
+        return page.withItems(summaries);
     }
 
     public TaskDtos.View detail(String id) {

@@ -10,11 +10,22 @@ axios.defaults.adapter = async (config) => {
   if (failure) throw failure
   return { data: payload, status: 200, statusText: 'OK', headers: {}, config }
 }
-const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, repositoryApi } = await import('@/api/v2')
+const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, reportsApi, repositoryApi } = await import('@/api/v2')
 afterAll(() => { axios.defaults.adapter = originalAdapter })
 beforeEach(() => { failure = undefined })
 
 describe('v2 客户端的真实响应链', () => {
+  it.each([
+    ['项目', projectsApi.list], ['模型', modelsApi.list], ['提示词', promptsApi.list],
+    ['策略', strategiesApi.list], ['审查中心', tasksApi.list], ['报告', reportsApi.list]
+  ] as const)('%s传递页码和条数，保留服务端总数', async (_name, list) => {
+    payload = { items: [{ id: 'one' }], total: 65, pageNum: 2, pageSize: 10, nextCursor: null, hasMore: true }
+    expect(await list({ pageNum: 2, pageSize: 10 })).toEqual(payload)
+    expect(sent.params).toMatchObject({ pageNum: 2, pageSize: 10 })
+    expect(sent.params.cursor).toBeUndefined()
+    expect(sent.params.limit).toBeUndefined()
+  })
+
   it.each([
     ['项目', projectsApi.list], ['模型', modelsApi.list],
     ['提示词', promptsApi.list], ['策略', strategiesApi.list]

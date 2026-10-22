@@ -12,7 +12,7 @@
       <PageNotice v-if="created" closable @close="created = ''">
         新任务已受理。任务正在后台逐文件执行，可稍后刷新查看状态。
       </PageNotice>
-      <LoadErrorAlert :message="error" @retry="load" />
+      <LoadErrorAlert :message="error" @retry="retry" />
     </template>
 
     <template #filters>
@@ -49,14 +49,14 @@
       />
     </template>
     <template #filters-extra>
-      <a-button :loading="loading" @click="load">刷新</a-button>
+      <a-button :loading="loading" @click="refresh">刷新</a-button>
     </template>
 
     <a-table
       :data-source="tasks"
       row-key="id"
       :loading="loading"
-      :pagination="false"
+      :pagination="pagination"
       :scroll="{ x: 'max-content' }"
     >
       <a-table-column title="任务" key="task">
@@ -102,7 +102,6 @@
     </a-table>
     <div class="table-footer">
       <span>按发起时间排序</span>
-      <a-button v-if="hasMore" type="link" :loading="loading" @click="loadMore">加载更多</a-button>
     </div>
   </ListPageLayout>
 </template>
@@ -111,6 +110,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectsApi, tasksApi, type ProjectView, type TaskSummary } from '@/api/v2'
+import { useListPagination } from '@/utils/useListPagination'
 import { taskLabel } from '@/utils/taskLabel'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
@@ -120,17 +120,10 @@ import StatusBadge from '@/components/StatusBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
-const tasks = ref<TaskSummary[]>([])
 const projects = ref<ProjectView[]>([])
-let listEpoch = 0
-let loadedPages = 1
 let loadedFilterKey = ''
 let disposed = false
 const filterKey = () => JSON.stringify([filterProject.value, filterType.value, filterState.value, search.value])
-const nextCursor = ref<string | null>(null)
-const hasMore = ref(false)
-const loading = ref(false)
-const error = ref('')
 const created = ref(String(route.query.created || ''))
 const filterProject = ref<string | undefined>()
 const filterType = ref<string | undefined>()
@@ -157,63 +150,62 @@ const stateOptions = [
   { value: 'CANCELLED', label: '已取消' }
 ]
 
+const list = useListPagination<TaskSummary>('reviews', params => tasksApi.list({
+  ...params, projectId: filterProject.value, type: filterType.value,
+  state: filterState.value, q: search.value.trim() || undefined
+}), '任务列表加载失败', filterKey)
+const { items: tasks, loading, error, pageNum, pageSize, retry } = list
+const pagination = computed(() => ({ ...list.pagination.value, onChange: changePage }))
+
 onMounted(async () => {
-  let saved: string | null = null
-  let restorePages = 1
+  let restorePage = 1
   let scrollY = 0
-  try { saved = sessionStorage.getItem('review-center-filters') } catch { /* 无现场 */ }
-  if (saved) {
-    try {
-      const filters = JSON.parse(saved) as {
-        project?: string
-        type?: string
-        state?: string
-        q?: string
-        pages?: number
-        scrollY?: number
+  try {
+    const saved = sessionStorage.getItem('review-center-filters')
+    if (saved) {
+      const filters = JSON.parse(saved)
+      filterProject.value = typeof filters.project === 'string' ? filters.project : undefined
+      filterType.value = typeof filters.type === 'string' ? filters.type : undefined
+      filterState.value = typeof filters.state === 'string' ? filters.state : undefined
+      search.value = typeof filters.q === 'string' ? filters.q : ''
+      if (filters.pageSize === pageSize.value && Number.isSafeInteger(filters.page) && filters.page > 0) {
+        restorePage = filters.page
+        scrollY = Math.max(0, Number(filters.scrollY) || 0)
       }
-      filterProject.value = filters.project
-      filterType.value = filters.type
-      filterState.value = filters.state
-      search.value = filters.q || ''
-      restorePages = Math.min(100, Math.max(1, Number(filters.pages) || 1))
-      scrollY = Number(filters.scrollY) || 0
-    } catch {
-      try { sessionStorage.removeItem('review-center-filters') } catch { /* 无现场 */ }
+    }
+  } catch { /* 存储不可用或旧现场不合法时从第一页查询。 */ }
+  const restorationKey = filterKey()
+  void projectsApi.list({ limit: 100 }).then(page => {
+    if (!disposed) projects.value = page.items
+  }).catch(() => { /* 项目筛选失败仍可按项目 ID 展示。 */ })
+  if (await list.fetchPage(restorePage)) {
+    if (!disposed && filterKey() === restorationKey) {
+      loadedFilterKey = restorationKey
+      saveScene()
+      await nextTick()
+      if (scrollY) window.scrollTo(0, scrollY)
     }
   }
-  try {
-    const page = await projectsApi.list({ limit: 100 })
-    projects.value = page.items
-  } catch {
-    // 项目筛选失败不阻塞任务列表；任务仍可按项目 ID 展示
-  }
-  if (disposed) return
-  const restorationKey = filterKey()
-  await load()
-  for (let index = 1; index < restorePages && hasMore.value && !error.value && !disposed && filterKey() === restorationKey; index++) await loadMore()
-  await nextTick()
-  if (!disposed && scrollY) window.scrollTo(0, scrollY)
 })
 
 function saveScene() {
   try {
     sessionStorage.setItem('review-center-filters', JSON.stringify({
       project: filterProject.value, type: filterType.value, state: filterState.value,
-      q: search.value, pages: loadedFilterKey === filterKey() ? loadedPages : 1, scrollY: window.scrollY
+      q: search.value, page: loadedFilterKey === filterKey() ? pageNum.value : 1,
+      pageSize: pageSize.value, scrollY: window.scrollY
     }))
-  } catch { /* 存储不可用不阻断查询 */ }
+  } catch { /* 存储不可用不阻断查询。 */ }
 }
-onBeforeUnmount(() => { saveScene(); disposed = true; listEpoch++ })
+onBeforeUnmount(() => { saveScene(); disposed = true })
 
-async function load() {
-  await loadPage(false)
+async function remember(request: Promise<boolean>) {
+  const key = filterKey()
+  if (await request) { loadedFilterKey = key; saveScene() }
 }
-
-async function loadMore() {
-  if (loading.value || !hasMore.value || filterKey() !== loadedFilterKey) return
-  await loadPage(true)
-}
+function load() { return remember(list.load()) }
+function refresh() { return remember(list.refresh()) }
+function changePage(page: number, size: number) { return remember(list.changePage(page, size)) }
 
 function resetFilters() {
   filterProject.value = undefined
@@ -221,35 +213,6 @@ function resetFilters() {
   filterState.value = undefined
   search.value = ''
   return load()
-}
-
-async function loadPage(append: boolean) {
-  const epoch = ++listEpoch
-  const key = filterKey()
-  loading.value = true
-  error.value = ''
-  try {
-    const page = await tasksApi.list({
-      cursor: append ? nextCursor.value || undefined : undefined,
-      projectId: filterProject.value,
-      type: filterType.value,
-      state: filterState.value,
-      q: search.value || undefined,
-      limit: 50
-    })
-    if (epoch !== listEpoch || disposed) return
-    tasks.value = append ? [...tasks.value, ...page.items] : page.items
-    nextCursor.value = page.nextCursor
-    hasMore.value = page.hasMore
-    loadedFilterKey = key
-    loadedPages = append ? loadedPages + 1 : 1
-    saveScene()
-  } catch (failure) {
-    if (epoch !== listEpoch || disposed) return
-    error.value = (failure as Error).message || '任务列表加载失败'
-  } finally {
-    if (epoch === listEpoch && !disposed) loading.value = false
-  }
 }
 
 function projectName(id: string): string {

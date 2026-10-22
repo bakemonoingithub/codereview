@@ -53,8 +53,10 @@ public class ReviewTaskV2Controller {
                                                @RequestParam(required = false) String state,
                                                @RequestParam(required = false) String q,
                                                @RequestParam(required = false) String cursor,
-                                               @RequestParam(required = false) Integer limit) {
-        return service.list(projectId, route, type, state, q, cursor, limit);
+                                               @RequestParam(required = false) Integer limit,
+                                               @RequestParam(required = false) Integer pageNum,
+                                               @RequestParam(required = false) Integer pageSize) {
+        return service.list(projectId, route, type, state, q, cursor, limit, pageNum, pageSize);
     }
 
     @GetMapping("/{id}")

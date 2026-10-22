@@ -9,7 +9,7 @@
     </div>
 
     <a-alert v-if="error" type="error" show-icon :message="error" class="mb16">
-      <template #action><a-button size="small" @click="load">重试</a-button></template>
+      <template #action><a-button size="small" @click="retry">重试</a-button></template>
     </a-alert>
 
     <a-card>
@@ -17,14 +17,14 @@
         <strong>报告记录</strong>
         <span class="spacer" />
         <span class="muted small">正文、来源和下载使用同一份冻结内容</span>
-        <a-button size="small" :loading="loading" @click="load">刷新</a-button>
+        <a-button size="small" :loading="loading" @click="refresh">刷新</a-button>
       </div>
 
       <a-table
         :data-source="reports"
         row-key="id"
         :loading="loading"
-        :pagination="false"
+        :pagination="pagination"
         size="middle"
         :scroll="{ x: 'max-content' }"
       >
@@ -76,64 +76,33 @@
           </a-empty>
         </template>
       </a-table>
-      <div v-if="hasMore" class="more">
-        <a-button :loading="loadingMore" @click="loadMore">加载更多</a-button>
-      </div>
+
     </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { reportsApi, type ReportSummary } from '@/api/v2'
+import { useListPagination } from '@/utils/useListPagination'
 
 const router = useRouter()
-const reports = ref<ReportSummary[]>([])
-const loading = ref(false)
-const loadingMore = ref(false)
-const error = ref('')
-const nextCursor = ref<string | null>(null)
-const hasMore = ref(false)
-let loadEpoch = 0
+const { items: reports, loading, error, pagination, pageNum, pageSize, refresh, retry, fetchPage } =
+  useListPagination<ReportSummary>('reports', params => reportsApi.list(params), '报告列表读取失败')
 
-onMounted(load)
-onBeforeUnmount(() => { loadEpoch++ })
-
-async function load() {
-  const epoch = ++loadEpoch
-  loadingMore.value = false
-  loading.value = true
-  error.value = ''
+onMounted(() => {
+  let page = 1
   try {
-    const page = await reportsApi.list({ limit: 20 })
-    if (epoch !== loadEpoch) return
-    reports.value = page.items
-    nextCursor.value = page.nextCursor
-    hasMore.value = page.hasMore
-  } catch (failure) {
-    if (epoch === loadEpoch) error.value = (failure as Error).message || '报告列表读取失败'
-  } finally {
-    if (epoch === loadEpoch) loading.value = false
-  }
-}
-
-async function loadMore() {
-  if (!nextCursor.value || loading.value || loadingMore.value) return
-  const epoch = loadEpoch
-  loadingMore.value = true
-  try {
-    const page = await reportsApi.list({ cursor: nextCursor.value, limit: 20 })
-    if (epoch !== loadEpoch) return
-    reports.value = [...reports.value, ...page.items]
-    nextCursor.value = page.nextCursor
-    hasMore.value = page.hasMore
-  } catch (failure) {
-    if (epoch === loadEpoch) error.value = (failure as Error).message || '更多报告读取失败'
-  } finally {
-    if (epoch === loadEpoch) loadingMore.value = false
-  }
-}
+    const scene = JSON.parse(sessionStorage.getItem('report-list-page') || 'null')
+    if (scene?.pageSize === pageSize.value && Number.isSafeInteger(scene.page) && scene.page > 0) page = scene.page
+  } catch { /* 从第一页查询。 */ }
+  return fetchPage(page)
+})
+onBeforeUnmount(() => {
+  try { sessionStorage.setItem('report-list-page', JSON.stringify({ page: pageNum.value, pageSize: pageSize.value })) }
+  catch { /* 不影响离页。 */ }
+})
 
 function open(id: string) {
   router.push(`/reports/${id}`)
@@ -217,8 +186,5 @@ function formatTime(value: string) {
 }
 .error {
   color: #b42318;
-}
-.more {
-  margin-top: 12px;
 }
 </style>

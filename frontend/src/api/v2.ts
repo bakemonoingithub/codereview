@@ -27,7 +27,15 @@ v2.interceptors.response.use(
   }
 )
 
+export interface ListPaginationParams {
+  pageNum?: number
+  pageSize?: number
+}
+
 export interface Page<T> {
+  total?: number | null
+  pageNum?: number | null
+  pageSize?: number | null
   items: T[]
   nextCursor: string | null
   hasMore: boolean
@@ -485,7 +493,7 @@ export const tasksApi = {
     v2
       .post<TaskView>('/review-tasks', body, { headers: { 'Idempotency-Key': idempotencyKey } })
       .then((r) => r.data),
-  list: (params: {
+  list: (params: ListPaginationParams & {
     projectId?: string
     type?: string
     state?: string
@@ -518,7 +526,7 @@ export const tasksApi = {
 }
 
 export const projectsApi = {
-  list: (params: { q?: string; cursor?: string; limit?: number } = {}) =>
+  list: (params: ListPaginationParams & { q?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ProjectView>>('/projects', { params }).then((r) => r.data),
   detail: (id: string) => v2.get<ProjectView>(`/projects/${id}`).then((r) => r.data),
   create: (body: {
@@ -534,7 +542,7 @@ export const projectsApi = {
 }
 
 export const modelsApi = {
-  list: (params: { q?: string; cursor?: string; limit?: number } = {}) =>
+  list: (params: ListPaginationParams & { q?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ModelView>>('/models', { params }).then((r) => r.data),
   create: (body: {
     name: string
@@ -565,7 +573,7 @@ export const modelsApi = {
 }
 
 export const promptsApi = {
-  list: (params: { q?: string; cursor?: string; limit?: number } = {}) =>
+  list: (params: ListPaginationParams & { q?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<PromptSummary>>('/prompts', { params }).then((r) => r.data),
   detail: (id: string) => v2.get<PromptView>(`/prompts/${id}`).then((r) => r.data),
   create: (body: {
@@ -592,7 +600,7 @@ export const promptsApi = {
 }
 
 export const strategiesApi = {
-  list: ({ specialistType, ...params }: { q?: string; specialistType?: string; cursor?: string; limit?: number } = {}) =>
+  list: ({ specialistType, ...params }: ListPaginationParams & { q?: string; specialistType?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<StrategyView>>('/strategies', { params: { ...params, type: specialistType } }).then((r) => r.data),
   create: (body: {
     name: string
@@ -725,7 +733,7 @@ export const reportsApi = {
       '/reports/inputs', body
     ).then((r) => r.data),
   inputs: (id: string) => v2.get(`/reports/${id}/inputs`).then((r) => r.data),
-  list: (params: { cursor?: string; limit?: number } = {}) =>
+  list: (params: ListPaginationParams & { cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ReportSummary>>('/reports', { params }).then((r) => r.data),
   start: (id: string, body: { modelConfigId: string; instruction?: string }) =>
     v2.post<ReportDetail>(`/reports/${id}/generate`, body).then((r) => r.data),

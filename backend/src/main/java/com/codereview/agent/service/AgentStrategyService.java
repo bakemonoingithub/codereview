@@ -40,7 +40,10 @@ public class AgentStrategyService {
     }
 
     public PageResponse<StrategyDtos.View> list(String q, String specialistType, String cursor, Integer limit) {
-        int size = AgentPaging.limit(limit);
+        return list(q, specialistType, cursor, limit, null, null);
+    }
+
+    public PageResponse<StrategyDtos.View> list(String q, String specialistType, String cursor, Integer limit, Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AgentReviewStrategy> wrapper = new LambdaQueryWrapper<>();
         if (q != null && !q.isBlank()) {
             wrapper.like(AgentReviewStrategy::getName, q.trim());
@@ -52,14 +55,10 @@ public class AgentStrategyService {
             }
             wrapper.eq(AgentReviewStrategy::getSpecialistType, specialistType);
         }
-        AgentPaging.applyCursor(wrapper, cursor, AgentReviewStrategy::getCreatedAt, AgentReviewStrategy::getId);
-        AgentPaging.applyOrder(wrapper, AgentReviewStrategy::getCreatedAt, AgentReviewStrategy::getId);
-        wrapper.last("limit " + (size + 1));
-        PageResponse<AgentReviewStrategy> page = AgentPaging.assemble(
-                db.mapper(AgentReviewStrategyMapper.class).selectList(wrapper), size,
+        PageResponse<AgentReviewStrategy> page = AgentPaging.query(
+                db.mapper(AgentReviewStrategyMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentReviewStrategy::getCreatedAt, AgentReviewStrategy::getId);
-        return new PageResponse<>(page.items().stream().map(AgentStrategyService::toView).toList(),
-                page.nextCursor(), page.hasMore());
+        return page.withItems(page.items().stream().map(AgentStrategyService::toView).toList());
     }
 
     public StrategyDtos.View create(StrategyDtos.Create req) {
