@@ -33,7 +33,7 @@
             >
               取消任务
             </a-button>
-            <a-button @click="router.push('/agents/new')">发起新的 Agent 调查</a-button>
+            <a-button @click="router.push({ path: '/agents/new', query: { copyFrom: task.id } })">按此参数新建</a-button>
           </div>
         </div>
 
@@ -101,7 +101,7 @@
                     {{ result.body.answerStatus === 'ANSWERED' ? '已回答' : '材料不足' }}
                   </StatusBadge>
                   <span class="spacer" />
-                  <a-button size="small" @click="downloadMarkdown">下载 Markdown</a-button>
+                  <a-button size="small" :loading="downloadingMarkdown" @click="downloadMarkdown">下载 Markdown</a-button>
                 </div>
                 <h2>{{ result.body.title }}</h2>
                 <p class="muted">{{ result.body.summary }}</p>
@@ -118,7 +118,11 @@
                     <li v-for="(item, index) in result.body.unresolved" :key="index">{{ item }}</li>
                   </ul>
                 </div>
-                <MarkdownView :text="result.body.markdown" />
+                <MarkdownView
+                  :text="result.body.markdown"
+                  :citation-ids="citationIds"
+                  @citation-click="openCitation"
+                />
               </article>
               <aside class="agent-side">
                 <section class="card">
@@ -127,7 +131,11 @@
                     <p v-if="!result.body.citations.length" class="muted small">没有引用。</p>
                     <div v-for="item in result.body.citations" :key="item.id" class="agent-evidence">
                       <span class="muted small">{{ item.id }}</span>
-                      <button type="button" class="source-link" @click="openMaterial(item.materialId)">
+                      <button
+                        type="button"
+                        class="source-link"
+                        @click="openMaterial(item.materialId, item.startLine, item.endLine, item.id)"
+                      >
                         {{ item.path }} : {{ item.startLine }}–{{ item.endLine }} ↗
                       </button>
                       <p class="muted small">
@@ -231,24 +239,40 @@
           </div>
         </section>
 
-        <section v-show="activeTab === 'input'" class="card">
-          <div class="section-top"><h2>提交时保存的输入</h2><span class="spacer" /><span class="muted small">历史快照</span></div>
+        <section v-show="activeTab === 'input'" class="card input-readonly">
+          <div class="section-top"><h2>提交时保存的输入</h2><span class="spacer" /><span class="muted small">只读历史快照</span></div>
           <div class="pad">
             <dl class="input-list">
               <dt>范围</dt>
-              <dd>{{ sourceLabel(task.sourceKind) }}<template v-if="task.branch"> · {{ task.branch }}</template></dd>
+              <dd>{{ inputScope ? scopeLabel(inputScope.scope.kind) : sourceLabel(task.sourceKind) }}<template v-if="inputScope?.scope.branch"> · {{ inputScope.scope.branch }}</template></dd>
               <dt>固定版本</dt>
-              <dd><code>{{ task.headSha || '—' }}</code></dd>
+              <dd><code>{{ inputScope?.scope.observedSha || task.headSha || '—' }}</code></dd>
+              <template v-if="inputScope?.scope.description">
+                <dt>范围描述</dt><dd class="snapshot-text">{{ inputScope.scope.description }}</dd>
+              </template>
               <dt>目标</dt>
               <dd>
-                <p v-if="!task.targets?.length" class="muted small">任务视图未返回目标路径。</p>
-                <p v-for="target in task.targets || []" :key="target.id"><code>{{ target.path }}</code></p>
+                <template v-if="inputScope?.scope.kind === 'COMMITS'">
+                  <p v-for="(commit, index) in inputScope.scope.commits || []" :key="commit"><code>C{{ index + 1 }} · {{ commit }}</code></p>
+                </template>
+                <template v-else-if="inputScope?.scope.kind === 'FILES'">
+                  <p v-for="path in inputScope.scope.paths || []" :key="path">
+                    <button type="button" class="source-link target-source-link" @click="openTargetFile(path)">
+                      <code>{{ path }}</code>
+                    </button>
+                  </p>
+                </template>
+                <p v-else-if="!inputScope" class="muted small">正在读取提交时保存的范围…</p>
+                <p v-else class="muted small">按文字范围调查</p>
               </dd>
+              <dt>本次要求</dt>
+              <dd class="snapshot-text">{{ inputScope?.requirements || (inputLoading ? '正在读取…' : '—') }}</dd>
               <dt>模型与指导提示词</dt>
               <dd>
                 {{ task.config?.modelName || '—' }}
                 <br />
-                {{ task.config?.promptId ? '提示词 v' + task.config.promptVersionNo : '未选指导提示词' }}
+                {{ task.config?.promptId ? '指导提示词 ' + task.config.promptId + ' · v' + task.config.promptVersionNo : '未选指导提示词' }}
+                <template v-if="inputScope?.referenceResultId"><br />参考结果：{{ inputScope.referenceResultId }}</template>
               </dd>
               <dt>创建 / 期限</dt>
               <dd>{{ formatTime(task.createdAt) }} · {{ formatTime(task.deadlineAt) }}</dd>
@@ -258,6 +282,20 @@
       </template>
     </a-spin>
 
+    <a-modal
+      v-model:open="targetPreviewOpen"
+      :title="targetPreviewPath || '固定版本代码'"
+      width="min(1000px, calc(100vw - 48px))"
+      :footer="null"
+      destroy-on-close
+    >
+      <div class="preview-version">固定版本 <code>{{ targetPreviewSha || '—' }}</code></div>
+      <a-spin :spinning="targetPreviewLoading">
+        <a-alert v-if="targetPreviewError" type="error" show-icon :message="targetPreviewError" />
+        <CodeViewer v-else-if="targetPreviewContent !== null" :text="targetPreviewContent" :path="targetPreviewPath" />
+      </a-spin>
+    </a-modal>
+
     <MaterialReaderModal
       v-if="task"
       v-model:open="materialOpen"
@@ -265,6 +303,9 @@
       :project-id="task.projectId"
       :head-sha="task.headSha || ''"
       :material-id="materialId"
+      :focus-start="materialFocusStart"
+      :focus-end="materialFocusEnd"
+      :focus-label="materialFocusLabel"
     />
   </div>
 </template>
@@ -274,11 +315,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import MarkdownView from '@/components/MarkdownView.vue'
+import CodeViewer from '@/components/CodeViewer.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
   agentTasksApi,
+  repositoryApi,
   tasksApi,
+  type AgentTaskCopyInput,
   type AgentProgress,
   type AgentResultView,
   type AgentToolCallDetail,
@@ -291,6 +335,8 @@ const router = useRouter()
 const taskId = computed(() => String(route.params.id))
 
 const task = ref<TaskView | null>(null)
+const inputScope = ref<AgentTaskCopyInput | null>(null)
+const inputLoading = ref(false)
 const taskLoading = ref(false)
 const refreshing = ref(false)
 const cancelling = ref(false)
@@ -303,6 +349,7 @@ const progressError = ref('')
 const result = ref<AgentResultView | null>(null)
 const resultLoading = ref(false)
 const resultError = ref('')
+const downloadingMarkdown = ref(false)
 
 const calls = ref<AgentToolCallSummary[]>([])
 const callPage = ref(1)
@@ -317,6 +364,16 @@ const selectedCallId = ref('')
 
 const materialOpen = ref(false)
 const materialId = ref('')
+const materialFocusStart = ref<number | null>(null)
+const materialFocusEnd = ref<number | null>(null)
+const materialFocusLabel = ref('')
+const targetPreviewOpen = ref(false)
+const targetPreviewPath = ref('')
+const targetPreviewSha = ref('')
+const targetPreviewContent = ref<string | null>(null)
+const targetPreviewLoading = ref(false)
+const targetPreviewError = ref('')
+let targetPreviewEpoch = 0
 
 let timer: number | undefined
 let progressEpoch = 0
@@ -330,6 +387,7 @@ const stateTone = computed(() => {
   if (state === 'FAILED' || state === 'CANCELLED') return 'red'
   return 'blue'
 })
+const citationIds = computed(() => result.value?.body.citations.map((item) => item.id) || [])
 
 onMounted(() => {
   void loadTask()
@@ -355,7 +413,7 @@ async function loadTask() {
   loadError.value = ''
   try {
     task.value = await tasksApi.detail(taskId.value)
-    await Promise.all([loadProgress(), loadCalls()])
+    await Promise.all([loadProgress(), loadCalls(), loadInput()])
     if (isTerminal(task.value.state)) {
       await loadResult()
     } else {
@@ -365,6 +423,17 @@ async function loadTask() {
     loadError.value = `任务加载失败：${(e as Error).message}`
   } finally {
     taskLoading.value = false
+  }
+}
+
+async function loadInput() {
+  inputLoading.value = true
+  try {
+    inputScope.value = await agentTasksApi.copyInput(taskId.value)
+  } catch {
+    inputScope.value = null
+  } finally {
+    inputLoading.value = false
   }
 }
 
@@ -467,6 +536,10 @@ function sourceLabel(kind: string) {
   } as Record<string, string>)[kind] || kind
 }
 
+function scopeLabel(kind: string) {
+  return ({ TEXT: '文字范围', FILES: '文件／目录', COMMITS: '提交比较' } as Record<string, string>)[kind] || kind
+}
+
 function limitNumber(key: string) {
   const value = progress.value?.limits?.[key]
   return typeof value === 'number' ? value : null
@@ -508,9 +581,38 @@ async function openCall(callId: string) {
   }
 }
 
-function openMaterial(id: string) {
+function openMaterial(id: string, startLine?: number, endLine?: number, label?: string) {
   materialId.value = id
+  materialFocusStart.value = startLine ?? null
+  materialFocusEnd.value = endLine ?? null
+  materialFocusLabel.value = label ? `${label} 引用` : ''
   materialOpen.value = true
+}
+
+function openCitation(id: string) {
+  const citation = result.value?.body.citations.find((item) => item.id === id)
+  if (citation) openMaterial(citation.materialId, citation.startLine, citation.endLine, citation.id)
+}
+
+async function openTargetFile(path: string) {
+  if (!task.value || !inputScope.value) return
+  const sha = inputScope.value.scope.observedSha || task.value.headSha || ''
+  targetPreviewOpen.value = true
+  targetPreviewPath.value = path
+  targetPreviewSha.value = sha
+  targetPreviewContent.value = null
+  targetPreviewError.value = ''
+  const epoch = ++targetPreviewEpoch
+  targetPreviewLoading.value = true
+  try {
+    if (!sha) throw new Error('任务没有保存固定版本，无法读取代码')
+    const snapshot = await repositoryApi.file(task.value.projectId, sha, path)
+    if (epoch === targetPreviewEpoch) targetPreviewContent.value = snapshot.content
+  } catch (e) {
+    if (epoch === targetPreviewEpoch) targetPreviewError.value = (e as Error).message || '固定版本代码读取失败'
+  } finally {
+    if (epoch === targetPreviewEpoch) targetPreviewLoading.value = false
+  }
 }
 
 async function cancel() {
@@ -527,15 +629,78 @@ async function cancel() {
   }
 }
 
-function downloadMarkdown() {
+async function downloadMarkdown() {
   if (!result.value) return
-  const blob = new Blob([result.value.body.markdown], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${result.value.body.title || 'agent-result'}.md`
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadingMarkdown.value = true
+  try {
+    const evidence = await buildMarkdownEvidence(result.value.body.citations)
+    const body = separateAdjacentCitationMarkers(
+      result.value.body.markdown,
+      result.value.body.citations.map((citation) => citation.id)
+    )
+    const markdown = [body.trimEnd(), evidence].filter(Boolean).join('\n\n')
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${result.value.body.title || 'agent-result'}.md`
+    link.click()
+    URL.revokeObjectURL(url)
+  } finally {
+    downloadingMarkdown.value = false
+  }
+}
+
+function separateAdjacentCitationMarkers(markdown: string, citationIds: string[]): string {
+  const ids = [...new Set(citationIds.filter((id) => /^E\d{1,3}$/.test(id)))]
+  if (!ids.length) return markdown
+  const alternatives = ids.sort((a, b) => b.length - a.length)
+    .map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')
+  const marker = new RegExp(`\\[(${alternatives})\\](?=\\[(?:${alternatives})\\])`, 'g')
+  return markdown.replace(marker, '[$1]、')
+}
+
+async function buildMarkdownEvidence(citations: AgentResultView['body']['citations']): Promise<string> {
+  if (!citations.length) return ''
+  const materialLoads = new Map<string, ReturnType<typeof tasksApi.material>>()
+  const entries = await Promise.all(citations.map(async (citation) => {
+    let materialLoad = materialLoads.get(citation.materialId)
+    if (!materialLoad) {
+      materialLoad = tasksApi.material(taskId.value, citation.materialId)
+      materialLoads.set(citation.materialId, materialLoad)
+    }
+
+    let excerpt = ''
+    try {
+      const material = await materialLoad
+      const lines = (material.content || '').split(/\r?\n/)
+      const materialStart = material.metadata.startLine || 1
+      const from = Math.max(0, citation.startLine - materialStart)
+      const to = Math.min(lines.length, citation.endLine - materialStart + 1)
+      excerpt = lines.slice(from, to)
+        .map((line, index) => `${citation.startLine + index} | ${line}`)
+        .join('\n')
+    } catch {
+      // 保留离线引用位置；即使材料正文暂时不可读，也不丢失 E 编号和路径信息。
+    }
+
+    const details = [
+      `文件：${citation.path}`,
+      `引用行：${citation.startLine}–${citation.endLine}`,
+      citation.sha ? `固定版本：${citation.sha}` : ''
+    ].filter(Boolean)
+    let block = `### [${citation.id}]\n\n${details.join('；')}`
+    if (excerpt) {
+      const longestFence = Math.max(0, ...Array.from(excerpt.matchAll(/`+/g), (match) => match[0].length))
+      const fence = '`'.repeat(Math.max(3, longestFence + 1))
+      block += `\n\n${fence}text\n${excerpt}\n${fence}`
+    } else {
+      block += '\n\n证据正文暂时无法读取。'
+    }
+    return block
+  }))
+  return `## 引用证据\n\n${entries.join('\n\n')}`
 }
 
 function pretty(value: string | null) {
@@ -584,6 +749,7 @@ function formatTime(value: string | null | undefined) {
 .actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .spacer { flex: 1; }
 .muted { color: var(--muted); }
+.snapshot-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .small { font-size: 12px; }
 .mono { font-family: var(--font-mono); }
 .mb16 { margin: 0 0 16px; }
@@ -642,11 +808,21 @@ function formatTime(value: string | null | undefined) {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
+.input-readonly { background: #f8fafc; }
+.input-readonly .pad { color: #475569; }
+.input-readonly code { color: #64748b; }
 .agent-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 380px);
   gap: 24px;
   align-items: start;
+}
+.agent-article, .agent-side { min-width: 0; }
+.agent-side .pad {
+  box-sizing: border-box;
+  height: min(70vh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .agent-article { padding: 28px 32px; line-height: 1.95; }
 .agent-article h2 { margin: 4px 0 14px; font-size: 20px; }
@@ -664,6 +840,7 @@ function formatTime(value: string | null | undefined) {
 .pad { padding: 18px 22px; }
 .agent-evidence {
   display: block;
+  min-width: 0;
   padding: 13px 0;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
@@ -671,6 +848,8 @@ function formatTime(value: string | null | undefined) {
 .agent-evidence:last-child { border-bottom: 0; }
 .source-link {
   display: inline-block;
+  max-width: 100%;
+  min-width: 0;
   margin-top: 6px;
   padding: 3px 7px;
   background: var(--soft);
@@ -678,7 +857,12 @@ function formatTime(value: string | null | undefined) {
   font-family: var(--font-mono);
   text-align: left;
   white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
+.target-source-link { display: inline-block; text-align: left; }
+.target-source-link code { color: inherit; }
+.preview-version { margin-bottom: 12px; color: var(--muted); font-size: 12px; }
 .agent-timeline { padding: 4px 0 0 13px; }
 .agent-event {
   position: relative;
@@ -750,7 +934,7 @@ function formatTime(value: string | null | undefined) {
 .empty { text-align: center; padding: 48px 25px; color: var(--muted); }
 .pad-alert { margin: 16px 24px 0; }
 @media (max-width: 1250px) {
-  .agent-layout { grid-template-columns: minmax(0, 1fr) 260px; }
+  .agent-layout { grid-template-columns: minmax(0, 1fr) minmax(320px, 340px); }
   .agent-meters { gap: 10px; }
   .agent-meter { padding: 14px; }
   .agent-article { padding: 24px; }
@@ -760,6 +944,7 @@ function formatTime(value: string | null | undefined) {
   .agent-layout { grid-template-columns: 1fr; }
   .agent-meters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .agent-call-layout { grid-template-columns: 1fr; }
+  .agent-side .pad { height: min(60vh, 560px); }
   .agent-call-list { display: flex; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); overflow: auto; }
   .agent-call-list button { min-width: 170px; border-right: 1px solid var(--line); }
 }

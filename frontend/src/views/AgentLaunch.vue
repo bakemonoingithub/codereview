@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :open="open"
-    title="发起 Agent 分析"
+    :title="copyFrom ? '复制参数发起新 Agent 分析' : '发起 Agent 分析'"
     width="min(1040px, calc(100vw - 32px))"
     :footer="null"
     :destroy-on-close="false"
@@ -21,6 +21,13 @@
       show-icon
       message="没有已通过 Agent 工具协议验证的模型"
       description="请先在模型管理中执行「Agent 验证」。连通性验证不能替代工具协议验证。"
+      class="mb12"
+    />
+    <a-alert
+      v-if="copyFrom"
+      type="info"
+      show-icon
+      message="已带入原任务参数。请核对当前分支版本、范围和模型；确认提交后才会创建新任务。"
       class="mb12"
     />
     <a-alert v-if="error" type="error" show-icon :message="error" class="mb12" />
@@ -220,6 +227,7 @@ withDefaults(defineProps<{ open?: boolean }>(), { open: true })
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const router = useRouter()
 const route = useRoute()
+const copyFrom = computed(() => String(route.query.copyFrom || ''))
 
 const projectOptions = ref<Array<{ label: string; value: string }>>([])
 const projects = ref<ProjectView[]>([])
@@ -289,10 +297,38 @@ onMounted(async () => {
     if (!form.modelConfigId && agentModels.value.length) {
       form.modelConfigId = agentModels.value[0].id
     }
+    if (copyFrom.value) {
+      await loadCopyInput()
+    }
   } catch (e) {
     error.value = `加载基础数据失败：${(e as Error).message}`
   }
 })
+
+async function loadCopyInput() {
+  try {
+    const copy = await agentTasksApi.copyInput(copyFrom.value)
+    form.projectId = copy.projectId
+    form.name = copy.name || ''
+    form.modelConfigId = copy.modelConfigId
+    form.guidancePromptId = copy.guidancePromptId
+    form.referenceResultId = copy.referenceResultId || ''
+    form.kind = copy.scope.kind
+    form.description = copy.scope.description || ''
+    form.requirements = copy.requirements
+
+    await selectProject(copy.projectId)
+    if (copy.scope.branch && branches.value.includes(copy.scope.branch)) {
+      form.branch = copy.scope.branch
+      if (copy.scope.kind === 'COMMITS') await loadCommits()
+      else await loadHead()
+    }
+    form.paths = [...(copy.scope.paths || [])]
+    form.commits = [...(copy.scope.commits || [])]
+  } catch (e) {
+    error.value = `读取历史参数失败：${(e as Error).message}`
+  }
+}
 
 async function onProjectChange(value: string) {
   await selectProject(value)

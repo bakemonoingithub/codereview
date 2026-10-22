@@ -1,5 +1,5 @@
 <template>
-  <div class="markdown-body" v-html="html"></div>
+  <div class="markdown-body" v-html="html" @click="onContentClick"></div>
 </template>
 
 <script setup lang="ts">
@@ -23,25 +23,79 @@ import DOMPurify from 'dompurify'
  * 渲染结果放 `ref` 而不是 computed：模板里调用会在**每次渲染**重跑
  * marked + highlight.js + DOMPurify，长报告/大文本上很浪费。
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   text?: string | null
-}>()
+  citationIds?: string[]
+}>(), { citationIds: () => [] })
+const emit = defineEmits<{ 'citation-click': [id: string] }>()
 
 const html = ref('')
 
 watch(
-  () => props.text,
-  async (text) => {
-    const raw = text ?? ''
+  () => [props.text, props.citationIds.join('\u0000')],
+  async ([text]) => {
+    const raw = (text as string | null | undefined) ?? ''
     if (!raw) {
       html.value = ''
       return
     }
     const { renderMarkdown } = await import('@/utils/markdown')
-    html.value = DOMPurify.sanitize(renderMarkdown(raw))
+    const sanitized = DOMPurify.sanitize(renderMarkdown(raw))
+    html.value = props.citationIds.length
+      ? DOMPurify.sanitize(addCitationButtons(sanitized, props.citationIds))
+      : sanitized
   },
   { immediate: true }
 )
+
+function addCitationButtons(sanitizedHtml: string, citationIds: string[]): string {
+  const ids = [...new Set(citationIds.filter((id) => /^E\d{1,3}$/.test(id)))]
+    .sort((a, b) => b.length - a.length)
+  if (!ids.length || typeof DOMParser === 'undefined') return sanitizedHtml
+
+  const pattern = new RegExp(`\\[(${ids.map(escapeRegExp).join('|')})\\]`, 'g')
+  const document = new DOMParser().parseFromString(sanitizedHtml, 'text/html')
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+  const textNodes: Text[] = []
+  while (walker.nextNode()) textNodes.push(walker.currentNode as Text)
+
+  for (const node of textNodes) {
+    if (!node.parentElement || node.parentElement.closest('a, button, code, pre, script, style')) continue
+    const value = node.nodeValue || ''
+    pattern.lastIndex = 0
+    if (!pattern.test(value)) continue
+    pattern.lastIndex = 0
+
+    const fragment = document.createDocumentFragment()
+    let cursor = 0
+    for (const match of value.matchAll(pattern)) {
+      const index = match.index ?? 0
+      fragment.append(document.createTextNode(value.slice(cursor, index)))
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'markdown-citation'
+      button.dataset.citationId = match[1]
+      button.textContent = match[0]
+      fragment.append(button)
+      cursor = index + match[0].length
+    }
+    fragment.append(document.createTextNode(value.slice(cursor)))
+    node.replaceWith(fragment)
+  }
+
+  return document.body.innerHTML
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function onContentClick(event: MouseEvent) {
+  const target = event.target
+  if (!(target instanceof Element)) return
+  const id = target.closest<HTMLButtonElement>('button[data-citation-id]')?.dataset.citationId
+  if (id && props.citationIds.includes(id)) emit('citation-click', id)
+}
 </script>
 
 <style scoped lang="less">
@@ -113,4 +167,15 @@ watch(
   border: 1px solid #eee;
   padding: 4px 8px;
 }
+.markdown-body :deep(.markdown-citation) {
+  display: inline;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 2px;
+  background: transparent;
+  color: var(--blue);
+  font: inherit;
+  cursor: pointer;
+}
+.markdown-body :deep(.markdown-citation:hover) { text-decoration: underline; }
 </style>

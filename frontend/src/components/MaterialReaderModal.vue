@@ -25,6 +25,13 @@
         </a-descriptions>
         <a-alert v-if="!detail.complete" type="warning" show-icon message="保存的材料正文不可用，不能将空白内容视为完整原文。" />
         <p v-if="metadata.diagnostic" class="notice">{{ metadata.diagnostic }}</p>
+        <a-alert
+          v-if="focusRange"
+          type="info"
+          show-icon
+          :message="`${focusLabel || '当前引用'}：第 ${focusRange.startLine}–${focusRange.endLine} 行`"
+          class="mb12"
+        />
 
         <div class="tabs">
           <a-button size="small" :type="mode === 'saved' ? 'primary' : 'default'" @click="showSaved">
@@ -60,6 +67,8 @@
             :text="mode === 'saved' ? (detail.content || '') : content"
             :path="metadata.path"
             :start-line="mode === 'saved' ? (metadata.startLine || 1) : 1"
+            :ranges="focusRanges"
+            :active-range="focusRange"
           />
         </a-spin>
       </template>
@@ -85,6 +94,9 @@ const props = defineProps<{
   projectId: string
   headSha: string
   materialId: string
+  focusStart?: number | null
+  focusEnd?: number | null
+  focusLabel?: string
 }>()
 const emit = defineEmits<{ (event: 'update:open', value: boolean): void }>()
 
@@ -115,9 +127,18 @@ const emptyMaterial: MaterialView = {
   sent: false
 }
 const metadata = computed<MaterialView>(() => detail.value?.metadata || emptyMaterial)
+const focusRange = computed(() => {
+  const startLine = props.focusStart
+  const endLine = props.focusEnd
+  return typeof startLine === 'number' && typeof endLine === 'number'
+    ? { startLine, endLine }
+    : null
+})
+const focusRanges = computed(() => focusRange.value ? [focusRange.value] : [])
 
 watch(
-  () => [props.open, props.taskId, props.projectId, props.materialId, props.headSha] as const,
+  () => [props.open, props.taskId, props.projectId, props.materialId, props.headSha,
+    props.focusStart, props.focusEnd, props.focusLabel] as const,
   () => {
     loadEpoch++
     contentEpoch++

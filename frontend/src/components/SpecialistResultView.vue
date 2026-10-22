@@ -58,7 +58,7 @@
             {{ modelLocationLabel(evidence) }}
           </a-button>
         </div>
-        <FeedbackEditor v-if="result.issues[index] && result.completeness === 'COMPLETE'"
+        <FeedbackEditor v-if="!readOnly && result.issues[index] && result.completeness === 'COMPLETE'"
           :task-id="taskId" subject-kind="ISSUE" :subject-id="result.issues[index].id" subject-text="此问题"
           @saved="emit('feedback-saved')" />
       </div>
@@ -132,7 +132,7 @@
         <li v-for="(limitation, index) in limitations" :key="index">{{ limitation }}</li>
       </ul>
     </div>
-    <FeedbackEditor v-if="result.kind !== 'ISSUE' && result.completeness === 'COMPLETE'"
+    <FeedbackEditor v-if="!readOnly && result.kind !== 'ISSUE' && result.completeness === 'COMPLETE'"
       :task-id="taskId" subject-kind="RESULT" :subject-id="result.id"
       :subject-text="result.kind === 'PATTERN' ? '整个模式审查结果' : '整个耦合度审查结果'"
       @saved="emit('feedback-saved')" />
@@ -155,7 +155,9 @@ type BodyIssue = NonNullable<ResultView['body']['issues']>[number]
 type BodyPattern = NonNullable<ResultView['body']['patterns']>[number]
 type BodyObservation = NonNullable<ResultView['body']['observations']>[number]
 
-const props = defineProps<{ result: ResultView; taskId: string }>()
+const props = withDefaults(defineProps<{ result: ResultView; taskId: string; readOnly?: boolean }>(), {
+  readOnly: false
+})
 const emit = defineEmits<{
   (event: 'open-code', value: CodeReferencePayload): void
   (event: 'feedback-saved'): void
