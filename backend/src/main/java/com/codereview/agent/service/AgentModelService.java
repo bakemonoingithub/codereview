@@ -15,6 +15,8 @@ import com.codereview.agent.mapper.AgentModelValidationMapper;
 import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.invocation.ModelInvocationService;
 import com.codereview.agent.invocation.ModelSnapshot;
+import com.codereview.agent.prompt.PromptAssemblyService;
+import com.codereview.agent.tools.AgentToolLoopValidator;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
@@ -39,12 +41,21 @@ public class AgentModelService {
     private final AgentDatabase db;
     private final ModelInvocationService invocation;
     private final ObjectMapper objectMapper;
+    private final AgentToolLoopValidator toolLoopValidator;
 
     public AgentModelService(AgentDatabase db, ModelInvocationService invocation,
-                             ObjectMapper objectMapper) {
+                             ObjectMapper objectMapper, AgentToolLoopValidator toolLoopValidator) {
         this.db = db;
         this.invocation = invocation;
         this.objectMapper = objectMapper;
+        this.toolLoopValidator = toolLoopValidator;
+    }
+
+    /** 兼容既有测试与手工装配：未注入验证器时按同一组装入口自行创建。 */
+    public AgentModelService(AgentDatabase db, ModelInvocationService invocation,
+                             ObjectMapper objectMapper) {
+        this(db, invocation, objectMapper,
+                new AgentToolLoopValidator(invocation, new PromptAssemblyService(), objectMapper));
     }
 
     public PageResponse<ModelDtos.View> list(String q, String cursor, Integer limit) {
@@ -134,22 +145,42 @@ public class AgentModelService {
         // 验证与业务调用共用组装、计量、请求落盘和传输入口，不另建一套探针模板。
         ModelInvocationService.ValidationOutcome outcome =
                 invocation.validate(ModelSnapshot.from(model));
-        AgentModelValidation record = new AgentModelValidation();
-        record.setId(AgentIds.next());
-        record.setModelConfigId(model.getId());
-        record.setConfigRevision(model.getRevision());
-        record.setScope("CONNECTIVITY");
-        record.setResult(outcome.passed() ? "PASSED" : "FAILED");
+        return record(model, "CONNECTIVITY", outcome.passed() ? "PASSED" : "FAILED",
+                Map.of("detail", outcome.detail(), "callId", outcome.callId() == null ? "" : outcome.callId()));
+    }
+
+    /**
+     * Agent 工具协议验证：真实双轮调用，结果单独记为 {@code AGENT_TOOL_LOOP_V1}。
+     *
+     * <p>连通性验证不替代本记录；记录绑定当前修订、适配器版本、工具 schema 与选项哈希，
+     * 任一变化后旧记录自动视为过期。
+     */
+    public ModelDtos.ValidationResult validateAgent(String id) {
+        AgentModelConfig model = require(id);
+        AgentToolLoopValidator.Outcome outcome =
+                toolLoopValidator.validate(ModelSnapshot.from(model));
         Map<String, Object> detail = new java.util.LinkedHashMap<>();
         detail.put("detail", outcome.detail());
-        if (outcome.callId() != null) {
-            detail.put("callId", outcome.callId());
-        }
-        record.setDetailJson(toJson(detail));
-        record.setCreatedAt(AgentTime.now());
-        db.mapper(AgentModelValidationMapper.class).insert(record);
-        return new ModelDtos.ValidationResult(record.getResult(), record.getConfigRevision(),
-                record.getScope(), outcome.detail(), record.getCreatedAt());
+        detail.put("callIds", outcome.callIds());
+        detail.put("adapterVersion", outcome.adapterVersion());
+        detail.put("toolSchemaVersion", outcome.toolSchemaVersion());
+        detail.put("optionsHash", outcome.optionsHash());
+        return record(model, AgentToolLoopValidator.SCOPE, outcome.passed() ? "PASSED" : "FAILED", detail);
+    }
+
+    private ModelDtos.ValidationResult record(AgentModelConfig model, String scope, String result,
+                                              Map<String, Object> detail) {
+        AgentModelValidation validation = new AgentModelValidation();
+        validation.setId(AgentIds.next());
+        validation.setModelConfigId(model.getId());
+        validation.setConfigRevision(model.getRevision());
+        validation.setScope(scope);
+        validation.setResult(result);
+        validation.setDetailJson(toJson(detail));
+        validation.setCreatedAt(AgentTime.now());
+        db.mapper(AgentModelValidationMapper.class).insert(validation);
+        return new ModelDtos.ValidationResult(validation.getResult(), validation.getConfigRevision(),
+                validation.getScope(), String.valueOf(detail.get("detail")), validation.getCreatedAt());
     }
 
     private AgentModelConfig require(String id) {
@@ -162,17 +193,19 @@ public class AgentModelService {
     }
 
     private ModelDtos.View toView(AgentModelConfig model) {
-        AgentModelValidation latest = latestValidation(model.getId());
         return new ModelDtos.View(model.getId(), model.getName(), model.getBaseUrl(), model.getModelName(),
                 model.getCredential() != null && !model.getCredential().isBlank(),
                 model.getContextWindow(), model.getMaxOutput(), model.getTokenizer(), model.getProtocol(),
-                validationStatus(model, latest), model.getRevision(), model.getCreatedAt(), model.getUpdatedAt());
+                validationStatus(model, latestValidation(model.getId(), "CONNECTIVITY")),
+                validationStatus(model, latestValidation(model.getId(), AgentToolLoopValidator.SCOPE)),
+                model.getRevision(), model.getCreatedAt(), model.getUpdatedAt());
     }
 
-    private AgentModelValidation latestValidation(String modelId) {
+    private AgentModelValidation latestValidation(String modelId, String scope) {
         List<AgentModelValidation> rows = db.mapper(AgentModelValidationMapper.class).selectList(
                 new LambdaQueryWrapper<AgentModelValidation>()
                         .eq(AgentModelValidation::getModelConfigId, modelId)
+                        .eq(AgentModelValidation::getScope, scope)
                         .orderByDesc(AgentModelValidation::getCreatedAt)
                         .last("limit 1"));
         return rows.isEmpty() ? null : rows.get(0);

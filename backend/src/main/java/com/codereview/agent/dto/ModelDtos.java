@@ -51,6 +51,7 @@ public final class ModelDtos {
             String tokenizer,
             String protocol,
             String validationStatus,
+            String agentValidationStatus,
             int revision,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {

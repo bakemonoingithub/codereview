@@ -2,10 +2,7 @@ package com.codereview.git;
 
 import com.codereview.common.BusinessException;
 import com.codereview.common.ResultCode;
-import org.eclipse.jgit.api.CloneCommand;
-import org.eclipse.jgit.api.FetchCommand;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.ObjectId;
@@ -14,8 +11,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.transport.CredentialsProvider;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,14 +18,9 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * Gitea 1.16.1 没有 compare 接口，两个引用之间的变更文件只能自己算。
@@ -39,23 +29,23 @@ import java.util.concurrent.ConcurrentMap;
  * 按需 fetch，然后用 <b>merge-base 三点语义</b> {@code git diff base...head} 算变更文件 ——
  * 与 GitHub compare 的语义一致（直接拿 base 树与 head 树比会多出 base 侧独有的变更）。
  *
- * <p>为什么不是"每次临时克隆"：验收指标要求 5 个 900 行文件的分析在 1 小时内完成，
- * 每次全量传一遍仓库会把预算吃光。为什么不是浅克隆：{@code base} 的历史常不在本地，
- * merge-base 会直接失败（或被迫再 fetch，语义变脆）。
- *
- * <p>并发：同一仓库的克隆/拉取/算差异在进程内 <b>按仓库串行</b>（JGit 对同一目录并发操作不安全），
- * 不同仓库互不阻塞。拉取失败/引用解析不出来一律<b>显式报错</b>，绝不返回空列表冒充"没有变更"。
+ * <p>镜像的克隆、拉取与锁已提炼到 {@link GitMirror}，由 Agent 只读检索共用同一份本地镜像；
+ * 本类只保留「在镜像里算三点差异」这件事。拉取失败/引用解析不出来一律<b>显式报错</b>，
+ * 绝不返回空列表冒充"没有变更"。
  */
 @Component
 public class GiteaGitMirror {
 
     private static final Logger LOG = LoggerFactory.getLogger(GiteaGitMirror.class);
 
-    private final GiteaProperties properties;
-    private final ConcurrentMap<String, Object> locks = new ConcurrentHashMap<>();
+    private final GitMirror mirror;
 
     public GiteaGitMirror(GiteaProperties properties) {
-        this.properties = properties;
+        this(properties, new GitMirror(properties));
+    }
+
+    public GiteaGitMirror(GiteaProperties properties, GitMirror mirror) {
+        this.mirror = mirror;
     }
 
     /**
@@ -68,64 +58,18 @@ public class GiteaGitMirror {
         if (base == null || base.isBlank() || head == null || head.isBlank()) {
             throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(), "缺少 base/head 引用");
         }
-        File dir = mirrorDir(cloneUrl);
-        Object lock = locks.computeIfAbsent(dir.getAbsolutePath(), key -> new Object());
-        synchronized (lock) {
-            try {
-                ensureMirror(dir, cloneUrl, credential, credentialType);
-                return diffPaths(dir, cloneUrl, credential, credentialType, base, head);
-            } catch (BusinessException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(),
-                        "本地镜像计算差异失败（" + cloneUrl + "）：" + e.getMessage());
-            }
-        }
+        List<String> required = new ArrayList<>();
+        required.add(base);
+        required.add(head);
+        return mirror.using(cloneUrl, credential, credentialType, required, null,
+                dir -> diffPaths(dir, cloneUrl, base, head));
     }
 
-    private void ensureMirror(File dir, String cloneUrl, String credential, Integer credentialType)
-            throws IOException, GitAPIException {
-        if (new File(dir, "HEAD").exists()) {
-            try (Git git = Git.open(dir)) {
-                FetchCommand fetch = git.fetch().setRemote("origin")
-                        .setTimeout(properties.getMirrorTimeoutSeconds());
-                CredentialsProvider provider = credentials(credential, credentialType);
-                if (provider != null) {
-                    fetch.setCredentialsProvider(provider);
-                }
-                fetch.call();
-                LOG.debug("Gitea 本地镜像已更新: {}", dir);
-            }
-            return;
-        }
-        Files.createDirectories(dir.toPath());
-        LOG.info("Gitea 本地镜像首次克隆: {} -> {}", cloneUrl, dir);
-        CloneCommand clone = Git.cloneRepository()
-                .setURI(cloneUrl)
-                .setDirectory(dir)
-                .setBare(true)
-                .setMirror(true)
-                .setTimeout(properties.getMirrorTimeoutSeconds());
-        CredentialsProvider provider = credentials(credential, credentialType);
-        if (provider != null) {
-            clone.setCredentialsProvider(provider);
-        }
-        try (Git ignored = clone.call()) {
-            LOG.info("Gitea 本地镜像克隆完成: {}", dir);
-        }
-    }
-
-    private List<String> diffPaths(File dir, String cloneUrl, String credential, Integer credentialType,
-                                   String base, String head) throws IOException, GitAPIException {
+    private List<String> diffPaths(File dir, String cloneUrl, String base, String head)
+            throws IOException {
         try (Repository repo = new FileRepositoryBuilder().setGitDir(dir).build()) {
             ObjectId baseId = resolveOrNull(repo, base);
             ObjectId headId = resolveOrNull(repo, head);
-            if (baseId == null || headId == null) {
-                // 新提交还没同步到本地镜像：拉一次再试（只重试一次，失败就报错）
-                fetch(credential, credentialType, repo);
-                baseId = resolveOrNull(repo, base);
-                headId = resolveOrNull(repo, head);
-            }
             if (baseId == null) {
                 throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(),
                         "本地镜像里找不到引用 " + base + "（" + cloneUrl + "）");
@@ -152,22 +96,10 @@ public class GiteaGitMirror {
                             paths.add(path);
                         }
                     }
+                    LOG.debug("Gitea 本地镜像差异完成: {} ({} 项)", dir.getName(), paths.size());
                     return new ArrayList<>(paths);
                 }
             }
-        }
-    }
-
-    private void fetch(String credential, Integer credentialType, Repository repo)
-            throws GitAPIException {
-        try (Git git = new Git(repo)) {
-            FetchCommand fetch = git.fetch().setRemote("origin")
-                    .setTimeout(properties.getMirrorTimeoutSeconds());
-            CredentialsProvider provider = credentials(credential, credentialType);
-            if (provider != null) {
-                fetch.setCredentialsProvider(provider);
-            }
-            fetch.call();
         }
     }
 
@@ -195,47 +127,6 @@ public class GiteaGitMirror {
             walk.markStart(walk.parseCommit(head.getId()));
             RevCommit mergeBase = walk.next();
             return mergeBase != null ? mergeBase : walk.parseCommit(base.getId());
-        }
-    }
-
-    /**
-     * JGit 的凭据：Gitea 的 Basic 认证<b>先把密码当令牌查</b>，所以令牌放密码位、用户名随意。
-     * credentialType=2 时是 user:pass，按第一个冒号拆。
-     */
-    private static CredentialsProvider credentials(String credential, Integer credentialType) {
-        if (credential == null || credential.isBlank()) {
-            return null;
-        }
-        if (credentialType != null && credentialType == 2) {
-            int idx = credential.indexOf(':');
-            String user = idx > 0 ? credential.substring(0, idx) : credential;
-            String pass = idx > 0 ? credential.substring(idx + 1) : "";
-            return new UsernamePasswordCredentialsProvider(user, pass);
-        }
-        return new UsernamePasswordCredentialsProvider("oauth2", credential);
-    }
-
-    /** 每个 cloneUrl 一个目录：可读后缀 + URL 哈希（避免不同站点同名仓库互相污染）。 */
-    private File mirrorDir(String cloneUrl) {
-        String hash = sha1(cloneUrl);
-        String readable = cloneUrl.replaceAll("[^A-Za-z0-9._-]", "_");
-        if (readable.length() > 80) {
-            readable = readable.substring(readable.length() - 80);
-        }
-        return new File(properties.resolvedWorkDir(), hash + "-" + readable);
-    }
-
-    private static String sha1(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-1");
-            byte[] bytes = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 6; i++) {
-                sb.append(String.format("%02x", bytes[i]));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new IllegalStateException("无法计算镜像目录名: " + e.getMessage(), e);
         }
     }
 }

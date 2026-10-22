@@ -130,8 +130,19 @@ public class RepositoryReadService {
                         context.ref, fixedSha)).withoutPatches();
     }
 
-    public RepositorySnapshots.FileSnapshot readFile(String projectId, String sha, String path) {
+    /**
+     * 共享镜像所需的仓库身份与凭据。
+     *
+     * <p>只给受控的镜像 / 检索组件使用：凭据用于 JGit 拉取，不进入 URL、目录名或诊断正文。
+     * {@code namespace} 含项目与项目修订，缓存键用它隔离凭据或仓库地址的变更。
+     */
+    public MirrorTarget mirrorTarget(String projectId) {
         ProjectContext context = context(projectId);
+        return new MirrorTarget(context.project().getId(), context.project().getRepoUrl(),
+                context.credential(), context.credentialType(), context.namespace());
+    }
+
+    public RepositorySnapshots.FileSnapshot readFile(String projectId, String sha, String path) {        ProjectContext context = context(projectId);
         String fixedSha = RepositoryPaths.requireFixedSha(sha);
         String safePath = RepositoryPaths.requireSafePath(path);
         return fileCache.get(context.namespace + "|" + fixedSha + "|" + safePath,
@@ -365,5 +376,10 @@ public class RepositoryReadService {
         int credentialType() {
             return project.getCredentialType() == null ? 1 : project.getCredentialType();
         }
+    }
+
+    /** 共享镜像的读取目标；凭据只在内存中使用。 */
+    public record MirrorTarget(String projectId, String cloneUrl, String credential,
+                               Integer credentialType, String namespace) {
     }
 }

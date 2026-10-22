@@ -36,6 +36,10 @@ public enum PromptPurpose {
             在只读工具范围内调查问题，输出少量固定信息与 Markdown 结论。
             不得声称执行了未实际调用的工具，也不得把计划写成已完成。"""),
 
+    AGENT_TOOL_CHECK("AGENT_TOOL_CHECK", false, """
+            这是一次原生工具协议验证：按用户消息调用给定的只读工具，再根据工具返回给出简短说明。
+            不分析业务代码，不调用未提供的工具，也不把计划写成已执行。"""),
+
     VALIDATION("VALIDATION", false, """
             这是一次连通性验证。只输出一个最小 JSON 对象 {"ok":true}，不分析任何业务内容。""");
 

@@ -13,6 +13,7 @@ import com.codereview.agent.prompt.AssembledPrompt;
 import com.codereview.agent.prompt.PromptAssemblyService;
 import com.codereview.agent.prompt.PromptInput;
 import com.codereview.agent.prompt.PromptPurpose;
+import com.codereview.agent.prompt.ToolCall;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -209,7 +211,8 @@ public class ModelInvocationService {
             throw failure;
         }
         String content = textOf(first.path("message").path("content"));
-        if (content == null || content.isBlank()) {
+        List<ToolCall> toolCalls = toolCallsOf(first.path("message").path("tool_calls"), call.getId());
+        if ((content == null || content.isBlank()) && toolCalls.isEmpty()) {
             ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,
                     "模型响应缺少正文", Map.of("callId", call.getId()));
             finishFailure(call, failure, response.body());
@@ -223,7 +226,43 @@ public class ModelInvocationService {
         db.mapper(AgentModelCallMapper.class).updateById(call);
         return new InvocationResult(call.getId(), content, usage, finishReason, attempt,
                 estimate.inputEstimate(), estimate.outputReserve(), estimate.method(),
-                call.getAdapterVersion());
+                call.getAdapterVersion(), toolCalls);
+    }
+
+    /**
+     * 解析原生工具调用：只接受 id/name/arguments 三个字段，同一响应内 id 不能重复。
+     *
+     * <p>参数原文保留，由工具层严格校验；这里只拒绝结构性错误，避免把半截协议交给执行器。
+     */
+    private List<ToolCall> toolCallsOf(JsonNode node, String callId) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return List.of();
+        }
+        if (!node.isArray()) {
+            throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, "tool_calls 不是数组",
+                    Map.of("callId", callId));
+        }
+        List<ToolCall> calls = new ArrayList<>();
+        List<String> ids = new ArrayList<>();
+        for (JsonNode item : node) {
+            String id = item.path("id").asText(null);
+            JsonNode function = item.path("function");
+            String name = function.path("name").asText(null);
+            JsonNode arguments = function.path("arguments");
+            String rawArguments = arguments.isTextual() ? arguments.asText()
+                    : arguments.isMissingNode() ? "{}" : arguments.toString();
+            if (id == null || id.isBlank() || name == null || name.isBlank()) {
+                throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,
+                        "工具调用缺少 id 或 name", Map.of("callId", callId));
+            }
+            if (ids.contains(id)) {
+                throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,
+                        "同一响应内的工具调用 id 重复", Map.of("callId", callId, "toolCallId", id));
+            }
+            ids.add(id);
+            calls.add(new ToolCall(id, name, rawArguments));
+        }
+        return List.copyOf(calls);
     }
 
     private void finishFailure(AgentModelCall call, ApiException failure, String responseBody) {
@@ -252,7 +291,32 @@ public class ModelInvocationService {
         }
         ArrayNode messages = body.putArray("messages");
         for (var message : prompt.messages()) {
-            messages.addObject().put("role", message.role()).put("content", message.content());
+            ObjectNode node = messages.addObject().put("role", message.role());
+            if (message.content() != null) {
+                node.put("content", message.content());
+            } else if (!message.toolCalls().isEmpty()) {
+                // assistant 只带工具调用时正文为空；显式 null 与 OpenAI 兼容协议一致。
+                node.putNull("content");
+            }
+            if (!message.toolCalls().isEmpty()) {
+                ArrayNode calls = node.putArray("tool_calls");
+                for (ToolCall call : message.toolCalls()) {
+                    ObjectNode item = calls.addObject();
+                    item.put("id", call.id());
+                    item.put("type", "function");
+                    ObjectNode function = item.putObject("function");
+                    function.put("name", call.name());
+                    function.put("arguments", call.arguments());
+                }
+            }
+            if (message.toolCallId() != null) {
+                node.put("tool_call_id", message.toolCallId());
+            }
+        }
+        if (prompt.hasTools()) {
+            body.set("tools", mapper.valueToTree(prompt.tools()));
+            body.put("tool_choice", prompt.toolChoice() == null || prompt.toolChoice().isBlank()
+                    ? "auto" : prompt.toolChoice());
         }
         try {
             return mapper.writeValueAsString(body);
@@ -436,7 +500,8 @@ public class ModelInvocationService {
      */
     private static boolean requiresPlainOutputBudget(ModelSnapshot model, AssembledPrompt prompt) {
         return isDeepSeekModel(model)
-                && (prompt.jsonMode() || prompt.purpose() == PromptPurpose.VALIDATION);
+                && (prompt.jsonMode() || prompt.purpose() == PromptPurpose.VALIDATION
+                || prompt.purpose() == PromptPurpose.AGENT_TOOL_CHECK);
     }
 
     private static String textOf(JsonNode content) {

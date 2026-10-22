@@ -64,4 +64,10 @@ public class ModelV2Controller {
     public ModelDtos.ValidationResult validate(@PathVariable String id) {
         return service.validate(id);
     }
+
+    /** 原生工具协议验证：真实两轮调用，记录 scope=AGENT_TOOL_LOOP_V1。 */
+    @PostMapping("/{id}/validate-agent")
+    public ModelDtos.ValidationResult validateAgent(@PathVariable String id) {
+        return service.validateAgent(id);
+    }
 }

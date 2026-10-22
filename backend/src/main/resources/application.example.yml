@@ -52,6 +52,15 @@ springdoc:
 #     generation-timeout-minutes: 10
 #     dispatch-concurrency: 2
 #     dispatch-queue-capacity: 100
+#   # Agent 只读工具（P33.2，均可省略）。内容搜索要求运行环境有 git；
+#   # 镜像目录沿用 git.gitea.work-dir，Windows 下请保持较短路径（默认 MAX_PATH=260）。
+#   tools:
+#     git-executable: git
+#     mirror-timeout-seconds: 120
+#     search-total-seconds: 10
+#     search-global-concurrency: 2
+#     search-cache-weight-bytes: 33554432
+#     search-cache-minutes: 5
 
 deepseek:
   base-url: https://api.deepseek.com
