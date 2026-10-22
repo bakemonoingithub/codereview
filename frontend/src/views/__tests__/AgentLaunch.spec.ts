@@ -4,8 +4,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 import AgentLaunch from '@/views/AgentLaunch.vue'
 import { namedAntStubs } from '@/testUtils/antStubs'
 
-const context = vi.hoisted(() => ({ push: vi.fn() }))
-vi.mock('vue-router', () => ({ useRouter: () => ({ push: context.push }) }))
+const context = vi.hoisted(() => ({ push: vi.fn(), route: { query: {} as Record<string, string> } }))
+vi.mock('vue-router', () => ({
+  useRoute: () => context.route,
+  useRouter: () => ({ push: context.push })
+}))
 vi.mock('@/api/v2', () => ({
   agentTasksApi: { create: vi.fn(), copyInput: vi.fn() },
   projectsApi: { list: vi.fn() },
@@ -28,6 +31,7 @@ async function start() {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  context.route.query = {}
   vi.mocked(projectsApi.list).mockResolvedValue(
     page([{ id: 'p1', name: '订单服务', currentBranch: 'main' }]) as any)
   vi.mocked(modelsApi.list).mockResolvedValue(page([
