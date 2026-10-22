@@ -10,7 +10,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
@@ -121,10 +123,17 @@ public class GiteaClient implements GitHostClient {
 
     @Override
     public List<GitTreeEntry> tree(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        return treeWithMeta(token, credentialType, repoRef, branch).entries();
+    }
+
+    /** Gitea 由客户端翻页；翻到页数上限仍未结束时必须标记截断，不能当作完整清单。 */
+    @Override
+    public GitTree treeWithMeta(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
         String api = apiBase(repoRef);
         String ref = resolvePathRef(token, credentialType, repoRef, branch);
         List<GitTreeEntry> entries = new ArrayList<>();
-        for (int page = 1; page <= MAX_TREE_PAGES; page++) {
+        int page = 1;
+        for (; page <= MAX_TREE_PAGES; page++) {
             String url = api + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/git/trees/"
                     + UriUtils.encodePathSegment(ref, StandardCharsets.UTF_8)
                     + "?recursive=true&per_page=" + TREE_PER_PAGE + "&page=" + page;
@@ -146,7 +155,7 @@ public class GiteaClient implements GitHostClient {
                 break;
             }
         }
-        return entries;
+        return new GitTree(entries, page > MAX_TREE_PAGES);
     }
 
     // ---------------------------------------------------------------- 文件内容
@@ -154,7 +163,7 @@ public class GiteaClient implements GitHostClient {
     @Override
     public String rawFile(String token, Integer credentialType, GitRepoRef repoRef, String ref, String path) {
         if (GitCache.isImmutableRef(ref)) {
-            String key = GitCache.key(repoRef.owner(), repoRef.repo(), ref) + ":" + path;
+            String key = GitCache.key(repoRef, effectiveCredential(token), ref) + ":" + path;
             return cache.rawFile(key, () -> rawFileAtRef(token, credentialType, repoRef, ref, path));
         }
         return rawFileAtRef(token, credentialType, repoRef, ref, path);
@@ -269,7 +278,7 @@ public class GiteaClient implements GitHostClient {
 
     @Override
     public CommitDetail commitDetail(String token, Integer credentialType, GitRepoRef repoRef, String sha) {
-        return cache.commitDetail(GitCache.key(repoRef.owner(), repoRef.repo(), sha),
+        return cache.commitDetail(GitCache.key(repoRef, effectiveCredential(token), sha),
                 () -> fetchCommitDetail(token, credentialType, repoRef, sha));
     }
 
@@ -285,6 +294,9 @@ public class GiteaClient implements GitHostClient {
         String diffText;
         try {
             diffText = get(base + ".diff", token, credentialType);
+        } catch (HostHttpException e) {
+            // 由公共读取层按真实状态分类，不能在此丢失 HTTP 状态或重试信息。
+            throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Gitea 单提交 diff 获取失败（" + sha + "）：" + e.getMessage(), e);
         }
@@ -332,7 +344,7 @@ public class GiteaClient implements GitHostClient {
         }
         // 仅当两端都是 commit sha 时才缓存（任一端是分支名就可能在移动）
         if (GitCache.isImmutableRef(base) && GitCache.isImmutableRef(head)) {
-            String key = GitCache.key(repoRef.owner(), repoRef.repo(), base + "..." + head);
+            String key = GitCache.key(repoRef, effectiveCredential(token), base + "..." + head);
             return cache.changedFiles(key, () -> mirror.changedPaths(cloneUrl(repoRef), token, credentialType, base, head));
         }
         return mirror.changedPaths(cloneUrl(repoRef), token, credentialType, base, head);
@@ -413,17 +425,29 @@ public class GiteaClient implements GitHostClient {
         if (auth != null) {
             spec = spec.header(HttpHeaders.AUTHORIZATION, auth);
         }
-        return spec.retrieve().toEntity(String.class);
+        try {
+            return spec.retrieve().toEntity(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
+        }
     }
 
     private String get(String url, String token, Integer credentialType) {
         String auth = authHeader(token, credentialType);
-        if (auth == null) {
-            return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+        try {
+            if (auth == null) {
+                return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+            }
+            return restClient.get().uri(encodedUri(url))
+                    .header(HttpHeaders.AUTHORIZATION, auth)
+                    .retrieve().body(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
         }
-        return restClient.get().uri(encodedUri(url))
-                .header(HttpHeaders.AUTHORIZATION, auth)
-                .retrieve().body(String.class);
     }
 
     /**
@@ -433,6 +457,11 @@ public class GiteaClient implements GitHostClient {
      */
     private static URI encodedUri(String url) {
         return URI.create(url);
+    }
+
+    /** 缓存身份用的有效凭据：项目凭据优先，未配置时用配置兜底令牌。 */
+    private String effectiveCredential(String token) {
+        return token != null && !token.isBlank() ? token : properties.fallbackToken();
     }
 
     /** 项目级 credential 优先（token→token 头 / 密码→Basic），其次配置兜底 token。 */

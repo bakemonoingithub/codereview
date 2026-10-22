@@ -1,0 +1,1714 @@
+{
+  "task": "cancel",
+  "requirements": "解释该版本审查任务取消后，程序如何阻止正在执行或迟到的模型调用继续发布结果。请追踪取消入口、执行保护及结果发布之间的实际联系，指出仍需运行测试才能确认的边界。",
+  "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+  "modelName": "deepseek-flash",
+  "configRevision": 2,
+  "fixedSha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+  "versions": {
+    "V1": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+    "V2": "2660ce0bb90bee33fc0573e672a58d38a339d4c7",
+    "V3": "0343a9566d2c2e3112c0ac5102887f625e875f9d",
+    "V4": "dfe2d5d7668182136eed47c9d4cb3e81b561f1e6"
+  },
+  "configuration": {
+    "maxRounds": 32,
+    "requestTimeoutSeconds": 120,
+    "maxOutputTokens": 8192,
+    "mode": "reasoning_effort=none",
+    "transportRetries": 0,
+    "scope": "isolated P33.1 experiment; API-backed temporary tools"
+  },
+  "calls": [
+    {
+      "turn": 1,
+      "durationMillis": 3063.0,
+      "serializedRequestBytes": 3515,
+      "inputEstimate": 3611,
+      "usage": {
+        "prompt_tokens": 1075,
+        "completion_tokens": 162,
+        "total_tokens": 1237,
+        "prompt_tokens_details": {
+          "cached_tokens": 896
+        },
+        "prompt_cache_hit_tokens": 896,
+        "prompt_cache_miss_tokens": 179
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "我会先查看目录结构，并搜索与取消相关的代码。",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_FKm9EGbjDx284TiXPESm7710",
+            "type": "function",
+            "function": {
+              "name": "tree",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_84NrFHIThDbfvYrYiKPS1906",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"version\": \"V1\", \"query\": \"cancel\", \"path\": \"backend/src/main/java/com/codereview/agent\", \"limit\": 80}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 0
+    },
+    {
+      "turn": 2,
+      "durationMillis": 2922.0,
+      "serializedRequestBytes": 14019,
+      "inputEstimate": 14163,
+      "usage": {
+        "prompt_tokens": 3819,
+        "completion_tokens": 196,
+        "total_tokens": 4015,
+        "prompt_tokens_details": {
+          "cached_tokens": 1152
+        },
+        "prompt_cache_hit_tokens": 1152,
+        "prompt_cache_miss_tokens": 2667
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_QJXUwOg7ixTSFL7nwnFV8450",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/service/TaskService.java\", \"start\": 150, \"end\": 280}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_ooHTmt3LfiNeop2I8RUu9083",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java\", \"start\": 1, \"end\": 200}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 7
+    },
+    {
+      "turn": 3,
+      "durationMillis": 3422.0,
+      "serializedRequestBytes": 26406,
+      "inputEstimate": 26598,
+      "usage": {
+        "prompt_tokens": 6917,
+        "completion_tokens": 201,
+        "total_tokens": 7118,
+        "prompt_tokens_details": {
+          "cached_tokens": 3968
+        },
+        "prompt_cache_hit_tokens": 3968,
+        "prompt_cache_miss_tokens": 2949
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_DvoVSc9NICvEf8HeiK2r7986",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 260, \"path\": \"backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_wo3Qj6PamPUvTWzSHA7i0875",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 260, \"path\": \"backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 9
+    },
+    {
+      "turn": 4,
+      "durationMillis": 3797.0,
+      "serializedRequestBytes": 52827,
+      "inputEstimate": 53067,
+      "usage": {
+        "prompt_tokens": 12853,
+        "completion_tokens": 201,
+        "total_tokens": 13054,
+        "prompt_tokens_details": {
+          "cached_tokens": 7040
+        },
+        "prompt_cache_hit_tokens": 7040,
+        "prompt_cache_miss_tokens": 5813
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_H4JEsdmmfTA0iB9RXlqb1638",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 400, \"path\": \"backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java\", \"start\": 260, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_6cfY2qUKXENADs4t8sS27930",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 200, \"path\": \"backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 11
+    },
+    {
+      "turn": 5,
+      "durationMillis": 4610.0,
+      "serializedRequestBytes": 72543,
+      "inputEstimate": 72831,
+      "usage": {
+        "prompt_tokens": 17256,
+        "completion_tokens": 201,
+        "total_tokens": 17457,
+        "prompt_tokens_details": {
+          "cached_tokens": 12928
+        },
+        "prompt_cache_hit_tokens": 12928,
+        "prompt_cache_miss_tokens": 4328
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_HRW75NG6heGM7iT5qZzk5482",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 452, \"path\": \"backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java\", \"start\": 200, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_AR2aEqQ501JMcpUcJksd0264",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 490, \"path\": \"backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java\", \"start\": 400, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 13
+    },
+    {
+      "turn": 6,
+      "durationMillis": 3875.0,
+      "serializedRequestBytes": 90063,
+      "inputEstimate": 90399,
+      "usage": {
+        "prompt_tokens": 21505,
+        "completion_tokens": 189,
+        "total_tokens": 21694,
+        "prompt_tokens_details": {
+          "cached_tokens": 17408
+        },
+        "prompt_cache_hit_tokens": 17408,
+        "prompt_cache_miss_tokens": 4097
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_l6UTvLQNlWd5NVneGRas2713",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 60, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"requireActive\", \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_qtMqjxqEClsQfHJPqbjk8065",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"TASK_CANCELLED\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 15
+    },
+    {
+      "turn": 7,
+      "durationMillis": 3813.0,
+      "serializedRequestBytes": 96804,
+      "inputEstimate": 97188,
+      "usage": {
+        "prompt_tokens": 23501,
+        "completion_tokens": 198,
+        "total_tokens": 23699,
+        "prompt_tokens_details": {
+          "cached_tokens": 21632
+        },
+        "prompt_cache_hit_tokens": 21632,
+        "prompt_cache_miss_tokens": 1869
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_F2olMTVZAPYHD4sGFeH50976",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 140, \"path\": \"backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_Qz9jrTO7SMTmW0Axu6cS7825",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 120, \"path\": \"backend/src/main/java/com/codereview/agent/execution/TaskStates.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 36
+    },
+    {
+      "turn": 8,
+      "durationMillis": 3657.0,
+      "serializedRequestBytes": 106330,
+      "inputEstimate": 106762,
+      "usage": {
+        "prompt_tokens": 25975,
+        "completion_tokens": 202,
+        "total_tokens": 26177,
+        "prompt_tokens_details": {
+          "cached_tokens": 23680
+        },
+        "prompt_cache_hit_tokens": 23680,
+        "prompt_cache_miss_tokens": 2295
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_Bau8AvW9I3mwvuUHlfuW2657",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 220, \"path\": \"backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java\", \"start\": 140, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_Yt18qNDt6ZNuvWMWqXDO4130",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 120, \"path\": \"backend/src/main/java/com/codereview/agent/invocation/ModelCallConcurrencyLimiter.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 38
+    },
+    {
+      "turn": 9,
+      "durationMillis": 3750.0,
+      "serializedRequestBytes": 115761,
+      "inputEstimate": 116241,
+      "usage": {
+        "prompt_tokens": 28309,
+        "completion_tokens": 188,
+        "total_tokens": 28497,
+        "prompt_tokens_details": {
+          "cached_tokens": 26112
+        },
+        "prompt_cache_hit_tokens": 26112,
+        "prompt_cache_miss_tokens": 2197
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_OvJOoH3Bh5soL9u8grrl2449",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"requireActiveLocked\", \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_evWfRAT4q9E3DLuZMxfz3405",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"isCancelled\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 40
+    },
+    {
+      "turn": 10,
+      "durationMillis": 3985.0,
+      "serializedRequestBytes": 117439,
+      "inputEstimate": 117967,
+      "usage": {
+        "prompt_tokens": 28799,
+        "completion_tokens": 187,
+        "total_tokens": 28986,
+        "prompt_tokens_details": {
+          "cached_tokens": 28416
+        },
+        "prompt_cache_hit_tokens": 28416,
+        "prompt_cache_miss_tokens": 383
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_ridolfoQWBePz4FQk6Jw3122",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"inTransaction\", \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_jPgzf4UJsSD0zsjV2gCs9873",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"publisher.publish\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 41
+    },
+    {
+      "turn": 11,
+      "durationMillis": 3516.0,
+      "serializedRequestBytes": 121468,
+      "inputEstimate": 122044,
+      "usage": {
+        "prompt_tokens": 29982,
+        "completion_tokens": 102,
+        "total_tokens": 30084,
+        "prompt_tokens_details": {
+          "cached_tokens": 28928
+        },
+        "prompt_cache_hit_tokens": 28928,
+        "prompt_cache_miss_tokens": 1054
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_RRPF1NGfwazunWpvTS7Y2934",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 140, \"path\": \"backend/src/main/java/com/codereview/agent/db/AgentDatabase.java\", \"start\": 90, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 53
+    },
+    {
+      "turn": 12,
+      "durationMillis": 3766.0,
+      "serializedRequestBytes": 123273,
+      "inputEstimate": 123881,
+      "usage": {
+        "prompt_tokens": 30474,
+        "completion_tokens": 101,
+        "total_tokens": 30575,
+        "prompt_tokens_details": {
+          "cached_tokens": 30080
+        },
+        "prompt_cache_hit_tokens": 30080,
+        "prompt_cache_miss_tokens": 394
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_Sk9ajGPOzFZ10XHmbUrP3449",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 150, \"path\": \"backend/src/main/java/com/codereview/agent/service/TaskService.java\", \"start\": 100, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 54
+    },
+    {
+      "turn": 13,
+      "durationMillis": 4047.0,
+      "serializedRequestBytes": 126267,
+      "inputEstimate": 126907,
+      "usage": {
+        "prompt_tokens": 31216,
+        "completion_tokens": 192,
+        "total_tokens": 31408,
+        "prompt_tokens_details": {
+          "cached_tokens": 30464
+        },
+        "prompt_cache_hit_tokens": 30464,
+        "prompt_cache_miss_tokens": 752
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_fYfh4dyHe6hUmPkdukBD8814",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"implements TaskWorker\", \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_J7tBtvmkX9IvoGJdTVWY4700",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent\", \"query\": \"AgentReviewResultMapper.class).insert\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 55
+    },
+    {
+      "turn": 14,
+      "durationMillis": 15922.0,
+      "serializedRequestBytes": 127720,
+      "inputEstimate": 128408,
+      "usage": {
+        "prompt_tokens": 31631,
+        "completion_tokens": 2915,
+        "total_tokens": 34546,
+        "prompt_tokens_details": {
+          "cached_tokens": 31360
+        },
+        "prompt_cache_hit_tokens": 31360,
+        "prompt_cache_miss_tokens": 271
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_TV7QSwcXXmY7m0kBf1yD8135",
+            "type": "function",
+            "function": {
+              "name": "submit_result",
+              "arguments": "{\"title\": \"审查任务取消后阻止在途/迟到模型调用发布结果的链路（V1）\", \"answerStatus\": \"ANSWERED\", \"markdown\": \"## 结论概览\\n\\n该版本用「**取消先落库 → 执行侧多点轮询守卫 → 发布前在事务内加行锁复核 → 目标终态条件更新兜底**」四层机制，阻止取消后仍在执行的模型调用把结果写进库。取消本身**不会中断正在进行的 HTTP 请求**，它靠的是「发请求前复核 + 返回后复核 + 发布事务内复核」把迟到结果丢弃。\\n\\n## 1. 取消入口：只改库状态，不碰线程\\n\\n- HTTP 入口 `POST /{id}/cancel` 直接转给 `TaskService.cancel(id, expectedRevision)` [E1]。\\n- `cancel` 先做终态短路与 revision 校验，然后用**带前置状态条件**的更新把任务从 `QUEUED/RUNNING` 改为 `CANCELLED`，同时写入 `stopReason=USER_CANCELLED`、`cancelRequestedAt`、`finishedAt`，并 `revision+1`；影响 0 行时重新读库判断是终态还是 revision 冲突 [E2]。\\n- 同一方法随后把该任务下所有非终态目标批量置为 `CANCELLED`（`errorCode=USER_CANCELLED`）[E2]。\\n- 注意：`cancel` 全程**没有**调用 `Future.cancel`、没有中断线程、没有通知执行器；它只是数据库状态变更。因此「阻止继续发布」完全依赖执行侧的检查点。\\n\\n## 2. 执行保护：`TaskExecutionGuard` 是唯一判定点\\n\\n- `requireActive(taskId)` 读库后判定：`cancelRequestedAt != null` 或 `state == CANCELLED` → 抛 `TASK_CANCELLED`；其他终态 → 抛 `TASK_CANCELLED`；超过 `deadlineAt` → 抛 `TASK_DEADLINE` [E3]。\\n- `requireActiveLocked(taskId)` 用 `SELECT ... FOR UPDATE` 在同一事务内取任务行，注释明确目的是「使取消、期限收敛与结果发布串行化」[E3]。\\n- 类注释也点明设计意图：取消可能发生在任意调用之间，执行器必须在**每次新调用前**检查，不能只靠终态更新事后补救 [E3]。\\n\\n### 检查点分布（`SpecialistTaskWorker`）\\n\\n| 位置 | 作用 |\\n|---|---|\\n| `executeTarget` 开头 | 目标开始前拒绝已取消任务 [E4] |\\n| 每个 unit 循环开始 | 规划出的每个单元执行前检查 [E4] |\\n| unit 执行成功后、标记 SUCCEEDED 前 | 防止把取消后的单元记为成功 [E4] |\\n| `executeUnit` 每次 attempt 开头 | 格式重试的每一轮都重新检查 [E5] |\\n| `invocation.invoke(...)` 返回后立即 | **关键**：模型已返回但任务已取消时，结果不进入解析/校验/收集 [E5] |\\n| 发布事务内 `requireActiveLocked` | 见第 3 节 |\\n\\n### 调用层自身的保护（`ModelInvocationService`）\\n\\n- `activeScope(scope)` 对带 `taskId` 的调用调用 `guard.requireActive`，并顺带把任务 deadline 收窄进 scope [E6]。\\n- 调用顺序为：容量判断 → 每轮 attempt 先 `activeScope` → `timeoutFor` → 取并发许可 → **再** `activeScope` + `timeoutFor` → 预留额度 → 落盘 `model_call` → **发送前第三次** `activeScope` + `timeoutFor`，若此时已取消则 `finishFailure(call, stopped, null)` 并抛出，**不发送 HTTP** [E7]。代码注释明确「等待许可和请求落盘都可能跨过取消或期限；以真正发送前的状态为准」[E7]。\\n- 重试之间也会 `activeScope` 后再 `waitBeforeRetry` [E7]，避免取消后继续重试。\\n- 并发许可等待受 deadline 约束，超时抛 `TASK_DEADLINE` 而非无限排队 [E8]。\\n\\n## 3. 结果发布：事务内加锁复核 + 条件更新兜底\\n\\n发布路径只有一处：`SpecialistTaskWorker` 在 `db.inTransaction` 内先 `guard.requireActiveLocked(taskId)`，再 `publisher.publish(...)`，然后 `finishTarget(...)`；若 `finishTarget` 返回 0 行（目标已被取消/已终态），抛 `TASK_CANCELLED(\\\"目标已结束，拒绝迟到发布\\\")`，**整个事务回滚**，已插入的 `review_result`/`issue` 一并撤销 [E9]。\\n\\n- `publish` 自身也开事务（`db.inTransaction`），`inTransaction` 是 `transactionTemplate.execute`，异常整体回滚 [E10][E11]。由于外层已开事务，内层加入同一事务，因此回滚能覆盖结果与问题插入 [E9][E10]。\\n- `requireActiveLocked` 的 `FOR UPDATE` 与 `cancel` 的 `UPDATE ... WHERE state IN (QUEUED,RUNNING)` 在任务行上互斥：若取消先提交，锁后读到的 `cancelRequestedAt` 非空 → 抛 `TASK_CANCELLED`，发布不发生；若发布先持锁，取消的 UPDATE 会阻塞到发布事务结束，此时目标已被 `finishTarget` 置为终态，取消的 `notIn(TARGET_TERMINAL)` 更新影响 0 行，不会覆盖已发布结果 [E2][E9]。\\n- `finishTarget` 使用 `notIn(state, TARGET_TERMINAL)` 条件更新，是「迟到发布」的最后一道闸 [E12]。\\n\\n### 调度层兜底\\n\\n- `TaskDispatchService.finish` 只允许把 `RUNNING` 改为终态，且成功态额外要求 `cancelRequestedAt IS NULL`，注释说明「避免取消与成功竞争时取消先落库却被覆盖」[E13]。\\n- worker 抛 `TASK_CANCELLED` 时调度层写 `CANCELLED/USER_CANCELLED`，并 `closeOpenTargets` 收敛未完成目标 [E13][E14]。\\n- `execute` 中任一目标抛 `TASK_CANCELLED`/`TASK_DEADLINE` 时，会对其他目标 `future.cancel(true)` 并向上抛出 [E15]；`finally` 里 `pool.shutdownNow()` [E15]。\\n\\n## 4. 仍需运行测试才能确认的边界\\n\\n1. **在途 HTTP 请求不会被中止**：`cancel` 不中断线程，`transport.post` 也没有取消钩子；取消只能让返回结果被丢弃，网络请求与 token 消耗仍会发生。取消后 `model_call` 行的最终状态（`SUCCEEDED` 还是 `FAILED`）取决于返回时机，需实测。\\n2. **`future.cancel(true)` 的实际效果**：`transport.post` 是否响应中断、中断后 `model_call` 是否被正确收尾（`finishFailure` 是否执行），代码中看不到保证，需测试。\\n3. **`FOR UPDATE` 的隔离级别与锁语义**：`AgentDatabase` 只显示使用 `transactionTemplate`，未显示隔离级别配置 [E11]；在 MySQL 默认 RR 下 `SELECT ... FOR UPDATE` 与 `cancel` 的 `UPDATE` 的阻塞/可见性行为需实测确认「取消先提交则发布必被拒」。\\n4. **`cancel` 与 `finishTarget` 的竞态窗口**：`cancel` 的目标批量更新与发布事务内的 `finishTarget` 都基于 `notIn(TARGET_TERMINAL)`，两者并发时谁先提交决定结果，需并发测试验证不会出现「结果已插入但目标被标 CANCELLED」或反之。\\n5. **`cancel` 未包在单一事务内**：任务更新与目标更新是两次独立 `update` [E2]，中间崩溃会留下「任务 CANCELLED、目标仍 RUNNING」的中间态；后续靠 `closeOpenTargets`/守卫收敛，需故障注入验证。\\n6. **`isCancelled` 无调用方**：`TaskExecutionGuard.isCancelled` 在全仓仅定义处命中 [E16]，说明没有「软检查」路径，所有拦截都依赖抛异常；若某条新路径只做布尔判断而不抛异常，需另行确认。\\n7. **`requireActiveLocked` 仅一处使用**：全仓只有发布事务调用它 [E17]，其他写入（如 `updateUnit`、`linkMaterials`）不受行锁保护，取消后这些行仍可能被更新，需测试确认是否可接受。\\n8. **`executeUnit` 的 `finally { linkMaterials(...) }`**：即使因取消抛出，仍会执行材料关联写入 [E5]，取消后是否应写这些行需业务确认与测试。\\n9. **`waitBeforeRetry` 的 `Thread.sleep`**：取消不会唤醒睡眠中的线程，最长需等一个重试间隔才被下一次 `activeScope` 发现 [E6]。\\n10. **`TASK_CANCELLED` 映射为 HTTP 409 且不可重试** [E18]，前端/调用方对取消后错误码的处理需端到端验证。\\n\\n## 限制\\n\\n本次仅静态阅读 `service`/`execution`/`invocation` 相关源码，未运行任何测试；上述边界均为代码推断，需以实际测试结果为准。\", \"citations\": [{\"id\": \"E1\", \"materialId\": \"M1\", \"startLine\": 71, \"endLine\": 73}, {\"id\": \"E2\", \"materialId\": \"M8\", \"startLine\": 190, \"endLine\": 226}, {\"id\": \"E3\", \"materialId\": \"M9\", \"startLine\": 12, \"endLine\": 62}, {\"id\": \"E4\", \"materialId\": \"M11\", \"startLine\": 190, \"endLine\": 226}, {\"id\": \"E5\", \"materialId\": \"M12\", \"startLine\": 284, \"endLine\": 330}, {\"id\": \"E6\", \"materialId\": \"M14\", \"startLine\": 290, \"endLine\": 305}, {\"id\": \"E7\", \"materialId\": \"M13\", \"startLine\": 68, \"endLine\": 120}, {\"id\": \"E8\", \"materialId\": \"M40\", \"startLine\": 28, \"endLine\": 60}, {\"id\": \"E9\", \"materialId\": \"M12\", \"startLine\": 255, \"endLine\": 268}, {\"id\": \"E10\", \"materialId\": \"M10\", \"startLine\": 58, \"endLine\": 62}, {\"id\": \"E11\", \"materialId\": \"M54\", \"startLine\": 104, \"endLine\": 107}, {\"id\": \"E12\", \"materialId\": \"M15\", \"startLine\": 434, \"endLine\": 445}, {\"id\": \"E13\", \"materialId\": \"M37\", \"startLine\": 108, \"endLine\": 135}, {\"id\": \"E14\", \"materialId\": \"M39\", \"startLine\": 143, \"endLine\": 166}, {\"id\": \"E15\", \"materialId\": \"M11\", \"startLine\": 150, \"endLine\": 186}, {\"id\": \"E16\", \"materialId\": \"M41\", \"startLine\": 57, \"endLine\": 61}, {\"id\": \"E17\", \"materialId\": \"M19\", \"startLine\": 259, \"endLine\": 259}, {\"id\": \"E18\", \"materialId\": \"M28\", \"startLine\": 39, \"endLine\": 39}], \"unresolved\": [\"未运行测试：在途 HTTP 请求是否可被中断、中断后 model_call 收尾是否正确\", \"AgentDatabase 的事务隔离级别配置未在已读范围内出现，FOR UPDATE 与 cancel UPDATE 的实际锁行为需实测\", \"cancel 的任务更新与目标更新未包在同一事务，崩溃中间态的收敛需故障注入验证\", \"executeUnit 的 finally 中 linkMaterials 在取消路径仍会写入，是否符合预期需业务确认\"]}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 57
+    }
+  ],
+  "tools": [
+    {
+      "name": "tree",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent"
+      },
+      "millis": 0.0,
+      "result": {
+        "version": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+        "paths": [
+          "backend/src/main/java/com/codereview/agent/api/AgentHealthController.java",
+          "backend/src/main/java/com/codereview/agent/api/ApiErrorBody.java",
+          "backend/src/main/java/com/codereview/agent/api/ApiException.java",
+          "backend/src/main/java/com/codereview/agent/api/ErrorCode.java",
+          "backend/src/main/java/com/codereview/agent/api/FeedbackV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/ModelCallV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/PageResponse.java",
+          "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/StrategyV2Controller.java",
+          "backend/src/main/java/com/codereview/agent/api/V2ExceptionHandler.java",
+          "backend/src/main/java/com/codereview/agent/db/AgentDataSourceConfig.java",
+          "backend/src/main/java/com/codereview/agent/db/AgentDataSourceProperties.java",
+          "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+          "backend/src/main/java/com/codereview/agent/db/AgentSchemaGuard.java",
+          "backend/src/main/java/com/codereview/agent/db/AgentSchemaMismatchException.java",
+          "backend/src/main/java/com/codereview/agent/dto/FeedbackDtos.java",
+          "backend/src/main/java/com/codereview/agent/dto/ModelDtos.java",
+          "backend/src/main/java/com/codereview/agent/dto/ProjectDtos.java",
+          "backend/src/main/java/com/codereview/agent/dto/PromptDtos.java",
+          "backend/src/main/java/com/codereview/agent/dto/ReportDtos.java",
+          "backend/src/main/java/com/codereview/agent/dto/StrategyDtos.java",
+          "backend/src/main/java/com/codereview/agent/dto/TaskDtos.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentCallMaterial.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentExecutionUnit.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentFeedback.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentIssue.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentMaterial.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentModelCall.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentModelConfig.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentModelValidation.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentProject.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentPrompt.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentPromptVersion.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentReport.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentReportSource.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentReviewResult.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentReviewStrategy.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentReviewTask.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentTaskQuota.java",
+          "backend/src/main/java/com/codereview/agent/entity/AgentTaskTarget.java",
+          "backend/src/main/java/com/codereview/agent/execution/AgentTaskConfig.java",
+          "backend/src/main/java/com/codereview/agent/execution/SpecialistExecutionProperties.java",
+          "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+          "backend/src/main/java/com/codereview/agent/execution/SpecialistTargetOutcome.java",
+          "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "backend/src/main/java/com/codereview/agent/execution/SpecialistUnitExecution.java",
+          "backend/src/main/java/com/codereview/agent/execution/TaskDeadlineSweeper.java",
+          "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+          "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+          "backend/src/main/java/com/codereview/agent/execution/TaskProperties.java",
+          "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+          "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+          "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java",
+          "backend/src/main/java/com/codereview/agent/invocation/CapacityEstimate.java",
+          "backend/src/main/java/com/codereview/agent/invocation/HttpModelTransport.java",
+          "backend/src/main/java/com/codereview/agent/invocation/InvocationRequest.java",
+          "backend/src/main/java/com/codereview/agent/invocation/InvocationResult.java",
+          "backend/src/main/java/com/codereview/agent/invocation/InvocationScope.java",
+          "backend/src/main/java/com/codereview/agent/invocation/ModelCallConcurrencyLimiter.java",
+          "backend/src/main/java/com/codereview/agent/invocation/ModelCapacityService.java",
+          "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationProperties.java",
+          "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+          "backend/src/main/java/com/codereview/agent/invocation/ModelSnapshot.java",
+          "backend/src/main/java/com/codereview/agent/invocation/ModelTransport.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentCallMaterialMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentExecutionUnitMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentFeedbackMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentIssueMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentMaterialMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentModelCallMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentModelConfigMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentModelValidationMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentProjectMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentPromptMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentPromptVersionMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentReportMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentReportSourceMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentReviewResultMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentReviewStrategyMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentReviewTaskMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentTaskQuotaMapper.java",
+          "backend/src/main/java/com/codereview/agent/mapper/AgentTaskTargetMapper.java",
+          "backend/src/main/java/com/codereview/agent/model/HttpModelProbe.java",
+          "backend/src/main/java/com/codereview/agent/model/ModelProbe.java",
+          "backend/src/main/java/com/codereview/agent/model/ModelProbeOutcome.java",
+          "backend/src/main/java/com/codereview/agent/model/ModelProbeRequest.java",
+          "backend/src/main/java/com/codereview/agent/prompt/AssembledPrompt.java",
+          "backend/src/main/java/com/codereview/agent/prompt/PromptAssemblyService.java",
+          "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+          "backend/src/main/java/com/codereview/agent/prompt/PromptInput.java",
+          "backend/src/main/java/com/codereview/agent/prompt/PromptMaterial.java",
+          "backend/src/main/java/com/codereview/agent/prompt/PromptMessage.java",
+          "backend/src/main/java/com/codereview/agent/prompt/PromptPurpose.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportDispatchService.java"
+        ],
+        "complete": false
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "version": "V1",
+        "query": "cancel",
+        "path": "backend/src/main/java/com/codereview/agent",
+        "limit": 80
+      },
+      "millis": 48562.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 7,
+        "matches": [
+          {
+            "id": "M1",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+            "startLine": 71,
+            "endLine": 71,
+            "content": "    @PostMapping(\"/{id}/cancel\")"
+          },
+          {
+            "id": "M2",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+            "startLine": 72,
+            "endLine": 72,
+            "content": "    public TaskDtos.View cancel(@PathVariable String id, @Valid @RequestBody TaskDtos.Cancel req) {"
+          },
+          {
+            "id": "M3",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+            "startLine": 73,
+            "endLine": 73,
+            "content": "        return service.cancel(id, req.expectedRevision());"
+          },
+          {
+            "id": "M4",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/dto/TaskDtos.java",
+            "startLine": 63,
+            "endLine": 63,
+            "content": "                       LocalDateTime cancelRequestedAt, List<TargetView> targets, ConfigView config) {"
+          },
+          {
+            "id": "M5",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/entity/AgentReviewTask.java",
+            "startLine": 34,
+            "endLine": 34,
+            "content": "    private LocalDateTime cancelRequestedAt;"
+          },
+          {
+            "id": "M6",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 161,
+            "endLine": 161,
+            "content": "                        futures.forEach(future -> future.cancel(true));"
+          },
+          {
+            "id": "M7",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+            "startLine": 190,
+            "endLine": 190,
+            "content": "    public TaskDtos.View cancel(String id, int expectedRevision) {"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+        "start": 150,
+        "end": 280
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M8",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+          "startLine": 150,
+          "endLine": 280,
+          "content": "    public PageResponse<TaskDtos.Summary> list(String projectId, String route, String type, String state,\n                                               String q, String cursor, Integer limit) {\n        int size = AgentPaging.limit(limit);\n        LambdaQueryWrapper<AgentReviewTask> wrapper = new LambdaQueryWrapper<>();\n        if (projectId != null && !projectId.isBlank()) {\n            wrapper.eq(AgentReviewTask::getProjectId, projectId.trim());\n        }\n        if (q != null && !q.isBlank()) {\n            String keyword = q.trim();\n            wrapper.and(nested -> nested.likeRight(AgentReviewTask::getId, keyword.toUpperCase())\n                    .or()\n                    .like(AgentReviewTask::getName, keyword));\n        }\n        if (route != null && !route.isBlank()) {\n            wrapper.eq(AgentReviewTask::getRoute, route.trim().toUpperCase());\n        }\n        if (type != null && !type.isBlank()) {\n            wrapper.eq(AgentReviewTask::getSpecialistType, type.trim().toUpperCase());\n        }\n        if (state != null && !state.isBlank()) {\n            wrapper.eq(AgentReviewTask::getState, state.trim().toUpperCase());\n        }\n        AgentPaging.applyCursor(wrapper, cursor, AgentReviewTask::getCreatedAt, AgentReviewTask::getId);\n        AgentPaging.applyOrder(wrapper, AgentReviewTask::getCreatedAt, AgentReviewTask::getId);\n        wrapper.last(\"limit \" + (size + 1));\n        PageResponse<AgentReviewTask> page = AgentPaging.assemble(\n                db.mapper(AgentReviewTaskMapper.class).selectList(wrapper), size,\n                AgentReviewTask::getCreatedAt, AgentReviewTask::getId);\n        List<String> ids = page.items().stream().map(AgentReviewTask::getId).toList();\n        Map<String, List<AgentTaskTarget>> targets = targetsByTask(ids);\n        List<TaskDtos.Summary> summaries = page.items().stream()\n                .map(task -> summary(task, targets.getOrDefault(task.getId(), List.of())))\n                .toList();\n        return new PageResponse<>(summaries, page.nextCursor(), page.hasMore());\n    }\n\n    public TaskDtos.View detail(String id) {\n        return toView(requireTask(id));\n    }\n\n    public TaskDtos.View cancel(String id, int expectedRevision) {\n        AgentReviewTask task = requireTask(id);\n        if (TaskStates.isTerminal(task.getState())) {\n            return toView(task);\n        }\n        if (task.getRevision() != expectedRevision) {\n            throw revisionConflict(task.getRevision());\n        }\n        LocalDateTime now = AgentTime.now();\n        int affected = db.mapper(AgentReviewTaskMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReviewTask>()\n                        .eq(AgentReviewTask::getId, id)\n                        .eq(AgentReviewTask::getRevision, expectedRevision)\n                        .in(AgentReviewTask::getState, TaskStates.QUEUED, TaskStates.RUNNING)\n                        .set(AgentReviewTask::getState, TaskStates.CANCELLED)\n                        .set(AgentReviewTask::getStopReason, TaskStates.STOP_USER_CANCELLED)\n                        .set(AgentReviewTask::getCancelRequestedAt, now)\n                        .set(AgentReviewTask::getFinishedAt, now)\n                        .set(AgentReviewTask::getUpdatedAt, now)\n                        .setSql(\"revision = revision + 1\"));\n        if (affected == 0) {\n            AgentReviewTask current = requireTask(id);\n            if (TaskStates.isTerminal(current.getState())) {\n                return toView(current);\n            }\n            throw revisionConflict(current.getRevision());\n        }\n        db.mapper(AgentTaskTargetMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentTaskTarget>()\n                        .eq(AgentTaskTarget::getTaskId, id)\n                        .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)\n                        .set(AgentTaskTarget::getState, TaskStates.CANCELLED)\n                        .set(AgentTaskTarget::getErrorCode, TaskStates.STOP_USER_CANCELLED)\n                        .set(AgentTaskTarget::getUpdatedAt, now)\n                        .setSql(\"revision = revision + 1\"));\n        return toView(requireTask(id));\n    }\n\n    public TaskDtos.CopyInput copyInput(String id) {\n        AgentReviewTask task = requireTask(id);\n        JsonNode input = readJson(task.getInputSnapshot());\n        JsonNode source = input.path(\"source\");\n        List<TaskDtos.TargetCopy> targets = new ArrayList<>();\n        for (JsonNode target : input.path(\"targets\")) {\n            targets.add(new TaskDtos.TargetCopy(target.path(\"path\").asText(),\n                    textOrNull(target, \"oldPath\"), textOrNull(target, \"note\")));\n        }\n        JsonNode config = readJson(task.getConfigSnapshot());\n        String strategyId = textOrNull(config.path(\"strategy\"), \"id\");\n        String modelId = textOrNull(config.path(\"model\"), \"id\");\n        String kind = source.path(\"kind\").asText(\"FILES\");\n        return new TaskDtos.CopyInput(task.getProjectId(), task.getRoute(), task.getSpecialistType(),\n                kind, textOrNull(source, \"branch\"), textOrNull(source, \"commitSha\"),\n                textOrNull(source, \"baseSha\"), targets, strategyId, modelId,\n                input.path(\"smartSplit\").asBoolean(false), \"FILES\".equals(kind),\n                TaskNames.display(task.getName(), task.getId()));\n    }\n\n    public PageResponse<TaskDtos.CallSummary> calls(String taskId, String targetId, String unitId,\n                                                    String cursor, Integer limit) {\n        requireTask(taskId);\n        int size = AgentPaging.limit(limit);\n        LambdaQueryWrapper<AgentModelCall> wrapper = new LambdaQueryWrapper<AgentModelCall>()\n                .select(AgentModelCall::getId, AgentModelCall::getTargetId, AgentModelCall::getUnitId,\n                        AgentModelCall::getPurpose, AgentModelCall::getAttempt, AgentModelCall::getState,\n                        AgentModelCall::getErrorCode, AgentModelCall::getCreatedAt,\n                        AgentModelCall::getStartedAt, AgentModelCall::getFinishedAt)\n                .eq(AgentModelCall::getTaskId, taskId);\n        if (targetId != null && !targetId.isBlank()) {\n            wrapper.eq(AgentModelCall::getTargetId, targetId.trim());\n        }\n        if (unitId != null && !unitId.isBlank()) {\n            wrapper.eq(AgentModelCall::getUnitId, unitId.trim());\n        }\n        AgentPaging.applyCursor(wrapper, cursor, AgentModelCall::getCreatedAt, AgentModelCall::getId);\n        AgentPaging.applyOrder(wrapper, AgentModelCall::getCreatedAt, AgentModelCall::getId);\n        wrapper.last(\"limit \" + (size + 1));\n        PageResponse<AgentModelCall> page = AgentPaging.assemble(\n                db.mapper(AgentModelCallMapper.class).selectList(wrapper), size,\n                AgentModelCall::getCreatedAt, AgentModelCall::getId);\n        List<String> unitIds = page.items().stream().map(AgentModelCall::getUnitId)\n                .filter(java.util.Objects::nonNull).distinct().toList();\n        Map<String, AgentExecutionUnit> units = unitIds.isEmpty() ? Map.of()\n                : db.mapper(AgentExecutionUnitMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentExecutionUnit>().in(AgentExecutionUnit::getId, unitIds))\n                .stream().collect(Collectors.toMap(AgentExecutionUnit::getId, value -> value));\n        List<TaskDtos.CallSummary> items = page.items().stream()\n                .map(call -> new TaskDtos.CallSummary(call.getId(), call.getTargetId(), call.getUnitId(),\n                        call.getPurpose(), call.getAttempt() == null ? 1 : call.getAttempt(),\n                        call.getState(), call.getErrorCode(), call.getCreatedAt(),\n                        call.getStartedAt(), call.getFinishedAt(),"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 0.0,
+        "fileLineCount": 859
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+        "start": 1,
+        "end": 200
+      },
+      "millis": 63.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M9",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+          "startLine": 1,
+          "endLine": 62,
+          "content": "package com.codereview.agent.execution;\n\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.entity.AgentReviewTask;\nimport com.codereview.agent.mapper.AgentReviewTaskMapper;\nimport com.codereview.agent.support.AgentTime;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.stereotype.Service;\n\n/**\n * 执行前与执行中的公共检查。\n *\n * <p>取消和期限都可能发生在任意调用之间；执行器在每次新调用前调用这里，\n * 不能只依赖终态更新来\"事后补救\"。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class TaskExecutionGuard {\n\n    private final AgentDatabase db;\n\n    public TaskExecutionGuard(AgentDatabase db) {\n        this.db = db;\n    }\n\n    public AgentReviewTask requireActive(String taskId) {\n        AgentReviewTask task = db.mapper(AgentReviewTaskMapper.class).selectById(taskId);\n        return requireActive(task, taskId);\n    }\n\n    /** 在新库事务内调用，使取消、期限收敛与结果发布串行化。 */\n    public AgentReviewTask requireActiveLocked(String taskId) {\n        AgentReviewTask task = db.mapper(AgentReviewTaskMapper.class).selectOne(\n                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AgentReviewTask>()\n                        .eq(AgentReviewTask::getId, taskId).last(\"FOR UPDATE\"));\n        return requireActive(task, taskId);\n    }\n\n    private AgentReviewTask requireActive(AgentReviewTask task, String taskId) {\n        if (task == null) {\n            throw new ApiException(ErrorCode.NOT_FOUND, \"任务不存在：\" + taskId);\n        }\n        if (task.getCancelRequestedAt() != null || TaskStates.CANCELLED.equals(task.getState())) {\n            throw new ApiException(ErrorCode.TASK_CANCELLED, \"任务已取消，停止新的调用\");\n        }\n        if (TaskStates.isTerminal(task.getState())) {\n            throw new ApiException(ErrorCode.TASK_CANCELLED, \"任务已结束，停止新的调用\");\n        }\n        if (task.getDeadlineAt() != null && AgentTime.now().isAfter(task.getDeadlineAt())) {\n            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务已到达期限，停止新的调用\");\n        }\n        return task;\n    }\n\n    public boolean isCancelled(String taskId) {\n        AgentReviewTask task = db.mapper(AgentReviewTaskMapper.class).selectById(taskId);\n        return task != null && (task.getCancelRequestedAt() != null\n                || TaskStates.CANCELLED.equals(task.getState()));\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 62
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 260,
+        "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 63.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M10",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+          "startLine": 1,
+          "endLine": 206,
+          "content": "package com.codereview.agent.execution;\n\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.entity.AgentIssue;\nimport com.codereview.agent.entity.AgentReviewResult;\nimport com.codereview.agent.entity.AgentReviewTask;\nimport com.codereview.agent.entity.AgentTaskTarget;\nimport com.codereview.agent.mapper.AgentIssueMapper;\nimport com.codereview.agent.mapper.AgentReviewResultMapper;\nimport com.codereview.agent.specialist.capacity.SpecialistResultMerger;\nimport com.codereview.agent.specialist.capacity.SpecialistUnitPlan;\nimport com.codereview.agent.specialist.material.SpecialistMaterials;\nimport com.codereview.agent.specialist.protocol.SpecialistProtocol;\nimport com.codereview.agent.specialist.protocol.SpecialistResultValidator;\nimport com.codereview.agent.specialist.protocol.SpecialistResults;\nimport com.codereview.agent.support.AgentIds;\nimport com.codereview.agent.support.AgentTime;\nimport com.fasterxml.jackson.core.JsonProcessingException;\nimport com.fasterxml.jackson.databind.ObjectMapper;\nimport com.fasterxml.jackson.databind.node.ArrayNode;\nimport com.fasterxml.jackson.databind.node.ObjectNode;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.stereotype.Service;\n\nimport java.time.LocalDateTime;\nimport java.util.ArrayList;\nimport java.util.LinkedHashMap;\nimport java.util.LinkedHashSet;\nimport java.util.List;\nimport java.util.Map;\nimport java.util.Set;\n\nimport static com.codereview.agent.specialist.material.SpecialistMaterials.Material;\n\n/**\n * 结果发布：合并片段、写入不可变结果与问题，并保存版本/材料/单元/调用来源。\n *\n * <p>完整文件所有单元成功时发布 COMPLETE；部分片段失败时保留已取得内容并发布 INCOMPLETE，\n * 该结果不进入报告与统计的正式选材。问题 ID 在发布时生成，之后只读。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class SpecialistResultPublisher {\n\n    private final AgentDatabase db;\n    private final ObjectMapper mapper;\n    private final SpecialistResultMerger merger;\n\n    public SpecialistResultPublisher(AgentDatabase db, ObjectMapper mapper,\n                                     SpecialistResultMerger merger) {\n        this.db = db;\n        this.mapper = mapper;\n        this.merger = merger;\n    }\n\n    public String publish(AgentReviewTask task, AgentTaskTarget target,\n                          SpecialistMaterials.PreparedTarget prepared,\n                          List<SpecialistUnitExecution> executions, boolean complete) {\n        return db.inTransaction(() -> publishInTransaction(task, target, prepared, executions, complete));\n    }\n\n    private String publishInTransaction(AgentReviewTask task, AgentTaskTarget target,\n                          SpecialistMaterials.PreparedTarget prepared,\n                          List<SpecialistUnitExecution> executions, boolean complete) {\n        if (executions == null || executions.isEmpty()) {\n            throw new IllegalArgumentException(\"没有可发布的结果\");\n        }\n        List<SpecialistResultValidator.ValidatedResult> validated = executions.stream()\n                .map(SpecialistUnitExecution::validated).toList();\n        SpecialistResults.Result merged = merger.merge(task.getSpecialistType(), validated);\n\n        LocalDateTime now = AgentTime.now();\n        AgentReviewResult result = new AgentReviewResult();\n        result.setId(AgentIds.next());\n        result.setTaskId(task.getId());\n        result.setTargetId(target.getId());\n        result.setKind(task.getSpecialistType());\n        result.setSchemaVersion(SpecialistProtocol.VERSION);\n        result.setBody(json(merged));\n        result.setProvenance(json(provenance(prepared, executions)));\n        result.setCompleteness(complete ? \"COMPLETE\" : \"INCOMPLETE\");\n        result.setCreatedAt(now);\n        db.mapper(AgentReviewResultMapper.class).insert(result);\n\n        if (merged instanceof SpecialistResults.IssueResult issueResult) {\n            publishIssues(result.getId(), issueResult, executions);\n        }\n        return result.getId();\n    }\n\n    private void publishIssues(String resultId, SpecialistResults.IssueResult result,\n                               List<SpecialistUnitExecution> executions) {\n        Map<String, Material> materials = new LinkedHashMap<>();\n        for (SpecialistUnitExecution execution : executions) {\n            materials.putAll(execution.validated().materials());\n        }\n        int ordinal = 1;\n        for (SpecialistResults.Issue issue : result.issues()) {\n            AgentIssue row = new AgentIssue();\n            row.setId(AgentIds.next());\n            row.setResultId(resultId);\n            row.setOrdinal(ordinal++);\n            row.setCategory(issue.category());\n            row.setSeverity(issue.severity());\n            row.setTitle(issue.title());\n            row.setReason(issue.reason());\n            row.setSuggestion(issue.suggestion());\n            row.setLocations(json(locations(issue.locations(), materials)));\n            String key = SpecialistResultMerger.issueKey(issue, materials);\n            row.setSourceUnits(json(executions.stream().filter(execution ->\n                    execution.validated().result() instanceof SpecialistResults.IssueResult part\n                            && part.issues().stream().anyMatch(candidate -> key.equals(\n                                    SpecialistResultMerger.issueKey(candidate, execution.validated().materials()))))\n                    .map(SpecialistUnitExecution::unitId).distinct().toList()));\n            db.mapper(AgentIssueMapper.class).insert(row);\n        }\n    }\n\n    private List<Map<String, Object>> locations(List<SpecialistResults.Location> locations,\n                                                Map<String, Material> materials) {\n        List<Map<String, Object>> resolved = new ArrayList<>();\n        for (SpecialistResults.Location location : locations) {\n            Material material = materials.get(location.materialId());\n            if (material == null) {\n                continue;\n            }\n            Map<String, Object> item = new LinkedHashMap<>();\n            item.put(\"materialId\", material.id());\n            item.put(\"path\", material.path());\n            item.put(\"sha\", material.sha());\n            item.put(\"side\", material.side().name());\n            item.put(\"startLine\", location.startLine());\n            item.put(\"endLine\", location.endLine());\n            resolved.add(item);\n        }\n        return resolved;\n    }\n\n    private ObjectNode provenance(SpecialistMaterials.PreparedTarget prepared,\n                                  List<SpecialistUnitExecution> executions) {\n        ObjectNode root = mapper.createObjectNode();\n        if (executions.get(0).couplingFacts() != null) {\n            root.set(\"couplingFacts\", mapper.valueToTree(executions.get(0).couplingFacts()));\n        }\n        ObjectNode versions = root.putObject(\"versions\");\n        versions.put(\"headSha\", prepared.headSha());\n        if (prepared.baseSha() != null) {\n            versions.put(\"baseSha\", prepared.baseSha());\n        }\n        versions.put(\"path\", prepared.path());\n        if (prepared.oldPath() != null) {\n            versions.put(\"oldPath\", prepared.oldPath());\n        }\n        ArrayNode gaps = root.putArray(\"materialGaps\");\n        for (SpecialistMaterials.Gap gap : prepared.gaps()) {\n            gaps.addObject().put(\"code\", gap.code()).put(\"subject\", gap.subject())\n                    .put(\"detail\", gap.detail());\n        }\n        ArrayNode materials = root.putArray(\"materials\");\n        Set<String> seen = new LinkedHashSet<>();\n        List<Material> all = new ArrayList<>(prepared.allMaterials());\n        for (SpecialistUnitExecution execution : executions) {\n            all.addAll(execution.plan().target().allMaterials());\n        }\n        for (Material material : all) {\n            if (!seen.add(material.id())) {\n                continue;\n            }\n            ObjectNode item = materials.addObject();\n            item.put(\"id\", material.id());\n            item.put(\"path\", material.path());\n            item.put(\"sha\", material.sha());\n            item.put(\"side\", material.side().name());\n            item.put(\"startLine\", material.startLine());\n            item.put(\"endLine\", material.endLine());\n            item.put(\"role\", material.role().name());\n            item.put(\"completeness\", material.completeness());\n        }\n        ArrayNode units = root.putArray(\"units\");\n        ArrayNode calls = root.putArray(\"calls\");\n        for (SpecialistUnitExecution execution : executions) {\n            SpecialistUnitPlan plan = execution.plan();\n            ObjectNode unit = units.addObject();\n            unit.put(\"id\", execution.unitId());\n            unit.put(\"ordinal\", plan.ordinal());\n            unit.set(\"notes\", mapper.valueToTree(plan.notes()));\n            ArrayNode ranges = unit.putArray(\"ranges\");\n            for (var range : plan.ranges()) {\n                ranges.addObject().put(\"startLine\", range.startLine()).put(\"endLine\", range.endLine());\n            }\n            calls.addObject().put(\"unitId\", execution.unitId())\n                    .put(\"callId\", execution.callId());\n        }\n        return root;\n    }\n\n    private String json(Object value) {\n        try {\n            return mapper.writeValueAsString(value);\n        } catch (JsonProcessingException e) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"结果序列化失败\");\n        }\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 0.0,
+        "fileLineCount": 206
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 260,
+        "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M11",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "startLine": 1,
+          "endLine": 260,
+          "content": "package com.codereview.agent.execution;\n\nimport com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;\nimport com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.entity.AgentCallMaterial;\nimport com.codereview.agent.entity.AgentExecutionUnit;\nimport com.codereview.agent.entity.AgentModelCall;\nimport com.codereview.agent.entity.AgentModelConfig;\nimport com.codereview.agent.entity.AgentReviewTask;\nimport com.codereview.agent.entity.AgentTaskTarget;\nimport com.codereview.agent.invocation.InvocationRequest;\nimport com.codereview.agent.invocation.InvocationResult;\nimport com.codereview.agent.invocation.InvocationScope;\nimport com.codereview.agent.invocation.ModelCapacityService;\nimport com.codereview.agent.invocation.ModelInvocationService;\nimport com.codereview.agent.invocation.ModelSnapshot;\nimport com.codereview.agent.mapper.AgentCallMaterialMapper;\nimport com.codereview.agent.mapper.AgentExecutionUnitMapper;\nimport com.codereview.agent.mapper.AgentModelCallMapper;\nimport com.codereview.agent.mapper.AgentModelConfigMapper;\nimport com.codereview.agent.mapper.AgentReviewTaskMapper;\nimport com.codereview.agent.mapper.AgentTaskTargetMapper;\nimport com.codereview.agent.prompt.AssembledPrompt;\nimport com.codereview.agent.prompt.PromptAssemblyService;\nimport com.codereview.agent.prompt.PromptInput;\nimport com.codereview.agent.repository.RepositoryReadService;\nimport com.codereview.agent.specialist.capacity.SpecialistSplitPlanner;\nimport com.codereview.agent.specialist.capacity.SpecialistUnitPlan;\nimport com.codereview.agent.specialist.coupling.CouplingFacts;\nimport com.codereview.agent.specialist.coupling.CouplingFactsBuilder;\nimport com.codereview.agent.specialist.material.DeclarationEnhancementService;\nimport com.codereview.agent.specialist.material.DeclarationResolver;\nimport com.codereview.agent.specialist.material.JavaStructureParser;\nimport com.codereview.agent.specialist.material.MaterialPreparationService;\nimport com.codereview.agent.specialist.material.SpecialistMaterials;\nimport com.codereview.agent.specialist.protocol.SpecialistPromptBuilder;\nimport com.codereview.agent.specialist.protocol.SpecialistProtocolPolicy;\nimport com.codereview.agent.specialist.protocol.SpecialistResultParser;\nimport com.codereview.agent.specialist.protocol.SpecialistResultValidator;\nimport com.codereview.agent.specialist.protocol.SpecialistResults;\nimport com.codereview.agent.support.AgentIds;\nimport com.codereview.agent.support.AgentTime;\nimport com.fasterxml.jackson.core.JsonProcessingException;\nimport com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\nimport com.fasterxml.jackson.databind.node.ArrayNode;\nimport com.fasterxml.jackson.databind.node.ObjectNode;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.stereotype.Service;\n\nimport java.time.LocalDateTime;\nimport java.util.ArrayList;\nimport java.util.List;\nimport java.util.Map;\nimport java.util.concurrent.ExecutionException;\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;\nimport java.util.concurrent.Future;\n\nimport static com.codereview.agent.specialist.material.SpecialistMaterials.Material;\nimport static com.codereview.agent.specialist.material.SpecialistMaterials.PrepareCommand;\nimport static com.codereview.agent.specialist.material.SpecialistMaterials.PreparedTarget;\nimport static com.codereview.agent.specialist.material.SpecialistMaterials.Side;\n\n/**\n * 三类专项的逐文件执行器。\n *\n * <p>每个目标独立准备、规划、调用和发布；一个文件失败不丢弃其他文件的结果。\n * 片段与文件共用公共模型并发许可；每次实际调用先由公共入口落盘，格式错误最多再试 2 次。\n * 完整发布要求全部单元成功；部分成功发布 INCOMPLETE 结果，供阅读但不能进入正式选材。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class SpecialistTaskWorker implements TaskWorker {\n\n    private static final Logger log = LoggerFactory.getLogger(SpecialistTaskWorker.class);\n\n    private final AgentDatabase db;\n    private final ObjectMapper mapper;\n    private final MaterialPreparationService preparation;\n    private final DeclarationEnhancementService enhancement;\n    private final CouplingFactsBuilder couplingFacts;\n    private final RepositoryReadService repository;\n    private final JavaStructureParser structureParser;\n    private final SpecialistSplitPlanner planner;\n    private final PromptAssemblyService promptAssembly;\n    private final SpecialistPromptBuilder promptBuilder;\n    private final SpecialistResultParser resultParser;\n    private final SpecialistResultValidator validator;\n    private final SpecialistResultPublisher publisher;\n    private final ModelInvocationService invocation;\n    private final ModelCapacityService capacity;\n    private final TaskExecutionGuard guard;\n    private final SpecialistExecutionProperties properties;\n\n    public SpecialistTaskWorker(AgentDatabase db, ObjectMapper mapper,\n                                MaterialPreparationService preparation,\n                                DeclarationEnhancementService enhancement,\n                                CouplingFactsBuilder couplingFacts,\n                                RepositoryReadService repository,\n                                JavaStructureParser structureParser,\n                                SpecialistSplitPlanner planner,\n                                PromptAssemblyService promptAssembly,\n                                SpecialistPromptBuilder promptBuilder,\n                                SpecialistResultParser resultParser,\n                                SpecialistResultValidator validator,\n                                SpecialistResultPublisher publisher,\n                                ModelInvocationService invocation,\n                                ModelCapacityService capacity,\n                                TaskExecutionGuard guard,\n                                SpecialistExecutionProperties properties) {\n        this.db = db;\n        this.mapper = mapper;\n        this.preparation = preparation;\n        this.enhancement = enhancement;\n        this.couplingFacts = couplingFacts;\n        this.repository = repository;\n        this.structureParser = structureParser;\n        this.planner = planner;\n        this.promptAssembly = promptAssembly;\n        this.promptBuilder = promptBuilder;\n        this.resultParser = resultParser;\n        this.validator = validator;\n        this.publisher = publisher;\n        this.invocation = invocation;\n        this.capacity = capacity;\n        this.guard = guard;\n        this.properties = properties;\n    }\n\n    @Override\n    public TaskOutcome execute(AgentReviewTask task) {\n        List<AgentTaskTarget> targets = db.mapper(AgentTaskTargetMapper.class).selectList(\n                new LambdaQueryWrapper<AgentTaskTarget>()\n                        .eq(AgentTaskTarget::getTaskId, task.getId())\n                        .orderByAsc(AgentTaskTarget::getOrdinal));\n        if (targets.isEmpty()) {\n            return TaskOutcome.failed(\"NO_TARGETS\");\n        }\n        int threads = Math.max(1, Math.min(properties.getParallelTargets(), targets.size()));\n        ExecutorService pool = Executors.newFixedThreadPool(threads);\n        List<Future<SpecialistTargetOutcome>> futures = new ArrayList<>();\n        try {\n            for (AgentTaskTarget target : targets) {\n                futures.add(pool.submit(() -> executeTarget(task, target)));\n            }\n            List<SpecialistTargetOutcome> outcomes = new ArrayList<>();\n            for (int i = 0; i < futures.size(); i++) {\n                try {\n                    outcomes.add(futures.get(i).get());\n                } catch (ExecutionException failure) {\n                    Throwable cause = failure.getCause();\n                    if (cause instanceof ApiException api\n                            && (api.errorCode() == ErrorCode.TASK_CANCELLED\n                            || api.errorCode() == ErrorCode.TASK_DEADLINE)) {\n                        futures.forEach(future -> future.cancel(true));\n                        throw api;\n                    }\n                    log.error(\"目标 {} 执行异常\", targets.get(i).getId(), cause);\n                    finishTarget(targets.get(i).getId(), TaskStates.FAILED, \"EXECUTION_ERROR\");\n                    outcomes.add(new SpecialistTargetOutcome(targets.get(i).getId(),\n                            TaskStates.FAILED, \"EXECUTION_ERROR\"));\n                } catch (InterruptedException interrupted) {\n                    Thread.currentThread().interrupt();\n                    throw new ApiException(ErrorCode.TASK_CANCELLED, \"任务执行被中断\");\n                }\n            }\n            long succeeded = outcomes.stream()\n                    .filter(outcome -> TaskStates.SUCCEEDED.equals(outcome.state())).count();\n            long usable = outcomes.stream()\n                    .filter(outcome -> TaskStates.SUCCEEDED.equals(outcome.state())\n                            || TaskStates.PARTIAL.equals(outcome.state())).count();\n            if (succeeded == outcomes.size()) {\n                return TaskOutcome.succeeded();\n            }\n            if (usable > 0) {\n                return TaskOutcome.partial(\"SOME_TARGETS_FAILED\");\n            }\n            return TaskOutcome.failed(\"ALL_TARGETS_FAILED\");\n        } finally {\n            pool.shutdownNow();\n        }\n    }\n\n    private SpecialistTargetOutcome executeTarget(AgentReviewTask task, AgentTaskTarget target) {\n        try {\n            guard.requireActive(task.getId());\n            updateTarget(target.getId(), TaskStates.PREPARING, null);\n            PreparedTarget prepared = preparation.prepare(command(task, target));\n            if (prepared.failed()) {\n                finishTarget(target.getId(), TaskStates.FAILED, prepared.errorCode());\n                return new SpecialistTargetOutcome(target.getId(), TaskStates.FAILED,\n                        prepared.errorCode());\n            }\n            PreparedTarget enhanced = enhancement.enhance(prepared);\n            ModelSnapshot model = model(task);\n            Strategy strategy = strategy(task);\n            CouplingFacts facts = facts(task, enhanced);\n            boolean smartSplit = read(task.getInputSnapshot()).path(\"smartSplit\").asBoolean(false);\n            ModelSnapshot planningModel = model;\n            for (int generation = 1; generation <= 3; generation++) {\n                List<SpecialistUnitPlan> units = planner.plan(enhanced, facts, strategy.name(),\n                        strategy.prompt(), planningModel, smartSplit);\n                updateTarget(target.getId(), TaskStates.RUNNING, null);\n                List<SpecialistUnitExecution> executions = new ArrayList<>();\n                boolean unitFailed = false;\n                String lastUnitError = null;\n                boolean replan = false;\n                for (SpecialistUnitPlan unit : units) {\n                    guard.requireActive(task.getId());\n                    AgentExecutionUnit row = createUnit(target.getId(), unit, generation);\n                    try {\n                        SpecialistUnitExecution execution = executeUnit(task, target, unit, row,\n                                model, facts, strategy, !smartSplit);\n                        guard.requireActive(task.getId());\n                        updateUnit(row.getId(), TaskStates.SUCCEEDED);\n                        executions.add(execution);\n                    } catch (ApiException failure) {\n                        updateUnit(row.getId(), TaskStates.FAILED);\n                        if (failure.errorCode() == ErrorCode.TASK_CANCELLED\n                                || failure.errorCode() == ErrorCode.TASK_DEADLINE) {\n                            throw failure;\n                        }\n                        if (failure.errorCode() == ErrorCode.CONTEXT_LIMIT && smartSplit) {\n                            if (generation == 3) {\n                                throw failure;\n                            }\n                            var estimate = capacity.estimate(promptAssembly.assemble(\n                                    promptBuilder.build(unit.target(), facts, strategy.name(),\n                                            strategy.prompt())), planningModel);\n                            int window = Math.max(1, Math.min(planningModel.contextWindow() - 1,\n                                    (int) (estimate.required() * 0.75)));\n                            planningModel = new ModelSnapshot(model.id(), model.name(), model.baseUrl(),\n                                    model.modelName(), model.credential(), window, model.maxOutput(),\n                                    model.tokenizer(), model.protocol(), model.revision());\n                            replan = true;\n                            break;\n                        }\n                        unitFailed = true;\n                        lastUnitError = failure.errorCode().code();\n                    }\n                }\n                if (replan) {\n                    // 旧代仅保留诊断，不能带入新代结果。\n                    continue;\n                }\n                if (executions.isEmpty()) {\n                    finishTarget(target.getId(), TaskStates.FAILED, lastUnitError);\n                    return new SpecialistTargetOutcome(target.getId(), TaskStates.FAILED, lastUnitError);\n                }\n                boolean complete = !unitFailed;\n                String state = complete ? TaskStates.SUCCEEDED : TaskStates.PARTIAL;\n                db.inTransaction(() -> {\n                    guard.requireActiveLocked(task.getId());\n                    publisher.publish(task, target, enhanced, executions, complete);"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 490
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 400,
+        "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+        "start": 260,
+        "version": "V1"
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M12",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "startLine": 260,
+          "endLine": 400,
+          "content": "                    publisher.publish(task, target, enhanced, executions, complete);\n                    if (finishTarget(target.getId(), state, complete ? null : \"PARTIAL_UNITS\") == 0) {\n                        throw new ApiException(ErrorCode.TASK_CANCELLED, \"目标已结束，拒绝迟到发布\");\n                    }\n                    return null;\n                });\n                return new SpecialistTargetOutcome(target.getId(), state, null);\n            }\n            throw new ApiException(ErrorCode.CONTEXT_LIMIT, \"容量重规划次数已用尽\");\n        } catch (ApiException failure) {\n            if (failure.errorCode() == ErrorCode.TASK_CANCELLED\n                    || failure.errorCode() == ErrorCode.TASK_DEADLINE) {\n                finishTarget(target.getId(), TaskStates.CANCELLED, failure.errorCode().code());\n                throw failure;\n            }\n            finishTarget(target.getId(), TaskStates.FAILED, failure.errorCode().code());\n            return new SpecialistTargetOutcome(target.getId(), TaskStates.FAILED,\n                    failure.errorCode().code());\n        }\n    }\n\n    private SpecialistUnitExecution executeUnit(AgentReviewTask task, AgentTaskTarget target,\n                                                SpecialistUnitPlan unit, AgentExecutionUnit row,\n                                                ModelSnapshot model, CouplingFacts facts,\n                                                Strategy strategy, boolean sendWhole) {\n        PromptInput.FormatRetry retry = null;\n        try {\n            for (int attempt = 1; attempt <= SpecialistProtocolPolicy.maxAttempts(); attempt++) {\n                guard.requireActive(task.getId());\n                PromptInput input = promptBuilder.build(unit.target(), facts, strategy.name(),\n                        strategy.prompt(), retry);\n                AssembledPrompt prompt = promptAssembly.assemble(input);\n                if (!sendWhole) {\n                    capacity.requireFits(prompt, model);\n                }\n                InvocationResult result = null;\n                try {\n                    result = invocation.invoke(new InvocationRequest(model, prompt,\n                            new InvocationScope(task.getId(), target.getId(), row.getId(),\n                                    task.getDeadlineAt()), sendWhole));\n                    guard.requireActive(task.getId());\n                    SpecialistResults.Result parsed = resultParser.parse(result.content(),\n                            task.getSpecialistType());\n                    SpecialistResultValidator.ValidatedResult validated = validator.validate(parsed,\n                            promptBuilder.context(unit.target(), facts));\n                    return new SpecialistUnitExecution(row.getId(), unit, validated, result.callId(), facts);\n                } catch (ApiException failure) {\n                    if (result != null && failure.errorCode() == ErrorCode.MODEL_OUTPUT_INVALID) {\n                        db.mapper(AgentModelCallMapper.class).update(null,\n                                new LambdaUpdateWrapper<AgentModelCall>()\n                                        .eq(AgentModelCall::getId, result.callId())\n                                        .set(AgentModelCall::getState, \"FAILED\")\n                                        .set(AgentModelCall::getErrorCode, failure.errorCode().code())\n                                        .set(AgentModelCall::getErrorMessage, failure.getMessage()));\n                    }\n                    if (failure.errorCode() == ErrorCode.MODEL_OUTPUT_INVALID\n                            && SpecialistProtocolPolicy.shouldRetry(attempt)) {\n                        retry = SpecialistProtocolPolicy.diagnostic(attempt, failure,\n                                result == null ? null : result.content());\n                        continue;\n                    }\n                    throw failure;\n                }\n            }\n            throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, \"格式重试次数已用尽\");\n        } finally {\n            linkMaterials(row.getId(), unit.target());\n        }\n    }\n\n    private PrepareCommand command(AgentReviewTask task, AgentTaskTarget target) {\n        JsonNode input = read(task.getInputSnapshot());\n        return new PrepareCommand(task.getProjectId(), task.getSpecialistType(),\n                input.path(\"source\").path(\"kind\").asText(\"FILES\"),\n                input.path(\"source\").path(\"branch\").asText(null),\n                target.getPath(), target.getOldPath(), target.getNote(),\n                target.getHeadSha(), target.getBaseSha());\n    }\n\n    private CouplingFacts facts(AgentReviewTask task, PreparedTarget target) {\n        if (!\"COUPLING\".equals(task.getSpecialistType())) {\n            return null;\n        }\n        Material primary = target.targets().stream()\n                .filter(material -> material.side() == Side.AFTER)\n                .findFirst()\n                .or(() -> target.targets().stream().filter(material -> material.side() == Side.FILE)\n                        .findFirst())\n                .orElse(target.targets().get(0));\n        DeclarationResolver resolver = new DeclarationResolver(task.getProjectId(),\n                primary.sha(), repository, structureParser);\n        return couplingFacts.build(target, resolver);\n    }\n\n    private ModelSnapshot model(AgentReviewTask task) {\n        JsonNode config = read(task.getConfigSnapshot()).path(\"model\");\n        String id = config.path(\"id\").asText(null);\n        if (id == null || id.isBlank()) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, \"任务缺少模型配置快照\");\n        }\n        AgentModelConfig model = db.mapper(AgentModelConfigMapper.class).selectById(id);\n        if (model == null) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, \"任务使用的模型配置已不存在\");\n        }\n        return new ModelSnapshot(id, text(config, \"name\", model.getName()),\n                text(config, \"baseUrl\", model.getBaseUrl()),\n                text(config, \"modelName\", model.getModelName()), model.getCredential(),\n                integer(config, \"contextWindow\", model.getContextWindow()),\n                integer(config, \"maxOutput\", model.getMaxOutput()),\n                text(config, \"tokenizer\", model.getTokenizer()),\n                text(config, \"protocol\", model.getProtocol() == null ? \"OPENAI_CHAT\" : model.getProtocol()),\n                integer(config, \"revision\", model.getRevision()));\n    }\n\n    private Strategy strategy(AgentReviewTask task) {\n        JsonNode config = read(task.getConfigSnapshot());\n        JsonNode strategy = config.path(\"strategy\");\n        JsonNode prompt = config.path(\"prompt\");\n        String name = strategy.path(\"name\").asText(null);\n        String content = prompt.path(\"content\").asText(null);\n        return new Strategy(name, content);\n    }\n\n    private AgentExecutionUnit createUnit(String targetId, SpecialistUnitPlan plan, int generation) {\n        LocalDateTime now = AgentTime.now();\n        AgentExecutionUnit row = new AgentExecutionUnit();\n        row.setId(AgentIds.next());\n        row.setTargetId(targetId);\n        row.setGeneration(generation);\n        row.setOrdinal(plan.ordinal());\n        row.setRanges(json(ranges(plan)));\n        row.setState(TaskStates.RUNNING);\n        row.setRevision(0);\n        row.setCreatedAt(now);\n        row.setUpdatedAt(now);\n        db.mapper(AgentExecutionUnitMapper.class).insert(row);\n        return row;\n    }\n\n    private void linkMaterials(String unitId, PreparedTarget target) {\n        List<AgentModelCall> calls = db.mapper(AgentModelCallMapper.class).selectList("
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 15.0,
+        "fileLineCount": 490
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 200,
+        "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M13",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+          "startLine": 1,
+          "endLine": 200,
+          "content": "package com.codereview.agent.invocation;\n\nimport com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.entity.AgentModelCall;\nimport com.codereview.agent.entity.AgentTaskQuota;\nimport com.codereview.agent.execution.TaskExecutionGuard;\nimport com.codereview.agent.mapper.AgentModelCallMapper;\nimport com.codereview.agent.mapper.AgentTaskQuotaMapper;\nimport com.codereview.agent.prompt.AssembledPrompt;\nimport com.codereview.agent.prompt.PromptAssemblyService;\nimport com.codereview.agent.prompt.PromptInput;\nimport com.codereview.agent.prompt.PromptPurpose;\nimport com.codereview.agent.support.AgentIds;\nimport com.codereview.agent.support.AgentTime;\nimport com.fasterxml.jackson.core.JsonProcessingException;\nimport com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\nimport com.fasterxml.jackson.databind.node.ArrayNode;\nimport com.fasterxml.jackson.databind.node.ObjectNode;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.dao.DuplicateKeyException;\nimport org.springframework.stereotype.Service;\n\nimport java.time.Duration;\nimport java.time.LocalDateTime;\nimport java.util.List;\nimport java.util.Map;\n\n/**\n * 公共模型调用入口。\n *\n * <p>顺序固定：容量判断 → 额度原子预留 → 请求正文落盘 → 发请求 → 记录结果。\n * 请求正文保存失败时绝不发请求；每次真实网络尝试各有一条 {@code model_call}，\n * 所有尝试都计入任务额度。暂态失败最多额外重试一次，鉴权、配置和协议错误不重试。\n *\n * <p>调用层只负责传输与分类；协议结构校验、格式重试和结果发布由专项执行层负责。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class ModelInvocationService {\n\n    private final AgentDatabase db;\n    private final ObjectMapper mapper;\n    private final ModelTransport transport;\n    private final ModelCapacityService capacity;\n    private final PromptAssemblyService assembly;\n    private final ModelInvocationProperties properties;\n    private final ModelCallConcurrencyLimiter limiter;\n    private final TaskExecutionGuard guard;\n\n    public ModelInvocationService(AgentDatabase db, ObjectMapper mapper, ModelTransport transport,\n                                  ModelCapacityService capacity, PromptAssemblyService assembly,\n                                  ModelCallConcurrencyLimiter limiter,\n                                  ModelInvocationProperties properties, TaskExecutionGuard guard) {\n        this.db = db;\n        this.mapper = mapper;\n        this.transport = transport;\n        this.capacity = capacity;\n        this.assembly = assembly;\n        this.limiter = limiter;\n        this.properties = properties;\n        this.guard = guard;\n    }\n\n    public InvocationResult invoke(InvocationRequest request) {\n        ModelSnapshot model = request.model();\n        AssembledPrompt prompt = request.prompt();\n        InvocationScope scope = request.scope();\n        requireModel(model);\n\n        CapacityEstimate estimate = request.sendWholeSpecialist()\n                ? capacity.estimate(prompt, model, request.outputReserve())\n                : capacity.requireFits(prompt, model, request.outputReserve());\n        String body = requestBody(model, prompt, estimate.outputReserve());\n        int attempts = 1 + Math.max(0, properties.getTransportRetries());\n        ApiException lastFailure = null;\n\n        for (int attempt = 1; attempt <= attempts; attempt++) {\n            boolean last = attempt == attempts;\n            scope = activeScope(scope);\n            timeoutFor(scope);\n            ModelCallConcurrencyLimiter.Permit permit = limiter.acquire(scope.taskId(), scope.deadlineAt());\n            try {\n                scope = activeScope(scope);\n                timeoutFor(scope);\n                if (scope.taskId() != null) {\n                    reserveQuota(scope.taskId());\n                }\n                AgentModelCall call = startCall(scope, request.reportId(), prompt, body, attempt, estimate);\n                Duration timeout;\n                try {\n                    // 等待许可和请求落盘都可能跨过取消或期限；以真正发送前的状态为准。\n                    scope = activeScope(scope);\n                    timeout = timeoutFor(scope);\n                } catch (ApiException stopped) {\n                    finishFailure(call, stopped, null);\n                    throw stopped;\n                }\n                try {\n                    ModelTransport.TransportResponse response = transport.post(endpoint(model),\n                            model.credential(), body, timeout);\n                    if (response.status() >= 200 && response.status() < 300) {\n                        return succeed(call, response, estimate, attempt);\n                    }\n                    ApiException failure = classify(response);\n                    finishFailure(call, failure, response.body());\n                    lastFailure = failure;\n                    if (!failure.errorCode().retryable() || last) {\n                        throw failure;\n                    }\n                } catch (ModelTransport.TransportFailure failure) {\n                    ApiException mapped = new ApiException(\n                            failure.timeout() ? ErrorCode.UPSTREAM_TIMEOUT : ErrorCode.MODEL_UNAVAILABLE,\n                            failure.getMessage(), Map.of(\"attempt\", attempt));\n                    finishFailure(call, mapped, null);\n                    lastFailure = mapped;\n                    if (last) {\n                        throw mapped;\n                    }\n                }\n            } finally {\n                permit.close();\n            }\n            scope = activeScope(scope);\n            waitBeforeRetry(failureRetryAfter(lastFailure), scope);\n        }\n        throw lastFailure == null\n                ? new ApiException(ErrorCode.INTERNAL_ERROR, \"模型调用结束但没有结果\")\n                : lastFailure;\n    }\n\n    /**\n     * 连通验证也走同一组装与调用入口：保存实际请求、计量并记录尝试，\n     * 不再用另一套探针重建模板。结果本身是「通过／失败」，不抛 4xx。\n     */\n    public ValidationOutcome validate(ModelSnapshot model) {\n        AssembledPrompt prompt = assembly.assemble(new PromptInput(PromptPurpose.VALIDATION, \"1\",\n                null, null, null, \"VALIDATION\", null, null, null,\n                List.of(), List.of(), List.of(), List.of(), null));\n        try {\n            InvocationResult result = invoke(new InvocationRequest(model, prompt,\n                    InvocationScope.standalone(AgentTime.now().plusMinutes(1))));\n            if (result.content() != null && !result.content().isBlank()) {\n                return new ValidationOutcome(true, \"连通成功，模型返回了正文\", result.callId());\n            }\n            return new ValidationOutcome(false, \"模型返回正文为空\", result.callId());\n        } catch (ApiException e) {\n            return new ValidationOutcome(false, e.getMessage(), null);\n        }\n    }\n\n    private AgentModelCall startCall(InvocationScope scope, String reportId, AssembledPrompt prompt,\n                                     String body, int attempt, CapacityEstimate estimate) {\n        LocalDateTime now = AgentTime.now();\n        AgentModelCall call = new AgentModelCall();\n        call.setId(AgentIds.next());\n        call.setTaskId(scope.taskId());\n        call.setReportId(reportId);\n        call.setTargetId(scope.targetId());\n        call.setUnitId(scope.unitId());\n        call.setPurpose(prompt.purpose().wireName());\n        call.setAttempt(attempt);\n        call.setState(\"RUNNING\");\n        call.setRequestBody(body);\n        call.setAdapterVersion(prompt.adapterVersion());\n        call.setEstimateMethod(estimate.method());\n        call.setCreatedAt(now);\n        call.setStartedAt(now);\n        db.mapper(AgentModelCallMapper.class).insert(call);\n        return call;\n    }\n\n    private InvocationResult succeed(AgentModelCall call, ModelTransport.TransportResponse response,\n                                     CapacityEstimate estimate, int attempt) {\n        JsonNode root;\n        try {\n            root = mapper.readTree(response.body());\n        } catch (JsonProcessingException e) {\n            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,\n                    \"模型返回的不是 JSON\", Map.of(\"callId\", call.getId()));\n            finishFailure(call, failure, response.body());\n            throw failure;\n        }\n        JsonNode choices = root.path(\"choices\");\n        if (!choices.isArray() || choices.isEmpty()) {\n            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,\n                    \"模型响应缺少 choices\", Map.of(\"callId\", call.getId()));\n            finishFailure(call, failure, response.body());\n            throw failure;\n        }\n        JsonNode first = choices.get(0);\n        String finishReason = first.path(\"finish_reason\").asText(null);\n        if (\"length\".equals(finishReason)) {\n            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,\n                    \"模型输出因长度限制被截断\", Map.of(\"callId\", call.getId(),\n                            \"finishReason\", finishReason));\n            finishFailure(call, failure, response.body());"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 15.0,
+        "fileLineCount": 452
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 452,
+        "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+        "start": 200,
+        "version": "V1"
+      },
+      "millis": 94.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M14",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+          "startLine": 200,
+          "endLine": 452,
+          "content": "            finishFailure(call, failure, response.body());\n            throw failure;\n        }\n        String content = textOf(first.path(\"message\").path(\"content\"));\n        if (content == null || content.isBlank()) {\n            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,\n                    \"模型响应缺少正文\", Map.of(\"callId\", call.getId()));\n            finishFailure(call, failure, response.body());\n            throw failure;\n        }\n        JsonNode usage = root.path(\"usage\").isObject() ? root.path(\"usage\") : null;\n        call.setState(\"SUCCEEDED\");\n        call.setResponseBody(response.body());\n        call.setUsageJson(usage == null ? null : usage.toString());\n        call.setFinishedAt(AgentTime.now());\n        db.mapper(AgentModelCallMapper.class).updateById(call);\n        return new InvocationResult(call.getId(), content, usage, finishReason, attempt,\n                estimate.inputEstimate(), estimate.outputReserve(), estimate.method(),\n                call.getAdapterVersion());\n    }\n\n    private void finishFailure(AgentModelCall call, ApiException failure, String responseBody) {\n        call.setState(\"FAILED\");\n        call.setResponseBody(responseBody);\n        call.setErrorCode(failure.errorCode().code());\n        call.setErrorMessage(truncate(failure.getMessage(), 1000));\n        call.setFinishedAt(AgentTime.now());\n        db.mapper(AgentModelCallMapper.class).updateById(call);\n    }\n\n    private String requestBody(ModelSnapshot model, AssembledPrompt prompt, int outputReserve) {\n        ObjectNode body = mapper.createObjectNode();\n        body.put(\"model\", model.modelName());\n        body.put(\"temperature\", 0);\n        body.put(\"max_tokens\", outputReserve);\n        body.put(\"stream\", false);\n        if (prompt.jsonMode() && isDeepSeekModel(model)) {\n            // DeepSeek defaults to thinking mode; its reasoning tokens share max_tokens with\n            // the structured final answer and can consume the entire output budget.\n            body.put(\"reasoning_effort\", \"none\");\n        }\n        if (prompt.jsonMode()) {\n            body.putObject(\"response_format\").put(\"type\", \"json_object\");\n        }\n        ArrayNode messages = body.putArray(\"messages\");\n        for (var message : prompt.messages()) {\n            messages.addObject().put(\"role\", message.role()).put(\"content\", message.content());\n        }\n        try {\n            return mapper.writeValueAsString(body);\n        } catch (JsonProcessingException e) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"请求正文序列化失败\");\n        }\n    }\n\n    private ApiException classify(ModelTransport.TransportResponse response) {\n        int status = response.status();\n        String body = response.body() == null ? \"\" : response.body();\n        if (status == 401 || status == 403) {\n            return new ApiException(ErrorCode.MODEL_UNAUTHORIZED, \"模型凭据被拒绝\",\n                    Map.of(\"status\", status));\n        }\n        if (status == 429) {\n            Long retryAfter = retryAfterSeconds(response);\n            return new ApiException(ErrorCode.RATE_LIMITED, \"模型网关限流\",\n                    retryAfter == null ? Map.of(\"status\", status)\n                            : Map.of(\"status\", status, \"retryAfter\", retryAfter));\n        }\n        if (status >= 500) {\n            return new ApiException(ErrorCode.MODEL_UNAVAILABLE, \"模型网关暂时不可用\",\n                    Map.of(\"status\", status));\n        }\n        if (status == 400 && looksLikeContextLimit(body)) {\n            return new ApiException(ErrorCode.CONTEXT_LIMIT, \"模型报告上下文超限\",\n                    Map.of(\"status\", status));\n        }\n        return new ApiException(ErrorCode.MODEL_BAD_REQUEST, \"模型请求被拒绝\",\n                Map.of(\"status\", status));\n    }\n\n    static boolean looksLikeContextLimit(String body) {\n        try {\n            JsonNode error = new ObjectMapper().readTree(body).path(\"error\");\n            return List.of(\"context_length_exceeded\", \"context_window_exceeded\")\n                    .contains(error.path(\"code\").asText());\n        } catch (Exception invalid) {\n            return false;\n        }\n    }\n\n    private InvocationScope activeScope(InvocationScope scope) {\n        if (scope.taskId() == null) {\n            return scope;\n        }\n        var task = guard.requireActive(scope.taskId());\n        LocalDateTime deadline = scope.deadlineAt();\n        if (task.getDeadlineAt() != null && (deadline == null || task.getDeadlineAt().isBefore(deadline))) {\n            deadline = task.getDeadlineAt();\n        }\n        return new InvocationScope(scope.taskId(), scope.targetId(), scope.unitId(), deadline);\n    }\n\n    private Duration timeoutFor(InvocationScope scope) {\n        Duration limit = Duration.ofSeconds(properties.getMaxReadTimeoutSeconds());\n        if (scope.deadlineAt() == null) {\n            return limit;\n        }\n        Duration remaining = Duration.between(AgentTime.now(), scope.deadlineAt());\n        if (remaining.isNegative() || remaining.isZero()) {\n            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务已到达期限，未发送模型请求\");\n        }\n        Duration capped = remaining.minusSeconds(1);\n        if (capped.isNegative() || capped.isZero()) {\n            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务剩余期限不足一次调用\");\n        }\n        return capped.compareTo(limit) < 0 ? capped : limit;\n    }\n\n    private void waitBeforeRetry(Long retryAfterSeconds, InvocationScope scope) {\n        long wait = retryAfterSeconds != null\n                ? Math.min(retryAfterSeconds * 1000, 3000)\n                : properties.getRetryBaseMillis();\n        if (wait <= 0) {\n            wait = 1;\n        }\n        if (scope.deadlineAt() != null) {\n            long remaining = Duration.between(AgentTime.now(), scope.deadlineAt()).toMillis();\n            if (remaining <= wait + 500) {\n                throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务剩余期限不足以重试\");\n            }\n        }\n        try {\n            Thread.sleep(wait);\n        } catch (InterruptedException e) {\n            Thread.currentThread().interrupt();\n            throw new ApiException(ErrorCode.MODEL_UNAVAILABLE, \"模型重试被中断\");\n        }\n    }\n\n    private static Long failureRetryAfter(ApiException failure) {\n        if (failure != null && failure.details() instanceof Map<?, ?> details\n                && details.get(\"retryAfter\") instanceof Number number) {\n            return number.longValue();\n        }\n        return null;\n    }\n\n    private static Long retryAfterSeconds(ModelTransport.TransportResponse response) {\n        String value = response.headers() == null ? null : response.headers().get(\"retry-after\");\n        if (value == null || value.isBlank()) {\n            return null;\n        }\n        try {\n            return Long.parseLong(value.trim());\n        } catch (NumberFormatException e) {\n            return null;\n        }\n    }\n\n    private void reserveQuota(String taskId) {\n        AgentTaskQuotaMapper quotaMapper = db.mapper(AgentTaskQuotaMapper.class);\n        int updated = quotaMapper.update(null, new LambdaUpdateWrapper<AgentTaskQuota>()\n                .eq(AgentTaskQuota::getTaskId, taskId)\n                .apply(\"reserved < hard_limit\")\n                .setSql(\"reserved = reserved + 1\")\n                .set(AgentTaskQuota::getUpdatedAt, AgentTime.now()));\n        if (updated > 0) {\n            return;\n        }\n        if (quotaMapper.selectById(taskId) == null) {\n            LocalDateTime now = AgentTime.now();\n            AgentTaskQuota quota = new AgentTaskQuota();\n            quota.setTaskId(taskId);\n            quota.setHardLimit(properties.getTaskCallLimit());\n            quota.setReserved(1);\n            quota.setCreatedAt(now);\n            quota.setUpdatedAt(now);\n            try {\n                quotaMapper.insert(quota);\n                return;\n            } catch (DuplicateKeyException race) {\n                if (quotaMapper.update(null, new LambdaUpdateWrapper<AgentTaskQuota>()\n                        .eq(AgentTaskQuota::getTaskId, taskId)\n                        .apply(\"reserved < hard_limit\")\n                        .setSql(\"reserved = reserved + 1\")\n                        .set(AgentTaskQuota::getUpdatedAt, now)) > 0) {\n                    return;\n                }\n            }\n        }\n        throw new ApiException(ErrorCode.QUOTA_EXCEEDED,\n                \"任务请求额度已用尽（上限 \" + properties.getTaskCallLimit() + \" 次）\",\n                Map.of(\"taskId\", taskId));\n    }\n\n    private void requireModel(ModelSnapshot model) {\n        if (model.baseUrl() == null || model.baseUrl().isBlank()) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, \"模型接口地址为空\",\n                    Map.of(\"modelId\", model.id()));\n        }\n        if (model.modelName() == null || model.modelName().isBlank()) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, \"模型名称为空\",\n                    Map.of(\"modelId\", model.id()));\n        }\n        if (!model.openAiCompatible()) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,\n                    \"暂不支持该模型协议：\" + model.protocol(), Map.of(\"modelId\", model.id()));\n        }\n    }\n\n    private static String endpoint(ModelSnapshot model) {\n        String base = model.baseUrl().trim();\n        while (base.endsWith(\"/\")) {\n            base = base.substring(0, base.length() - 1);\n        }\n        return base.endsWith(\"/chat/completions\") ? base : base + \"/chat/completions\";\n    }\n\n    private static boolean isDeepSeekModel(ModelSnapshot model) {\n        return model.modelName() != null\n                && model.modelName().trim().toLowerCase(java.util.Locale.ROOT).startsWith(\"deepseek\");\n    }\n\n    private static String textOf(JsonNode content) {\n        if (content == null || content.isMissingNode() || content.isNull()) {\n            return null;\n        }\n        if (content.isTextual()) {\n            return content.asText();\n        }\n        if (content.isArray()) {\n            StringBuilder text = new StringBuilder();\n            for (JsonNode part : content) {\n                if (part.path(\"text\").isTextual()) {\n                    text.append(part.path(\"text\").asText());\n                }\n            }\n            return text.toString();\n        }\n        return content.asText();\n    }\n\n    private static String truncate(String value, int max) {\n        if (value == null) {\n            return null;\n        }\n        return value.length() <= max ? value : value.substring(0, max);\n    }\n\n    /** 验证动作的结果；失败也作为一次成功执行的验证记录返回。 */\n    public record ValidationOutcome(boolean passed, String detail, String callId) {\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 452
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 490,
+        "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+        "start": 400,
+        "version": "V1"
+      },
+      "millis": 63.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M15",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "startLine": 400,
+          "endLine": 490,
+          "content": "        List<AgentModelCall> calls = db.mapper(AgentModelCallMapper.class).selectList(\n                new LambdaQueryWrapper<AgentModelCall>()\n                        .eq(AgentModelCall::getUnitId, unitId)\n                        .orderByAsc(AgentModelCall::getCreatedAt));\n        if (calls.isEmpty()) {\n            return;\n        }\n        for (AgentModelCall call : calls) {\n            for (Material material : target.allMaterials().stream().collect(\n                    java.util.stream.Collectors.toMap(Material::id, value -> value, (left, right) -> left))\n                    .values()) {\n                AgentCallMaterial link = new AgentCallMaterial();\n                link.setCallId(call.getId());\n                link.setMaterialId(material.id());\n                link.setRole(material.target() ? \"TARGET\" : \"AUXILIARY\");\n                link.setDisposition(\"SENT\");\n                db.mapper(AgentCallMaterialMapper.class).insert(link);\n            }\n        }\n    }\n\n    private void updateTarget(String targetId, String state, String errorCode) {\n        db.mapper(AgentTaskTargetMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentTaskTarget>()\n                        .eq(AgentTaskTarget::getId, targetId)\n                        .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)\n                        .set(AgentTaskTarget::getState, state)\n                        .set(AgentTaskTarget::getErrorCode, errorCode)\n                        .set(AgentTaskTarget::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n    }\n\n    private int finishTarget(String targetId, String state, String errorCode) {\n        return db.mapper(AgentTaskTargetMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentTaskTarget>()\n                        .eq(AgentTaskTarget::getId, targetId)\n                        .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)\n                        .set(AgentTaskTarget::getState, state)\n                        .set(AgentTaskTarget::getErrorCode, errorCode)\n                        .set(AgentTaskTarget::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n    }\n\n    private void updateUnit(String unitId, String state) {\n        db.mapper(AgentExecutionUnitMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentExecutionUnit>()\n                        .eq(AgentExecutionUnit::getId, unitId)\n                        .set(AgentExecutionUnit::getState, state)\n                        .set(AgentExecutionUnit::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n    }\n\n    private List<Map<String, Integer>> ranges(SpecialistUnitPlan plan) {\n        return plan.ranges().stream()\n                .map(range -> Map.of(\"startLine\", range.startLine(), \"endLine\", range.endLine()))\n                .toList();\n    }\n\n    private JsonNode read(String value) {\n        if (value == null || value.isBlank()) {\n            return mapper.createObjectNode();\n        }\n        try {\n            return mapper.readTree(value);\n        } catch (JsonProcessingException e) {\n            return mapper.createObjectNode();\n        }\n    }\n\n    private String json(Object value) {\n        try {\n            return mapper.writeValueAsString(value);\n        } catch (JsonProcessingException e) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"单元范围序列化失败\");\n        }\n    }\n\n    private static String text(JsonNode node, String field, String fallback) {\n        JsonNode value = node.path(field);\n        return value.isNull() ? null\n                : value.isTextual() && !value.asText().isBlank() ? value.asText() : fallback;\n    }\n\n    private static Integer integer(JsonNode node, String field, Integer fallback) {\n        JsonNode value = node.path(field);\n        return value.isNull() ? null : value.isNumber() ? value.asInt() : fallback;\n    }\n\n    private record Strategy(String name, String prompt) {\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 490
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 60,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "requireActive",
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 12,
+        "matches": [
+          {
+            "id": "M16",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 192,
+            "endLine": 192,
+            "content": "            guard.requireActive(task.getId());"
+          },
+          {
+            "id": "M17",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 215,
+            "endLine": 215,
+            "content": "                    guard.requireActive(task.getId());"
+          },
+          {
+            "id": "M18",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 220,
+            "endLine": 220,
+            "content": "                        guard.requireActive(task.getId());"
+          },
+          {
+            "id": "M19",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 259,
+            "endLine": 259,
+            "content": "                    guard.requireActiveLocked(task.getId());"
+          },
+          {
+            "id": "M20",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 288,
+            "endLine": 288,
+            "content": "                guard.requireActive(task.getId());"
+          },
+          {
+            "id": "M21",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 300,
+            "endLine": 300,
+            "content": "                    guard.requireActive(task.getId());"
+          },
+          {
+            "id": "M22",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 28,
+            "endLine": 28,
+            "content": "    public AgentReviewTask requireActive(String taskId) {"
+          },
+          {
+            "id": "M23",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 30,
+            "endLine": 30,
+            "content": "        return requireActive(task, taskId);"
+          },
+          {
+            "id": "M24",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 34,
+            "endLine": 34,
+            "content": "    public AgentReviewTask requireActiveLocked(String taskId) {"
+          },
+          {
+            "id": "M25",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 38,
+            "endLine": 38,
+            "content": "        return requireActive(task, taskId);"
+          },
+          {
+            "id": "M26",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 41,
+            "endLine": 41,
+            "content": "    private AgentReviewTask requireActive(AgentReviewTask task, String taskId) {"
+          },
+          {
+            "id": "M27",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+            "startLine": 294,
+            "endLine": 294,
+            "content": "        var task = guard.requireActive(scope.taskId());"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "TASK_CANCELLED",
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 9,
+        "matches": [
+          {
+            "id": "M28",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/api/ErrorCode.java",
+            "startLine": 39,
+            "endLine": 39,
+            "content": "    TASK_CANCELLED(HttpStatus.CONFLICT, \"TASK_CANCELLED\", false),"
+          },
+          {
+            "id": "M29",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 159,
+            "endLine": 159,
+            "content": "                            && (api.errorCode() == ErrorCode.TASK_CANCELLED"
+          },
+          {
+            "id": "M30",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 170,
+            "endLine": 170,
+            "content": "                    throw new ApiException(ErrorCode.TASK_CANCELLED, \"任务执行被中断\");"
+          },
+          {
+            "id": "M31",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 225,
+            "endLine": 225,
+            "content": "                        if (failure.errorCode() == ErrorCode.TASK_CANCELLED"
+          },
+          {
+            "id": "M32",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 262,
+            "endLine": 262,
+            "content": "                        throw new ApiException(ErrorCode.TASK_CANCELLED, \"目标已结束，拒绝迟到发布\");"
+          },
+          {
+            "id": "M33",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 270,
+            "endLine": 270,
+            "content": "            if (failure.errorCode() == ErrorCode.TASK_CANCELLED"
+          },
+          {
+            "id": "M34",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "startLine": 79,
+            "endLine": 79,
+            "content": "            if (e.errorCode() == ErrorCode.TASK_CANCELLED) {"
+          },
+          {
+            "id": "M35",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 46,
+            "endLine": 46,
+            "content": "            throw new ApiException(ErrorCode.TASK_CANCELLED, \"任务已取消，停止新的调用\");"
+          },
+          {
+            "id": "M36",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 49,
+            "endLine": 49,
+            "content": "            throw new ApiException(ErrorCode.TASK_CANCELLED, \"任务已结束，停止新的调用\");"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 140,
+        "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M37",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+          "startLine": 1,
+          "endLine": 140,
+          "content": "package com.codereview.agent.execution;\n\nimport com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.entity.AgentReviewTask;\nimport com.codereview.agent.entity.AgentTaskTarget;\nimport com.codereview.agent.mapper.AgentReviewTaskMapper;\nimport com.codereview.agent.mapper.AgentTaskTargetMapper;\nimport com.codereview.agent.support.AgentTime;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\nimport org.springframework.beans.factory.ObjectProvider;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.stereotype.Service;\n\nimport java.util.concurrent.ExecutorService;\nimport java.util.concurrent.Executors;\nimport java.util.concurrent.RejectedExecutionException;\nimport java.util.concurrent.ThreadFactory;\nimport java.util.concurrent.atomic.AtomicInteger;\n\nimport jakarta.annotation.PreDestroy;\n\n/**\n * 任务调度：有界并发、启动条件更新、终态保护。\n *\n * <p>P30 不实现专项执行；通过 {@link TaskWorker} 接入。没有执行器时任务明确失败为\n * {@code EXECUTOR_UNAVAILABLE}，而不是永远停在 QUEUED 假装在跑。\n *\n * <p>终态写入必须带前置状态条件：取消或期限先落库后，迟到的成功回调更新 0 行，\n * 不能把已完成的任务改回成功。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class TaskDispatchService {\n\n    private static final Logger log = LoggerFactory.getLogger(TaskDispatchService.class);\n\n    private final AgentDatabase db;\n    private final ObjectProvider<TaskWorker> workers;\n    private final ExecutorService pool;\n\n    public TaskDispatchService(AgentDatabase db, ObjectProvider<TaskWorker> workers,\n                               TaskProperties properties) {\n        this.db = db;\n        this.workers = workers;\n        this.pool = Executors.newFixedThreadPool(Math.max(1, properties.getDispatchConcurrency()),\n                new NamedThreadFactory());\n    }\n\n    public void dispatch(String taskId) {\n        try {\n            pool.execute(() -> run(taskId));\n        } catch (RejectedExecutionException e) {\n            log.warn(\"任务调度队列已满，任务 {} 标记失败\", taskId);\n            terminateQueued(taskId, \"DISPATCH_REJECTED\");\n        }\n    }\n\n    void run(String taskId) {\n        AgentReviewTask task = db.mapper(AgentReviewTaskMapper.class).selectById(taskId);\n        if (task == null || !TaskStates.QUEUED.equals(task.getState())) {\n            return;\n        }\n        if (!markRunning(task)) {\n            return;\n        }\n        TaskWorker worker = workers.getIfUnique();\n        if (worker == null) {\n            finish(taskId, TaskStates.FAILED, TaskStates.STOP_EXECUTOR_UNAVAILABLE);\n            return;\n        }\n        try {\n            TaskWorker.TaskOutcome outcome = worker.execute(task);\n            finish(taskId, outcome.state(), outcome.stopReason());\n        } catch (ApiException e) {\n            if (e.errorCode() == ErrorCode.TASK_CANCELLED) {\n                finish(taskId, TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);\n            } else if (e.errorCode() == ErrorCode.TASK_DEADLINE) {\n                finishForDeadline(taskId);\n            } else {\n                finish(taskId, TaskStates.FAILED, e.errorCode().code());\n            }\n        } catch (RuntimeException e) {\n            log.error(\"任务 {} 执行异常\", taskId, e);\n            finish(taskId, TaskStates.FAILED, TaskStates.STOP_EXECUTION_ERROR);\n        }\n    }\n\n    private boolean markRunning(AgentReviewTask task) {\n        int affected = db.mapper(AgentReviewTaskMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReviewTask>()\n                        .eq(AgentReviewTask::getId, task.getId())\n                        .eq(AgentReviewTask::getState, TaskStates.QUEUED)\n                        .eq(AgentReviewTask::getRevision, task.getRevision())\n                        .set(AgentReviewTask::getState, TaskStates.RUNNING)\n                        .set(AgentReviewTask::getStartedAt, AgentTime.now())\n                        .set(AgentReviewTask::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n        return affected > 0;\n    }\n\n    /**\n     * 写入终态。只有仍处于 RUNNING 的任务能被本次回调结束；\n     * 成功还要求没有取消请求，避免取消与成功竞争时取消先落库却被覆盖。\n     */\n    public boolean finish(String taskId, String state, String stopReason) {\n        if (!TaskStates.isTerminal(state)) {\n            throw new IllegalArgumentException(\"终态不合法：\" + state);\n        }\n        LambdaUpdateWrapper<AgentReviewTask> update = new LambdaUpdateWrapper<AgentReviewTask>()\n                .eq(AgentReviewTask::getId, taskId)\n                .eq(AgentReviewTask::getState, TaskStates.RUNNING)\n                .set(AgentReviewTask::getState, state)\n                .set(AgentReviewTask::getStopReason, stopReason)\n                .set(AgentReviewTask::getFinishedAt, AgentTime.now())\n                .set(AgentReviewTask::getUpdatedAt, AgentTime.now())\n                .setSql(\"revision = revision + 1\");\n        if (TaskStates.SUCCEEDED.equals(state)) {\n            update.isNull(AgentReviewTask::getCancelRequestedAt);\n        }\n        return db.inTransaction(() -> {\n            if (db.mapper(AgentReviewTaskMapper.class).update(null, update) > 0) {\n                closeOpenTargets(taskId, state, stopReason);\n                return true;\n            }\n            log.info(\"任务 {} 的终态 {} 未被写入：任务已取消或已结束\", taskId, state);\n            return false;\n        });\n    }\n\n    public void finishForDeadline(String taskId) {\n        Long succeeded = db.mapper(AgentTaskTargetMapper.class).selectCount(\n                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AgentTaskTarget>()\n                        .eq(AgentTaskTarget::getTaskId, taskId)\n                        .eq(AgentTaskTarget::getState, TaskStates.SUCCEEDED));\n        terminate(taskId, succeeded != null && succeeded > 0 ? TaskStates.PARTIAL : TaskStates.FAILED,\n                TaskStates.STOP_TASK_DEADLINE);"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 31.0,
+        "fileLineCount": 220
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 120,
+        "path": "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 63.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M38",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+          "startLine": 1,
+          "endLine": 33,
+          "content": "package com.codereview.agent.execution;\n\nimport java.util.Set;\n\n/** 任务与文件状态常量；终态只经带 revision 的条件更新写入。 */\npublic final class TaskStates {\n\n    public static final String QUEUED = \"QUEUED\";\n    public static final String PREPARING = \"PREPARING\";\n    public static final String RUNNING = \"RUNNING\";\n    public static final String SUCCEEDED = \"SUCCEEDED\";\n    public static final String PARTIAL = \"PARTIAL\";\n    public static final String FAILED = \"FAILED\";\n    public static final String CANCELLED = \"CANCELLED\";\n\n    public static final Set<String> TASK_TERMINAL =\n            Set.of(SUCCEEDED, PARTIAL, FAILED, CANCELLED);\n    public static final Set<String> TARGET_TERMINAL =\n            Set.of(SUCCEEDED, PARTIAL, FAILED, CANCELLED);\n\n    public static final String STOP_USER_CANCELLED = \"USER_CANCELLED\";\n    public static final String STOP_TASK_DEADLINE = \"TASK_DEADLINE\";\n    public static final String STOP_INTERRUPTED = \"INTERRUPTED\";\n    public static final String STOP_EXECUTOR_UNAVAILABLE = \"EXECUTOR_UNAVAILABLE\";\n    public static final String STOP_EXECUTION_ERROR = \"EXECUTION_ERROR\";\n\n    private TaskStates() {\n    }\n\n    public static boolean isTerminal(String state) {\n        return state != null && TASK_TERMINAL.contains(state);\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 33
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 220,
+        "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+        "start": 140,
+        "version": "V1"
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M39",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+          "startLine": 140,
+          "endLine": 220,
+          "content": "                TaskStates.STOP_TASK_DEADLINE);\n    }\n\n    /**\n     * 结束仍处于 QUEUED 或 RUNNING 的任务；返回是否由本次调用写入。\n     * 取消、期限和重启收敛共用这一条条件更新。\n     */\n    public boolean terminate(String taskId, String state, String stopReason) {\n        if (!TaskStates.isTerminal(state)) {\n            throw new IllegalArgumentException(\"终态不合法：\" + state);\n        }\n        return db.inTransaction(() -> {\n            boolean changed = db.mapper(AgentReviewTaskMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReviewTask>()\n                        .eq(AgentReviewTask::getId, taskId)\n                        .in(AgentReviewTask::getState, TaskStates.QUEUED, TaskStates.RUNNING)\n                        .set(AgentReviewTask::getState, state)\n                        .set(AgentReviewTask::getStopReason, stopReason)\n                        .set(AgentReviewTask::getFinishedAt, AgentTime.now())\n                        .set(AgentReviewTask::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\")) > 0;\n            if (changed) {\n                closeOpenTargets(taskId, state, stopReason);\n            }\n            return changed;\n        });\n    }\n\n    private void terminateQueued(String taskId, String stopReason) {\n        db.inTransaction(() -> {\n            int changed = db.mapper(AgentReviewTaskMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReviewTask>()\n                        .eq(AgentReviewTask::getId, taskId)\n                        .eq(AgentReviewTask::getState, TaskStates.QUEUED)\n                        .set(AgentReviewTask::getState, TaskStates.FAILED)\n                        .set(AgentReviewTask::getStopReason, stopReason)\n                        .set(AgentReviewTask::getFinishedAt, AgentTime.now())\n                        .set(AgentReviewTask::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n            if (changed > 0) {\n                closeOpenTargets(taskId, TaskStates.FAILED, stopReason);\n            }\n            return null;\n        });\n    }\n\n    /** 仅收敛尚未完成的目标；已发布的成功或失败结果不会被重写。 */\n    private void closeOpenTargets(String taskId, String state, String stopReason) {\n        if (TaskStates.SUCCEEDED.equals(state)) {\n            return;\n        }\n        String targetState = TaskStates.CANCELLED.equals(state) || TaskStates.PARTIAL.equals(state)\n                || TaskStates.STOP_TASK_DEADLINE.equals(stopReason)\n                ? TaskStates.CANCELLED : TaskStates.FAILED;\n        db.mapper(AgentTaskTargetMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentTaskTarget>()\n                        .eq(AgentTaskTarget::getTaskId, taskId)\n                        .notIn(AgentTaskTarget::getState, TaskStates.TARGET_TERMINAL)\n                        .set(AgentTaskTarget::getState, targetState)\n                        .set(AgentTaskTarget::getErrorCode, stopReason)\n                        .set(AgentTaskTarget::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n    }\n\n    @PreDestroy\n    public void shutdown() {\n        pool.shutdownNow();\n    }\n\n    private static final class NamedThreadFactory implements ThreadFactory {\n\n        private final AtomicInteger sequence = new AtomicInteger();\n\n        @Override\n        public Thread newThread(Runnable runnable) {\n            Thread thread = new Thread(runnable, \"agent-task-\" + sequence.incrementAndGet());\n            thread.setDaemon(true);\n            return thread;\n        }\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 220
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 120,
+        "path": "backend/src/main/java/com/codereview/agent/invocation/ModelCallConcurrencyLimiter.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 79.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M40",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/invocation/ModelCallConcurrencyLimiter.java",
+          "startLine": 1,
+          "endLine": 111,
+          "content": "package com.codereview.agent.invocation;\n\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.support.AgentTime;\nimport org.springframework.stereotype.Service;\n\nimport java.time.Duration;\nimport java.time.LocalDateTime;\nimport java.util.Map;\nimport java.util.concurrent.ConcurrentHashMap;\nimport java.util.concurrent.Semaphore;\nimport java.util.concurrent.TimeUnit;\n\n/**\n * 模型请求的公共并发：全局最多 4 个，同一任务最多 2 个。\n *\n * <p>等待计入任务期限；期限不足时直接停止，不无限排队。许可在 HTTP 返回后释放，\n * 不覆盖解析与落库时间。\n */\n@Service\npublic class ModelCallConcurrencyLimiter {\n\n    private final Semaphore global;\n    private final int perTask;\n    private final ConcurrentHashMap<String, Semaphore> taskLimits = new ConcurrentHashMap<>();\n\n    public ModelCallConcurrencyLimiter(ModelInvocationProperties properties) {\n        this.global = new Semaphore(Math.max(1, properties.getGlobalConcurrency()), true);\n        this.perTask = Math.max(1, properties.getPerTaskConcurrency());\n    }\n\n    public Permit acquire(String taskId, LocalDateTime deadlineAt) {\n        long waitMillis = waitMillis(deadlineAt);\n        try {\n            if (!global.tryAcquire(waitMillis, TimeUnit.MILLISECONDS)) {\n                throw busy(taskId);\n            }\n        } catch (InterruptedException e) {\n            Thread.currentThread().interrupt();\n            throw new ApiException(ErrorCode.MODEL_UNAVAILABLE, \"等待模型并发许可被中断\");\n        }\n        if (taskId == null) {\n            return new Permit(global, null);\n        }\n        Semaphore taskSemaphore = taskLimits.computeIfAbsent(taskId, ignored -> new Semaphore(perTask, true));\n        boolean taskAcquired = false;\n        try {\n            taskAcquired = taskSemaphore.tryAcquire(waitMillis(deadlineAt), TimeUnit.MILLISECONDS);\n            if (!taskAcquired) {\n                throw busy(taskId);\n            }\n        } catch (InterruptedException e) {\n            Thread.currentThread().interrupt();\n            throw new ApiException(ErrorCode.MODEL_UNAVAILABLE, \"等待模型并发许可被中断\");\n        } finally {\n            if (!taskAcquired) {\n                global.release();\n            }\n        }\n        return new Permit(global, taskSemaphore);\n    }\n\n    public int availableGlobalPermits() {\n        return global.availablePermits();\n    }\n\n    private static long waitMillis(LocalDateTime deadlineAt) {\n        if (deadlineAt == null) {\n            return 30_000;\n        }\n        long remaining = Duration.between(AgentTime.now(), deadlineAt).toMillis();\n        if (remaining <= 0) {\n            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务已到达期限，未等待模型并发许可\");\n        }\n        return Math.min(remaining, 180_000);\n    }\n\n    private static ApiException busy(String taskId) {\n        return new ApiException(ErrorCode.TASK_DEADLINE,\n                \"模型并发已满且任务剩余期限不足，未发送请求\",\n                Map.of(\"taskId\", taskId == null ? \"\" : taskId));\n    }\n\n    /** 释放顺序与获取顺序相反；重复关闭无副作用。 */\n    public static final class Permit implements AutoCloseable {\n\n        private final Semaphore global;\n        private final Semaphore task;\n        private boolean closed;\n\n        private Permit(Semaphore global, Semaphore task) {\n            this.global = global;\n            this.task = task;\n        }\n\n        @Override\n        public void close() {\n            if (closed) {\n                return;\n            }\n            closed = true;\n            if (task != null) {\n                task.release();\n            }\n            if (global != null) {\n                global.release();\n            }\n        }\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 111
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "requireActiveLocked",
+        "version": "V1"
+      },
+      "millis": 79.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 2,
+        "matches": [
+          {
+            "id": "M19",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 259,
+            "endLine": 259,
+            "content": "                    guard.requireActiveLocked(task.getId());"
+          },
+          {
+            "id": "M24",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 34,
+            "endLine": 34,
+            "content": "    public AgentReviewTask requireActiveLocked(String taskId) {"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "isCancelled",
+        "version": "V1"
+      },
+      "millis": 93.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 1,
+        "matches": [
+          {
+            "id": "M41",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "startLine": 57,
+            "endLine": 57,
+            "content": "    public boolean isCancelled(String taskId) {"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "inTransaction",
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 11,
+        "matches": [
+          {
+            "id": "M42",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+            "startLine": 26,
+            "endLine": 26,
+            "content": " * {@link #mapper(Class)} 与 {@link #inTransaction(Supplier)} 内部可见。"
+          },
+          {
+            "id": "M43",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+            "startLine": 105,
+            "endLine": 105,
+            "content": "    public <T> T inTransaction(Supplier<T> work) {"
+          },
+          {
+            "id": "M44",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+            "startLine": 61,
+            "endLine": 61,
+            "content": "        return db.inTransaction(() -> publishInTransaction(task, target, prepared, executions, complete));"
+          },
+          {
+            "id": "M45",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 258,
+            "endLine": 258,
+            "content": "                db.inTransaction(() -> {"
+          },
+          {
+            "id": "M46",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "startLine": 124,
+            "endLine": 124,
+            "content": "        return db.inTransaction(() -> {"
+          },
+          {
+            "id": "M47",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "startLine": 151,
+            "endLine": 151,
+            "content": "        return db.inTransaction(() -> {"
+          },
+          {
+            "id": "M48",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "startLine": 169,
+            "endLine": 169,
+            "content": "        db.inTransaction(() -> {"
+          },
+          {
+            "id": "M49",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/AgentPromptService.java",
+            "startLine": 78,
+            "endLine": 78,
+            "content": "        return db.inTransaction(() -> {"
+          },
+          {
+            "id": "M50",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/AgentPromptService.java",
+            "startLine": 123,
+            "endLine": 123,
+            "content": "        return db.inTransaction(() -> {"
+          },
+          {
+            "id": "M51",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+            "startLine": 143,
+            "endLine": 143,
+            "content": "        return db.inTransaction(() -> freezeInTransaction(request));"
+          },
+          {
+            "id": "M52",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+            "startLine": 131,
+            "endLine": 131,
+            "content": "            db.inTransaction(() -> {"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "publisher.publish",
+        "version": "V1"
+      },
+      "millis": 94.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 1,
+        "matches": [
+          {
+            "id": "M53",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 260,
+            "endLine": 260,
+            "content": "                    publisher.publish(task, target, enhanced, executions, complete);"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 140,
+        "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+        "start": 90,
+        "version": "V1"
+      },
+      "millis": 47.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M54",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+          "startLine": 90,
+          "endLine": 121,
+          "content": "                .setLogicDeleteValue(\"1\")\n                .setLogicNotDeleteValue(\"0\"));\n        GlobalConfigUtils.setGlobalConfig(configuration, global);\n        for (Class<?> mapper : mappers) {\n            configuration.addMapper(mapper);\n        }\n        return new MybatisSqlSessionFactoryBuilder().build(configuration);\n    }\n\n    /** 取 MyBatis 映射器；每次调用都通过当前线程的会话取代理，不做跨请求缓存。 */\n    public <T> T mapper(Class<T> mapperType) {\n        return template.getMapper(mapperType);\n    }\n\n    /** 在新库事务内执行；抛异常整体回滚。 */\n    public <T> T inTransaction(Supplier<T> work) {\n        return transactionTemplate.execute(status -> work.get());\n    }\n\n    /** 只读健康检查用：库名与版本标记。 */\n    public String schemaVersion() {\n        guard.postMigrate(pool);\n        return AgentSchemaGuard.EXPECTED_VERSION;\n    }\n\n    @Override\n    public void destroy() {\n        if (pool != null) {\n            pool.close();\n        }\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 15.0,
+        "fileLineCount": 121
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 150,
+        "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+        "start": 100,
+        "version": "V1"
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M55",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+          "startLine": 100,
+          "endLine": 150,
+          "content": "        AgentProject project = requireProject(req.projectId());\n        if (key != null) {\n            AgentReviewTask existing = findByKey(project.getId(), key);\n            if (existing != null) {\n                return replay(existing, requestHash);\n            }\n        }\n\n        String specialistType = normalizeSpecialist(req.specialistType());\n        String route = normalizeRoute(req.route());\n        ResolvedConfig config = resolveConfig(req, specialistType);\n        ResolvedSource source = resolveSource(req.source(), project);\n        List<NormalizedTarget> targets = normalizeTargets(req.targets());\n\n        AgentReviewTask task = new AgentReviewTask();\n        task.setId(AgentIds.next());\n        task.setProjectId(project.getId());\n        task.setName(normalizeName(req.name(), task.getId()));\n        task.setRoute(route);\n        task.setSpecialistType(specialistType);\n        task.setState(TaskStates.QUEUED);\n        task.setInputSnapshot(inputSnapshot(project, source, targets, Boolean.TRUE.equals(req.smartSplit())));\n        task.setConfigSnapshot(configSnapshot(config));\n        task.setIdempotencyKey(key);\n        task.setRequestHash(key == null ? null : requestHash);\n        task.setRevision(0);\n        task.setCreatedAt(AgentTime.now());\n        task.setUpdatedAt(AgentTime.now());\n        task.setDeadlineAt(AgentTime.now().plusMinutes(Math.max(1, taskProperties.getDeadlineMinutes())));\n\n        try {\n            db.inTransaction(() -> {\n                db.mapper(AgentReviewTaskMapper.class).insert(task);\n                insertTargets(task, source, targets);\n                insertQuota(task.getId());\n                return null;\n            });\n        } catch (DuplicateKeyException race) {\n            if (key != null) {\n                AgentReviewTask existing = findByKey(project.getId(), key);\n                if (existing != null) {\n                    return replay(existing, requestHash);\n                }\n            }\n            throw race;\n        }\n        dispatcher.dispatch(task.getId());\n        return toView(task);\n    }\n\n    public PageResponse<TaskDtos.Summary> list(String projectId, String route, String type, String state,"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 0.0,
+        "fileLineCount": 859
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "implements TaskWorker",
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 1,
+        "matches": [
+          {
+            "id": "M56",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+            "startLine": 79,
+            "endLine": 79,
+            "content": "public class SpecialistTaskWorker implements TaskWorker {"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "AgentReviewResultMapper.class).insert",
+        "version": "V1"
+      },
+      "millis": 94.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 1,
+        "matches": [
+          {
+            "id": "M57",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+            "startLine": 85,
+            "endLine": 85,
+            "content": "        db.mapper(AgentReviewResultMapper.class).insert(result);"
+          }
+        ],
+        "diagnostic": null
+      }
+    }
+  ],
+  "checks": {
+    "citationsValid": false,
+    "expectedFilesRead": {
+      "TaskService.java": true,
+      "TaskExecutionGuard.java": true,
+      "SpecialistResultPublisher.java": true
+    }
+  },
+  "stopReason": "FINAL_CITATION_INVALID",
+  "final": {
+    "title": "审查任务取消后阻止在途/迟到模型调用发布结果的链路（V1）",
+    "answerStatus": "ANSWERED",
+    "markdown": "## 结论概览\n\n该版本用「**取消先落库 → 执行侧多点轮询守卫 → 发布前在事务内加行锁复核 → 目标终态条件更新兜底**」四层机制，阻止取消后仍在执行的模型调用把结果写进库。取消本身**不会中断正在进行的 HTTP 请求**，它靠的是「发请求前复核 + 返回后复核 + 发布事务内复核」把迟到结果丢弃。\n\n## 1. 取消入口：只改库状态，不碰线程\n\n- HTTP 入口 `POST /{id}/cancel` 直接转给 `TaskService.cancel(id, expectedRevision)` [E1]。\n- `cancel` 先做终态短路与 revision 校验，然后用**带前置状态条件**的更新把任务从 `QUEUED/RUNNING` 改为 `CANCELLED`，同时写入 `stopReason=USER_CANCELLED`、`cancelRequestedAt`、`finishedAt`，并 `revision+1`；影响 0 行时重新读库判断是终态还是 revision 冲突 [E2]。\n- 同一方法随后把该任务下所有非终态目标批量置为 `CANCELLED`（`errorCode=USER_CANCELLED`）[E2]。\n- 注意：`cancel` 全程**没有**调用 `Future.cancel`、没有中断线程、没有通知执行器；它只是数据库状态变更。因此「阻止继续发布」完全依赖执行侧的检查点。\n\n## 2. 执行保护：`TaskExecutionGuard` 是唯一判定点\n\n- `requireActive(taskId)` 读库后判定：`cancelRequestedAt != null` 或 `state == CANCELLED` → 抛 `TASK_CANCELLED`；其他终态 → 抛 `TASK_CANCELLED`；超过 `deadlineAt` → 抛 `TASK_DEADLINE` [E3]。\n- `requireActiveLocked(taskId)` 用 `SELECT ... FOR UPDATE` 在同一事务内取任务行，注释明确目的是「使取消、期限收敛与结果发布串行化」[E3]。\n- 类注释也点明设计意图：取消可能发生在任意调用之间，执行器必须在**每次新调用前**检查，不能只靠终态更新事后补救 [E3]。\n\n### 检查点分布（`SpecialistTaskWorker`）\n\n| 位置 | 作用 |\n|---|---|\n| `executeTarget` 开头 | 目标开始前拒绝已取消任务 [E4] |\n| 每个 unit 循环开始 | 规划出的每个单元执行前检查 [E4] |\n| unit 执行成功后、标记 SUCCEEDED 前 | 防止把取消后的单元记为成功 [E4] |\n| `executeUnit` 每次 attempt 开头 | 格式重试的每一轮都重新检查 [E5] |\n| `invocation.invoke(...)` 返回后立即 | **关键**：模型已返回但任务已取消时，结果不进入解析/校验/收集 [E5] |\n| 发布事务内 `requireActiveLocked` | 见第 3 节 |\n\n### 调用层自身的保护（`ModelInvocationService`）\n\n- `activeScope(scope)` 对带 `taskId` 的调用调用 `guard.requireActive`，并顺带把任务 deadline 收窄进 scope [E6]。\n- 调用顺序为：容量判断 → 每轮 attempt 先 `activeScope` → `timeoutFor` → 取并发许可 → **再** `activeScope` + `timeoutFor` → 预留额度 → 落盘 `model_call` → **发送前第三次** `activeScope` + `timeoutFor`，若此时已取消则 `finishFailure(call, stopped, null)` 并抛出，**不发送 HTTP** [E7]。代码注释明确「等待许可和请求落盘都可能跨过取消或期限；以真正发送前的状态为准」[E7]。\n- 重试之间也会 `activeScope` 后再 `waitBeforeRetry` [E7]，避免取消后继续重试。\n- 并发许可等待受 deadline 约束，超时抛 `TASK_DEADLINE` 而非无限排队 [E8]。\n\n## 3. 结果发布：事务内加锁复核 + 条件更新兜底\n\n发布路径只有一处：`SpecialistTaskWorker` 在 `db.inTransaction` 内先 `guard.requireActiveLocked(taskId)`，再 `publisher.publish(...)`，然后 `finishTarget(...)`；若 `finishTarget` 返回 0 行（目标已被取消/已终态），抛 `TASK_CANCELLED(\"目标已结束，拒绝迟到发布\")`，**整个事务回滚**，已插入的 `review_result`/`issue` 一并撤销 [E9]。\n\n- `publish` 自身也开事务（`db.inTransaction`），`inTransaction` 是 `transactionTemplate.execute`，异常整体回滚 [E10][E11]。由于外层已开事务，内层加入同一事务，因此回滚能覆盖结果与问题插入 [E9][E10]。\n- `requireActiveLocked` 的 `FOR UPDATE` 与 `cancel` 的 `UPDATE ... WHERE state IN (QUEUED,RUNNING)` 在任务行上互斥：若取消先提交，锁后读到的 `cancelRequestedAt` 非空 → 抛 `TASK_CANCELLED`，发布不发生；若发布先持锁，取消的 UPDATE 会阻塞到发布事务结束，此时目标已被 `finishTarget` 置为终态，取消的 `notIn(TARGET_TERMINAL)` 更新影响 0 行，不会覆盖已发布结果 [E2][E9]。\n- `finishTarget` 使用 `notIn(state, TARGET_TERMINAL)` 条件更新，是「迟到发布」的最后一道闸 [E12]。\n\n### 调度层兜底\n\n- `TaskDispatchService.finish` 只允许把 `RUNNING` 改为终态，且成功态额外要求 `cancelRequestedAt IS NULL`，注释说明「避免取消与成功竞争时取消先落库却被覆盖」[E13]。\n- worker 抛 `TASK_CANCELLED` 时调度层写 `CANCELLED/USER_CANCELLED`，并 `closeOpenTargets` 收敛未完成目标 [E13][E14]。\n- `execute` 中任一目标抛 `TASK_CANCELLED`/`TASK_DEADLINE` 时，会对其他目标 `future.cancel(true)` 并向上抛出 [E15]；`finally` 里 `pool.shutdownNow()` [E15]。\n\n## 4. 仍需运行测试才能确认的边界\n\n1. **在途 HTTP 请求不会被中止**：`cancel` 不中断线程，`transport.post` 也没有取消钩子；取消只能让返回结果被丢弃，网络请求与 token 消耗仍会发生。取消后 `model_call` 行的最终状态（`SUCCEEDED` 还是 `FAILED`）取决于返回时机，需实测。\n2. **`future.cancel(true)` 的实际效果**：`transport.post` 是否响应中断、中断后 `model_call` 是否被正确收尾（`finishFailure` 是否执行），代码中看不到保证，需测试。\n3. **`FOR UPDATE` 的隔离级别与锁语义**：`AgentDatabase` 只显示使用 `transactionTemplate`，未显示隔离级别配置 [E11]；在 MySQL 默认 RR 下 `SELECT ... FOR UPDATE` 与 `cancel` 的 `UPDATE` 的阻塞/可见性行为需实测确认「取消先提交则发布必被拒」。\n4. **`cancel` 与 `finishTarget` 的竞态窗口**：`cancel` 的目标批量更新与发布事务内的 `finishTarget` 都基于 `notIn(TARGET_TERMINAL)`，两者并发时谁先提交决定结果，需并发测试验证不会出现「结果已插入但目标被标 CANCELLED」或反之。\n5. **`cancel` 未包在单一事务内**：任务更新与目标更新是两次独立 `update` [E2]，中间崩溃会留下「任务 CANCELLED、目标仍 RUNNING」的中间态；后续靠 `closeOpenTargets`/守卫收敛，需故障注入验证。\n6. **`isCancelled` 无调用方**：`TaskExecutionGuard.isCancelled` 在全仓仅定义处命中 [E16]，说明没有「软检查」路径，所有拦截都依赖抛异常；若某条新路径只做布尔判断而不抛异常，需另行确认。\n7. **`requireActiveLocked` 仅一处使用**：全仓只有发布事务调用它 [E17]，其他写入（如 `updateUnit`、`linkMaterials`）不受行锁保护，取消后这些行仍可能被更新，需测试确认是否可接受。\n8. **`executeUnit` 的 `finally { linkMaterials(...) }`**：即使因取消抛出，仍会执行材料关联写入 [E5]，取消后是否应写这些行需业务确认与测试。\n9. **`waitBeforeRetry` 的 `Thread.sleep`**：取消不会唤醒睡眠中的线程，最长需等一个重试间隔才被下一次 `activeScope` 发现 [E6]。\n10. **`TASK_CANCELLED` 映射为 HTTP 409 且不可重试** [E18]，前端/调用方对取消后错误码的处理需端到端验证。\n\n## 限制\n\n本次仅静态阅读 `service`/`execution`/`invocation` 相关源码，未运行任何测试；上述边界均为代码推断，需以实际测试结果为准。",
+    "citations": [
+      {
+        "id": "E1",
+        "materialId": "M1",
+        "startLine": 71,
+        "endLine": 73
+      },
+      {
+        "id": "E2",
+        "materialId": "M8",
+        "startLine": 190,
+        "endLine": 226
+      },
+      {
+        "id": "E3",
+        "materialId": "M9",
+        "startLine": 12,
+        "endLine": 62
+      },
+      {
+        "id": "E4",
+        "materialId": "M11",
+        "startLine": 190,
+        "endLine": 226
+      },
+      {
+        "id": "E5",
+        "materialId": "M12",
+        "startLine": 284,
+        "endLine": 330
+      },
+      {
+        "id": "E6",
+        "materialId": "M14",
+        "startLine": 290,
+        "endLine": 305
+      },
+      {
+        "id": "E7",
+        "materialId": "M13",
+        "startLine": 68,
+        "endLine": 120
+      },
+      {
+        "id": "E8",
+        "materialId": "M40",
+        "startLine": 28,
+        "endLine": 60
+      },
+      {
+        "id": "E9",
+        "materialId": "M12",
+        "startLine": 255,
+        "endLine": 268
+      },
+      {
+        "id": "E10",
+        "materialId": "M10",
+        "startLine": 58,
+        "endLine": 62
+      },
+      {
+        "id": "E11",
+        "materialId": "M54",
+        "startLine": 104,
+        "endLine": 107
+      },
+      {
+        "id": "E12",
+        "materialId": "M15",
+        "startLine": 434,
+        "endLine": 445
+      },
+      {
+        "id": "E13",
+        "materialId": "M37",
+        "startLine": 108,
+        "endLine": 135
+      },
+      {
+        "id": "E14",
+        "materialId": "M39",
+        "startLine": 143,
+        "endLine": 166
+      },
+      {
+        "id": "E15",
+        "materialId": "M11",
+        "startLine": 150,
+        "endLine": 186
+      },
+      {
+        "id": "E16",
+        "materialId": "M41",
+        "startLine": 57,
+        "endLine": 61
+      },
+      {
+        "id": "E17",
+        "materialId": "M19",
+        "startLine": 259,
+        "endLine": 259
+      },
+      {
+        "id": "E18",
+        "materialId": "M28",
+        "startLine": 39,
+        "endLine": 39
+      }
+    ],
+    "unresolved": [
+      "未运行测试：在途 HTTP 请求是否可被中断、中断后 model_call 收尾是否正确",
+      "AgentDatabase 的事务隔离级别配置未在已读范围内出现，FOR UPDATE 与 cancel UPDATE 的实际锁行为需实测",
+      "cancel 的任务更新与目标更新未包在同一事务，崩溃中间态的收敛需故障注入验证",
+      "executeUnit 的 finally 中 linkMaterials 在取消路径仍会写入，是否符合预期需业务确认"
+    ]
+  },
+  "repeatToolRequests": 0,
+  "totalMillis": 114719.0,
+  "summary": {
+    "rounds": 14,
+    "toolCalls": 24,
+    "maxRequestBytes": 127720,
+    "maxInputEstimate": 128408,
+    "inputTokens": 293312,
+    "outputTokens": 5235,
+    "networkMillis": 64145.0
+  }
+}

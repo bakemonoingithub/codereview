@@ -1,26 +1,20 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ProjectList from '@/views/ProjectList.vue'
-import { namedAntStubs } from '@/testUtils/antStubs'
+import { attrsStub, namedAntStubs } from '@/testUtils/antStubs'
 
-/**
- * 列表级错误态（A 批 E7）。
- *
- * 回归背景：`load()` 原先**没有 catch**，请求失败时表格永远空着、
- * 既没有提示也没有重试入口 —— 用户分不清"没有数据"和"接口挂了"。
- */
-vi.mock('@/api/project', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/api/project')>()
-  return { ...actual, listProjects: vi.fn(), createProject: vi.fn() }
-})
+vi.mock('@/api/v2', () => ({
+  projectsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn() }
+}))
 
-import { listProjects } from '@/api/project'
+import { projectsApi } from '@/api/v2'
 
 const options = {
   global: {
     stubs: {
       ...namedAntStubs,
+      'a-modal': { ...attrsStub('a-modal-stub'), name: 'AModal' },
       'a-table': false,
       'a-table-column': false
     }
@@ -29,55 +23,91 @@ const options = {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
-describe('ProjectList 加载失败', () => {
-  it('给出可重试的错误提示，而不是一直空白', async () => {
-    ;(listProjects as any).mockRejectedValueOnce(
-      new Error('无法连接服务器，请检查网络或后端服务是否已启动')
-    )
+const project = {
+  id: 'p1',
+  name: '订单服务',
+  repoUrl: 'https://git.example.com/order',
+  currentBranch: 'main',
+  credentialConfigured: true,
+  revision: 3,
+  createdAt: '2026-10-20T10:00:00',
+  updatedAt: '2026-10-20T10:00:00'
+}
 
+beforeEach(() => {
+  vi.clearAllMocks()
+  ;(projectsApi.list as any).mockResolvedValue({ items: [], nextCursor: null, hasMore: false })
+})
+
+describe('ProjectList', () => {
+  it('加载失败时给出可重试提示', async () => {
+    ;(projectsApi.list as any).mockRejectedValueOnce(new Error('无法连接服务器'))
     const wrapper = mount(ProjectList, options)
     await flush()
 
-    const alert = wrapper.find('a-alert-stub')
-    expect(alert.exists(), '失败时必须出现错误提示').toBe(true)
-    expect(alert.attributes('message')).toContain('无法连接服务器')
+    const alert = wrapper.find('.load-error')
+    expect(alert.exists()).toBe(true)
+    expect(alert.text()).toContain('无法连接服务器')
     expect(wrapper.findAll('a-button-stub').some((b) => b.text() === '重试')).toBe(true)
   })
 
-  it('点「重试」重新请求，成功后提示消失', async () => {
-    ;(listProjects as any).mockRejectedValueOnce(new Error('请求超时，请稍后重试'))
-
+  it('重试成功后提示消失并显示数据', async () => {
+    ;(projectsApi.list as any).mockRejectedValueOnce(new Error('请求超时'))
     const wrapper = mount(ProjectList, options)
     await flush()
-    expect(wrapper.find('a-alert-stub').exists()).toBe(true)
 
-    ;(listProjects as any).mockResolvedValueOnce({ records: [{ id: '1', name: '演示项目' }] })
+    ;(projectsApi.list as any).mockResolvedValueOnce({
+      items: [project],
+      nextCursor: null,
+      hasMore: false
+    })
     const retry = wrapper.findAll('a-button-stub').find((b) => b.text() === '重试')!
     await retry.trigger('click')
     await flush()
 
-    expect(wrapper.find('a-alert-stub').exists()).toBe(false)
-    expect(wrapper.text()).toContain('演示项目')
+    expect(wrapper.find('.load-error').exists()).toBe(false)
+    expect(wrapper.text()).toContain('订单服务')
   })
 
-  it('加载成功时不渲染错误提示', async () => {
-    ;(listProjects as any).mockResolvedValueOnce({ records: [] })
-
-    const wrapper = mount(ProjectList, options)
-    await flush()
-
-    expect(wrapper.find('a-alert-stub').exists()).toBe(false)
-  })
-
-  /** C1：无数据时不能只有一行"暂无数据"，要告诉用户下一步做什么 */
-  it('无数据时给出空态引导与新建入口', async () => {
-    ;(listProjects as any).mockResolvedValueOnce({ records: [] })
-
+  it('空列表给出创建入口', async () => {
     const wrapper = mount(ProjectList, options)
     await flush()
 
     expect(wrapper.text()).toContain('还没有项目')
-    expect(wrapper.text()).toContain('Gitea')
     expect(wrapper.findAll('a-button-stub').some((b) => b.text() === '新建项目')).toBe(true)
+  })
+
+  it('编辑时仓库地址锁定，令牌留空保留', async () => {
+    ;(projectsApi.list as any).mockResolvedValue({
+      items: [project],
+      nextCursor: null,
+      hasMore: false
+    })
+    const wrapper = mount(ProjectList, options)
+    await flush()
+
+    const edit = wrapper.findAll('a-button-stub').find((b) => b.text() === '编辑')!
+    await edit.trigger('click')
+    await flush()
+
+    expect(wrapper.find('a-input-stub[disabled]').exists()).toBe(true)
+    expect(wrapper.find('a-input-password-stub').attributes('placeholder')).toContain('留空不修改')
+    expect(projectsApi.update).not.toHaveBeenCalled()
+  })
+
+  it('确认后删除项目；进行中的任务由接口拒绝并保留提示', async () => {
+    ;(projectsApi.list as any).mockResolvedValue({ items: [project], nextCursor: null, hasMore: false })
+    ;(projectsApi.remove as any).mockRejectedValue(new Error('该项目仍有 1 个进行中的审查任务，完成或取消后再删除'))
+    const wrapper = mount(ProjectList, options)
+    await flush()
+    const remove = wrapper.findAll('a-button-stub').find((b) => b.text() === '删除')!
+    await remove.trigger('click')
+    await flush()
+    const s = (wrapper.vm as any).$.setupState
+    expect(s.confirmOpen).toBe(true)
+    await expect(s.confirmDelete()).rejects.toThrow('进行中')
+    expect(projectsApi.remove).toHaveBeenCalledWith('p1')
+    expect(s.deleteError).toContain('进行中')
+    expect(s.confirmOpen).toBe(true)
   })
 })

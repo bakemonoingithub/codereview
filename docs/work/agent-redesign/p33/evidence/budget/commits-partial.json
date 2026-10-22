@@ -1,0 +1,1287 @@
+{
+  "task": "commits",
+  "requirements": "对所选非连续比较C1与C2分别说明它们改变了什么，重点核对C1的任务名称处理和C2的报告事实保真改动。不要用首尾净差异替代两次比较，引用各自固定版本的代码。",
+  "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+  "modelName": "deepseek-flash",
+  "configRevision": 2,
+  "fixedSha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+  "versions": {
+    "V1": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+    "V2": "2660ce0bb90bee33fc0573e672a58d38a339d4c7",
+    "V3": "0343a9566d2c2e3112c0ac5102887f625e875f9d",
+    "V4": "dfe2d5d7668182136eed47c9d4cb3e81b561f1e6"
+  },
+  "configuration": {
+    "maxRounds": 48,
+    "requestTimeoutSeconds": 120,
+    "maxOutputTokens": 16384,
+    "mode": "reasoning_effort=none",
+    "transportRetries": 0,
+    "scope": "isolated P33.1 experiment; API-backed temporary tools"
+  },
+  "calls": [
+    {
+      "turn": 1,
+      "durationMillis": 4000.0,
+      "serializedRequestBytes": 4357,
+      "inputEstimate": 4453,
+      "usage": {
+        "prompt_tokens": 1397,
+        "completion_tokens": 81,
+        "total_tokens": 1478,
+        "prompt_tokens_details": {
+          "cached_tokens": 1152
+        },
+        "prompt_cache_hit_tokens": 1152,
+        "prompt_cache_miss_tokens": 245
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "我会先查看两次比较各自改动了哪些文件。",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_3o0xIPEA4Eq7ZqdMYmSw3735",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_JSoWtEgP1BA3D9zeEmf29407",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 0
+    },
+    {
+      "turn": 2,
+      "durationMillis": 3453.0,
+      "serializedRequestBytes": 11335,
+      "inputEstimate": 11479,
+      "usage": {
+        "prompt_tokens": 3070,
+        "completion_tokens": 198,
+        "total_tokens": 3268,
+        "prompt_tokens_details": {
+          "cached_tokens": 1408
+        },
+        "prompt_cache_hit_tokens": 1408,
+        "prompt_cache_miss_tokens": 1662
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_OVKYZvsjORTzs4Oiqtl51343",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/service/TaskNames.java\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_dXT7gYjAeLLOAYxhWdyM1983",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/service/TaskService.java\"}"
+            }
+          },
+          {
+            "index": 2,
+            "id": "call_02_E3WvOH47x1TiesErS4r87406",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 0
+    },
+    {
+      "turn": 3,
+      "durationMillis": 4719.0,
+      "serializedRequestBytes": 57317,
+      "inputEstimate": 57525,
+      "usage": {
+        "prompt_tokens": 15097,
+        "completion_tokens": 254,
+        "total_tokens": 15351,
+        "prompt_tokens_details": {
+          "cached_tokens": 3200
+        },
+        "prompt_cache_hit_tokens": 3200,
+        "prompt_cache_miss_tokens": 11897
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_XwdqvCePKmrN9fSqDKZQ8525",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/dto/TaskDtos.java\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_h6ItdpxoXqxapsA9ym3V6497",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/resources/db/agent-migration/V5__review_task_name.sql\"}"
+            }
+          },
+          {
+            "index": 2,
+            "id": "call_02_Orgw6UfLF3OA41tt2UI13920",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/utils/taskLabel.ts\"}"
+            }
+          },
+          {
+            "index": 3,
+            "id": "call_03_1ApcIV0dqFRgyJkh2oaF7169",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportDispatchService.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 33
+    },
+    {
+      "turn": 4,
+      "durationMillis": 4640.0,
+      "serializedRequestBytes": 78668,
+      "inputEstimate": 78956,
+      "usage": {
+        "prompt_tokens": 20615,
+        "completion_tokens": 185,
+        "total_tokens": 20800,
+        "prompt_tokens_details": {
+          "cached_tokens": 15232
+        },
+        "prompt_cache_hit_tokens": 15232,
+        "prompt_cache_miss_tokens": 5383
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_1eXPHlRMGWI4JtvxYfMS6498",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/ReportCreate.vue\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_drKR85WyyJnTfJps6szq3476",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/views/ReportCreate.vue\"}"
+            }
+          },
+          {
+            "index": 2,
+            "id": "call_02_9eAFl6GAvfmYkxIOPWaF9832",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 47
+    },
+    {
+      "turn": 5,
+      "durationMillis": 6937.0,
+      "serializedRequestBytes": 118243,
+      "inputEstimate": 118595,
+      "usage": {
+        "prompt_tokens": 31730,
+        "completion_tokens": 130,
+        "total_tokens": 31860,
+        "prompt_tokens_details": {
+          "cached_tokens": 20736
+        },
+        "prompt_cache_hit_tokens": 20736,
+        "prompt_cache_miss_tokens": 10994
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_yqiIP1e9GjUTdPtDwatf7522",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/work/agent-redesign/p32/p32-4-7-review-fixes.md\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_qlR9EQVX4regzXyyTRFG3222",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/components/ReportSourceDrawer.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 81
+    },
+    {
+      "turn": 6,
+      "durationMillis": 4781.0,
+      "serializedRequestBytes": 149520,
+      "inputEstimate": 149920,
+      "usage": {
+        "prompt_tokens": 40492,
+        "completion_tokens": 200,
+        "total_tokens": 40692,
+        "prompt_tokens_details": {
+          "cached_tokens": 31744
+        },
+        "prompt_cache_hit_tokens": 31744,
+        "prompt_cache_miss_tokens": 8748
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_2Az5cZ5idAbBUvajGE0I6139",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/service/ReportInputService.java\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_VY41jJAWUvXgfVXvNniR8784",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/dto/ReportDtos.java\"}"
+            }
+          },
+          {
+            "index": 2,
+            "id": "call_02_KPbpRCfjMTsmyO3UuDEu4390",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportGenerationProperties.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 96
+    },
+    {
+      "turn": 7,
+      "durationMillis": 4344.0,
+      "serializedRequestBytes": 159062,
+      "inputEstimate": 159526,
+      "usage": {
+        "prompt_tokens": 43011,
+        "completion_tokens": 129,
+        "total_tokens": 43140,
+        "prompt_tokens_details": {
+          "cached_tokens": 40576
+        },
+        "prompt_cache_hit_tokens": 40576,
+        "prompt_cache_miss_tokens": 2435
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_cTHB6QtW20SobtEMQToD1535",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/ReviewLaunch.vue\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_91dbvObXT33r6rv59h0h5374",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/entity/AgentReviewTask.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 102
+    },
+    {
+      "turn": 8,
+      "durationMillis": 3687.0,
+      "serializedRequestBytes": 179159,
+      "inputEstimate": 179671,
+      "usage": {
+        "prompt_tokens": 48879,
+        "completion_tokens": 81,
+        "total_tokens": 48960,
+        "prompt_tokens_details": {
+          "cached_tokens": 43136
+        },
+        "prompt_cache_hit_tokens": 43136,
+        "prompt_cache_miss_tokens": 5743
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_tyCHAbIsuxfFXZy3m71l5815",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/ReviewLaunch.vue\", \"cursor\": \"10\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 124
+    },
+    {
+      "turn": 9,
+      "durationMillis": 5046.0,
+      "serializedRequestBytes": 195753,
+      "inputEstimate": 196297,
+      "usage": {
+        "prompt_tokens": 53848,
+        "completion_tokens": 118,
+        "total_tokens": 53966,
+        "prompt_tokens_details": {
+          "cached_tokens": 48896
+        },
+        "prompt_cache_hit_tokens": 48896,
+        "prompt_cache_miss_tokens": 4952
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_FDmSUpd2yQVVROKH1H1W9115",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/api/v2.ts\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_NPnUHfofNEXbecvQATXm0384",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/ReviewCenter.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 140
+    },
+    {
+      "turn": 10,
+      "durationMillis": 5515.0,
+      "serializedRequestBytes": 212327,
+      "inputEstimate": 212919,
+      "usage": {
+        "prompt_tokens": 58928,
+        "completion_tokens": 136,
+        "total_tokens": 59064,
+        "prompt_tokens_details": {
+          "cached_tokens": 53888
+        },
+        "prompt_cache_hit_tokens": 53888,
+        "prompt_cache_miss_tokens": 5040
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_irsEduBV0wBYHh9EHFKK3625",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_Gcsp4EcoMgHNikDqAhwy0718",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/main/java/com/codereview/agent/service/AgentProjectService.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 162
+    },
+    {
+      "turn": 11,
+      "durationMillis": 4969.0,
+      "serializedRequestBytes": 223426,
+      "inputEstimate": 224066,
+      "usage": {
+        "prompt_tokens": 61950,
+        "completion_tokens": 121,
+        "total_tokens": 62071,
+        "prompt_tokens_details": {
+          "cached_tokens": 59008
+        },
+        "prompt_cache_hit_tokens": 59008,
+        "prompt_cache_miss_tokens": 2942
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_ZzZQO8gsIbMvtGIgFN592464",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/TaskDetail.vue\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_HFxv0leaLx4Yqj9H5VbE5366",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/ProjectList.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 170
+    },
+    {
+      "turn": 12,
+      "durationMillis": 5062.0,
+      "serializedRequestBytes": 244760,
+      "inputEstimate": 245448,
+      "usage": {
+        "prompt_tokens": 68166,
+        "completion_tokens": 121,
+        "total_tokens": 68287,
+        "prompt_tokens_details": {
+          "cached_tokens": 61952
+        },
+        "prompt_cache_hit_tokens": 61952,
+        "prompt_cache_miss_tokens": 6214
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_v8Fu0QYloHGcDdmLKgDG6455",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/views/ReportDetail.vue\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_HDoy8v5ue5wiBSKLngVY3793",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/views/ReportList.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 194
+    },
+    {
+      "turn": 13,
+      "durationMillis": 4750.0,
+      "serializedRequestBytes": 260592,
+      "inputEstimate": 261328,
+      "usage": {
+        "prompt_tokens": 72768,
+        "completion_tokens": 122,
+        "total_tokens": 72890,
+        "prompt_tokens_details": {
+          "cached_tokens": 68224
+        },
+        "prompt_cache_hit_tokens": 68224,
+        "prompt_cache_miss_tokens": 4544
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_LWJK0uz97sKBXuO5clAZ2643",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/components/ReportSourceDrawer.vue\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_F5cBPo2xRSyi4RLPPTs99951",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/components/MaterialReaderModal.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 208
+    },
+    {
+      "turn": 14,
+      "durationMillis": 4375.0,
+      "serializedRequestBytes": 272326,
+      "inputEstimate": 273110,
+      "usage": {
+        "prompt_tokens": 76230,
+        "completion_tokens": 121,
+        "total_tokens": 76351,
+        "prompt_tokens_details": {
+          "cached_tokens": 72832
+        },
+        "prompt_cache_hit_tokens": 72832,
+        "prompt_cache_miss_tokens": 3398
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_9SlRjm3S0u46xuB7WilG8304",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/CodeBrowser.vue\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_ldsN66akckgRd2qnOhBa5390",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/components/ScopePickerModal.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 220
+    },
+    {
+      "turn": 15,
+      "durationMillis": 5078.0,
+      "serializedRequestBytes": 302784,
+      "inputEstimate": 303616,
+      "usage": {
+        "prompt_tokens": 84919,
+        "completion_tokens": 119,
+        "total_tokens": 85038,
+        "prompt_tokens_details": {
+          "cached_tokens": 76288
+        },
+        "prompt_cache_hit_tokens": 76288,
+        "prompt_cache_miss_tokens": 8631
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_1aqXHOL51r4yXhGFeZ3W2349",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/utils/markdown.ts\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_X51FYcErvViSB6lzZ5555774",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/components/CallReaderModal.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 248
+    },
+    {
+      "turn": 16,
+      "durationMillis": 4969.0,
+      "serializedRequestBytes": 310006,
+      "inputEstimate": 310886,
+      "usage": {
+        "prompt_tokens": 87123,
+        "completion_tokens": 138,
+        "total_tokens": 87261,
+        "prompt_tokens_details": {
+          "cached_tokens": 84992
+        },
+        "prompt_cache_hit_tokens": 84992,
+        "prompt_cache_miss_tokens": 2131
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_qgD8DiMBYQNLJzScCuR52398",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/test/java/com/codereview/agent/service/TaskServiceTest.java\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_ZmxtzhpaqVFT3R3JRGOt4036",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/test/java/com/codereview/agent/report/ReportFactsBuilderTest.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 254
+    },
+    {
+      "turn": 17,
+      "durationMillis": 4921.0,
+      "serializedRequestBytes": 331126,
+      "inputEstimate": 332054,
+      "usage": {
+        "prompt_tokens": 92882,
+        "completion_tokens": 131,
+        "total_tokens": 93013,
+        "prompt_tokens_details": {
+          "cached_tokens": 87168
+        },
+        "prompt_cache_hit_tokens": 87168,
+        "prompt_cache_miss_tokens": 5714
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_6EW8VXALxtXM8c2AgnWN7107",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/__tests__/ReportCreate.spec.ts\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_nEtMYS5N0tgmAS3s6ky40035",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/views/__tests__/ReportCreate.spec.ts\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 264
+    },
+    {
+      "turn": 18,
+      "durationMillis": 5156.0,
+      "serializedRequestBytes": 344960,
+      "inputEstimate": 345936,
+      "usage": {
+        "prompt_tokens": 97260,
+        "completion_tokens": 139,
+        "total_tokens": 97399,
+        "prompt_tokens_details": {
+          "cached_tokens": 92928
+        },
+        "prompt_cache_hit_tokens": 92928,
+        "prompt_cache_miss_tokens": 4332
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_NDUMSwtBrXy6l2kuoNBU0492",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/test/java/com/codereview/agent/report/ReportDispatchServiceTest.java\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_uX1BRubCg7Yf8KBey7U07692",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/test/java/com/codereview/agent/report/ReportExecutionWorkerTest.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 272
+    },
+    {
+      "turn": 19,
+      "durationMillis": 4610.0,
+      "serializedRequestBytes": 361685,
+      "inputEstimate": 362709,
+      "usage": {
+        "prompt_tokens": 101670,
+        "completion_tokens": 124,
+        "total_tokens": 101794,
+        "prompt_tokens_details": {
+          "cached_tokens": 97280
+        },
+        "prompt_cache_hit_tokens": 97280,
+        "prompt_cache_miss_tokens": 4390
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_UumhMpNeBui76oRCjeZi0160",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"backend/src/main/resources/application.example.yml\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_NoOZnD2mQOys38BKUzb79014",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/work/agent-redesign/p32/p32-4-report-generation.md\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 277
+    },
+    {
+      "turn": 20,
+      "durationMillis": 5047.0,
+      "serializedRequestBytes": 367812,
+      "inputEstimate": 368884,
+      "usage": {
+        "prompt_tokens": 103534,
+        "completion_tokens": 134,
+        "total_tokens": 103668,
+        "prompt_tokens_details": {
+          "cached_tokens": 101760
+        },
+        "prompt_cache_hit_tokens": 101760,
+        "prompt_cache_miss_tokens": 1774
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_a6XVhIB1LsvUik69dJaj1852",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/__tests__/ReviewLaunch.spec.ts\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_WzqQzjCxyLTZEtLwVXrH9212",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"backend/src/test/java/com/codereview/agent/service/AgentProjectServiceTest.java\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 281
+    },
+    {
+      "turn": 21,
+      "durationMillis": 5094.0,
+      "serializedRequestBytes": 389358,
+      "inputEstimate": 390478,
+      "usage": {
+        "prompt_tokens": 109994,
+        "completion_tokens": 131,
+        "total_tokens": 110125,
+        "prompt_tokens_details": {
+          "cached_tokens": 103552
+        },
+        "prompt_cache_hit_tokens": 103552,
+        "prompt_cache_miss_tokens": 6442
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_mYStLnEqSWRpzHnzdsdk4317",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/__tests__/ProjectList.spec.ts\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_2CDVmNFqSeA7jxwezWpN1344",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/components/__tests__/MaterialReaderModal.spec.ts\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 297
+    },
+    {
+      "turn": 22,
+      "durationMillis": 5907.0,
+      "serializedRequestBytes": 397791,
+      "inputEstimate": 398959,
+      "usage": {
+        "prompt_tokens": 112623,
+        "completion_tokens": 120,
+        "total_tokens": 112743,
+        "prompt_tokens_details": {
+          "cached_tokens": 110080
+        },
+        "prompt_cache_hit_tokens": 110080,
+        "prompt_cache_miss_tokens": 2543
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_BRrZyPWatPwWoOBDE04x8243",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/STATE.md\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_MrSrhtLnE8cV5fX3OsbL5174",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/work/agent-redesign/p32/p32-5-report-ui.md\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 303
+    },
+    {
+      "turn": 23,
+      "durationMillis": 6047.0,
+      "serializedRequestBytes": 412870,
+      "inputEstimate": 414086,
+      "usage": {
+        "prompt_tokens": 117085,
+        "completion_tokens": 132,
+        "total_tokens": 117217,
+        "prompt_tokens_details": {
+          "cached_tokens": 112640
+        },
+        "prompt_cache_hit_tokens": 112640,
+        "prompt_cache_miss_tokens": 4445
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_rrSQ3DD2OavhXmx4oHPH6505",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/components/__tests__/ReportSourceDrawer.spec.ts\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_FnjafGRmfvgdIr2AsNLP9701",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/views/__tests__/ReportDetail.spec.ts\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 309
+    },
+    {
+      "turn": 24,
+      "durationMillis": 6422.0,
+      "serializedRequestBytes": 425650,
+      "inputEstimate": 426914,
+      "usage": {
+        "prompt_tokens": 121051,
+        "completion_tokens": 121,
+        "total_tokens": 121172,
+        "prompt_tokens_details": {
+          "cached_tokens": 117120
+        },
+        "prompt_cache_hit_tokens": 117120,
+        "prompt_cache_miss_tokens": 3931
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_qkZHZpeXJjBBboz2Wl0E3108",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/components.d.ts\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_8TDLSYQpgUIY2jsK3PBx7877",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/work/agent-redesign/p32/p32-7-delivery.md\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 314
+    },
+    {
+      "turn": 25,
+      "durationMillis": 5157.0,
+      "serializedRequestBytes": 441584,
+      "inputEstimate": 442896,
+      "usage": {
+        "prompt_tokens": 125705,
+        "completion_tokens": 118,
+        "total_tokens": 125823,
+        "prompt_tokens_details": {
+          "cached_tokens": 121088
+        },
+        "prompt_cache_hit_tokens": 121088,
+        "prompt_cache_miss_tokens": 4617
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_Sq4F3nP276tzNs6v6zVT0181",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/ROADMAP.md\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_LSnKYhxvAHK23eW9JGrz4692",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/work/agent-redesign/p32/README.md\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 322
+    },
+    {
+      "turn": 26,
+      "durationMillis": 6344.0,
+      "serializedRequestBytes": 448360,
+      "inputEstimate": 449720,
+      "usage": {
+        "prompt_tokens": 127841,
+        "completion_tokens": 130,
+        "total_tokens": 127971,
+        "prompt_tokens_details": {
+          "cached_tokens": 125696
+        },
+        "prompt_cache_hit_tokens": 125696,
+        "prompt_cache_miss_tokens": 2145
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_ScEEsxe5MCpX2zf6ga7V3912",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"docs/work/agent-redesign/p32/p32-6-validation.md\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_UiHDQDkiJMGeCI1FwBV36835",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C2\", \"path\": \"frontend/src/views/__tests__/ReportList.spec.ts\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 326
+    },
+    {
+      "turn": 27,
+      "durationMillis": 8391.0,
+      "serializedRequestBytes": 455567,
+      "inputEstimate": 456975,
+      "usage": {
+        "prompt_tokens": 130038,
+        "completion_tokens": 117,
+        "total_tokens": 130155,
+        "prompt_tokens_details": {
+          "cached_tokens": 127872
+        },
+        "prompt_cache_hit_tokens": 127872,
+        "prompt_cache_miss_tokens": 2166
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_tC0HQEoxx4BO7Nurjbvi3677",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"b8b0b50e4cce07188debd775ee80f70e13709cf5\", \"path\": \"frontend/src/components/CodeViewer.vue\", \"start\": 1, \"end\": 80}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 330
+    },
+    {
+      "turn": 28,
+      "durationMillis": 5531.0,
+      "serializedRequestBytes": 456062,
+      "inputEstimate": 457502,
+      "usage": {
+        "prompt_tokens": 130188,
+        "completion_tokens": 65,
+        "total_tokens": 130253,
+        "prompt_tokens_details": {
+          "cached_tokens": 130048
+        },
+        "prompt_cache_hit_tokens": 130048,
+        "prompt_cache_miss_tokens": 140
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_0ENBvP0tyfAsQzsFODki3578",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/components/CodeViewer.vue\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 330
+    },
+    {
+      "turn": 29,
+      "durationMillis": 6156.0,
+      "serializedRequestBytes": 461126,
+      "inputEstimate": 462598,
+      "usage": {
+        "prompt_tokens": 131911,
+        "completion_tokens": 81,
+        "total_tokens": 131992,
+        "prompt_tokens_details": {
+          "cached_tokens": 130176
+        },
+        "prompt_cache_hit_tokens": 130176,
+        "prompt_cache_miss_tokens": 1735
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_FmwC17IQ87gGTvzmAyZ25409",
+            "type": "function",
+            "function": {
+              "name": "read_diff",
+              "arguments": "{\"comparisonId\": \"C1\", \"path\": \"frontend/src/views/CodeBrowser.vue\", \"cursor\": \"10\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 331
+    },
+    {
+      "turn": 30,
+      "durationMillis": 24047.0,
+      "serializedRequestBytes": 465314,
+      "inputEstimate": 466818,
+      "usage": {
+        "prompt_tokens": 133471,
+        "completion_tokens": 5574,
+        "total_tokens": 139045,
+        "prompt_tokens_details": {
+          "cached_tokens": 131968
+        },
+        "prompt_cache_hit_tokens": 131968,
+        "prompt_cache_miss_tokens": 1503
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_sr8DjswtqSoC1HEQCATU1114",
+            "type": "function",
+            "function": {
+              "name": "submit_result",
+              "arguments": "{\"title\": \"C1 与 C2 两次非连续比较的独立说明\", \"answerStatus\": \"ANSWERED\", \"markdown\": \"## 结论概览\\n\\nC1 与 C2 是两次**互不连续**的比较：C1 的 head 是 V1（`b8b0b50`），base 是 V2（`2660ce0`）；C2 的 head 是 V3（`0343a95`），base 是 V4（`dfe2d5d`）。两者各自 30 / 24 个文件，且确有 3 个共享文件（`ReportSourceDrawer.vue`、`ReportCreate.vue`、`ReportCreate.spec.ts`），但改动内容完全不同：C1 是\\\"任务名称 + 代码阅读器 + 项目删除\\\"的功能批次，C2 是\\\"报告事实保真 + 异步/失败边界\\\"的审查修复批次。下面分别说明，不把首尾净差异当作任一次比较。\\n\\n---\\n\\n## C1（V2 → V1）：任务名称处理是主线\\n\\n### 1. 任务名称的数据模型与迁移\\n- 新增 `TaskNames` 工具类：名称非空则 `trim()` 返回，否则返回 `\\\"审查任务 \\\" + id`，注释明确\\\"库里的空名称与尚未回填的行都显示为「审查任务 」加任务 ID\\\"[E1]。\\n- `AgentReviewTask` 新增 `name` 字段[E2]；新增迁移 `V5__review_task_name.sql`：先加可空 `VARCHAR(200)`，把 `NULL`/空串回填为 `CONCAT('审查任务 ', id)`，再改为 `NOT NULL`[E3]。\\n\\n### 2. 写入与校验\\n- `TaskService.create` 新增 `task.setName(normalizeName(req.name(), task.getId()))`[E4]；`normalizeName` 对空值走 `TaskNames.display(null, id)`，超 200 字符抛 `VALIDATION_FAILED`（\\\"审查名称不能超过 200 个字符\\\"）[E5]。\\n- DTO 层：`TaskDtos.Create` 增加 `@Size(max = 200) String name`，`View`/`Summary` 在 `id` 之后插入 `name`，`CopyInput` 末尾追加 `name`[E6]。\\n\\n### 3. 读取路径统一走 `TaskNames.display`\\n- `toView` 与 `summary` 都把 `TaskNames.display(task.getName(), task.getId())` 作为第二个参数传入[E7][E8]。\\n- `copyInput` 返回 `TaskNames.display(...)` 作为复制来源名称[E9]。\\n- 报告候选 `ReportInputService.candidates` 在 `taskId` 后插入 `TaskNames.display(...)`，`ReportDtos.Candidate` 相应新增 `taskName` 字段[E10][E11]。\\n\\n### 4. 搜索与前端展示\\n- 列表搜索从\\\"仅按 ID 前缀\\\"改为 `(id likeRight 大写) OR (name like 原样关键词)`[E12]；审查中心占位文案改为\\\"按任务名称或 ID 搜索\\\"，任务列改为显示 `taskLabel(record.name, record.id)` 并把完整 ID 作为副行[E13][E14]。\\n- 新增前端 `taskLabel()`，注释\\\"与后端 TaskNames 相同\\\"，另附 `fileName()` 取路径末段[E15]；`TaskDetail` 标题由 `审查任务 {{ shortId(task.id) }}` 改为 `taskLabel(task.name, task.id)`，并新增\\\"任务 ID\\\"行[E16][E17]。\\n- 发起页 `ReviewLaunch` 新增\\\"审查名称\\\"输入（`maxlength=200`，占位\\\"留空时保存为「审查任务」加任务 ID\\\"），提交时 `...(name ? { name } : {})`[E18][E19]；复制参数时若名称等于 `审查任务 ${copyFrom}` 则视为默认值清空[E20]。\\n- 报告生成页来源列由项目名改为 `taskLabel(record.taskName, record.taskId)`，项目名下沉到副行[E21]。\\n\\n### 5. C1 的其他改动（与名称无关，但同属该批次）\\n- 新增 `CodeViewer.vue`（行号 gutter + `highlightSource` 高亮，未知语言按纯文本转义）[E22]，并替换 `MaterialReaderModal`、`ReportSourceDrawer`、`ScopePickerModal`、`CodeBrowser`、`CallReaderModal` 中的 `<pre>` 手写行号[E23][E24][E25][E26]；`markdown.ts` 新增 `highlightSource`[E27]。\\n- 项目逻辑删除：`ProjectV2Controller` 新增 `DELETE /{id}`[E28]，`AgentProjectService.delete` 在有进行中任务时抛 `CONFLICT`，否则 `deleteById`[E29]；前端 `projectsApi.remove` + `ProjectList` 删除确认弹窗[E30][E31]。\\n- 分支选择：`ReviewLaunch` 分支由文本输入改为 `repositoryApi.branches` 下拉，新增 `refreshBranchOptions`/`syncBranches`，项目切换时不再硬编码 `currentBranch || 'main'`[E32][E33]；`CodeBrowser` 同样在分支不存在时回退到首个真实分支[E34]。\\n- 发起页/生成页由整页改为 `a-modal` 弹窗[E35][E36]；报告生成页新增\\\"查看结果\\\"按钮，调用 `tasksApi.result` 打开 `SpecialistResultView`[E37]。\\n- 测试：`TaskServiceTest` 断言默认名、trim 后名称、201 字符拒绝、`copy.name()`[E38]；`ReviewLaunch.spec.ts` 新增\\\"填写的审查名称随任务提交\\\"等用例[E39]。\\n\\n---\\n\\n## C2（V4 → V3）：报告事实保真 + 异步/失败边界\\n\\n### 1. 事实保真（`ReportFactsBuilder`，核心）\\n- **版本分组身份**：分组键由 `groupLabel()` 改为 `versionKey()`（项目 ID + 完整 head/base SHA），标签再按 key 回查首个来源的 `groupLabel()`[E40]；`groupLabel` 由 `项目名@短SHA` 改为 `项目名（projectId）@完整headSha（父 完整baseSha）`[E41]。\\n- **完整 SHA 进入模型输入**：`sourceText` 中版本、父提交、提交均不再 `shortSha()`，head 为空时用 `nullToUnknown`[E42][E43]。\\n- **结果级评论**：非 ISSUE 类型追加\\\"当时结果级评价与评论：\\\"+`feedbackText(snapshot.resultFeedback)`[E44]；来源摘要计数改为按主体选取 `sourceFeedback = ISSUE ? issueFeedback : resultFeedback`（此前恒用问题级计数）[E44]。\\n- **辅助证据与变更关系**：新增 `bodyIssues = array(body.path(\\\"issues\\\"))`，ISSUE 分支额外对 `issue.evidence` 调 `collectEvidence`；并逐条输出\\\"问题 N 变更关系：…\\\"[E45][E46]。\\n- **材料缺口**：把 `provenance.materialGaps` 的 `code：subject detail` 并入 `missing`[E45]。\\n- **耦合建议**：observation 有 `suggestion` 时输出\\\"建议：\\\"行[E47]。\\n- **取证严格化**：删除\\\"materialId 缺失时按同名 path 取首条材料\\\"的回退，改为记录\\\"材料 X 行 a-b 未关联保存材料\\\"[E48]；证据尾部改为 `to >= lines.length || end > material.endLine` 即返回 `null`（不再 `Math.min` 静默截短）[E49]；证据行尾追加 `side` 与完整 SHA[E50]。\\n- 对应测试新增 4 项：评论（含未判定）、辅助证据/变更关系/材料缺口、同路径不替代且越界不截断、短 SHA 相同的不同版本分组[E51]。\\n\\n### 2. 生成期限与调度失败（`ReportExecutionWorker` / `ReportDispatchService`）\\n- worker 把 `deadline` 计算提前到 `markRunning` 之后、读取来源之前，并在 `finishSuccess` 前检查 `!AgentTime.now().isBefore(deadline)`，超时抛 `UPSTREAM_TIMEOUT`（\\\"迟到正文未发布\\\"）[E52][E53]。\\n- 调度池由 `Executors.newFixedThreadPool`（无界队列）改为 `ThreadPoolExecutor` + `ArrayBlockingQueue(dispatchQueueCapacity)` + `AbortPolicy`[E54]；`terminateQueued` 改名 `terminateActive`，条件由 `state = QUEUED` 改为 `state IN (QUEUED, RUNNING)`，worker 外层 `RuntimeException` 也会结束活动报告[E55]。\\n- 新增配置 `dispatchQueueCapacity = 100`[E56] 与 `application.example.yml` 注释项[E57]。\\n- 测试：`ReportDispatchServiceTest`（新增，满队列失败 + 后台异常只结束活动状态）[E58]、`ReportExecutionWorkerTest` 新增\\\"迟到响应不能发布成功\\\"[E59]。\\n\\n### 3. 前端异步身份隔离\\n- `ReportCreate.vue`：新增 `disposed` + `onBeforeUnmount`，`loadCandidates` 重置 `candidatesLoadingMore`，`loadMoreCandidates` 增加 `candidatesLoading` 守卫，`submit` 增加重入保护、提交时固定 `generation` 参数、离页后不导航[E60][E61][E62]。\\n- `ReportList.vue`：`onBeforeUnmount` 使 `loadEpoch++`，`load()` 重置 `loadingMore`，`loadMore()` 增加 `loading` 守卫[E63]。\\n- `ReportDetail.vue`：新增 `reportEpoch`，路由 id 变化时清空正文/来源/调用/生成表单；`download`、`openGenerate`、`startGeneration` 均校验 `disposed || epoch !== reportEpoch`，下载用发起时的 `current.title`，生成加重入保护[E64][E65]。\\n- `ReportSourceDrawer.vue`：新增 `materialGaps` 列表、问题\\\"变更关系/辅助证据\\\"、模式与观察的\\\"代码依据\\\"、观察\\\"建议\\\"；`locationsText` 改为按 `materialId` 查材料并附 `side` 与 SHA；`issueDetails` 按 `ordinal-1` 取正文问题；卸载时 `loadEpoch++`[E66][E67][E68]。\\n- 测试：`ReportCreate.spec.ts` 新增分页失效、重复提交、离页迟到响应 3 项[E69]；`ReportList.spec.ts` 新增刷新使旧分页失效[E70]；`ReportDetail.spec.ts` 新增切换清空与迟到错误隔离[E71]；新增 `ReportSourceDrawer.spec.ts`[E72]。\\n\\n### 4. 文档与交付边界\\n- 新增 `p32-4-7-review-fixes.md`，以 R01–R11 表格逐条记录触发/修复/验证，并明确\\\"已保存报告保持不可变，本次不重写历史成功正文\\\"[E73]。\\n- `p32-7-delivery.md` 增加\\\"旧脚本适用限制\\\"：`backup.sh` 会自动清理 7 天前备份、`rollback.sh` 只改 `APP_TAG` 不恢复数据库，均不能当作新路线封存/回退脚本[E74]；报告参数表补 `dispatch-queue-capacity`[E75]。\\n- `STATE.md`、`ROADMAP.md`、`p32/README.md`、`p32-4/5/6` 同步补记本轮修复与\\\"未重跑真实模型/未部署\\\"的边界[E76][E77][E78][E79]。\\n\\n---\\n\\n## 两次比较的关系（避免混淆）\\n\\n| 维度 | C1（V2→V1） | C2（V4→V3） |\\n| --- | --- | --- |\\n| 主题 | 任务名称、代码阅读器、项目删除、分支下拉、弹窗化 | 报告事实保真、期限/队列失败、前端异步身份隔离 |\\n| 共享文件中的改动 | `ReportCreate.vue`：来源列改用 `taskLabel`、目标列改用 `fileName`、新增\\\"查看结果\\\"弹窗[E21][E37] | `ReportCreate.vue`：`disposed`/重入/固定生成参数/分页守卫[E60][E61][E62] |\\n| 共享文件中的改动 | `ReportSourceDrawer.vue`：`<pre>` 换成 `CodeViewer`[E24] | `ReportSourceDrawer.vue`：变更关系、辅助证据、材料缺口、按 materialId 还原位置[E66][E67][E68] |\\n| 共享文件中的改动 | `ReportCreate.spec.ts`：mock 增加 `tasksApi.result`、新增\\\"查看结果\\\"用例[E80] | `ReportCreate.spec.ts`：新增分页/重复提交/离页 3 个用例[E69] |\\n\\n即：同一文件在两次比较中被改的是不同代码段，不能把 C1 与 C2 合并成一次\\\"净差异\\\"来解读。\", \"citations\": [{\"id\": \"E1\", \"materialId\": \"M1\", \"startLine\": 1, \"endLine\": 15}, {\"id\": \"E2\", \"materialId\": \"M124\", \"startLine\": 15, \"endLine\": 22}, {\"id\": \"E3\", \"materialId\": \"M40\", \"startLine\": 1, \"endLine\": 10}, {\"id\": \"E4\", \"materialId\": \"M3\", \"startLine\": 114, \"endLine\": 120}, {\"id\": \"E5\", \"materialId\": \"M13\", \"startLine\": 743, \"endLine\": 760}, {\"id\": \"E6\", \"materialId\": \"M35\", \"startLine\": 24, \"endLine\": 31}, {\"id\": \"E7\", \"materialId\": \"M9\", \"startLine\": 683, \"endLine\": 690}, {\"id\": \"E8\", \"materialId\": \"M11\", \"startLine\": 706, \"endLine\": 713}, {\"id\": \"E9\", \"materialId\": \"M7\", \"startLine\": 241, \"endLine\": 248}, {\"id\": \"E10\", \"materialId\": \"M98\", \"startLine\": 124, \"endLine\": 131}, {\"id\": \"E11\", \"materialId\": \"M100\", \"startLine\": 16, \"endLine\": 22}, {\"id\": \"E12\", \"materialId\": \"M5\", \"startLine\": 155, \"endLine\": 164}, {\"id\": \"E13\", \"materialId\": \"M154\", \"startLine\": 20, \"endLine\": 26}, {\"id\": \"E14\", \"materialId\": \"M156\", \"startLine\": 59, \"endLine\": 71}, {\"id\": \"E15\", \"materialId\": \"M41\", \"startLine\": 1, \"endLine\": 12}, {\"id\": \"E16\", \"materialId\": \"M172\", \"startLine\": 11, \"endLine\": 17}, {\"id\": \"E17\", \"materialId\": \"M174\", \"startLine\": 20, \"endLine\": 26}, {\"id\": \"E18\", \"materialId\": \"M106\", \"startLine\": 39, \"endLine\": 52}, {\"id\": \"E19\", \"materialId\": \"M136\", \"startLine\": 692, \"endLine\": 702}, {\"id\": \"E20\", \"materialId\": \"M130\", \"startLine\": 473, \"endLine\": 480}, {\"id\": \"E21\", \"materialId\": \"M51\", \"startLine\": 98, \"endLine\": 114}, {\"id\": \"E22\", \"materialId\": \"M331\", \"startLine\": 1, \"endLine\": 83}, {\"id\": \"E23\", \"materialId\": \"M216\", \"startLine\": 55, \"endLine\": 66}, {\"id\": \"E24\", \"materialId\": \"M210\", \"startLine\": 115, \"endLine\": 126}, {\"id\": \"E25\", \"materialId\": \"M242\", \"startLine\": 113, \"endLine\": 124}, {\"id\": \"E26\", \"materialId\": \"M252\", \"startLine\": 35, \"endLine\": 49}, {\"id\": \"E27\", \"materialId\": \"M250\", \"startLine\": 82, \"endLine\": 97}, {\"id\": \"E28\", \"materialId\": \"M166\", \"startLine\": 51, \"endLine\": 60}, {\"id\": \"E29\", \"materialId\": \"M170\", \"startLine\": 112, \"endLine\": 142}, {\"id\": \"E30\", \"materialId\": \"M150\", \"startLine\": 529, \"endLine\": 536}, {\"id\": \"E31\", \"materialId\": \"M188\", \"startLine\": 87, \"endLine\": 107}, {\"id\": \"E32\", \"materialId\": \"M110\", \"startLine\": 81, \"endLine\": 94}, {\"id\": \"E33\", \"materialId\": \"M134\", \"startLine\": 508, \"endLine\": 563}, {\"id\": \"E34\", \"materialId\": \"M236\", \"startLine\": 297, \"endLine\": 316}, {\"id\": \"E35\", \"materialId\": \"M104\", \"startLine\": 1, \"endLine\": 14}, {\"id\": \"E36\", \"materialId\": \"M49\", \"startLine\": 1, \"endLine\": 14}, {\"id\": \"E37\", \"materialId\": \"M59\", \"startLine\": 351, \"endLine\": 385}, {\"id\": \"E38\", \"materialId\": \"M256\", \"startLine\": 144, \"endLine\": 173}, {\"id\": \"E39\", \"materialId\": \"M287\", \"startLine\": 123, \"endLine\": 155}, {\"id\": \"E40\", \"materialId\": \"M15\", \"startLine\": 89, \"endLine\": 101}, {\"id\": \"E41\", \"materialId\": \"M17\", \"startLine\": 138, \"endLine\": 149}, {\"id\": \"E42\", \"materialId\": \"M23\", \"startLine\": 205, \"endLine\": 213}, {\"id\": \"E43\", \"materialId\": \"M25\", \"startLine\": 216, \"endLine\": 222}, {\"id\": \"E44\", \"materialId\": \"M21\", \"startLine\": 176, \"endLine\": 197}, {\"id\": \"E45\", \"materialId\": \"M19\", \"startLine\": 154, \"endLine\": 171}, {\"id\": \"E46\", \"materialId\": \"M17\", \"startLine\": 138, \"endLine\": 149}, {\"id\": \"E47\", \"materialId\": \"M27\", \"startLine\": 256, \"endLine\": 264}, {\"id\": \"E48\", \"materialId\": \"M29\", \"startLine\": 301, \"endLine\": 310}, {\"id\": \"E49\", \"materialId\": \"M33\", \"startLine\": 335, \"endLine\": 344}, {\"id\": \"E50\", \"materialId\": \"M31\", \"startLine\": 320, \"endLine\": 327}, {\"id\": \"E51\", \"materialId\": \"M264\", \"startLine\": 20, \"endLine\": 83}, {\"id\": \"E52\", \"materialId\": \"M77\", \"startLine\": 77, \"endLine\": 84}, {\"id\": \"E53\", \"materialId\": \"M81\", \"startLine\": 100, \"endLine\": 108}, {\"id\": \"E54\", \"materialId\": \"M45\", \"startLine\": 40, \"endLine\": 49}, {\"id\": \"E55\", \"materialId\": \"M47\", \"startLine\": 53, \"endLine\": 72}, {\"id\": \"E56\", \"materialId\": \"M102\", \"startLine\": 16, \"endLine\": 23}, {\"id\": \"E57\", \"materialId\": \"M279\", \"startLine\": 51, \"endLine\": 57}, {\"id\": \"E58\", \"materialId\": \"M273\", \"startLine\": 1, \"endLine\": 78}, {\"id\": \"E59\", \"materialId\": \"M277\", \"startLine\": 64, \"endLine\": 91}, {\"id\": \"E60\", \"materialId\": \"M67\", \"startLine\": 208, \"endLine\": 215}, {\"id\": \"E61\", \"materialId\": \"M69\", \"startLine\": 264, \"endLine\": 270}, {\"id\": \"E62\", \"materialId\": \"M75\", \"startLine\": 335, \"endLine\": 355}, {\"id\": \"E63\", \"materialId\": \"M206\", \"startLine\": 98, \"endLine\": 108}, {\"id\": \"E64\", \"materialId\": \"M198\", \"startLine\": 260, \"endLine\": 277}, {\"id\": \"E65\", \"materialId\": \"M200\", \"startLine\": 312, \"endLine\": 366}, {\"id\": \"E66\", \"materialId\": \"M84\", \"startLine\": 50, \"endLine\": 57}, {\"id\": \"E67\", \"materialId\": \"M90\", \"startLine\": 101, \"endLine\": 109}, {\"id\": \"E68\", \"materialId\": \"M96\", \"startLine\": 204, \"endLine\": 217}, {\"id\": \"E69\", \"materialId\": \"M272\", \"startLine\": 51, \"endLine\": 106}, {\"id\": \"E70\", \"materialId\": \"M330\", \"startLine\": 30, \"endLine\": 53}, {\"id\": \"E71\", \"materialId\": \"M314\", \"startLine\": 58, \"endLine\": 110}, {\"id\": \"E72\", \"materialId\": \"M310\", \"startLine\": 1, \"endLine\": 27}, {\"id\": \"E73\", \"materialId\": \"M82\", \"startLine\": 1, \"endLine\": 64}, {\"id\": \"E74\", \"materialId\": \"M320\", \"startLine\": 49, \"endLine\": 65}, {\"id\": \"E75\", \"materialId\": \"M322\", \"startLine\": 69, \"endLine\": 76}, {\"id\": \"E76\", \"materialId\": \"M305\", \"startLine\": 19, \"endLine\": 27}, {\"id\": \"E77\", \"materialId\": \"M324\", \"startLine\": 145, \"endLine\": 152}, {\"id\": \"E78\", \"materialId\": \"M326\", \"startLine\": 32, \"endLine\": 39}, {\"id\": \"E79\", \"materialId\": \"M328\", \"startLine\": 64, \"endLine\": 71}, {\"id\": \"E80\", \"materialId\": \"M270\", \"startLine\": 149, \"endLine\": 166}], \"unresolved\": [\"C1 中 ReportSourceDrawer.vue 的完整 diff 未逐行读取（仅取到 CodeViewer 替换段），该文件在 C1 的其余改动未纳入说明\", \"C1 中 TaskDetail.vue / ReviewCenter.vue 之外的页面（如 SpecialistResultView 相关）未逐一核对\", \"C2 中 ReportSourceDrawer.vue 的 watch/加载逻辑改动只读到模板与 locationsText 部分，未读完整脚本段\"]}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 333
+    }
+  ],
+  "tools": [],
+  "checks": {},
+  "stopReason": null
+}

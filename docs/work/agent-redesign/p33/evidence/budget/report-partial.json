@@ -1,0 +1,429 @@
+{
+  "task": "report",
+  "requirements": "解释报告生成时如何冻结审查结果、代码证据及人工反馈，为什么之后修改反馈不会改变已有报告来源；请核对候选准入、冻结事务与报告生成读取冻结来源的流程。",
+  "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+  "modelName": "deepseek-flash",
+  "configRevision": 2,
+  "fixedSha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+  "versions": {
+    "V1": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+    "V2": "2660ce0bb90bee33fc0573e672a58d38a339d4c7",
+    "V3": "0343a9566d2c2e3112c0ac5102887f625e875f9d",
+    "V4": "dfe2d5d7668182136eed47c9d4cb3e81b561f1e6"
+  },
+  "configuration": {
+    "maxRounds": 32,
+    "requestTimeoutSeconds": 120,
+    "maxOutputTokens": 8192,
+    "mode": "reasoning_effort=none",
+    "transportRetries": 0,
+    "scope": "isolated P33.1 experiment; API-backed temporary tools"
+  },
+  "calls": [
+    {
+      "turn": 1,
+      "durationMillis": 2766.0,
+      "serializedRequestBytes": 3436,
+      "inputEstimate": 3532,
+      "usage": {
+        "prompt_tokens": 1055,
+        "completion_tokens": 223,
+        "total_tokens": 1278,
+        "prompt_tokens_details": {
+          "cached_tokens": 768
+        },
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 287
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "我会先查看相关目录，并搜索与冻结、报告生成相关的代码。",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_s37clRh0Ko3txHxY4Rk26717",
+            "type": "function",
+            "function": {
+              "name": "tree",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/service\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_56TjOFUGSqbKg5hwWVwK5791",
+            "type": "function",
+            "function": {
+              "name": "tree",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/report\"}"
+            }
+          },
+          {
+            "index": 2,
+            "id": "call_02_wFv5i6eOLhVrPlmhCOPJ3961",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"version\": \"V1\", \"query\": \"freeze\", \"path\": \"backend/src/main/java/com/codereview/agent\", \"limit\": 80}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 0
+    },
+    {
+      "turn": 2,
+      "durationMillis": 2953.0,
+      "serializedRequestBytes": 7431,
+      "inputEstimate": 7591,
+      "usage": {
+        "prompt_tokens": 2120,
+        "completion_tokens": 196,
+        "total_tokens": 2316,
+        "prompt_tokens_details": {
+          "cached_tokens": 1152
+        },
+        "prompt_cache_hit_tokens": 1152,
+        "prompt_cache_miss_tokens": 968
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_ZuToJDLTSU7mDzjCtiKm1204",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/service/ReportInputService.java\", \"start\": 1, \"end\": 400}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_zgl2NjODH8Vv23NZsz9l5738",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java\", \"start\": 1, \"end\": 400}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 5
+    },
+    {
+      "turn": 3,
+      "durationMillis": 3875.0,
+      "serializedRequestBytes": 51086,
+      "inputEstimate": 51294,
+      "usage": {
+        "prompt_tokens": 12642,
+        "completion_tokens": 197,
+        "total_tokens": 12839,
+        "prompt_tokens_details": {
+          "cached_tokens": 2304
+        },
+        "prompt_cache_hit_tokens": 2304,
+        "prompt_cache_miss_tokens": 10338
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_bqa55oZwTPZgoS81cFx58201",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 602, \"path\": \"backend/src/main/java/com/codereview/agent/service/ReportInputService.java\", \"start\": 400, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_mpDeNIy7vNTeqRcEAqAl9413",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 400, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 7
+    },
+    {
+      "turn": 4,
+      "durationMillis": 4172.0,
+      "serializedRequestBytes": 83944,
+      "inputEstimate": 84200,
+      "usage": {
+        "prompt_tokens": 20558,
+        "completion_tokens": 198,
+        "total_tokens": 20756,
+        "prompt_tokens_details": {
+          "cached_tokens": 12800
+        },
+        "prompt_cache_hit_tokens": 12800,
+        "prompt_cache_miss_tokens": 7758
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_nTRapDTJ457kjkNKGp1d6893",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 522, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java\", \"start\": 400, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_cHy5OahNviMciZvzKXg74884",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 300, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 9
+    },
+    {
+      "turn": 5,
+      "durationMillis": 5094.0,
+      "serializedRequestBytes": 100849,
+      "inputEstimate": 101153,
+      "usage": {
+        "prompt_tokens": 24629,
+        "completion_tokens": 195,
+        "total_tokens": 24824,
+        "prompt_tokens_details": {
+          "cached_tokens": 20736
+        },
+        "prompt_cache_hit_tokens": 20736,
+        "prompt_cache_miss_tokens": 3893
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_AaILnK0z9UxYepJVHijQ1848",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 200, \"path\": \"backend/src/main/java/com/codereview/agent/service/FeedbackService.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_kLY0191UqL2oFvS2eOKS4888",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 120, \"path\": \"backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 11
+    },
+    {
+      "turn": 6,
+      "durationMillis": 5265.0,
+      "serializedRequestBytes": 114204,
+      "inputEstimate": 114556,
+      "usage": {
+        "prompt_tokens": 27857,
+        "completion_tokens": 189,
+        "total_tokens": 28046,
+        "prompt_tokens_details": {
+          "cached_tokens": 24704
+        },
+        "prompt_cache_hit_tokens": 24704,
+        "prompt_cache_miss_tokens": 3153
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_Gw2i2bt9pq7AjEOOtiMB2100",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent/db\", \"query\": \"inTransaction\", \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_CppnajQENG3QbcpDmQd60217",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent/report\", \"query\": \"sourceCount\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 13
+    },
+    {
+      "turn": 7,
+      "durationMillis": 4281.0,
+      "serializedRequestBytes": 119742,
+      "inputEstimate": 120142,
+      "usage": {
+        "prompt_tokens": 29447,
+        "completion_tokens": 196,
+        "total_tokens": 29643,
+        "prompt_tokens_details": {
+          "cached_tokens": 28032
+        },
+        "prompt_cache_hit_tokens": 28032,
+        "prompt_cache_miss_tokens": 1415
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_5KBvCKTZegKFpHEyLuhn4039",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 140, \"path\": \"backend/src/main/java/com/codereview/agent/db/AgentDatabase.java\", \"start\": 80, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_ZML3hrK2QpGKlOehfA4B9863",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 60, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 29
+    },
+    {
+      "turn": 8,
+      "durationMillis": 4921.0,
+      "serializedRequestBytes": 125049,
+      "inputEstimate": 125497,
+      "usage": {
+        "prompt_tokens": 30793,
+        "completion_tokens": 99,
+        "total_tokens": 30892,
+        "prompt_tokens_details": {
+          "cached_tokens": 29568
+        },
+        "prompt_cache_hit_tokens": 29568,
+        "prompt_cache_miss_tokens": 1225
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_iBUKnSLv6XZc6BPWEPKM6510",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 30, \"path\": \"backend/src/main/java/com/codereview/agent/db\", \"query\": \"TransactionTemplate\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 31
+    },
+    {
+      "turn": 9,
+      "durationMillis": 3906.0,
+      "serializedRequestBytes": 126328,
+      "inputEstimate": 126808,
+      "usage": {
+        "prompt_tokens": 31155,
+        "completion_tokens": 102,
+        "total_tokens": 31257,
+        "prompt_tokens_details": {
+          "cached_tokens": 30848
+        },
+        "prompt_cache_hit_tokens": 30848,
+        "prompt_cache_miss_tokens": 307
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_kegG2cRacYZaqaciuiGW6887",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 79, \"path\": \"backend/src/main/java/com/codereview/agent/db/AgentDatabase.java\", \"start\": 40, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 34
+    },
+    {
+      "turn": 10,
+      "durationMillis": 12828.0,
+      "serializedRequestBytes": 128808,
+      "inputEstimate": 129320,
+      "usage": {
+        "prompt_tokens": 31789,
+        "completion_tokens": 2291,
+        "total_tokens": 34080,
+        "prompt_tokens_details": {
+          "cached_tokens": 31232
+        },
+        "prompt_cache_hit_tokens": 31232,
+        "prompt_cache_miss_tokens": 557
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_wNRAex83SfsorCOaeLym6559",
+            "type": "function",
+            "function": {
+              "name": "submit_result",
+              "arguments": "{\"title\": \"报告冻结来源与生成读取链路核对\", \"answerStatus\": \"ANSWERED\", \"markdown\": \"## 结论\\n\\n报告生成之所以“冻结”审查结果、代码证据与人工反馈，是因为**冻结时把当时的结果正文、问题、材料片段正文、任务/目标版本和反馈值一次性序列化进 `report_source.source_snapshot`（以及 `report.frozen_input` 摘要）**；之后生成、详情、来源查看都只读这些快照，不再联查 `review_result` / `issue` / `feedback` / `material` 或仓库。因此事后修改反馈（`feedback` 表 revision 递增）不会改变已有报告来源。\\n\\n## 1. 候选准入\\n\\n- 候选查询固定 `completeness = COMPLETE`，可按项目（子查询 `review_task.project_id`）、任务、kind 过滤；kind 只允许 ISSUE/PATTERN/COUPLING/AGENT [E1]。\\n- 任务缺失的结果直接跳过，不返回“半条材料” [E2]。\\n- 候选里展示的反馈只是当前值（`resultFeedback` 仅对非 ISSUE 结果取 RESULT 级反馈），用于选择参考，不是冻结内容 [E2]。\\n- 冻结入口 `POST /api/v2/reports/inputs` 调用 `inputService.freeze` [E3]。\\n\\n## 2. 冻结事务\\n\\n- `freeze` 用 `db.inTransaction(...)` 包裹整个 `freezeInTransaction`，注释说明可重复读事务覆盖读取与写入，避免问题级与结果级反馈来自不同读取时刻 [E4]；`inTransaction` 由 `TransactionTemplate` + `DataSourceTransactionManager` 实现，异常整体回滚 [E5][E6]。\\n- 事务内校验：结果 ID 非空、去重、格式合法；结果必须存在（否则 NOT_FOUND）；必须 `COMPLETE`（否则 CONFLICT）[E7]。\\n- 事务内一次性读取任务、目标、项目、按 ordinal 排序的问题、问题级反馈（subjectKind=ISSUE）与结果级反馈（subjectKind=RESULT）[E7][E8]。\\n- 逐条来源校验任务/目标存在，然后 `snapshot(...)` 生成快照 [E9]。\\n- 写入：新建 `AgentReport`（state=`INPUT_FROZEN`、revision=0、`frozen_input`=摘要 JSON），再按 ordinal 逐条插入 `AgentReportSource`（`result_id` + `source_snapshot`）[E9]。\\n\\n## 3. 快照里冻结了什么\\n\\n`snapshot()` 写入 `snapshotVersion`、`frozenAt`、resultId/taskId/targetId/kind/schemaVersion/completeness/resultCreatedAt；`project`（id/name/repoUrl）、`task`（route/specialistType/state/sourceKind/branch/commitSha/baseSha）、`target`（path/oldPath/headSha/baseSha）[E10]。\\n\\n- **审查结果**：`result.body`（AGENT 为文本，其余为 JSON 对象，正文缺失直接报错）与 `result.provenance` [E10][E11]。\\n- **代码证据**：`materials` 由 provenance 的 `materials` 引用逐个查 `AgentMaterial` 后**复制片段正文**（id/projectId/sha/path/side/startLine/endLine/content/contentHash/completeness/diagnostic），注释明确“不向仓库重新读取，也不把元数据引用当成代码快照”；材料缺失则 CONFLICT 拒绝冻结 [E11]。\\n- **人工反馈**：每个 issue 节点内嵌 `feedback`（assessment/comment/revision/updatedAt），非 ISSUE 结果另存 `resultFeedback`；无反馈写 null [E10][E12]。\\n- 摘要 `summary()` 只放列表/导航用的最小字段（来源、任务、版本分组、issueCount、反馈计数），完整正文与证据仍在 `report_source` 快照 [E13]。\\n\\n## 4. 生成时读取冻结来源\\n\\n- `ReportGenerationService.start` 要求报告状态为 `INPUT_FROZEN`，校验模型可用后，用**条件更新**（`id + state=INPUT_FROZEN + revision`）改为 `QUEUED`，同时写入模型快照与补充要求快照、清空 body/错误、`revision+1`；更新 0 行则 CONFLICT [E14]。随后 `dispatcher.dispatch` 异步执行 [E14]。\\n- `ReportExecutionWorker.execute` 先条件更新 QUEUED→RUNNING（带 revision 乐观锁），再**只按 reportId 从 `AgentReportSource` 读取快照**，交给 `ReportFactsBuilder.build` [E15]。\\n- `ReportFactsBuilder` 注释与实现均只解析 `source_snapshot`：问题、模式、耦合事实、人工反馈、证据正文都取自快照内 `materials` 的已保存片段，不联查最新结果/反馈/材料/仓库；材料缺失只记入“材料缺口”而不回源 [E16][E17]。\\n- 生成成功后 `ReportCitationValidator` 要求正文至少引用一个 `[S1..Sn]` 且序号落在冻结来源数内，否则失败 [E18][E15]；失败只写错误、不写正文，冻结来源与输入摘要不变 [E15]。\\n- 读取侧：`detail`/`summary` 从 `report.frozen_input` 取来源摘要，`source(reportId, ordinal)` 直接返回 `report_source.source_snapshot`；旧记录无 `sources` 时也只逐条读快照，注释明确“不联查最新结果” [E19][E20]。\\n\\n## 5. 为什么之后改反馈不影响已有报告\\n\\n`FeedbackService.save` 只更新 `agent_feedback` 行（assessment/comment/revision+1/updatedAt），带 revision 乐观锁 [E21]。该表与 `report_source.source_snapshot` 无外键式联动，冻结后没有任何代码回写快照；生成与展示路径均不读 `agent_feedback`（只读快照内嵌的 feedback 节点）[E16][E19]。所以反馈修改只影响**下一次冻结**的新报告，已有报告的来源、证据与反馈值保持冻结时刻的值。\\n\\n## 6. 需要注意的边界\\n\\n- 冻结事务的隔离级别由 `TransactionTemplate` 默认值决定，代码中未显式设置隔离级别；注释所称“可重复读”依赖数据库默认隔离级别 [E4][E6]。\\n- 模型凭据不在快照内：`model()` 用快照的 id 回查当前 `AgentModelConfig` 取 credential，模型被删除则失败 [E22]；这不影响审查结果/证据/反馈的冻结性。\", \"citations\": [{\"id\": \"E1\", \"materialId\": \"M6\", \"startLine\": 74, \"endLine\": 92}, {\"id\": \"E2\", \"materialId\": \"M6\", \"startLine\": 108, \"endLine\": 128}, {\"id\": \"E3\", \"materialId\": \"M13\", \"startLine\": 54, \"endLine\": 60}, {\"id\": \"E4\", \"materialId\": \"M6\", \"startLine\": 141, \"endLine\": 146}, {\"id\": \"E5\", \"materialId\": \"M30\", \"startLine\": 104, \"endLine\": 107}, {\"id\": \"E6\", \"materialId\": \"M35\", \"startLine\": 62, \"endLine\": 63}, {\"id\": \"E7\", \"materialId\": \"M6\", \"startLine\": 147, \"endLine\": 190}, {\"id\": \"E8\", \"materialId\": \"M6\", \"startLine\": 191, \"endLine\": 200}, {\"id\": \"E9\", \"materialId\": \"M6\", \"startLine\": 201, \"endLine\": 240}, {\"id\": \"E10\", \"materialId\": \"M6\", \"startLine\": 262, \"endLine\": 330}, {\"id\": \"E11\", \"materialId\": \"M8\", \"startLine\": 483, \"endLine\": 517}, {\"id\": \"E12\", \"materialId\": \"M8\", \"startLine\": 452, \"endLine\": 470}, {\"id\": \"E13\", \"materialId\": \"M6\", \"startLine\": 331, \"endLine\": 340}, {\"id\": \"E14\", \"materialId\": \"M7\", \"startLine\": 55, \"endLine\": 100}, {\"id\": \"E15\", \"materialId\": \"M11\", \"startLine\": 66, \"endLine\": 110}, {\"id\": \"E16\", \"materialId\": \"M9\", \"startLine\": 20, \"endLine\": 32}, {\"id\": \"E17\", \"materialId\": \"M9\", \"startLine\": 128, \"endLine\": 160}, {\"id\": \"E18\", \"materialId\": \"M31\", \"startLine\": 26, \"endLine\": 48}, {\"id\": \"E19\", \"materialId\": \"M7\", \"startLine\": 116, \"endLine\": 145}, {\"id\": \"E20\", \"materialId\": \"M7\", \"startLine\": 186, \"endLine\": 220}, {\"id\": \"E21\", \"materialId\": \"M12\", \"startLine\": 40, \"endLine\": 88}, {\"id\": \"E22\", \"materialId\": \"M11\", \"startLine\": 160, \"endLine\": 178}], \"unresolved\": [\"冻结事务的实际隔离级别未在代码中显式设置，仅依赖数据库默认值；注释中的“可重复读”无法从代码直接证实。\"]}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 35
+    }
+  ],
+  "tools": [],
+  "checks": {},
+  "stopReason": null
+}

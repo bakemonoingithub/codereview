@@ -4,7 +4,7 @@
       <div class="guide-title">{{ title }}</div>
       <div v-if="hint" class="guide-hint">{{ hint }}</div>
     </template>
-    <a-button v-if="actionText" type="primary" @click="emit('action')">{{ actionText }}</a-button>
+    <a-button v-if="actionText" type="link" class="guide-action" @click="emit('action')">{{ actionText }}</a-button>
   </a-empty>
 </template>
 
@@ -31,14 +31,23 @@ const emit = defineEmits<{
 </script>
 
 <style scoped lang="less">
+.empty-guide {
+  padding: 48px 25px;
+}
+
 .guide-title {
   margin-bottom: 4px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--muted);
 }
+
 .guide-hint {
   margin-bottom: 12px;
-  color: #8c8c8c;
+  color: var(--muted);
   font-size: 12px;
   line-height: 18px;
+}
+
+.guide-action {
+  font-weight: 600;
 }
 </style>

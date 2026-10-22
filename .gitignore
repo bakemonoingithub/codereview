@@ -21,3 +21,12 @@ backend/src/main/resources/static/
 # OS
 .DS_Store
 Thumbs.db
+
+# 当前工作树开发服务的日志、配置与进程记录
+frontend/.dev-runtime/
+
+# 本机开发数据库配置（示例文件保留在 scripts）
+backend/application-local.properties
+
+# 本机配置迁移快照（含凭据，不随构建清理）
+backend/.local-backups/

@@ -1,0 +1,178 @@
+{
+  "sourceDatabase" : "code_review",
+  "targetDatabase" : "ai_code_review_agent",
+  "sourceTimeZone" : "Asia/Shanghai",
+  "sourceFingerprint" : "aa788a309872cf00aa4f4626bc2141f9d8d6601e7aeef4e61db83aa7ba1e8de4",
+  "records" : [ {
+    "table" : "project",
+    "oldId" : "2099479866917195777",
+    "newId" : "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+    "name" : "codereview"
+  }, {
+    "table" : "project",
+    "oldId" : "2101494702928781313",
+    "newId" : "01M2Y9CDH02FBBD0BNS2C04G3H",
+    "name" : "验证仓库"
+  }, {
+    "table" : "model_config",
+    "oldId" : "2097700198832631809",
+    "newId" : "01M23AKQZRG40082QFECKMC36N",
+    "name" : "DeepSeek(默认)",
+    "capacityDeclared" : true,
+    "validationStatus" : "NONE",
+    "oldOutputParameter" : "max_tokens"
+  }, {
+    "table" : "model_config",
+    "oldId" : "2097970019344216066",
+    "newId" : "01M257YZ7GXH3EK6R5JGN9Z3RS",
+    "name" : "qianwen",
+    "capacityDeclared" : false,
+    "validationStatus" : "NONE",
+    "oldOutputParameter" : null
+  }, {
+    "table" : "prompt",
+    "oldId" : "2099465589699301378",
+    "newId" : "01M2FW0N387QJEGWBB1AT97DP7",
+    "name" : "Java编码规范审查提示词",
+    "purpose" : "SPECIALIST",
+    "oldCurrentVersionId" : "2099465589699301379"
+  }, {
+    "table" : "prompt",
+    "oldId" : "2099465738504818689",
+    "newId" : "01M2FW1R88P6HBRHA8CM012GZB",
+    "name" : "架构耦合改进建议提示词",
+    "purpose" : "SPECIALIST",
+    "oldCurrentVersionId" : "2099465738504818690"
+  }, {
+    "table" : "prompt",
+    "oldId" : "2099465911226257409",
+    "newId" : "01M2FW309GW6V1PHQC6BMRJ9MW",
+    "name" : "设计模式识别与误用检查提示词",
+    "purpose" : "SPECIALIST",
+    "oldCurrentVersionId" : "2099465911226257410"
+  }, {
+    "table" : "prompt",
+    "oldId" : "2099466021406429185",
+    "newId" : "01M2FW3SP0PVMFT0AKXV7Y74G9",
+    "name" : "变更走查关注点提示词",
+    "purpose" : "SPECIALIST",
+    "oldCurrentVersionId" : "2099466021406429186"
+  }, {
+    "table" : "prompt",
+    "oldId" : "2099466151962529793",
+    "newId" : "01M2FW4QYR73YYM8C5MRGTDCCM",
+    "name" : "报告生成提示词",
+    "purpose" : "REPORT",
+    "oldCurrentVersionId" : "2099466152029638658"
+  }, {
+    "table" : "prompt",
+    "oldId" : "2099477704589905922",
+    "newId" : "01M2FYRTCGDFH9K3KB6J7AQK4D",
+    "name" : "测试提示词",
+    "purpose" : "SPECIALIST",
+    "oldCurrentVersionId" : "2108385356459212801"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2099465589699301379",
+    "newId" : "01M2FW0N384KN637QX53RKS8N2",
+    "promptOldId" : "2099465589699301378",
+    "versionNo" : "1",
+    "contentSha256" : "3de6e84a5f11549b5c5896da315b9d569408a89706139e03a8330263f8a705fe"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2099465738504818690",
+    "newId" : "01M2FW1R88X42PDXP41E4J5VF6",
+    "promptOldId" : "2099465738504818689",
+    "versionNo" : "1",
+    "contentSha256" : "68db3795f811ef3824c4f95645c06cbca7e36aa101051f51fdaaf6618abf87c8"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2099465911226257410",
+    "newId" : "01M2FW309G27Q0GV8X5RQ2AVGK",
+    "promptOldId" : "2099465911226257409",
+    "versionNo" : "1",
+    "contentSha256" : "fb1a5e0a8a05090c86be39bc2cd253b6531890f09063ed00db7312f95b874cc2"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2099466021406429186",
+    "newId" : "01M2FW3SP0G0S6Y70H2TT5BH0R",
+    "promptOldId" : "2099466021406429185",
+    "versionNo" : "1",
+    "contentSha256" : "2778680e0c7d4749c570b536d68306e6b859fb17710b64f8328c6d1c51cfe682"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2099466152029638658",
+    "newId" : "01M2FW4QYRRE3DQ5NNX0ND0JZ6",
+    "promptOldId" : "2099466151962529793",
+    "versionNo" : "1",
+    "contentSha256" : "2103bee4840fcd387d506c336801290a2b92c521e1593f5851de9a4b18aa0cb5"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2099477704589905923",
+    "newId" : "01M2FYRTCGCKWKAZM825T5C4BM",
+    "promptOldId" : "2099477704589905922",
+    "versionNo" : "1",
+    "contentSha256" : "e7fe58617aee20b913fb41fb42f95fdb8bdf0dda0821ecefc30f0e509765553d"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2099477779428872193",
+    "newId" : "01M2FYSBZ0ADJP4BFGYJYEG5VT",
+    "promptOldId" : "2099477704589905922",
+    "versionNo" : "2",
+    "contentSha256" : "76728b5fe9e0de92298e330f1a734c67aa691a1f8c765cb1d2224ebe5be93664"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2108385278097031170",
+    "newId" : "01M4F83YE8E2RY1QDBWCPYFGH0",
+    "promptOldId" : "2099477704589905922",
+    "versionNo" : "3",
+    "contentSha256" : "e7fe58617aee20b913fb41fb42f95fdb8bdf0dda0821ecefc30f0e509765553d"
+  }, {
+    "table" : "prompt_version",
+    "oldId" : "2108385356459212801",
+    "newId" : "01M4F84H00ZAFKF4MEQZGCWHEV",
+    "promptOldId" : "2099477704589905922",
+    "versionNo" : "4",
+    "contentSha256" : "85f9cc2dc23e04ab18c7e80957969e50697c3b260ceff26350cff56ec9301ca3"
+  }, {
+    "table" : "review_strategy",
+    "oldId" : "2097871086576107521",
+    "newId" : "01M24HF42GKCTRWRWR1JNEHD5M",
+    "name" : "耦合度审查",
+    "oldAnalyzerType" : "2",
+    "specialistType" : "COUPLING",
+    "modelId" : "01M23AKQZRG40082QFECKMC36N",
+    "promptId" : "01M2FW1R88P6HBRHA8CM012GZB",
+    "legacyOnlyParameterKeys" : [ "threshold" ]
+  }, {
+    "table" : "review_strategy",
+    "oldId" : "2097871127235690498",
+    "newId" : "01M24HFDV0CVYA8J0Q297WP1Z9",
+    "name" : "设计模式审查",
+    "oldAnalyzerType" : "3",
+    "specialistType" : "PATTERN",
+    "modelId" : "01M23AKQZRG40082QFECKMC36N",
+    "promptId" : "01M2FW309GW6V1PHQC6BMRJ9MW",
+    "legacyOnlyParameterKeys" : [ ]
+  }, {
+    "table" : "review_strategy",
+    "oldId" : "2098019427075137537",
+    "newId" : "01M25K6E585APA98AGE923T861",
+    "name" : "审查区别",
+    "oldAnalyzerType" : "5",
+    "specialistType" : "ISSUE",
+    "modelId" : "01M23AKQZRG40082QFECKMC36N",
+    "promptId" : "01M2FW3SP0PVMFT0AKXV7Y74G9",
+    "legacyOnlyParameterKeys" : [ "methodWindowLines" ]
+  }, {
+    "table" : "review_strategy",
+    "oldId" : "2099478864918941698",
+    "newId" : "01M2FZ17XGFZME2AK5C431KTEJ",
+    "name" : "业务代码审查",
+    "oldAnalyzerType" : "1",
+    "specialistType" : "ISSUE",
+    "modelId" : "01M23AKQZRG40082QFECKMC36N",
+    "promptId" : "01M2FW0N387QJEGWBB1AT97DP7",
+    "legacyOnlyParameterKeys" : [ ]
+  } ]
+}

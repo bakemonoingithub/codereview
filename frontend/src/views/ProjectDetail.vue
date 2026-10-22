@@ -1192,7 +1192,7 @@ defineExpose({ startPoll, resumePoll, pollError, stopPoll, loadMarks, marks, mar
 }
 /* 可查看的文件：看起来就该能点；不可查看的保持灰色但可辨认 */
 .file-link {
-  color: #1677ff;
+  color: var(--blue);
   cursor: pointer;
 
   &:hover {

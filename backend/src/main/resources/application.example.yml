@@ -34,6 +34,34 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+# 新路线独立新库（P30.2）。默认不启用：未配置 url 时不创建新库组件，/api/v2 也不注册，
+# 旧功能照常启动。启用时必须指向与 spring.datasource 不同的库；启动会校验库名、
+# 旧链历史（flyway_schema_history）与身份标记（agent_schema_identity），任一项不符即拒绝启动。
+# agent:
+#   datasource:
+#     url: jdbc:mysql://localhost:3306/ai_code_review_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+#     username: codereview_agent
+#     password: <新库账号密码>
+#     expected-database: ai_code_review_agent
+#     migration-location: classpath:db/agent-migration
+#   # 报告生成参数（均可省略）。报告正文通常长于专项 JSON，输出预留单独设置；
+#   # 仍受模型声明的最大输出限制，完整请求超过窗口时失败而不截断。
+#   report:
+#     output-tokens: 16384
+#     max-body-chars: 1000000
+#     generation-timeout-minutes: 10
+#     dispatch-concurrency: 2
+#     dispatch-queue-capacity: 100
+#   # Agent 只读工具（P33.2，均可省略）。内容搜索要求运行环境有 git；
+#   # 镜像目录沿用 git.gitea.work-dir，Windows 下请保持较短路径（默认 MAX_PATH=260）。
+#   tools:
+#     git-executable: git
+#     mirror-timeout-seconds: 120
+#     search-total-seconds: 10
+#     search-global-concurrency: 2
+#     search-cache-weight-bytes: 33554432
+#     search-cache-minutes: 5
+
 deepseek:
   base-url: https://api.deepseek.com
   api-key: ${DEEPSEEK_API_KEY:}

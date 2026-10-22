@@ -210,7 +210,7 @@ describe('DiffReviewResult 的 patch 拉取失败', () => {
     await flush()
     await nextTick()
 
-    expect(wrapper.find('a-alert-stub').attributes('message')).toContain('接口 500')
+    expect(wrapper.find('.load-error').text()).toContain('接口 500')
     expect(wrapper.find('.diff-viewer-stub').exists(), '不该再渲染 DiffViewer 的空态').toBe(false)
   })
 
@@ -239,6 +239,6 @@ describe('DiffReviewResult 的 patch 拉取失败', () => {
     await nextTick()
 
     expect(wrapper.find('.diff-viewer-stub').exists()).toBe(true)
-    expect(wrapper.find('a-alert-stub').exists()).toBe(false)
+    expect(wrapper.find('.load-error').exists()).toBe(false)
   })
 })

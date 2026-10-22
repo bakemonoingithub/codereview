@@ -242,7 +242,7 @@ function clearAll() {
   }
   /* 可查看的文件：看起来就该能点（下划线 + 手型），否则用户不会去试 */
   .name.clickable {
-    color: #1677ff;
+    color: var(--blue);
     cursor: pointer;
 
     &:hover {

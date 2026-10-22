@@ -1,0 +1,162 @@
+{
+  "task": "output-budget",
+  "requirements": "读取V1固定版本 backend/src/main/java/com/codereview/agent/prompt/PromptPurpose.java，概括AGENT内置指令。取得这个文件后即可显式提交带有效引用的简短结论，不需要再搜索其他文件。",
+  "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+  "modelName": "deepseek-flash",
+  "configRevision": 2,
+  "fixedSha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+  "versions": {
+    "V1": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+    "V2": "2660ce0bb90bee33fc0573e672a58d38a339d4c7",
+    "V3": "0343a9566d2c2e3112c0ac5102887f625e875f9d",
+    "V4": "dfe2d5d7668182136eed47c9d4cb3e81b561f1e6"
+  },
+  "configuration": {
+    "maxRounds": 32,
+    "requestTimeoutSeconds": 120,
+    "maxOutputTokens": 16384,
+    "mode": "reasoning_effort=none",
+    "transportRetries": 0,
+    "scope": "isolated P33.1 experiment; API-backed temporary tools"
+  },
+  "calls": [
+    {
+      "turn": 1,
+      "durationMillis": 3281.0,
+      "serializedRequestBytes": 3540,
+      "inputEstimate": 3636,
+      "usage": {
+        "prompt_tokens": 1088,
+        "completion_tokens": 102,
+        "total_tokens": 1190,
+        "prompt_tokens_details": {
+          "cached_tokens": 768
+        },
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 320
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_gExNcDdlCkTgX4clcJKU7433",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/prompt/PromptPurpose.java\", \"start\": 1, \"end\": 200}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 0
+    },
+    {
+      "turn": 2,
+      "durationMillis": 3688.0,
+      "serializedRequestBytes": 7633,
+      "inputEstimate": 7761,
+      "usage": {
+        "prompt_tokens": 2080,
+        "completion_tokens": 370,
+        "total_tokens": 2450,
+        "prompt_tokens_details": {
+          "cached_tokens": 1152
+        },
+        "prompt_cache_hit_tokens": 1152,
+        "prompt_cache_miss_tokens": 928
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_eIW1GI3cMFfrDS6wXkU81570",
+            "type": "function",
+            "function": {
+              "name": "submit_result",
+              "arguments": "{\"title\": \"PromptPurpose.AGENT 内置指令概括\", \"answerStatus\": \"ANSWERED\", \"markdown\": \"`PromptPurpose` 是统一组装入口的用途枚举，每个用途决定默认指令与输出协议，调用方不能自行追加另一套协议 [E1]。\\n\\n**AGENT 用途的内置指令**（`AGENT(\\\"AGENT\\\", false, ...)`）[E2]：\\n\\n- 在**只读工具范围**内调查问题；\\n- 输出**少量固定信息 + Markdown 结论**；\\n- 不得声称执行了未实际调用的工具；\\n- 不得把计划写成已完成。\\n\\n**相关属性**：`jsonMode = false`，即 AGENT 不走 JSON 模式；`isSpecialist()` 仅对 ISSUE_FILE / ISSUE_DIFF / PATTERN / COUPLING 返回 true，AGENT 不属于 specialist 用途 [E3]。\", \"citations\": [{\"id\": \"E1\", \"materialId\": \"M1\", \"startLine\": 3, \"endLine\": 9}, {\"id\": \"E2\", \"materialId\": \"M1\", \"startLine\": 33, \"endLine\": 36}, {\"id\": \"E3\", \"materialId\": \"M1\", \"startLine\": 40, \"endLine\": 67}], \"unresolved\": []}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 1
+    }
+  ],
+  "tools": [
+    {
+      "name": "read_code",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/prompt/PromptPurpose.java",
+        "start": 1,
+        "end": 200
+      },
+      "millis": 94.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M1",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/prompt/PromptPurpose.java",
+          "startLine": 1,
+          "endLine": 67,
+          "content": "package com.codereview.agent.prompt;\n\n/**\n * 统一组装入口的用途。\n *\n * <p>用途决定默认指令与输出协议，调用方不能自行追加另一套协议。新增用途必须同时\n * 定义协议文本与计量口径，避免出现\"绕过组装直接拼 messages\"的入口。\n */\npublic enum PromptPurpose {\n\n    ISSUE_FILE(\"ISSUE_FILE\", true, \"\"\"\n            根据给定的目标文件与有限辅助声明，找出可由代码和规则直接说明的问题。\n            每条问题必须给出原因、可执行建议和至少一处目标位置；没有证据时不要为了填满数组而生成。\n            未知依赖的行为只能列为边界或限制，不能用印象断言。\"\"\"),\n\n    ISSUE_DIFF(\"ISSUE_DIFF\", true, \"\"\"\n            检查此次提交差异引入或违反选定规则的问题，位置必须落在本次变更的前后侧。\n            每条问题必须给出 changeRelation，说明与本次变更的关联；历史问题不自动归入本次。\n            删除行允许使用 BEFORE 侧位置，新增行只能使用 AFTER 侧位置。\"\"\"),\n\n    PATTERN(\"PATTERN\", true, \"\"\"\n            识别以目标文件为中心的设计模式候选、角色与代码依据。\n            不宣称模块完整实现，也不声称所有候选均适用；每个候选至少包含一处目标依据。\n            无法归入经典模式时可使用 OTHER，但必须解释。\"\"\"),\n\n    COUPLING(\"COUPLING\", true, \"\"\"\n            根据服务端已计算的文件级依赖事实解释关系与风险。\n            不得猜测缺失的指标，不得生成全仓指标或未计算出的 fan-in／instability。\n            只能引用给定的 dependencyId 与材料位置。\"\"\"),\n\n    REPORT(\"REPORT\", false, \"\"\"\n            按给定事实、指标与冻结来源生成 Markdown 报告。正文必须引用来源序号，\n            不得编造数据；引用必须指向冻结来源。材料不足时明确写出缺失，不静默省略。\"\"\"),\n\n    AGENT(\"AGENT\", false, \"\"\"\n            在只读工具范围内调查问题，输出少量固定信息与 Markdown 结论。\n            不得声称执行了未实际调用的工具，也不得把计划写成已完成。\"\"\"),\n\n    VALIDATION(\"VALIDATION\", false, \"\"\"\n            这是一次连通性验证。只需用普通文本回复 pong，不需要 JSON，也不需要分析任何业务内容。\"\"\");\n\n    private final String wireName;\n    private final boolean jsonMode;\n    private final String builtInInstruction;\n\n    PromptPurpose(String wireName, boolean jsonMode, String builtInInstruction) {\n        this.wireName = wireName;\n        this.jsonMode = jsonMode;\n        this.builtInInstruction = builtInInstruction;\n    }\n\n    public String wireName() {\n        return wireName;\n    }\n\n    public boolean jsonMode() {\n        return jsonMode;\n    }\n\n    public String builtInInstruction() {\n        return builtInInstruction;\n    }\n\n    public boolean isSpecialist() {\n        return this == ISSUE_FILE || this == ISSUE_DIFF || this == PATTERN || this == COUPLING;\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 67
+      }
+    }
+  ],
+  "checks": {
+    "citationsValid": true,
+    "expectedFilesRead": {
+      "PromptPurpose.java": true
+    }
+  },
+  "stopReason": "SUBMITTED",
+  "final": {
+    "title": "PromptPurpose.AGENT 内置指令概括",
+    "answerStatus": "ANSWERED",
+    "markdown": "`PromptPurpose` 是统一组装入口的用途枚举，每个用途决定默认指令与输出协议，调用方不能自行追加另一套协议 [E1]。\n\n**AGENT 用途的内置指令**（`AGENT(\"AGENT\", false, ...)`）[E2]：\n\n- 在**只读工具范围**内调查问题；\n- 输出**少量固定信息 + Markdown 结论**；\n- 不得声称执行了未实际调用的工具；\n- 不得把计划写成已完成。\n\n**相关属性**：`jsonMode = false`，即 AGENT 不走 JSON 模式；`isSpecialist()` 仅对 ISSUE_FILE / ISSUE_DIFF / PATTERN / COUPLING 返回 true，AGENT 不属于 specialist 用途 [E3]。",
+    "citations": [
+      {
+        "id": "E1",
+        "materialId": "M1",
+        "startLine": 3,
+        "endLine": 9
+      },
+      {
+        "id": "E2",
+        "materialId": "M1",
+        "startLine": 33,
+        "endLine": 36
+      },
+      {
+        "id": "E3",
+        "materialId": "M1",
+        "startLine": 40,
+        "endLine": 67
+      }
+    ],
+    "unresolved": []
+  },
+  "repeatToolRequests": 0,
+  "correctionMillis": 0,
+  "totalMillis": 7078.0,
+  "summary": {
+    "rounds": 2,
+    "toolCalls": 1,
+    "maxRequestBytes": 7633,
+    "maxInputEstimate": 7761,
+    "inputTokens": 3168,
+    "outputTokens": 472,
+    "networkMillis": 6969.0
+  }
+}

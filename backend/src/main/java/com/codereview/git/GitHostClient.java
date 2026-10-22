@@ -41,6 +41,14 @@ public interface GitHostClient {
     List<GitTreeEntry> tree(String token, Integer credentialType, GitRepoRef repoRef, String branch);
 
     /**
+     * 带完整性信息的文件树。默认实现只返回 {@link #tree} 并标记为完整；
+     * 能识别宿主截断的实现（GitHub 的 {@code truncated}、Gitea 翻页达到上限）应覆盖它。
+     */
+    default GitTree treeWithMeta(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        return GitTree.complete(tree(token, credentialType, repoRef, branch));
+    }
+
+    /**
      * 取某个文件在指定引用下的原始内容。
      * {@code ref} 既可为分支名，也可为 <b>commit sha</b> —— 只有传 sha 才能保证
      * "审查内容与审查记录里记下的提交一致"。
