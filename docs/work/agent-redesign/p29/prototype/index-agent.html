@@ -297,7 +297,7 @@ const agentTools=[
  ['read_code','读取指定版本、路径和原始行号的代码。',{path:{type:'string'},start:{type:'integer'},end:{type:'integer'}}],
  ['read_diff','单独读取所选提交相对第一父提交的差异。',{commit:{type:'string'},parent:{type:'string'}}]
 ].map(([name,description,properties])=>({type:'function',function:{name,description,parameters:{type:'object',properties:{...properties,version:{type:'string'}},required:name==='read_diff'?['commit','parent']:['version'],additionalProperties:false}}}));
-const agentDefaultInstruction='围绕用户审查要求调查固定版本的仓库。只读工具统一提供材料，不执行脚本、不修改仓库。目标外的相关文件只作为背景。材料不足、截断和错误须明确说明。不要追问用户。形成有依据的结论后用 final 返回 title、summary、markdown、evidence、limitations；未完成不得宣称完整成功。内置边界优先，本次要求其次，指导提示词再次。';
+const agentDefaultInstruction='围绕用户审查要求调查固定版本的仓库。只读工具统一提供材料，不执行脚本、不修改仓库。目标外的相关文件只作为背景。材料不足、截断和错误须明确说明。不要追问用户。形成有依据的结论后显式调用 submit_result，返回 title、summary、answerStatus、markdown、citations、unresolved；未完成不得宣称完整成功。内置边界优先，本次要求其次，指导提示词再次。';
 management.prompts.forEach(p=>p.purpose='SPECIALIST');
 management.prompts.push({id:'p-agent',name:'支付链路调查',purpose:'AGENT',description:'从入口、支付接口与存储边界核对重试路径',tags:'Agent,订单,支付',versions:[{number:1,content:'先定位订单提交和重试入口，再核对支付接口与仓储边界。对同一订单的重试检查幂等标识；区分调用方代码、接口约定和未取得的第三方实现。多提交逐项比较，不以首尾净差异替代。'}]});
 
@@ -471,5 +471,6 @@ state.reportIsExample=true;
 
 render();
 </script>
+<script src="../../p33/prototype-extension.js"></script>
 </body>
 </html>

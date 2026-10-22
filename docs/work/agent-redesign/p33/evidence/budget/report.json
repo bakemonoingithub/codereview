@@ -1,0 +1,1173 @@
+{
+  "task": "report",
+  "requirements": "解释报告生成时如何冻结审查结果、代码证据及人工反馈，为什么之后修改反馈不会改变已有报告来源；请核对候选准入、冻结事务与报告生成读取冻结来源的流程。",
+  "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+  "modelName": "deepseek-flash",
+  "configRevision": 2,
+  "fixedSha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+  "versions": {
+    "V1": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+    "V2": "2660ce0bb90bee33fc0573e672a58d38a339d4c7",
+    "V3": "0343a9566d2c2e3112c0ac5102887f625e875f9d",
+    "V4": "dfe2d5d7668182136eed47c9d4cb3e81b561f1e6"
+  },
+  "configuration": {
+    "maxRounds": 32,
+    "requestTimeoutSeconds": 120,
+    "maxOutputTokens": 8192,
+    "mode": "reasoning_effort=none",
+    "transportRetries": 0,
+    "scope": "isolated P33.1 experiment; API-backed temporary tools"
+  },
+  "calls": [
+    {
+      "turn": 1,
+      "durationMillis": 2766.0,
+      "serializedRequestBytes": 3436,
+      "inputEstimate": 3532,
+      "usage": {
+        "prompt_tokens": 1055,
+        "completion_tokens": 223,
+        "total_tokens": 1278,
+        "prompt_tokens_details": {
+          "cached_tokens": 768
+        },
+        "prompt_cache_hit_tokens": 768,
+        "prompt_cache_miss_tokens": 287
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "我会先查看相关目录，并搜索与冻结、报告生成相关的代码。",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_s37clRh0Ko3txHxY4Rk26717",
+            "type": "function",
+            "function": {
+              "name": "tree",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/service\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_56TjOFUGSqbKg5hwWVwK5791",
+            "type": "function",
+            "function": {
+              "name": "tree",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/report\"}"
+            }
+          },
+          {
+            "index": 2,
+            "id": "call_02_wFv5i6eOLhVrPlmhCOPJ3961",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"version\": \"V1\", \"query\": \"freeze\", \"path\": \"backend/src/main/java/com/codereview/agent\", \"limit\": 80}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 0
+    },
+    {
+      "turn": 2,
+      "durationMillis": 2953.0,
+      "serializedRequestBytes": 7431,
+      "inputEstimate": 7591,
+      "usage": {
+        "prompt_tokens": 2120,
+        "completion_tokens": 196,
+        "total_tokens": 2316,
+        "prompt_tokens_details": {
+          "cached_tokens": 1152
+        },
+        "prompt_cache_hit_tokens": 1152,
+        "prompt_cache_miss_tokens": 968
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_ZuToJDLTSU7mDzjCtiKm1204",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/service/ReportInputService.java\", \"start\": 1, \"end\": 400}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_zgl2NjODH8Vv23NZsz9l5738",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java\", \"start\": 1, \"end\": 400}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 5
+    },
+    {
+      "turn": 3,
+      "durationMillis": 3875.0,
+      "serializedRequestBytes": 51086,
+      "inputEstimate": 51294,
+      "usage": {
+        "prompt_tokens": 12642,
+        "completion_tokens": 197,
+        "total_tokens": 12839,
+        "prompt_tokens_details": {
+          "cached_tokens": 2304
+        },
+        "prompt_cache_hit_tokens": 2304,
+        "prompt_cache_miss_tokens": 10338
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_bqa55oZwTPZgoS81cFx58201",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 602, \"path\": \"backend/src/main/java/com/codereview/agent/service/ReportInputService.java\", \"start\": 400, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_mpDeNIy7vNTeqRcEAqAl9413",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 400, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 7
+    },
+    {
+      "turn": 4,
+      "durationMillis": 4172.0,
+      "serializedRequestBytes": 83944,
+      "inputEstimate": 84200,
+      "usage": {
+        "prompt_tokens": 20558,
+        "completion_tokens": 198,
+        "total_tokens": 20756,
+        "prompt_tokens_details": {
+          "cached_tokens": 12800
+        },
+        "prompt_cache_hit_tokens": 12800,
+        "prompt_cache_miss_tokens": 7758
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_nTRapDTJ457kjkNKGp1d6893",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 522, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java\", \"start\": 400, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_cHy5OahNviMciZvzKXg74884",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 300, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 9
+    },
+    {
+      "turn": 5,
+      "durationMillis": 5094.0,
+      "serializedRequestBytes": 100849,
+      "inputEstimate": 101153,
+      "usage": {
+        "prompt_tokens": 24629,
+        "completion_tokens": 195,
+        "total_tokens": 24824,
+        "prompt_tokens_details": {
+          "cached_tokens": 20736
+        },
+        "prompt_cache_hit_tokens": 20736,
+        "prompt_cache_miss_tokens": 3893
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_AaILnK0z9UxYepJVHijQ1848",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 200, \"path\": \"backend/src/main/java/com/codereview/agent/service/FeedbackService.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_kLY0191UqL2oFvS2eOKS4888",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 120, \"path\": \"backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 11
+    },
+    {
+      "turn": 6,
+      "durationMillis": 5265.0,
+      "serializedRequestBytes": 114204,
+      "inputEstimate": 114556,
+      "usage": {
+        "prompt_tokens": 27857,
+        "completion_tokens": 189,
+        "total_tokens": 28046,
+        "prompt_tokens_details": {
+          "cached_tokens": 24704
+        },
+        "prompt_cache_hit_tokens": 24704,
+        "prompt_cache_miss_tokens": 3153
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_Gw2i2bt9pq7AjEOOtiMB2100",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent/db\", \"query\": \"inTransaction\", \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_CppnajQENG3QbcpDmQd60217",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 40, \"path\": \"backend/src/main/java/com/codereview/agent/report\", \"query\": \"sourceCount\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 13
+    },
+    {
+      "turn": 7,
+      "durationMillis": 4281.0,
+      "serializedRequestBytes": 119742,
+      "inputEstimate": 120142,
+      "usage": {
+        "prompt_tokens": 29447,
+        "completion_tokens": 196,
+        "total_tokens": 29643,
+        "prompt_tokens_details": {
+          "cached_tokens": 28032
+        },
+        "prompt_cache_hit_tokens": 28032,
+        "prompt_cache_miss_tokens": 1415
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_5KBvCKTZegKFpHEyLuhn4039",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 140, \"path\": \"backend/src/main/java/com/codereview/agent/db/AgentDatabase.java\", \"start\": 80, \"version\": \"V1\"}"
+            }
+          },
+          {
+            "index": 1,
+            "id": "call_01_ZML3hrK2QpGKlOehfA4B9863",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 60, \"path\": \"backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java\", \"start\": 1, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 29
+    },
+    {
+      "turn": 8,
+      "durationMillis": 4921.0,
+      "serializedRequestBytes": 125049,
+      "inputEstimate": 125497,
+      "usage": {
+        "prompt_tokens": 30793,
+        "completion_tokens": 99,
+        "total_tokens": 30892,
+        "prompt_tokens_details": {
+          "cached_tokens": 29568
+        },
+        "prompt_cache_hit_tokens": 29568,
+        "prompt_cache_miss_tokens": 1225
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_iBUKnSLv6XZc6BPWEPKM6510",
+            "type": "function",
+            "function": {
+              "name": "search_code",
+              "arguments": "{\"limit\": 30, \"path\": \"backend/src/main/java/com/codereview/agent/db\", \"query\": \"TransactionTemplate\", \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 31
+    },
+    {
+      "turn": 9,
+      "durationMillis": 3906.0,
+      "serializedRequestBytes": 126328,
+      "inputEstimate": 126808,
+      "usage": {
+        "prompt_tokens": 31155,
+        "completion_tokens": 102,
+        "total_tokens": 31257,
+        "prompt_tokens_details": {
+          "cached_tokens": 30848
+        },
+        "prompt_cache_hit_tokens": 30848,
+        "prompt_cache_miss_tokens": 307
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_kegG2cRacYZaqaciuiGW6887",
+            "type": "function",
+            "function": {
+              "name": "read_code",
+              "arguments": "{\"end\": 79, \"path\": \"backend/src/main/java/com/codereview/agent/db/AgentDatabase.java\", \"start\": 40, \"version\": \"V1\"}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 34
+    },
+    {
+      "turn": 10,
+      "durationMillis": 12828.0,
+      "serializedRequestBytes": 128808,
+      "inputEstimate": 129320,
+      "usage": {
+        "prompt_tokens": 31789,
+        "completion_tokens": 2291,
+        "total_tokens": 34080,
+        "prompt_tokens_details": {
+          "cached_tokens": 31232
+        },
+        "prompt_cache_hit_tokens": 31232,
+        "prompt_cache_miss_tokens": 557
+      },
+      "finishReason": "tool_calls",
+      "response": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "index": 0,
+            "id": "call_00_wNRAex83SfsorCOaeLym6559",
+            "type": "function",
+            "function": {
+              "name": "submit_result",
+              "arguments": "{\"title\": \"报告冻结来源与生成读取链路核对\", \"answerStatus\": \"ANSWERED\", \"markdown\": \"## 结论\\n\\n报告生成之所以“冻结”审查结果、代码证据与人工反馈，是因为**冻结时把当时的结果正文、问题、材料片段正文、任务/目标版本和反馈值一次性序列化进 `report_source.source_snapshot`（以及 `report.frozen_input` 摘要）**；之后生成、详情、来源查看都只读这些快照，不再联查 `review_result` / `issue` / `feedback` / `material` 或仓库。因此事后修改反馈（`feedback` 表 revision 递增）不会改变已有报告来源。\\n\\n## 1. 候选准入\\n\\n- 候选查询固定 `completeness = COMPLETE`，可按项目（子查询 `review_task.project_id`）、任务、kind 过滤；kind 只允许 ISSUE/PATTERN/COUPLING/AGENT [E1]。\\n- 任务缺失的结果直接跳过，不返回“半条材料” [E2]。\\n- 候选里展示的反馈只是当前值（`resultFeedback` 仅对非 ISSUE 结果取 RESULT 级反馈），用于选择参考，不是冻结内容 [E2]。\\n- 冻结入口 `POST /api/v2/reports/inputs` 调用 `inputService.freeze` [E3]。\\n\\n## 2. 冻结事务\\n\\n- `freeze` 用 `db.inTransaction(...)` 包裹整个 `freezeInTransaction`，注释说明可重复读事务覆盖读取与写入，避免问题级与结果级反馈来自不同读取时刻 [E4]；`inTransaction` 由 `TransactionTemplate` + `DataSourceTransactionManager` 实现，异常整体回滚 [E5][E6]。\\n- 事务内校验：结果 ID 非空、去重、格式合法；结果必须存在（否则 NOT_FOUND）；必须 `COMPLETE`（否则 CONFLICT）[E7]。\\n- 事务内一次性读取任务、目标、项目、按 ordinal 排序的问题、问题级反馈（subjectKind=ISSUE）与结果级反馈（subjectKind=RESULT）[E7][E8]。\\n- 逐条来源校验任务/目标存在，然后 `snapshot(...)` 生成快照 [E9]。\\n- 写入：新建 `AgentReport`（state=`INPUT_FROZEN`、revision=0、`frozen_input`=摘要 JSON），再按 ordinal 逐条插入 `AgentReportSource`（`result_id` + `source_snapshot`）[E9]。\\n\\n## 3. 快照里冻结了什么\\n\\n`snapshot()` 写入 `snapshotVersion`、`frozenAt`、resultId/taskId/targetId/kind/schemaVersion/completeness/resultCreatedAt；`project`（id/name/repoUrl）、`task`（route/specialistType/state/sourceKind/branch/commitSha/baseSha）、`target`（path/oldPath/headSha/baseSha）[E10]。\\n\\n- **审查结果**：`result.body`（AGENT 为文本，其余为 JSON 对象，正文缺失直接报错）与 `result.provenance` [E10][E11]。\\n- **代码证据**：`materials` 由 provenance 的 `materials` 引用逐个查 `AgentMaterial` 后**复制片段正文**（id/projectId/sha/path/side/startLine/endLine/content/contentHash/completeness/diagnostic），注释明确“不向仓库重新读取，也不把元数据引用当成代码快照”；材料缺失则 CONFLICT 拒绝冻结 [E11]。\\n- **人工反馈**：每个 issue 节点内嵌 `feedback`（assessment/comment/revision/updatedAt），非 ISSUE 结果另存 `resultFeedback`；无反馈写 null [E10][E12]。\\n- 摘要 `summary()` 只放列表/导航用的最小字段（来源、任务、版本分组、issueCount、反馈计数），完整正文与证据仍在 `report_source` 快照 [E13]。\\n\\n## 4. 生成时读取冻结来源\\n\\n- `ReportGenerationService.start` 要求报告状态为 `INPUT_FROZEN`，校验模型可用后，用**条件更新**（`id + state=INPUT_FROZEN + revision`）改为 `QUEUED`，同时写入模型快照与补充要求快照、清空 body/错误、`revision+1`；更新 0 行则 CONFLICT [E14]。随后 `dispatcher.dispatch` 异步执行 [E14]。\\n- `ReportExecutionWorker.execute` 先条件更新 QUEUED→RUNNING（带 revision 乐观锁），再**只按 reportId 从 `AgentReportSource` 读取快照**，交给 `ReportFactsBuilder.build` [E15]。\\n- `ReportFactsBuilder` 注释与实现均只解析 `source_snapshot`：问题、模式、耦合事实、人工反馈、证据正文都取自快照内 `materials` 的已保存片段，不联查最新结果/反馈/材料/仓库；材料缺失只记入“材料缺口”而不回源 [E16][E17]。\\n- 生成成功后 `ReportCitationValidator` 要求正文至少引用一个 `[S1..Sn]` 且序号落在冻结来源数内，否则失败 [E18][E15]；失败只写错误、不写正文，冻结来源与输入摘要不变 [E15]。\\n- 读取侧：`detail`/`summary` 从 `report.frozen_input` 取来源摘要，`source(reportId, ordinal)` 直接返回 `report_source.source_snapshot`；旧记录无 `sources` 时也只逐条读快照，注释明确“不联查最新结果” [E19][E20]。\\n\\n## 5. 为什么之后改反馈不影响已有报告\\n\\n`FeedbackService.save` 只更新 `agent_feedback` 行（assessment/comment/revision+1/updatedAt），带 revision 乐观锁 [E21]。该表与 `report_source.source_snapshot` 无外键式联动，冻结后没有任何代码回写快照；生成与展示路径均不读 `agent_feedback`（只读快照内嵌的 feedback 节点）[E16][E19]。所以反馈修改只影响**下一次冻结**的新报告，已有报告的来源、证据与反馈值保持冻结时刻的值。\\n\\n## 6. 需要注意的边界\\n\\n- 冻结事务的隔离级别由 `TransactionTemplate` 默认值决定，代码中未显式设置隔离级别；注释所称“可重复读”依赖数据库默认隔离级别 [E4][E6]。\\n- 模型凭据不在快照内：`model()` 用快照的 id 回查当前 `AgentModelConfig` 取 credential，模型被删除则失败 [E22]；这不影响审查结果/证据/反馈的冻结性。\", \"citations\": [{\"id\": \"E1\", \"materialId\": \"M6\", \"startLine\": 74, \"endLine\": 92}, {\"id\": \"E2\", \"materialId\": \"M6\", \"startLine\": 108, \"endLine\": 128}, {\"id\": \"E3\", \"materialId\": \"M13\", \"startLine\": 54, \"endLine\": 60}, {\"id\": \"E4\", \"materialId\": \"M6\", \"startLine\": 141, \"endLine\": 146}, {\"id\": \"E5\", \"materialId\": \"M30\", \"startLine\": 104, \"endLine\": 107}, {\"id\": \"E6\", \"materialId\": \"M35\", \"startLine\": 62, \"endLine\": 63}, {\"id\": \"E7\", \"materialId\": \"M6\", \"startLine\": 147, \"endLine\": 190}, {\"id\": \"E8\", \"materialId\": \"M6\", \"startLine\": 191, \"endLine\": 200}, {\"id\": \"E9\", \"materialId\": \"M6\", \"startLine\": 201, \"endLine\": 240}, {\"id\": \"E10\", \"materialId\": \"M6\", \"startLine\": 262, \"endLine\": 330}, {\"id\": \"E11\", \"materialId\": \"M8\", \"startLine\": 483, \"endLine\": 517}, {\"id\": \"E12\", \"materialId\": \"M8\", \"startLine\": 452, \"endLine\": 470}, {\"id\": \"E13\", \"materialId\": \"M6\", \"startLine\": 331, \"endLine\": 340}, {\"id\": \"E14\", \"materialId\": \"M7\", \"startLine\": 55, \"endLine\": 100}, {\"id\": \"E15\", \"materialId\": \"M11\", \"startLine\": 66, \"endLine\": 110}, {\"id\": \"E16\", \"materialId\": \"M9\", \"startLine\": 20, \"endLine\": 32}, {\"id\": \"E17\", \"materialId\": \"M9\", \"startLine\": 128, \"endLine\": 160}, {\"id\": \"E18\", \"materialId\": \"M31\", \"startLine\": 26, \"endLine\": 48}, {\"id\": \"E19\", \"materialId\": \"M7\", \"startLine\": 116, \"endLine\": 145}, {\"id\": \"E20\", \"materialId\": \"M7\", \"startLine\": 186, \"endLine\": 220}, {\"id\": \"E21\", \"materialId\": \"M12\", \"startLine\": 40, \"endLine\": 88}, {\"id\": \"E22\", \"materialId\": \"M11\", \"startLine\": 160, \"endLine\": 178}], \"unresolved\": [\"冻结事务的实际隔离级别未在代码中显式设置，仅依赖数据库默认值；注释中的“可重复读”无法从代码直接证实。\"]}"
+            }
+          }
+        ]
+      },
+      "sentMaterialCount": 35
+    }
+  ],
+  "tools": [
+    {
+      "name": "tree",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/service"
+      },
+      "millis": 0.0,
+      "result": {
+        "version": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+        "paths": [
+          "backend/src/main/java/com/codereview/agent/service/AgentModelService.java",
+          "backend/src/main/java/com/codereview/agent/service/AgentProjectService.java",
+          "backend/src/main/java/com/codereview/agent/service/AgentPromptService.java",
+          "backend/src/main/java/com/codereview/agent/service/AgentStrategyService.java",
+          "backend/src/main/java/com/codereview/agent/service/FeedbackService.java",
+          "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+          "backend/src/main/java/com/codereview/agent/service/TaskNames.java",
+          "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+          "backend/src/main/java/com/codereview/agent/service/TaskStatisticsService.java"
+        ],
+        "complete": true
+      }
+    },
+    {
+      "name": "tree",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/report"
+      },
+      "millis": 0.0,
+      "result": {
+        "version": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+        "paths": [
+          "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportDispatchService.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportGenerationProperties.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportRecoveryRunner.java",
+          "backend/src/main/java/com/codereview/agent/report/ReportStates.java"
+        ],
+        "complete": true
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "version": "V1",
+        "query": "freeze",
+        "path": "backend/src/main/java/com/codereview/agent",
+        "limit": 80
+      },
+      "millis": 79.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 5,
+        "matches": [
+          {
+            "id": "M1",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+            "startLine": 56,
+            "endLine": 56,
+            "content": "    public ResponseEntity<ReportDtos.FrozenInput> freeze("
+          },
+          {
+            "id": "M2",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+            "startLine": 58,
+            "endLine": 58,
+            "content": "        ReportDtos.FrozenInput frozen = inputService.freeze(request);"
+          },
+          {
+            "id": "M3",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+            "startLine": 141,
+            "endLine": 141,
+            "content": "    public ReportDtos.FrozenInput freeze(ReportDtos.FreezeRequest request) {"
+          },
+          {
+            "id": "M4",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+            "startLine": 143,
+            "endLine": 143,
+            "content": "        return db.inTransaction(() -> freezeInTransaction(request));"
+          },
+          {
+            "id": "M5",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+            "startLine": 146,
+            "endLine": 146,
+            "content": "    private ReportDtos.FrozenInput freezeInTransaction(ReportDtos.FreezeRequest request) {"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+        "start": 1,
+        "end": 400
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M6",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+          "startLine": 1,
+          "endLine": 400,
+          "content": "package com.codereview.agent.service;\n\nimport com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.api.PageResponse;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.dto.ReportDtos;\nimport com.codereview.agent.entity.AgentFeedback;\nimport com.codereview.agent.entity.AgentIssue;\nimport com.codereview.agent.entity.AgentMaterial;\nimport com.codereview.agent.entity.AgentProject;\nimport com.codereview.agent.entity.AgentReport;\nimport com.codereview.agent.entity.AgentReportSource;\nimport com.codereview.agent.entity.AgentReviewResult;\nimport com.codereview.agent.entity.AgentReviewTask;\nimport com.codereview.agent.entity.AgentTaskTarget;\nimport com.codereview.agent.mapper.AgentFeedbackMapper;\nimport com.codereview.agent.mapper.AgentIssueMapper;\nimport com.codereview.agent.mapper.AgentMaterialMapper;\nimport com.codereview.agent.mapper.AgentProjectMapper;\nimport com.codereview.agent.mapper.AgentReportMapper;\nimport com.codereview.agent.mapper.AgentReportSourceMapper;\nimport com.codereview.agent.mapper.AgentReviewResultMapper;\nimport com.codereview.agent.mapper.AgentReviewTaskMapper;\nimport com.codereview.agent.mapper.AgentTaskTargetMapper;\nimport com.codereview.agent.support.AgentIds;\nimport com.codereview.agent.support.AgentPaging;\nimport com.codereview.agent.support.AgentTime;\nimport com.fasterxml.jackson.core.JsonProcessingException;\nimport com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\nimport com.fasterxml.jackson.databind.node.ArrayNode;\nimport com.fasterxml.jackson.databind.node.ObjectNode;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.stereotype.Service;\n\nimport java.time.LocalDateTime;\nimport java.util.ArrayList;\nimport java.util.HashSet;\nimport java.util.LinkedHashMap;\nimport java.util.LinkedHashSet;\nimport java.util.List;\nimport java.util.Map;\nimport java.util.Set;\nimport java.util.function.Function;\nimport java.util.stream.Collectors;\n\n/**\n * 报告候选与输入冻结。\n *\n * <p>候选只来自 {@code completeness=COMPLETE} 的已发布结果，任务即使部分完成或已取消，\n * 其中完整文件仍可选。冻结时把结果正文、问题、来源材料引用、任务／目标版本和当时反馈\n * 一并写入 {@code report_source.source_snapshot}；之后读取报告来源不联查最新数据。\n * 本阶段不选择模型、不组装提示词、不生成正文。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class ReportInputService {\n\n    static final String STATE_INPUT_FROZEN = \"INPUT_FROZEN\";\n    private static final int SNAPSHOT_VERSION = 1;\n    private static final Set<String> KINDS = Set.of(\"ISSUE\", \"PATTERN\", \"COUPLING\", \"AGENT\");\n\n    private final AgentDatabase db;\n    private final ObjectMapper mapper;\n\n    public ReportInputService(AgentDatabase db, ObjectMapper mapper) {\n        this.db = db;\n        this.mapper = mapper;\n    }\n\n    public PageResponse<ReportDtos.Candidate> candidates(String projectId, String taskId, String kind,\n                                                         String cursor, Integer limit) {\n        int size = AgentPaging.limit(limit);\n        LambdaQueryWrapper<AgentReviewResult> wrapper = new LambdaQueryWrapper<>();\n        wrapper.eq(AgentReviewResult::getCompleteness, \"COMPLETE\");\n        if (projectId != null && !projectId.isBlank()) {\n            String id = AgentIds.requireValid(projectId.trim(), \"项目 ID\");\n            wrapper.apply(\"task_id IN (SELECT id FROM review_task WHERE project_id = {0})\", id);\n        }\n        if (taskId != null && !taskId.isBlank()) {\n            wrapper.eq(AgentReviewResult::getTaskId, AgentIds.requireValid(taskId.trim(), \"任务 ID\"));\n        }\n        if (kind != null && !kind.isBlank()) {\n            wrapper.eq(AgentReviewResult::getKind, requireKind(kind));\n        }\n        AgentPaging.applyCursor(wrapper, cursor, AgentReviewResult::getCreatedAt, AgentReviewResult::getId);\n        AgentPaging.applyOrder(wrapper, AgentReviewResult::getCreatedAt, AgentReviewResult::getId);\n        wrapper.last(\"limit \" + (size + 1));\n        PageResponse<AgentReviewResult> page = AgentPaging.assemble(\n                db.mapper(AgentReviewResultMapper.class).selectList(wrapper), size,\n                AgentReviewResult::getCreatedAt, AgentReviewResult::getId);\n\n        List<String> resultIds = page.items().stream().map(AgentReviewResult::getId).toList();\n        Map<String, AgentReviewTask> tasks = byId(page.items().stream()\n                        .map(AgentReviewResult::getTaskId).filter(java.util.Objects::nonNull).distinct().toList(),\n                ids -> db.mapper(AgentReviewTaskMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentReviewTask>().in(AgentReviewTask::getId, ids)),\n                AgentReviewTask::getId);\n        Map<String, AgentTaskTarget> targets = byId(page.items().stream()\n                        .map(AgentReviewResult::getTargetId).filter(java.util.Objects::nonNull).distinct().toList(),\n                ids -> db.mapper(AgentTaskTargetMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentTaskTarget>().in(AgentTaskTarget::getId, ids)),\n                AgentTaskTarget::getId);\n        Map<String, AgentProject> projects = byId(tasks.values().stream()\n                        .map(AgentReviewTask::getProjectId).filter(java.util.Objects::nonNull).distinct().toList(),\n                ids -> db.mapper(AgentProjectMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentProject>().in(AgentProject::getId, ids)),\n                AgentProject::getId);\n        Map<String, Integer> issueCounts = issueCounts(resultIds);\n        Map<String, AgentFeedback> resultFeedback = resultFeedback(page.items().stream()\n                .filter(result -> !\"ISSUE\".equals(result.getKind()))\n                .map(AgentReviewResult::getId).toList());\n\n        List<ReportDtos.Candidate> items = new ArrayList<>();\n        for (AgentReviewResult result : page.items()) {\n            AgentReviewTask task = tasks.get(result.getTaskId());\n            if (task == null) {\n                // 任务缺失的结果不能说明来源，宁可不列为候选，也不返回半条材料。\n                continue;\n            }\n            AgentTaskTarget target = result.getTargetId() == null ? null : targets.get(result.getTargetId());\n            AgentProject project = projects.get(task.getProjectId());\n            TaskSource source = source(task);\n            AgentFeedback feedback = resultFeedback.get(result.getId());\n            items.add(new ReportDtos.Candidate(result.getId(), result.getTaskId(),\n                    TaskNames.display(task.getName(), task.getId()), result.getTargetId(),\n                    result.getKind(), task.getProjectId(), project == null ? task.getProjectId() : project.getName(),\n                    task.getRoute(), task.getState(), source.kind(),\n                    target == null ? null : target.getPath(), target == null ? null : target.getOldPath(),\n                    target == null ? null : target.getHeadSha(), target == null ? null : target.getBaseSha(),\n                    source.branch(), result.getCreatedAt(), issueCounts.getOrDefault(result.getId(), 0),\n                    feedback == null ? null : new ReportDtos.Feedback(feedback.getAssessment(),\n                            feedback.getComment(), feedback.getRevision() == null ? 0 : feedback.getRevision(),\n                            feedback.getUpdatedAt())));\n        }\n        return new PageResponse<>(items, page.nextCursor(), page.hasMore());\n    }\n\n    public ReportDtos.FrozenInput freeze(ReportDtos.FreezeRequest request) {\n        // 新库默认的可重复读事务覆盖读取及写入，避免问题级、结果级反馈来自不同的读取时刻。\n        return db.inTransaction(() -> freezeInTransaction(request));\n    }\n\n    private ReportDtos.FrozenInput freezeInTransaction(ReportDtos.FreezeRequest request) {\n        String title = request.title().trim();\n        List<String> ids = request.resultIds().stream().map(String::trim).toList();\n        if (ids.isEmpty()) {\n            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"至少选择一个审查结果\");\n        }\n        if (new HashSet<>(ids).size() != ids.size()) {\n            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"同一审查结果不能重复选择\");\n        }\n        for (String id : ids) {\n            AgentIds.requireValid(id, \"审查结果 ID\");\n        }\n        List<AgentReviewResult> rows = db.mapper(AgentReviewResultMapper.class).selectList(\n                new LambdaQueryWrapper<AgentReviewResult>().in(AgentReviewResult::getId, ids));\n        Map<String, AgentReviewResult> byId = rows.stream()\n                .collect(Collectors.toMap(AgentReviewResult::getId, Function.identity()));\n        List<String> missing = ids.stream().filter(id -> !byId.containsKey(id)).toList();\n        if (!missing.isEmpty()) {\n            throw new ApiException(ErrorCode.NOT_FOUND, \"部分审查结果不存在，不能冻结\",\n                    Map.of(\"resultIds\", missing));\n        }\n        List<String> incomplete = ids.stream()\n                .filter(id -> !\"COMPLETE\".equals(byId.get(id).getCompleteness())).toList();\n        if (!incomplete.isEmpty()) {\n            throw new ApiException(ErrorCode.CONFLICT, \"只允许选择已完整发布的审查结果\",\n                    Map.of(\"resultIds\", incomplete));\n        }\n\n        List<String> taskIds = rows.stream().map(AgentReviewResult::getTaskId).distinct().toList();\n        List<String> targetIds = rows.stream().map(AgentReviewResult::getTargetId)\n                .filter(java.util.Objects::nonNull).distinct().toList();\n        Map<String, AgentReviewTask> tasks = taskIds.isEmpty() ? Map.of()\n                : db.mapper(AgentReviewTaskMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentReviewTask>().in(AgentReviewTask::getId, taskIds))\n                .stream().collect(Collectors.toMap(AgentReviewTask::getId, Function.identity()));\n        Map<String, AgentTaskTarget> targets = targetIds.isEmpty() ? Map.of()\n                : db.mapper(AgentTaskTargetMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentTaskTarget>().in(AgentTaskTarget::getId, targetIds))\n                .stream().collect(Collectors.toMap(AgentTaskTarget::getId, Function.identity()));\n        List<String> projectIds = tasks.values().stream().map(AgentReviewTask::getProjectId)\n                .distinct().toList();\n        Map<String, AgentProject> projects = projectIds.isEmpty() ? Map.of()\n                : db.mapper(AgentProjectMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentProject>().in(AgentProject::getId, projectIds))\n                .stream().collect(Collectors.toMap(AgentProject::getId, Function.identity()));\n        Map<String, List<AgentIssue>> issuesByResult = issuesByResult(ids);\n        Map<String, AgentFeedback> issueFeedback = issueFeedback(issuesByResult);\n        Map<String, AgentFeedback> resultFeedback = resultFeedback(rows.stream()\n                .filter(result -> !\"ISSUE\".equals(result.getKind()))\n                .map(AgentReviewResult::getId).toList());\n\n        LocalDateTime frozenAt = AgentTime.now();\n        List<ReportDtos.FrozenSource> sources = new ArrayList<>();\n        for (int index = 0; index < ids.size(); index++) {\n            AgentReviewResult result = byId.get(ids.get(index));\n            AgentReviewTask task = tasks.get(result.getTaskId());\n            if (task == null) {\n                throw new ApiException(ErrorCode.CONFLICT, \"审查结果缺少所属任务，不能冻结\",\n                        Map.of(\"resultId\", result.getId()));\n            }\n            AgentTaskTarget target = result.getTargetId() == null ? null : targets.get(result.getTargetId());\n            if (result.getTargetId() != null && target == null) {\n                throw new ApiException(ErrorCode.CONFLICT, \"审查结果缺少所属文件，不能冻结\",\n                        Map.of(\"resultId\", result.getId()));\n            }\n            ObjectNode snapshot = snapshot(result, task, target,\n                    projects.get(task.getProjectId()), issuesByResult.getOrDefault(result.getId(), List.of()),\n                    issueFeedback, resultFeedback.get(result.getId()), frozenAt);\n            sources.add(new ReportDtos.FrozenSource(index + 1, result.getId(), snapshot));\n        }\n\n        AgentReport report = new AgentReport();\n        report.setId(AgentIds.next());\n        report.setTitle(title);\n        report.setState(STATE_INPUT_FROZEN);\n        report.setFrozenInput(json(summary(title, sources, frozenAt)));\n        report.setRevision(0);\n        report.setCreatedAt(frozenAt);\n        report.setUpdatedAt(frozenAt);\n        db.mapper(AgentReportMapper.class).insert(report);\n        for (ReportDtos.FrozenSource source : sources) {\n            AgentReportSource row = new AgentReportSource();\n            row.setReportId(report.getId());\n            row.setResultId(source.resultId());\n            row.setSourceSnapshot(json(source.snapshot()));\n            row.setOrdinal(source.ordinal());\n            db.mapper(AgentReportSourceMapper.class).insert(row);\n        }\n        return new ReportDtos.FrozenInput(report.getId(), report.getTitle(), report.getState(),\n                report.getCreatedAt(), sources.size(), sources);\n    }\n\n    public ReportDtos.FrozenInput frozenInput(String reportId) {\n        AgentReport report = db.mapper(AgentReportMapper.class)\n                .selectById(AgentIds.requireValid(reportId, \"报告 ID\"));\n        if (report == null) {\n            throw new ApiException(ErrorCode.NOT_FOUND, \"报告不存在：\" + reportId);\n        }\n        List<AgentReportSource> rows = db.mapper(AgentReportSourceMapper.class).selectList(\n                new LambdaQueryWrapper<AgentReportSource>()\n                        .eq(AgentReportSource::getReportId, report.getId())\n                        .orderByAsc(AgentReportSource::getOrdinal));\n        List<ReportDtos.FrozenSource> sources = rows.stream()\n                .map(row -> new ReportDtos.FrozenSource(row.getOrdinal(), row.getResultId(),\n                        readSnapshot(row.getSourceSnapshot())))\n                .toList();\n        return new ReportDtos.FrozenInput(report.getId(), report.getTitle(), report.getState(),\n                report.getCreatedAt(), sources.size(), sources);\n    }\n\n    private ObjectNode snapshot(AgentReviewResult result, AgentReviewTask task, AgentTaskTarget target,\n                                AgentProject project, List<AgentIssue> issues,\n                                Map<String, AgentFeedback> issueFeedback, AgentFeedback resultFeedback,\n                                LocalDateTime frozenAt) {\n        TaskSource source = source(task);\n        ObjectNode node = mapper.createObjectNode();\n        node.put(\"snapshotVersion\", SNAPSHOT_VERSION);\n        node.put(\"frozenAt\", frozenAt.toString());\n        node.put(\"resultId\", result.getId());\n        node.put(\"taskId\", result.getTaskId());\n        node.put(\"targetId\", result.getTargetId());\n        node.put(\"kind\", result.getKind());\n        node.put(\"schemaVersion\", result.getSchemaVersion());\n        node.put(\"completeness\", result.getCompleteness());\n        node.put(\"resultCreatedAt\", result.getCreatedAt() == null ? null : result.getCreatedAt().toString());\n\n        ObjectNode projectNode = node.putObject(\"project\");\n        projectNode.put(\"id\", task.getProjectId());\n        projectNode.put(\"name\", project == null ? null : project.getName());\n        projectNode.put(\"repoUrl\", project == null ? null : project.getRepoUrl());\n\n        ObjectNode taskNode = node.putObject(\"task\");\n        taskNode.put(\"id\", task.getId());\n        taskNode.put(\"route\", task.getRoute());\n        taskNode.put(\"specialistType\", task.getSpecialistType());\n        taskNode.put(\"state\", task.getState());\n        taskNode.put(\"sourceKind\", source.kind());\n        taskNode.put(\"branch\", source.branch());\n        taskNode.put(\"commitSha\", source.commitSha());\n        taskNode.put(\"baseSha\", source.baseSha());\n\n        ObjectNode targetNode = node.putObject(\"target\");\n        targetNode.put(\"id\", target == null ? null : target.getId());\n        targetNode.put(\"path\", target == null ? null : target.getPath());\n        targetNode.put(\"oldPath\", target == null ? null : target.getOldPath());\n        targetNode.put(\"headSha\", target == null ? null : target.getHeadSha());\n        targetNode.put(\"baseSha\", target == null ? null : target.getBaseSha());\n\n        ObjectNode resultNode = node.putObject(\"result\");\n        resultNode.set(\"body\", bodyNode(result));\n        JsonNode provenance = requiredJson(result.getProvenance(), true, \"结果来源\");\n        resultNode.set(\"provenance\", provenance);\n        node.set(\"materials\", frozenMaterials(provenance));\n\n        ArrayNode issueNodes = node.putArray(\"issues\");\n        for (AgentIssue issue : issues) {\n            ObjectNode issueNode = issueNodes.addObject();\n            issueNode.put(\"id\", issue.getId());\n            issueNode.put(\"ordinal\", issue.getOrdinal());\n            issueNode.put(\"category\", issue.getCategory());\n            issueNode.put(\"severity\", issue.getSeverity());\n            issueNode.put(\"title\", issue.getTitle());\n            issueNode.put(\"reason\", issue.getReason());\n            issueNode.put(\"suggestion\", issue.getSuggestion());\n            issueNode.set(\"locations\", requiredJson(issue.getLocations(), false, \"问题位置\"));\n            issueNode.set(\"sourceUnits\", requiredJson(issue.getSourceUnits(), false, \"问题来源单元\"));\n            FeedbackView feedback = feedback(issueFeedback.get(issue.getId()));\n            if (feedback == null) {\n                issueNode.putNull(\"feedback\");\n            } else {\n                issueNode.set(\"feedback\", feedbackNode(feedback));\n            }\n        }\n        FeedbackView resultFeedbackView = feedback(resultFeedback);\n        if (resultFeedbackView == null) {\n            node.putNull(\"resultFeedback\");\n        } else {\n            node.set(\"resultFeedback\", feedbackNode(resultFeedbackView));\n        }\n        return node;\n    }\n\n    private ObjectNode summary(String title, List<ReportDtos.FrozenSource> sources, LocalDateTime frozenAt) {\n        ObjectNode node = mapper.createObjectNode();\n        node.put(\"version\", SNAPSHOT_VERSION);\n        node.put(\"frozenAt\", frozenAt.toString());\n        node.put(\"title\", title);\n        node.put(\"sourceCount\", sources.size());\n        ObjectNode kinds = node.putObject(\"kinds\");\n        ObjectNode tasks = node.putObject(\"tasks\");\n        Set<String> versions = new LinkedHashSet<>();\n        ArrayNode versionNodes = node.putArray(\"versions\");\n        ArrayNode resultIds = node.putArray(\"resultIds\");\n        ArrayNode sourceNodes = node.putArray(\"sources\");\n        for (ReportDtos.FrozenSource source : sources) {\n            JsonNode snapshot = source.snapshot();\n            String kind = snapshot.path(\"kind\").asText();\n            kinds.put(kind, kinds.path(kind).asInt(0) + 1);\n            String projectId = snapshot.path(\"project\").path(\"id\").asText();\n            String projectName = snapshot.path(\"project\").path(\"name\").asText(null);\n            String taskId = snapshot.path(\"task\").path(\"id\").asText();\n            tasks.put(taskId, projectId);\n            String headSha = snapshot.path(\"target\").path(\"headSha\").asText(\"\");\n            String baseSha = snapshot.path(\"target\").path(\"baseSha\").asText(\"\");\n            String versionKey = projectId + \"|\" + headSha + \"|\" + baseSha;\n            if (versions.add(versionKey)) {\n                ObjectNode version = versionNodes.addObject();\n                version.put(\"projectId\", projectId);\n                version.put(\"headSha\", headSha);\n                version.put(\"baseSha\", baseSha);\n            }\n            resultIds.add(source.resultId());\n            ObjectNode sourceNode = sourceNodes.addObject();\n            sourceNode.put(\"ordinal\", source.ordinal());\n            sourceNode.put(\"resultId\", source.resultId());\n            sourceNode.put(\"kind\", kind);\n            sourceNode.put(\"projectId\", projectId);\n            sourceNode.put(\"projectName\", projectName);\n            sourceNode.put(\"taskId\", taskId);\n            sourceNode.put(\"taskRoute\", snapshot.path(\"task\").path(\"route\").asText(null));\n            sourceNode.put(\"path\", snapshot.path(\"target\").path(\"path\").asText(null));\n            sourceNode.put(\"headSha\", headSha);\n            sourceNode.put(\"baseSha\", baseSha);\n            sourceNode.put(\"summary\", summaryOf(kind, snapshot));\n            sourceNode.put(\"issueCount\", snapshot.path(\"issues\").isArray()\n                    ? snapshot.path(\"issues\").size() : 0);\n            FeedbackCounts counts = feedbackCounts(kind, snapshot);\n            sourceNode.put(\"accurate\", counts.accurate);\n            sourceNode.put(\"inaccurate\", counts.inaccurate);\n            sourceNode.put(\"unknown\", counts.unknown);\n            sourceNode.put(\"unassessed\", counts.unassessed);\n        }\n        return node;\n    }\n\n    /** 摘要只服务列表与来源导航；完整正文、问题和证据仍在 report_source 快照里。 */\n    private static String summaryOf(String kind, JsonNode snapshot) {\n        JsonNode body = snapshot.path(\"result\").path(\"body\");\n        if (\"AGENT\".equals(kind)) {\n            String text = body.isTextual() ? body.asText() : \"\";\n            int lineBreak = text.indexOf('\\n');\n            String first = (lineBreak >= 0 ? text.substring(0, lineBreak) : text).strip();\n            return first.length() <= 200 ? first : first.substring(0, 200) + \"…\";\n        }\n        String summary = body.path(\"summary\").asText(\"\");\n        return summary.length() <= 200 ? summary : summary.substring(0, 200) + \"…\";\n    }\n\n    private static FeedbackCounts feedbackCounts(String kind, JsonNode snapshot) {\n        FeedbackCounts counts = new FeedbackCounts();\n        if (\"ISSUE\".equals(kind)) {\n            for (JsonNode issue : snapshot.path(\"issues\")) {\n                counts.add(issue.path(\"feedback\"));\n            }\n        } else {"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 602
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java",
+        "start": 1,
+        "end": 400
+      },
+      "millis": 79.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M7",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java",
+          "startLine": 1,
+          "endLine": 342,
+          "content": "package com.codereview.agent.report;\n\nimport com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;\nimport com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.api.PageResponse;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.dto.ReportDtos;\nimport com.codereview.agent.entity.AgentModelCall;\nimport com.codereview.agent.entity.AgentModelConfig;\nimport com.codereview.agent.entity.AgentReport;\nimport com.codereview.agent.entity.AgentReportSource;\nimport com.codereview.agent.mapper.AgentModelCallMapper;\nimport com.codereview.agent.mapper.AgentModelConfigMapper;\nimport com.codereview.agent.mapper.AgentReportMapper;\nimport com.codereview.agent.mapper.AgentReportSourceMapper;\nimport com.codereview.agent.support.AgentIds;\nimport com.codereview.agent.support.AgentPaging;\nimport com.codereview.agent.support.AgentTime;\nimport com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\nimport com.fasterxml.jackson.databind.node.ObjectNode;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.stereotype.Service;\n\nimport java.nio.charset.StandardCharsets;\nimport java.time.LocalDateTime;\nimport java.util.ArrayList;\nimport java.util.LinkedHashMap;\nimport java.util.List;\nimport java.util.Map;\n\nimport static com.codereview.agent.report.ReportStates.INPUT_FROZEN;\nimport static com.codereview.agent.report.ReportStates.QUEUED;\n\n/**\n * 报告读取与生成入口。\n *\n * <p>P32.3 的冻结来源是不可变材料；这里只选择模型和补充要求，把 {@code INPUT_FROZEN}\n * 条件更新为 {@code QUEUED} 后交给后台执行。失败保留冻结来源与错误，不覆盖正文，\n * 也不把程序事实草稿当成完成报告。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class ReportGenerationService {\n\n    private final AgentDatabase db;\n    private final ObjectMapper mapper;\n    private final ReportDispatchService dispatcher;\n\n    public ReportGenerationService(AgentDatabase db, ObjectMapper mapper, ReportDispatchService dispatcher) {\n        this.db = db;\n        this.mapper = mapper;\n        this.dispatcher = dispatcher;\n    }\n\n    public ReportDtos.ReportDetail start(String reportId, ReportDtos.GenerateRequest request) {\n        String id = AgentIds.requireValid(reportId, \"报告 ID\");\n        AgentReport report = db.mapper(AgentReportMapper.class).selectById(id);\n        if (report == null) {\n            throw new ApiException(ErrorCode.NOT_FOUND, \"报告不存在：\" + reportId);\n        }\n        if (!INPUT_FROZEN.equals(report.getState())) {\n            throw new ApiException(ErrorCode.CONFLICT, \"报告当前状态不能生成正文\",\n                    Map.of(\"state\", report.getState()));\n        }\n        String modelId = AgentIds.requireValid(request.modelConfigId(), \"模型 ID\");\n        AgentModelConfig model = db.mapper(AgentModelConfigMapper.class).selectById(modelId);\n        if (model == null) {\n            throw new ApiException(ErrorCode.NOT_FOUND, \"模型不存在：\" + request.modelConfigId());\n        }\n        requireUsable(model);\n\n        LocalDateTime now = AgentTime.now();\n        String instruction = request.instruction() == null ? null : request.instruction().strip();\n        ObjectNode modelSnapshot = modelSnapshot(model);\n        ObjectNode instructionSnapshot = instructionSnapshot(instruction);\n        int changed = db.mapper(AgentReportMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReport>()\n                        .eq(AgentReport::getId, id)\n                        .eq(AgentReport::getState, INPUT_FROZEN)\n                        .eq(AgentReport::getRevision, report.getRevision())\n                        .set(AgentReport::getState, QUEUED)\n                        .set(AgentReport::getModelSnapshot, json(modelSnapshot))\n                        .set(AgentReport::getInstructionSnapshot, json(instructionSnapshot))\n                        .set(AgentReport::getBody, null)\n                        .set(AgentReport::getErrorCode, null)\n                        .set(AgentReport::getErrorMessage, null)\n                        .set(AgentReport::getStartedAt, null)\n                        .set(AgentReport::getFinishedAt, null)\n                        .set(AgentReport::getUpdatedAt, now)\n                        .setSql(\"revision = revision + 1\"));\n        if (changed == 0) {\n            throw new ApiException(ErrorCode.CONFLICT, \"报告已被其他操作修改，请刷新后重试\");\n        }\n        dispatcher.dispatch(id);\n        return detail(id);\n    }\n\n    public PageResponse<ReportDtos.ReportSummary> list(String cursor, Integer limit) {\n        int size = AgentPaging.limit(limit);\n        LambdaQueryWrapper<AgentReport> wrapper = new LambdaQueryWrapper<>();\n        AgentPaging.applyCursor(wrapper, cursor, AgentReport::getCreatedAt, AgentReport::getId);\n        AgentPaging.applyOrder(wrapper, AgentReport::getCreatedAt, AgentReport::getId);\n        wrapper.last(\"limit \" + (size + 1));\n        PageResponse<AgentReport> page = AgentPaging.assemble(\n                db.mapper(AgentReportMapper.class).selectList(wrapper), size,\n                AgentReport::getCreatedAt, AgentReport::getId);\n        return new PageResponse<>(page.items().stream().map(this::summary).toList(),\n                page.nextCursor(), page.hasMore());\n    }\n\n    public ReportDtos.ReportDetail detail(String reportId) {\n        AgentReport report = require(reportId);\n        JsonNode frozen = readObject(report.getFrozenInput());\n        List<ReportDtos.SourceSummary> sources = sourceSummaries(report, frozen);\n        List<ReportDtos.CallSummary> calls = calls(report.getId());\n        ReportDtos.ModelView model = modelView(report.getModelSnapshot());\n        return new ReportDtos.ReportDetail(report.getId(), report.getTitle(), report.getState(),\n                report.getBody(), report.getErrorCode(), report.getErrorMessage(), model,\n                instruction(report.getInstructionSnapshot()), sourceCount(frozen, sources.size()),\n                taskCount(frozen), versionCount(frozen), kinds(frozen), sources, calls,\n                report.getCreatedAt(), report.getUpdatedAt(), report.getStartedAt(),\n                report.getFinishedAt());\n    }\n\n    public ReportDtos.FrozenSource source(String reportId, int ordinal) {\n        AgentReport report = require(reportId);\n        AgentReportSource row = db.mapper(AgentReportSourceMapper.class).selectOne(\n                new LambdaQueryWrapper<AgentReportSource>()\n                        .eq(AgentReportSource::getReportId, report.getId())\n                        .eq(AgentReportSource::getOrdinal, ordinal));\n        if (row == null) {\n            throw new ApiException(ErrorCode.NOT_FOUND, \"报告来源不存在：\" + ordinal);\n        }\n        JsonNode snapshot = readObject(row.getSourceSnapshot());\n        if (snapshot == null) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"保存的报告来源数据损坏，无法读取\");\n        }\n        return new ReportDtos.FrozenSource(row.getOrdinal(), row.getResultId(), snapshot);\n    }\n\n    public List<ReportDtos.CallSummary> calls(String reportId) {\n        String id = AgentIds.requireValid(reportId, \"报告 ID\");\n        return db.mapper(AgentModelCallMapper.class).selectList(\n                        new LambdaQueryWrapper<AgentModelCall>()\n                                .eq(AgentModelCall::getReportId, id)\n                                .orderByAsc(AgentModelCall::getCreatedAt)\n                                .orderByAsc(AgentModelCall::getId))\n                .stream().map(call -> new ReportDtos.CallSummary(call.getId(), call.getPurpose(),\n                        call.getAttempt() == null ? 1 : call.getAttempt(), call.getState(),\n                        call.getErrorCode(), call.getErrorMessage(), call.getCreatedAt(),\n                        call.getStartedAt(), call.getFinishedAt()))\n                .toList();\n    }\n\n    public Download download(String reportId) {\n        AgentReport report = require(reportId);\n        if (!ReportStates.SUCCEEDED.equals(report.getState()) || report.getBody() == null\n                || report.getBody().isBlank()) {\n            throw new ApiException(ErrorCode.CONFLICT, \"报告尚未成功生成，不能下载正文\",\n                    Map.of(\"state\", report.getState()));\n        }\n        return new Download(fileName(report.getTitle()), report.getBody().getBytes(StandardCharsets.UTF_8));\n    }\n\n    private AgentReport require(String reportId) {\n        AgentReport report = db.mapper(AgentReportMapper.class)\n                .selectById(AgentIds.requireValid(reportId, \"报告 ID\"));\n        if (report == null) {\n            throw new ApiException(ErrorCode.NOT_FOUND, \"报告不存在：\" + reportId);\n        }\n        return report;\n    }\n\n    private ReportDtos.ReportSummary summary(AgentReport report) {\n        JsonNode frozen = readObject(report.getFrozenInput());\n        ReportDtos.ModelView model = modelView(report.getModelSnapshot());\n        return new ReportDtos.ReportSummary(report.getId(), report.getTitle(), report.getState(),\n                report.getErrorCode(), report.getErrorMessage(), model == null ? null : model.name(),\n                sourceCount(frozen, 0), taskCount(frozen), versionCount(frozen), kinds(frozen),\n                report.getCreatedAt(), report.getUpdatedAt(), report.getStartedAt(),\n                report.getFinishedAt());\n    }\n\n    private List<ReportDtos.SourceSummary> sourceSummaries(AgentReport report, JsonNode frozen) {\n        List<ReportDtos.SourceSummary> result = new ArrayList<>();\n        JsonNode saved = frozen == null ? null : frozen.path(\"sources\");\n        if (saved != null && saved.isArray()) {\n            for (JsonNode node : saved) {\n                result.add(new ReportDtos.SourceSummary(node.path(\"ordinal\").asInt(), text(node, \"resultId\"),\n                        text(node, \"kind\"), text(node, \"projectId\"), text(node, \"projectName\"),\n                        text(node, \"taskId\"), text(node, \"taskRoute\"), text(node, \"path\"),\n                        text(node, \"headSha\"), text(node, \"baseSha\"), text(node, \"summary\"),\n                        node.path(\"issueCount\").asInt(), node.path(\"accurate\").asInt(),\n                        node.path(\"inaccurate\").asInt(), node.path(\"unknown\").asInt(),\n                        node.path(\"unassessed\").asInt()));\n            }\n            return result;\n        }\n        // 兼容 P32.3 早期记录：摘要没有 sources 时按来源逐条读取最小字段；不联查最新结果。\n        for (AgentReportSource row : db.mapper(AgentReportSourceMapper.class).selectList(\n                new LambdaQueryWrapper<AgentReportSource>()\n                        .eq(AgentReportSource::getReportId, report.getId())\n                        .orderByAsc(AgentReportSource::getOrdinal))) {\n            JsonNode snapshot = readObject(row.getSourceSnapshot());\n            if (snapshot == null) {\n                continue;\n            }\n            JsonNode target = snapshot.path(\"target\");\n            JsonNode project = snapshot.path(\"project\");\n            JsonNode task = snapshot.path(\"task\");\n            result.add(new ReportDtos.SourceSummary(row.getOrdinal(), row.getResultId(),\n                    text(snapshot, \"kind\"), text(project, \"id\"), text(project, \"name\"),\n                    text(snapshot, \"taskId\"), text(task, \"route\"), text(target, \"path\"),\n                    text(target, \"headSha\"), text(target, \"baseSha\"),\n                    text(snapshot.path(\"result\").path(\"body\"), \"summary\"),\n                    snapshot.path(\"issues\").isArray() ? snapshot.path(\"issues\").size() : 0,\n                    0, 0, 0, 0));\n        }\n        return result;\n    }\n\n    private static void requireUsable(AgentModelConfig model) {\n        if (model.getBaseUrl() == null || model.getBaseUrl().isBlank()) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, \"模型接口地址为空\",\n                    Map.of(\"modelId\", model.getId()));\n        }\n        if (model.getModelName() == null || model.getModelName().isBlank()) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, \"模型名称为空\",\n                    Map.of(\"modelId\", model.getId()));\n        }\n        if (model.getContextWindow() == null || model.getContextWindow() <= 0) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,\n                    \"模型未声明上下文窗口，无法判断报告容量\", Map.of(\"modelId\", model.getId()));\n        }\n        if (model.getProtocol() != null && !\"OPENAI_CHAT\".equals(model.getProtocol())) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,\n                    \"暂不支持该模型协议：\" + model.getProtocol(), Map.of(\"modelId\", model.getId()));\n        }\n    }\n\n    private ObjectNode modelSnapshot(AgentModelConfig model) {\n        ObjectNode node = mapper.createObjectNode();\n        node.put(\"id\", model.getId());\n        node.put(\"name\", model.getName());\n        node.put(\"baseUrl\", model.getBaseUrl());\n        node.put(\"modelName\", model.getModelName());\n        node.put(\"contextWindow\", model.getContextWindow());\n        node.put(\"maxOutput\", model.getMaxOutput());\n        node.put(\"tokenizer\", model.getTokenizer());\n        node.put(\"protocol\", model.getProtocol() == null ? \"OPENAI_CHAT\" : model.getProtocol());\n        node.put(\"revision\", model.getRevision());\n        return node;\n    }\n\n    private ObjectNode instructionSnapshot(String instruction) {\n        ObjectNode node = mapper.createObjectNode();\n        node.put(\"version\", ReportFactsBuilder.FACTS_VERSION);\n        node.put(\"text\", instruction);\n        return node;\n    }\n\n    private ReportDtos.ModelView modelView(String snapshot) {\n        JsonNode node = readObject(snapshot);\n        if (node == null) {\n            return null;\n        }\n        return new ReportDtos.ModelView(text(node, \"id\"), text(node, \"name\"), text(node, \"modelName\"),\n                intOrNull(node, \"contextWindow\"), intOrNull(node, \"maxOutput\"),\n                text(node, \"tokenizer\"), text(node, \"protocol\"), intOrNull(node, \"revision\"));\n    }\n\n    private String instruction(String snapshot) {\n        JsonNode node = readObject(snapshot);\n        return node == null ? null : text(node, \"text\");\n    }\n\n    private Map<String, Integer> kinds(JsonNode frozen) {\n        Map<String, Integer> kinds = new LinkedHashMap<>();\n        JsonNode node = frozen == null ? null : frozen.path(\"kinds\");\n        if (node != null && node.isObject()) {\n            node.fields().forEachRemaining(entry -> kinds.put(entry.getKey(), entry.getValue().asInt()));\n        }\n        return kinds;\n    }\n\n    private int sourceCount(JsonNode frozen, int fallback) {\n        JsonNode node = frozen == null ? null : frozen.get(\"sourceCount\");\n        return node != null && node.isInt() ? node.asInt() : fallback;\n    }\n\n    private int taskCount(JsonNode frozen) {\n        JsonNode tasks = frozen == null ? null : frozen.path(\"tasks\");\n        return tasks != null && tasks.isObject() ? tasks.size() : 0;\n    }\n\n    private int versionCount(JsonNode frozen) {\n        JsonNode versions = frozen == null ? null : frozen.path(\"versions\");\n        return versions != null && versions.isArray() ? versions.size() : 0;\n    }\n\n    private JsonNode readObject(String value) {\n        if (value == null || value.isBlank()) {\n            return null;\n        }\n        try {\n            JsonNode node = mapper.readTree(value);\n            return node != null && node.isObject() ? node : null;\n        } catch (Exception e) {\n            return null;\n        }\n    }\n\n    private String json(JsonNode node) {\n        try {\n            return mapper.writeValueAsString(node);\n        } catch (Exception e) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"报告快照无法序列化\");\n        }\n    }\n\n    private static Integer intOrNull(JsonNode node, String field) {\n        JsonNode value = node.get(field);\n        return value == null || value.isNull() ? null : value.asInt();\n    }\n\n    private static String text(JsonNode node, String field) {\n        JsonNode value = node == null ? null : node.get(field);\n        return value == null || value.isNull() ? null : value.asText();\n    }\n\n    private static String fileName(String title) {\n        String name = title == null || title.isBlank() ? \"审查报告\" : title.strip();\n        return name.replaceAll(\"[\\\\\\\\/:*?\\\"<>|\\\\r\\\\n]\", \"_\") + \".md\";\n    }\n\n    /** 下载正文与阅读正文是同一份保存内容。 */\n    public record Download(String fileName, byte[] content) {\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 342
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 602,
+        "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+        "start": 400,
+        "version": "V1"
+      },
+      "millis": 63.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M8",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+          "startLine": 400,
+          "endLine": 602,
+          "content": "        } else {\n            counts.add(snapshot.path(\"resultFeedback\"));\n        }\n        return counts;\n    }\n\n    private static final class FeedbackCounts {\n        int accurate;\n        int inaccurate;\n        int unknown;\n        int unassessed;\n\n        void add(JsonNode feedback) {\n            String assessment = feedback == null || feedback.isNull()\n                    ? null : feedback.path(\"assessment\").asText(null);\n            if (\"ACCURATE\".equals(assessment)) {\n                accurate++;\n            } else if (\"INACCURATE\".equals(assessment)) {\n                inaccurate++;\n            } else if (\"UNKNOWN\".equals(assessment)) {\n                unknown++;\n            } else {\n                unassessed++;\n            }\n        }\n    }\n\n    private Map<String, Integer> issueCounts(List<String> resultIds) {\n        if (resultIds.isEmpty()) {\n            return Map.of();\n        }\n        List<AgentIssue> rows = db.mapper(AgentIssueMapper.class).selectList(\n                new LambdaQueryWrapper<AgentIssue>()\n                        .select(AgentIssue::getResultId)\n                        .in(AgentIssue::getResultId, resultIds));\n        Map<String, Integer> counts = new LinkedHashMap<>();\n        for (AgentIssue row : rows) {\n            counts.merge(row.getResultId(), 1, Integer::sum);\n        }\n        return counts;\n    }\n\n    private Map<String, List<AgentIssue>> issuesByResult(List<String> resultIds) {\n        List<AgentIssue> rows = db.mapper(AgentIssueMapper.class).selectList(\n                new LambdaQueryWrapper<AgentIssue>()\n                        .in(AgentIssue::getResultId, resultIds)\n                        .orderByAsc(AgentIssue::getOrdinal));\n        return rows.stream().collect(Collectors.groupingBy(AgentIssue::getResultId,\n                LinkedHashMap::new, Collectors.toList()));\n    }\n\n    private Map<String, AgentFeedback> issueFeedback(Map<String, List<AgentIssue>> issuesByResult) {\n        List<String> issueIds = issuesByResult.values().stream().flatMap(List::stream)\n                .map(AgentIssue::getId).toList();\n        return feedback(\"ISSUE\", issueIds);\n    }\n\n    private Map<String, AgentFeedback> resultFeedback(List<String> resultIds) {\n        return feedback(\"RESULT\", resultIds);\n    }\n\n    private Map<String, AgentFeedback> feedback(String kind, List<String> subjectIds) {\n        if (subjectIds.isEmpty()) {\n            return Map.of();\n        }\n        return db.mapper(AgentFeedbackMapper.class).selectList(\n                new LambdaQueryWrapper<AgentFeedback>()\n                        .eq(AgentFeedback::getSubjectKind, kind)\n                        .in(AgentFeedback::getSubjectId, subjectIds))\n                .stream().collect(Collectors.toMap(AgentFeedback::getSubjectId, Function.identity(), (a, b) -> b));\n    }\n\n    private FeedbackView feedback(AgentFeedback row) {\n        return row == null ? null : new FeedbackView(row.getAssessment(), row.getComment(),\n                row.getRevision() == null ? 0 : row.getRevision(), row.getUpdatedAt());\n    }\n\n    private JsonNode feedbackNode(FeedbackView feedback) {\n        ObjectNode node = mapper.createObjectNode();\n        node.put(\"assessment\", feedback.assessment());\n        node.put(\"comment\", feedback.comment());\n        node.put(\"revision\", feedback.revision());\n        node.put(\"updatedAt\", feedback.updatedAt() == null ? null : feedback.updatedAt().toString());\n        return node;\n    }\n\n    private JsonNode bodyNode(AgentReviewResult result) {\n        String body = result.getBody();\n        if (body == null || body.isBlank()) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"保存的结果正文缺失，不能冻结\");\n        }\n        if (\"AGENT\".equals(result.getKind())) {\n            return mapper.getNodeFactory().textNode(body);\n        }\n        return requiredJson(body, true, \"专项结果正文\");\n    }\n\n    private JsonNode requiredJson(String value, boolean object, String label) {\n        JsonNode node = readJsonOrNull(value);\n        if (node == null || (object ? !node.isObject() : !node.isArray())) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"保存的\" + label + \"损坏，不能冻结\");\n        }\n        return node;\n    }\n\n    private ArrayNode frozenMaterials(JsonNode provenance) {\n        ArrayNode snapshots = mapper.createArrayNode();\n        JsonNode references = provenance.path(\"materials\");\n        if (references.isMissingNode()) return snapshots;\n        if (!references.isArray()) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"保存的材料引用损坏，不能冻结\");\n        }\n        Set<String> seen = new LinkedHashSet<>();\n        for (JsonNode reference : references) {\n            String id = reference.path(\"id\").asText(\"\");\n            if (id.isBlank()) {\n                throw new ApiException(ErrorCode.INTERNAL_ERROR, \"保存的材料引用缺少 ID，不能冻结\");\n            }\n            if (!seen.add(id)) continue;\n            AgentMaterial material = db.mapper(AgentMaterialMapper.class).selectById(id);\n            if (material == null) {\n                throw new ApiException(ErrorCode.CONFLICT, \"来源代码材料缺失，不能冻结\", Map.of(\"materialId\", id));\n            }\n            // 从当时已保存的片段复制证据，不向仓库重新读取，也不把元数据引用当成代码快照。\n            ObjectNode node = snapshots.addObject();\n            node.put(\"id\", material.getId());\n            node.put(\"projectId\", material.getProjectId());\n            node.put(\"sha\", material.getSha());\n            node.put(\"path\", material.getPath());\n            node.put(\"side\", material.getSide());\n            node.put(\"startLine\", material.getStartLine());\n            node.put(\"endLine\", material.getEndLine());\n            node.put(\"content\", material.getContent());\n            node.put(\"contentHash\", material.getContentHash());\n            node.put(\"completeness\", material.getCompleteness());\n            node.put(\"diagnostic\", material.getDiagnostic());\n        }\n        return snapshots;\n    }\n\n    private JsonNode readSnapshot(String snapshot) {\n        JsonNode node = readJsonOrNull(snapshot);\n        if (node == null || !node.isObject()) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"保存的报告来源数据损坏，无法读取\");\n        }\n        return node;\n    }\n\n    private JsonNode readJsonOrNull(String value) {\n        if (value == null || value.isBlank()) {\n            return null;\n        }\n        try {\n            return mapper.readTree(value);\n        } catch (JsonProcessingException ignored) {\n            return null;\n        }\n    }\n\n    private String json(JsonNode node) {\n        try {\n            return mapper.writeValueAsString(node);\n        } catch (JsonProcessingException e) {\n            throw new ApiException(ErrorCode.INTERNAL_ERROR, \"报告冻结数据无法序列化\");\n        }\n    }\n\n    private TaskSource source(AgentReviewTask task) {\n        JsonNode input = readJsonOrNull(task.getInputSnapshot());\n        JsonNode source = input == null ? null : input.path(\"source\");\n        return new TaskSource(source == null || source.isMissingNode() ? \"FILES\" : source.path(\"kind\").asText(\"FILES\"),\n                textOrNull(source, \"branch\"), textOrNull(source, \"commitSha\"), textOrNull(source, \"baseSha\"));\n    }\n\n    private static String textOrNull(JsonNode node, String field) {\n        if (node == null) {\n            return null;\n        }\n        JsonNode value = node.get(field);\n        return value == null || value.isNull() ? null : value.asText();\n    }\n\n    private static String requireKind(String kind) {\n        String normalized = kind.trim().toUpperCase();\n        if (!KINDS.contains(normalized)) {\n            throw new ApiException(ErrorCode.VALIDATION_FAILED,\n                    \"结果类型只能是 ISSUE、PATTERN、COUPLING 或 AGENT\");\n        }\n        return normalized;\n    }\n\n    private static <T> Map<String, T> byId(List<String> ids,\n                                           Function<List<String>, List<T>> load, Function<T, String> id) {\n        if (ids.isEmpty()) {\n            return Map.of();\n        }\n        return load.apply(ids).stream().collect(Collectors.toMap(id, Function.identity(), (a, b) -> b));\n    }\n\n    private record TaskSource(String kind, String branch, String commitSha, String baseSha) { }\n\n    private record FeedbackView(String assessment, String comment, int revision, LocalDateTime updatedAt) { }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 602
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 400,
+        "path": "backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 78.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M9",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java",
+          "startLine": 1,
+          "endLine": 400,
+          "content": "package com.codereview.agent.report;\n\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.dto.ReportDtos;\nimport com.codereview.agent.entity.AgentReportSource;\nimport com.codereview.agent.prompt.PromptFact;\nimport com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\nimport com.fasterxml.jackson.databind.node.JsonNodeFactory;\nimport org.springframework.stereotype.Service;\n\nimport java.util.ArrayList;\nimport java.util.LinkedHashMap;\nimport java.util.LinkedHashSet;\nimport java.util.List;\nimport java.util.Map;\nimport java.util.Set;\nimport java.util.stream.Collectors;\n\n/**\n * 把冻结来源整理成模型可读的事实与指标。\n *\n * <p>这里只读取 P32.3 保存的 {@code report_source.source_snapshot}，不联查最新结果、反馈、\n * 材料或仓库。结构化结果保留问题、模式、耦合事实及人工反馈；证据正文只取来源引用指向的\n * 已保存片段，不额外读取当前分支。事实文本进入统一组装后再由公共调用做容量判断，\n * 超限直接失败，不在这里截断。\n */\n@Service\npublic class ReportFactsBuilder {\n\n    static final String FACTS_VERSION = \"1\";\n\n    private final ObjectMapper mapper;\n\n    public ReportFactsBuilder(ObjectMapper mapper) {\n        this.mapper = mapper;\n    }\n\n    public ReportFacts build(List<AgentReportSource> sources) {\n        if (sources == null || sources.isEmpty()) {\n            throw new ApiException(ErrorCode.REPORT_INPUT_INVALID, \"报告没有冻结来源，不能生成正文\");\n        }\n        List<SourceFact> parsed = new ArrayList<>();\n        for (AgentReportSource source : sources) {\n            parsed.add(parse(source));\n        }\n\n        Map<String, Integer> kinds = new LinkedHashMap<>();\n        Set<String> taskIds = new LinkedHashSet<>();\n        Set<String> versionKeys = new LinkedHashSet<>();\n        List<ReportDtos.SourceSummary> summaries = new ArrayList<>();\n        int issueTotal = 0;\n        FeedbackCounts issueCounts = new FeedbackCounts();\n        FeedbackCounts resultCounts = new FeedbackCounts();\n        for (SourceFact fact : parsed) {\n            kinds.merge(fact.kind(), 1, Integer::sum);\n            taskIds.add(fact.taskId());\n            versionKeys.add(fact.versionKey());\n            summaries.add(fact.summary());\n            issueTotal += fact.issueCount();\n            issueCounts.add(fact.issueFeedback());\n            resultCounts.add(fact.resultFeedback());\n        }\n\n        List<PromptFact> facts = new ArrayList<>();\n        facts.add(new PromptFact(\"SUMMARY\", summaryText(parsed, kinds, taskIds.size(),\n                versionKeys.size(), issueTotal, issueCounts, resultCounts)));\n        for (SourceFact fact : parsed) {\n            facts.add(new PromptFact(\"S\" + fact.summary().ordinal(), fact.text()));\n        }\n        List<String> missing = parsed.stream().flatMap(fact -> fact.missing().stream()).toList();\n        return new ReportFacts(facts, missing, parsed.size(), taskIds.size(), versionKeys.size(),\n                kinds, summaries);\n    }\n\n    private String summaryText(List<SourceFact> sources, Map<String, Integer> kinds, int taskCount,\n                               int versionCount, int issueTotal, FeedbackCounts issueCounts,\n                               FeedbackCounts resultCounts) {\n        StringBuilder text = new StringBuilder();\n        text.append(\"来源 \").append(sources.size()).append(\" 个；任务 \").append(taskCount)\n                .append(\" 个；仓库版本 \").append(versionCount).append(\" 个；问题 \")\n                .append(issueTotal).append(\" 个。\\n\");\n        text.append(\"类型：\").append(kinds.entrySet().stream()\n                .map(entry -> kindName(entry.getKey()) + \" \" + entry.getValue())\n                .collect(Collectors.joining(\"、\"))).append(\"。\\n\");\n        text.append(\"问题级人工反馈：\").append(issueCounts.describe()).append(\"。\\n\");\n        text.append(\"结果级人工反馈：\").append(resultCounts.describe()).append(\"。\\n\");\n        text.append(\"仓库版本分组：\\n\");\n        Map<String, List<Integer>> groups = new LinkedHashMap<>();\n        for (SourceFact source : sources) {\n            groups.computeIfAbsent(source.versionKey(), ignored -> new ArrayList<>())\n                    .add(source.summary().ordinal());\n        }\n        for (Map.Entry<String, List<Integer>> entry : groups.entrySet()) {\n            String label = sources.stream().filter(source -> source.versionKey().equals(entry.getKey()))\n                    .findFirst().orElseThrow().groupLabel();\n            text.append(\"- \").append(label).append(\"：\")\n                    .append(entry.getValue().stream().map(ordinal -> \"S\" + ordinal)\n                            .collect(Collectors.joining(\"、\"))).append('\\n');\n        }\n        return text.toString();\n    }\n\n    private SourceFact parse(AgentReportSource row) {\n        JsonNode snapshot = readObject(row.getSourceSnapshot(), \"报告来源\");\n        String resultId = text(snapshot, \"resultId\");\n        String taskId = text(snapshot, \"taskId\");\n        String kind = text(snapshot, \"kind\");\n        if (blank(resultId) || blank(taskId) || blank(kind)) {\n            throw invalid(\"报告来源缺少结果、任务或类型标识\");\n        }\n        JsonNode project = object(snapshot, \"project\");\n        JsonNode task = object(snapshot, \"task\");\n        JsonNode target = object(snapshot, \"target\");\n        JsonNode result = object(snapshot, \"result\");\n        JsonNode body = result.path(\"body\");\n        JsonNode provenance = result.path(\"provenance\");\n        if (body.isMissingNode() || body.isNull()) {\n            throw invalid(\"报告来源缺少结果正文\");\n        }\n        Map<String, JsonNode> materials = materials(snapshot);\n        List<String> missing = new ArrayList<>();\n        List<String> evidence = new ArrayList<>();\n        Set<String> evidenceKeys = new LinkedHashSet<>();\n\n        String projectId = text(project, \"id\");\n        String projectName = text(project, \"name\");\n        String repoUrl = text(project, \"repoUrl\");\n        String branch = text(task, \"branch\");\n        String commitSha = text(task, \"commitSha\");\n        String baseSha = text(task, \"baseSha\");\n        String headSha = text(target, \"headSha\");\n        if (blank(headSha)) {\n            headSha = commitSha;\n        }\n        String path = text(target, \"path\");\n        String oldPath = text(target, \"oldPath\");\n        String versionKey = projectId + \"|\" + nullToEmpty(headSha) + \"|\" + nullToEmpty(baseSha);\n        String groupLabel = (blank(projectName) ? nullToUnknown(projectId) : projectName)\n                + \"（\" + projectId + \"）@\" + nullToUnknown(headSha)\n                + (blank(baseSha) ? \"\" : \"（父 \" + baseSha + \"）\");\n\n        String summary = summaryOf(kind, body);\n        List<JsonNode> issues = array(snapshot.path(\"issues\"));\n        List<JsonNode> bodyIssues = array(body.path(\"issues\"));\n        List<JsonNode> patterns = array(body.path(\"patterns\"));\n        List<JsonNode> observations = array(body.path(\"observations\"));\n        List<String> limitations = new ArrayList<>(strings(body.path(\"limitations\")));\n        JsonNode couplingFacts = provenance.path(\"couplingFacts\");\n        if (couplingFacts.isObject()) {\n            limitations.addAll(strings(couplingFacts.path(\"limitations\")));\n        }\n\n        FeedbackCounts issueFeedback = new FeedbackCounts();\n        FeedbackCounts resultFeedback = new FeedbackCounts();\n        for (JsonNode gap : array(provenance.path(\"materialGaps\"))) {\n            missing.add(nullToEmpty(text(gap, \"code\")) + \"：\" + nullToEmpty(text(gap, \"subject\"))\n                    + \" \" + nullToEmpty(text(gap, \"detail\")));\n        }\n        if (\"ISSUE\".equals(kind)) {\n            for (JsonNode issue : issues) {\n                issueFeedback.add(feedbackCount(issue.path(\"feedback\")));\n                collectEvidence(issue.path(\"locations\"), materials, evidenceKeys, evidence, missing);\n            }\n            for (JsonNode issue : bodyIssues) {\n                collectEvidence(issue.path(\"evidence\"), materials, evidenceKeys, evidence, missing);\n            }\n        } else {\n            resultFeedback = feedbackCount(snapshot.path(\"resultFeedback\"));\n            for (JsonNode pattern : patterns) {\n                collectEvidence(pattern.path(\"evidence\"), materials, evidenceKeys, evidence, missing);\n            }\n            for (JsonNode observation : observations) {\n                collectEvidence(observation.path(\"evidence\"), materials, evidenceKeys, evidence, missing);\n            }\n        }\n\n        FeedbackCounts sourceFeedback = \"ISSUE\".equals(kind) ? issueFeedback : resultFeedback;\n        ReportDtos.SourceSummary sourceSummary = new ReportDtos.SourceSummary(\n                row.getOrdinal(), resultId, kind, projectId, projectName, taskId, text(task, \"route\"),\n                path, headSha, baseSha, displaySummary(summary), issues.size(),\n                sourceFeedback.accurate, sourceFeedback.inaccurate, sourceFeedback.unknown,\n                sourceFeedback.unassessed);\n        String facts = sourceText(projectName, repoUrl, task, path, oldPath, branch, commitSha,\n                baseSha, headSha, summary, issues, patterns, observations, limitations, couplingFacts,\n                resultFeedback, evidence, missing);\n        if (!\"ISSUE\".equals(kind)) {\n            facts += \"当时结果级评价与评论：\" + feedbackText(snapshot.path(\"resultFeedback\")) + \"\\n\";\n        }\n        for (int index = 0; index < bodyIssues.size(); index++) {\n            String relation = text(bodyIssues.get(index), \"changeRelation\");\n            if (!blank(relation)) facts += \"问题 \" + (index + 1) + \" 变更关系：\" + relation + \"\\n\";\n        }\n        return new SourceFact(kind, taskId, versionKey, groupLabel, sourceSummary, issueFeedback,\n                resultFeedback, issues.size(), facts, missing);\n    }\n\n    private String sourceText(String projectName, String repoUrl, JsonNode task, String path,\n                              String oldPath, String branch, String commitSha, String baseSha,\n                              String headSha, String summary, List<JsonNode> issues,\n                              List<JsonNode> patterns, List<JsonNode> observations,\n                              List<String> limitations, JsonNode couplingFacts,\n                              FeedbackCounts resultFeedback, List<String> evidence,\n                              List<String> missing) {\n        StringBuilder text = new StringBuilder();\n        text.append(\"项目：\").append(nullToUnknown(projectName)).append(\"｜仓库：\")\n                .append(nullToUnknown(repoUrl)).append(\"｜版本：\").append(nullToUnknown(headSha));\n        if (!blank(baseSha)) {\n            text.append(\"（父 \").append(baseSha).append(\"）\");\n        }\n        text.append('\\n');\n        text.append(\"任务：\").append(text(task, \"id\")).append(\"｜状态：\").append(text(task, \"state\"))\n                .append(\"｜来源：\").append(text(task, \"sourceKind\"));\n        if (!blank(branch)) {\n            text.append(\"｜分支：\").append(branch);\n        }\n        if (!blank(commitSha)) {\n            text.append(\"｜提交：\").append(commitSha);\n        }\n        text.append('\\n');\n        text.append(\"文件：\").append(nullToUnknown(path));\n        if (!blank(oldPath)) {\n            text.append(\"（旧路径：\").append(oldPath).append(\"）\");\n        }\n        text.append('\\n');\n        text.append(\"结论：\").append(nullToEmpty(summary)).append('\\n');\n        if (!issues.isEmpty()) {\n            text.append(\"问题 \").append(issues.size()).append(\" 个：\\n\");\n            for (JsonNode issue : issues) {\n                text.append(\"  - \").append(text(issue, \"ordinal\")).append(\". [\")\n                        .append(text(issue, \"severity\")).append('/').append(text(issue, \"category\"))\n                        .append(\"] \").append(text(issue, \"title\")).append(\"（\")\n                        .append(locations(issue.path(\"locations\"))).append(\"）\\n\");\n                text.append(\"    原因：\").append(nullToEmpty(text(issue, \"reason\"))).append('\\n');\n                text.append(\"    建议：\").append(nullToEmpty(text(issue, \"suggestion\"))).append('\\n');\n                text.append(\"    反馈：\").append(feedbackText(issue.path(\"feedback\"))).append('\\n');\n            }\n        }\n        if (!patterns.isEmpty()) {\n            text.append(\"模式候选 \").append(patterns.size()).append(\" 个：\\n\");\n            for (JsonNode pattern : patterns) {\n                text.append(\"  - \").append(nullToEmpty(text(pattern, \"name\"))).append(\"（\")\n                        .append(nullToEmpty(text(pattern, \"family\"))).append(\"，角色：\")\n                        .append(nullToEmpty(text(pattern, \"role\"))).append(\"）：\")\n                        .append(nullToEmpty(text(pattern, \"explanation\"))).append('\\n');\n            }\n        }\n        if (!observations.isEmpty()) {\n            text.append(\"耦合观察 \").append(observations.size()).append(\" 个：\\n\");\n            for (JsonNode observation : observations) {\n                text.append(\"  - \").append(nullToEmpty(text(observation, \"title\"))).append(\"：\")\n                        .append(nullToEmpty(text(observation, \"explanation\")));\n                List<String> dependencyIds = strings(observation.path(\"dependencyIds\"));\n                if (!dependencyIds.isEmpty()) {\n                    text.append(\"；依赖：\").append(String.join(\"、\", dependencyIds));\n                }\n                text.append('\\n');\n                if (!blank(text(observation, \"suggestion\"))) {\n                    text.append(\"    建议：\").append(text(observation, \"suggestion\")).append('\\n');\n                }\n            }\n        }\n        if (couplingFacts.isObject()) {\n            text.append(\"耦合指标：已解析出向依赖 \")\n                    .append(couplingFacts.path(\"resolvedOutgoingCount\").asInt())\n                    .append(\" 个，未解析类型 \").append(couplingFacts.path(\"unresolvedTypeCount\").asInt())\n                    .append(\" 个，覆盖 \").append(couplingFacts.path(\"coverage\").asText(\"UNKNOWN\"))\n                    .append(\"。\\n\");\n            for (JsonNode edge : array(couplingFacts.path(\"edges\"))) {\n                text.append(\"  - \").append(text(edge, \"id\")).append(\" \").append(text(edge, \"sourceType\"))\n                        .append(\" -> \").append(text(edge, \"targetType\")).append(\"（\")\n                        .append(text(edge, \"relation\")).append(\"，\").append(text(edge, \"targetPath\"))\n                        .append(':').append(text(edge, \"line\")).append(\"）\\n\");\n            }\n        }\n        if (!limitations.isEmpty()) {\n            text.append(\"限制：\\n\");\n            for (String limitation : limitations) {\n                text.append(\"  - \").append(limitation).append('\\n');\n            }\n        }\n        text.append(\"结果级反馈：\").append(resultFeedback.describe()).append('\\n');\n        if (!evidence.isEmpty()) {\n            text.append(\"已保存代码证据：\\n\");\n            for (String item : evidence) {\n                text.append(item).append('\\n');\n            }\n        }\n        if (!missing.isEmpty()) {\n            text.append(\"材料缺口：\\n\");\n            for (String item : missing) {\n                text.append(\"  - \").append(item).append('\\n');\n            }\n        }\n        return text.toString();\n    }\n\n    private void collectEvidence(JsonNode locations, Map<String, JsonNode> materials,\n                                 Set<String> keys, List<String> evidence, List<String> missing) {\n        for (JsonNode location : array(locations)) {\n            String materialId = text(location, \"materialId\");\n            JsonNode material = blank(materialId) ? null : materials.get(materialId);\n            if (material == null) {\n                missing.add(\"材料 \" + nullToUnknown(materialId) + \" 行 \"\n                        + location.path(\"startLine\").asInt() + \"-\" + location.path(\"endLine\").asInt()\n                        + \" 未关联保存材料，代码原文需在冻结来源中查看\");\n                continue;\n            }\n            int start = location.path(\"startLine\").asInt(material.path(\"startLine\").asInt(1));\n            int end = location.path(\"endLine\").asInt(start);\n            String key = text(material, \"id\") + \":\" + start + \"-\" + end;\n            if (!keys.add(key)) {\n                continue;\n            }\n            String excerpt = lines(material, start, end);\n            if (excerpt == null) {\n                missing.add(\"材料 \" + text(material, \"path\") + \" 在 \" + start + \"-\" + end\n                        + \" 行没有保存正文\");\n                continue;\n            }\n            evidence.add(\"  - \" + text(material, \"path\") + \" 行 \" + start + \"-\" + end\n                    + \"（材料 \" + text(material, \"id\") + \"，\" + text(material, \"side\")\n                    + \"，SHA \" + text(material, \"sha\")\n                    + \"）：\\n\" + excerpt);\n        }\n    }\n\n    private String lines(JsonNode material, int start, int end) {\n        String content = text(material, \"content\");\n        if (content == null || content.isEmpty()) {\n            return null;\n        }\n        int materialStart = material.path(\"startLine\").asInt(1);\n        String[] lines = content.split(\"\\n\", -1);\n        int from = start - materialStart;\n        int to = end - materialStart;\n        if (from < 0 || to < from || to >= lines.length\n                || end > material.path(\"endLine\").asInt(materialStart + lines.length - 1)) {\n            return null;\n        }\n        StringBuilder text = new StringBuilder();\n        for (int index = from; index <= to; index++) {\n            text.append(\"    \").append(String.format(\"%6d | %s\", materialStart + index, lines[index]))\n                    .append('\\n');\n        }\n        return text.toString();\n    }\n\n    private Map<String, JsonNode> materials(JsonNode snapshot) {\n        Map<String, JsonNode> result = new LinkedHashMap<>();\n        for (JsonNode material : array(snapshot.path(\"materials\"))) {\n            String id = text(material, \"id\");\n            if (!blank(id)) {\n                result.put(id, material);\n            }\n        }\n        return result;\n    }\n\n    private String locations(JsonNode locations) {\n        if (!locations.isArray() || locations.isEmpty()) {\n            return \"位置未保存\";\n        }\n        List<String> parts = new ArrayList<>();\n        for (JsonNode location : locations) {\n            parts.add(text(location, \"path\") + \":\" + location.path(\"startLine\").asInt()\n                    + \"-\" + location.path(\"endLine\").asInt());\n        }\n        return String.join(\"、\", parts);\n    }\n\n    private String feedbackText(JsonNode feedback) {\n        if (feedback == null || feedback.isNull() || feedback.isMissingNode()) {\n            return \"未反馈\";\n        }\n        String assessment = text(feedback, \"assessment\");\n        String comment = text(feedback, \"comment\");\n        return (blank(assessment) ? \"未判定\" : assessment) + (blank(comment) ? \"\" : \"（\" + comment + \"）\");\n    }\n\n    private FeedbackCounts feedbackCount(JsonNode feedback) {\n        FeedbackCounts count = new FeedbackCounts();\n        String assessment = feedback == null || feedback.isNull() ? null : text(feedback, \"assessment\");\n        if (\"ACCURATE\".equals(assessment)) {\n            count.accurate++;\n        } else if (\"INACCURATE\".equals(assessment)) {\n            count.inaccurate++;\n        } else if (\"UNKNOWN\".equals(assessment)) {\n            count.unknown++;\n        } else {\n            count.unassessed++;\n        }\n        return count;\n    }\n\n    private String summaryOf(String kind, JsonNode body) {\n        if (\"AGENT\".equals(kind)) {\n            return body.isTextual() ? body.asText() : \"\";\n        }"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 522
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 522,
+        "path": "backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java",
+        "start": 400,
+        "version": "V1"
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M10",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java",
+          "startLine": 400,
+          "endLine": 522,
+          "content": "        }\n        return text(body, \"summary\");\n    }\n\n    private String displaySummary(String summary) {\n        String value = summary == null ? \"\" : summary.strip();\n        int lineBreak = value.indexOf('\\n');\n        if (lineBreak >= 0) {\n            value = value.substring(0, lineBreak);\n        }\n        return value.length() <= 200 ? value : value.substring(0, 200) + \"…\";\n    }\n\n    private JsonNode readObject(String value, String label) {\n        if (blank(value)) {\n            throw invalid(label + \"为空\");\n        }\n        try {\n            JsonNode node = mapper.readTree(value);\n            if (!node.isObject()) {\n                throw invalid(label + \"不是对象\");\n            }\n            return node;\n        } catch (ApiException e) {\n            throw e;\n        } catch (Exception e) {\n            throw invalid(label + \"不是合法 JSON\");\n        }\n    }\n\n    private static JsonNode object(JsonNode node, String field) {\n        JsonNode value = node.path(field);\n        return value.isObject() ? value : JsonNodeFactory.instance.objectNode();\n    }\n\n    private static List<JsonNode> array(JsonNode node) {\n        if (!node.isArray()) {\n            return List.of();\n        }\n        List<JsonNode> values = new ArrayList<>();\n        node.forEach(values::add);\n        return values;\n    }\n\n    private static List<String> strings(JsonNode node) {\n        if (!node.isArray()) {\n            return List.of();\n        }\n        List<String> values = new ArrayList<>();\n        node.forEach(value -> {\n            if (value.isTextual() && !value.asText().isBlank()) {\n                values.add(value.asText());\n            }\n        });\n        return values;\n    }\n\n    private static String text(JsonNode node, String field) {\n        JsonNode value = node == null ? null : node.get(field);\n        return value == null || value.isNull() ? null : value.asText();\n    }\n\n    private static String nullToEmpty(String value) {\n        return value == null ? \"\" : value;\n    }\n\n    private static String nullToUnknown(String value) {\n        return blank(value) ? \"UNKNOWN\" : value;\n    }\n\n    private static String shortSha(String sha) {\n        return blank(sha) ? \"UNKNOWN\" : sha.length() <= 12 ? sha : sha.substring(0, 12);\n    }\n\n    private static boolean blank(String value) {\n        return value == null || value.isBlank();\n    }\n\n    private static ApiException invalid(String message) {\n        return new ApiException(ErrorCode.REPORT_INPUT_INVALID, message);\n    }\n\n    private static String kindName(String kind) {\n        return switch (kind) {\n            case \"ISSUE\" -> \"问题审查\";\n            case \"PATTERN\" -> \"设计模式\";\n            case \"COUPLING\" -> \"耦合度\";\n            case \"AGENT\" -> \"Agent\";\n            default -> kind;\n        };\n    }\n\n    /** 组装后的事实包；来源摘要用于详情页，不回写数据库。 */\n    public record ReportFacts(List<PromptFact> facts, List<String> missingNotes, int sourceCount,\n                              int taskCount, int versionCount, Map<String, Integer> kindCounts,\n                              List<ReportDtos.SourceSummary> summaries) {\n    }\n\n    private record SourceFact(String kind, String taskId, String versionKey, String groupLabel,\n                              ReportDtos.SourceSummary summary, FeedbackCounts issueFeedback,\n                              FeedbackCounts resultFeedback, int issueCount, String text,\n                              List<String> missing) {\n    }\n\n    private static final class FeedbackCounts {\n        int accurate;\n        int inaccurate;\n        int unknown;\n        int unassessed;\n\n        void add(FeedbackCounts other) {\n            accurate += other.accurate;\n            inaccurate += other.inaccurate;\n            unknown += other.unknown;\n            unassessed += other.unassessed;\n        }\n\n        String describe() {\n            return \"准确 \" + accurate + \" / 不准确 \" + inaccurate + \" / 无法判断 \" + unknown\n                    + \" / 未反馈 \" + unassessed;\n        }\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 522
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 300,
+        "path": "backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 79.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M11",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java",
+          "startLine": 1,
+          "endLine": 214,
+          "content": "package com.codereview.agent.report;\n\nimport com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;\nimport com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.dto.ReportDtos;\nimport com.codereview.agent.entity.AgentModelConfig;\nimport com.codereview.agent.entity.AgentReport;\nimport com.codereview.agent.entity.AgentReportSource;\nimport com.codereview.agent.invocation.InvocationRequest;\nimport com.codereview.agent.invocation.InvocationResult;\nimport com.codereview.agent.invocation.InvocationScope;\nimport com.codereview.agent.invocation.ModelInvocationService;\nimport com.codereview.agent.invocation.ModelSnapshot;\nimport com.codereview.agent.mapper.AgentModelConfigMapper;\nimport com.codereview.agent.mapper.AgentReportMapper;\nimport com.codereview.agent.mapper.AgentReportSourceMapper;\nimport com.codereview.agent.prompt.AssembledPrompt;\nimport com.codereview.agent.prompt.PromptAssemblyService;\nimport com.codereview.agent.prompt.PromptInput;\nimport com.codereview.agent.prompt.PromptPurpose;\nimport com.codereview.agent.support.AgentTime;\nimport com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.stereotype.Service;\n\nimport java.time.LocalDateTime;\nimport java.util.List;\nimport java.util.Map;\n\nimport static com.codereview.agent.report.ReportStates.QUEUED;\nimport static com.codereview.agent.report.ReportStates.RUNNING;\nimport static com.codereview.agent.report.ReportStates.SUCCEEDED;\n\n/**\n * 报告生成的后台执行器。\n *\n * <p>先条件更新为 RUNNING，再读取冻结来源、整理事实、经统一组装与公共调用生成正文。\n * 成功要求 Markdown 正文至少引用一个存在的冻结来源；失败只写入错误，不写正文，\n * 冻结来源和输入摘要保持不变。报告调用与专项调用共用容量、并发和调用记录。\n */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class ReportExecutionWorker {\n\n    private static final Logger log = LoggerFactory.getLogger(ReportExecutionWorker.class);\n\n    private final AgentDatabase db;\n    private final ObjectMapper mapper;\n    private final ReportFactsBuilder factsBuilder;\n    private final PromptAssemblyService assembly;\n    private final ModelInvocationService invocation;\n    private final ReportGenerationProperties properties;\n\n    public ReportExecutionWorker(AgentDatabase db, ObjectMapper mapper,\n                                 ReportFactsBuilder factsBuilder, PromptAssemblyService assembly,\n                                 ModelInvocationService invocation,\n                                 ReportGenerationProperties properties) {\n        this.db = db;\n        this.mapper = mapper;\n        this.factsBuilder = factsBuilder;\n        this.assembly = assembly;\n        this.invocation = invocation;\n        this.properties = properties;\n    }\n\n    public void execute(String reportId) {\n        AgentReport report = db.mapper(AgentReportMapper.class).selectById(reportId);\n        if (report == null || !QUEUED.equals(report.getState())) {\n            return;\n        }\n        if (!markRunning(report)) {\n            return;\n        }\n        LocalDateTime deadline = AgentTime.now()\n                .plusMinutes(Math.max(1, properties.getGenerationTimeoutMinutes()));\n        try {\n            List<AgentReportSource> sources = db.mapper(AgentReportSourceMapper.class).selectList(\n                    new LambdaQueryWrapper<AgentReportSource>()\n                            .eq(AgentReportSource::getReportId, reportId)\n                            .orderByAsc(AgentReportSource::getOrdinal));\n            ReportFactsBuilder.ReportFacts facts = factsBuilder.build(sources);\n            ModelSnapshot model = model(report);\n            AssembledPrompt prompt = assembly.assemble(new PromptInput(PromptPurpose.REPORT, \"1\",\n                    null, null, null, null, null, null, null, List.of(), List.of(),\n                    facts.missingNotes(), facts.facts(), null, report.getTitle(),\n                    instruction(report)));\n            InvocationResult result = invocation.invoke(new InvocationRequest(model, prompt,\n                    InvocationScope.standalone(deadline), false, reportId,\n                    properties.getOutputTokens()));\n            String body = result.content();\n            if (body != null && body.length() > Math.max(1, properties.getMaxBodyChars())) {\n                throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,\n                        \"报告正文超过保存上限 \" + properties.getMaxBodyChars() + \" 字符\",\n                        Map.of(\"length\", body.length()));\n            }\n            ReportCitationValidator.validate(body, facts.sourceCount());\n            if (!AgentTime.now().isBefore(deadline)) {\n                throw new ApiException(ErrorCode.UPSTREAM_TIMEOUT, \"报告生成超过总期限，迟到正文未发布\");\n            }\n            finishSuccess(reportId, body);\n        } catch (ApiException e) {\n            log.warn(\"报告 {} 生成失败：{} {}\", reportId, e.errorCode().code(), e.getMessage());\n            finishFailure(reportId, e.errorCode().code(), e.getMessage());\n        } catch (RuntimeException e) {\n            log.error(\"报告 {} 生成异常\", reportId, e);\n            finishFailure(reportId, ErrorCode.INTERNAL_ERROR.code(), \"报告生成异常\");\n        }\n    }\n\n    private boolean markRunning(AgentReport report) {\n        int changed = db.mapper(AgentReportMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReport>()\n                        .eq(AgentReport::getId, report.getId())\n                        .eq(AgentReport::getState, QUEUED)\n                        .eq(AgentReport::getRevision, report.getRevision())\n                        .set(AgentReport::getState, RUNNING)\n                        .set(AgentReport::getStartedAt, AgentTime.now())\n                        .set(AgentReport::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n        return changed > 0;\n    }\n\n    private void finishSuccess(String reportId, String body) {\n        int changed = db.mapper(AgentReportMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReport>()\n                        .eq(AgentReport::getId, reportId)\n                        .eq(AgentReport::getState, RUNNING)\n                        .set(AgentReport::getState, SUCCEEDED)\n                        .set(AgentReport::getBody, body)\n                        .set(AgentReport::getErrorCode, null)\n                        .set(AgentReport::getErrorMessage, null)\n                        .set(AgentReport::getFinishedAt, AgentTime.now())\n                        .set(AgentReport::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n        if (changed == 0) {\n            log.info(\"报告 {} 的成功结果未写入：报告已被其他操作结束\", reportId);\n        }\n    }\n\n    private void finishFailure(String reportId, String code, String message) {\n        int changed = db.mapper(AgentReportMapper.class).update(null,\n                new LambdaUpdateWrapper<AgentReport>()\n                        .eq(AgentReport::getId, reportId)\n                        .eq(AgentReport::getState, RUNNING)\n                        .set(AgentReport::getState, ReportStates.FAILED)\n                        .set(AgentReport::getBody, null)\n                        .set(AgentReport::getErrorCode, truncate(code, 40))\n                        .set(AgentReport::getErrorMessage, truncate(message, 1000))\n                        .set(AgentReport::getFinishedAt, AgentTime.now())\n                        .set(AgentReport::getUpdatedAt, AgentTime.now())\n                        .setSql(\"revision = revision + 1\"));\n        if (changed == 0) {\n            log.info(\"报告 {} 的失败结果未写入：报告已被其他操作结束\", reportId);\n        }\n    }\n\n    private ModelSnapshot model(AgentReport report) {\n        JsonNode snapshot = readObject(report.getModelSnapshot());\n        if (snapshot == null) {\n            throw new ApiException(ErrorCode.REPORT_INPUT_INVALID, \"报告缺少模型快照，不能生成\");\n        }\n        String modelId = text(snapshot, \"id\");\n        AgentModelConfig current = modelId == null ? null\n                : db.mapper(AgentModelConfigMapper.class).selectById(modelId);\n        if (current == null) {\n            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, \"生成模型已被删除，不能继续生成报告\",\n                    Map.of(\"modelId\", modelId == null ? \"\" : modelId));\n        }\n        return new ModelSnapshot(modelId, text(snapshot, \"name\"), text(snapshot, \"baseUrl\"),\n                text(snapshot, \"modelName\"), current.getCredential(), intOrNull(snapshot, \"contextWindow\"),\n                intOrNull(snapshot, \"maxOutput\"), text(snapshot, \"tokenizer\"),\n                text(snapshot, \"protocol\"), intOrNull(snapshot, \"revision\"));\n    }\n\n    private String instruction(AgentReport report) {\n        JsonNode snapshot = readObject(report.getInstructionSnapshot());\n        return snapshot == null ? null : text(snapshot, \"text\");\n    }\n\n    private JsonNode readObject(String value) {\n        if (value == null || value.isBlank()) {\n            return null;\n        }\n        try {\n            JsonNode node = mapper.readTree(value);\n            return node != null && node.isObject() ? node : null;\n        } catch (Exception e) {\n            return null;\n        }\n    }\n\n    private static Integer intOrNull(JsonNode node, String field) {\n        JsonNode value = node.get(field);\n        return value == null || value.isNull() ? null : value.asInt();\n    }\n\n    private static String text(JsonNode node, String field) {\n        JsonNode value = node == null ? null : node.get(field);\n        return value == null || value.isNull() ? null : value.asText();\n    }\n\n    private static String truncate(String value, int max) {\n        if (value == null) {\n            return null;\n        }\n        return value.length() <= max ? value : value.substring(0, max);\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 214
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 200,
+        "path": "backend/src/main/java/com/codereview/agent/service/FeedbackService.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M12",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/service/FeedbackService.java",
+          "startLine": 1,
+          "endLine": 133,
+          "content": "package com.codereview.agent.service;\n\nimport com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;\nimport com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\nimport com.codereview.agent.db.AgentDatabase;\nimport com.codereview.agent.dto.FeedbackDtos;\nimport com.codereview.agent.entity.AgentFeedback;\nimport com.codereview.agent.entity.AgentIssue;\nimport com.codereview.agent.entity.AgentReviewResult;\nimport com.codereview.agent.mapper.AgentFeedbackMapper;\nimport com.codereview.agent.mapper.AgentIssueMapper;\nimport com.codereview.agent.mapper.AgentReviewResultMapper;\nimport com.codereview.agent.support.AgentIds;\nimport com.codereview.agent.support.AgentTime;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.dao.DuplicateKeyException;\nimport org.springframework.stereotype.Service;\n\nimport java.util.Map;\nimport java.time.LocalDateTime;\n\n/** 稳定问题或完整专项结果上的人工反馈。 */\n@Service\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class FeedbackService {\n    private final AgentDatabase db;\n\n    public FeedbackService(AgentDatabase db) {\n        this.db = db;\n    }\n\n    public FeedbackDtos.View get(String subjectKind, String subjectId) {\n        Subject subject = requireSubject(subjectKind, subjectId);\n        AgentFeedback row = find(subject.kind(), subject.id());\n        return view(subject, row);\n    }\n\n    public FeedbackDtos.View save(String subjectKind, String subjectId, FeedbackDtos.Update request) {\n        Subject subject = requireSubject(subjectKind, subjectId);\n        if (request.expectedRevision() == null) {\n            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"expectedRevision 为必填项\");\n        }\n        AgentFeedbackMapper mapper = db.mapper(AgentFeedbackMapper.class);\n        AgentFeedback current = find(subject.kind(), subject.id());\n        int expected = request.expectedRevision();\n        if (current == null) {\n            if (expected != 0) throw conflict(subject, null);\n            AgentFeedback row = new AgentFeedback();\n            row.setId(AgentIds.next());\n            row.setSubjectKind(subject.kind());\n            row.setSubjectId(subject.id());\n            row.setAssessment(blankToNull(request.assessment()));\n            row.setComment(request.comment());\n            row.setRevision(1);\n            row.setCreatedAt(AgentTime.now());\n            row.setUpdatedAt(AgentTime.now());\n            try {\n                mapper.insert(row);\n                return view(subject, row);\n            } catch (DuplicateKeyException race) {\n                throw conflict(subject, find(subject.kind(), subject.id()));\n            }\n        }\n        if (current.getRevision() != expected) throw conflict(subject, current);\n        LocalDateTime savedAt = AgentTime.now();\n        String assessment = blankToNull(request.assessment());\n        int changed = mapper.update(null, new LambdaUpdateWrapper<AgentFeedback>()\n                .eq(AgentFeedback::getSubjectKind, subject.kind())\n                .eq(AgentFeedback::getSubjectId, subject.id())\n                .eq(AgentFeedback::getRevision, expected)\n                .set(AgentFeedback::getAssessment, assessment)\n                .set(AgentFeedback::getComment, request.comment())\n                .set(AgentFeedback::getRevision, expected + 1)\n                .set(AgentFeedback::getUpdatedAt, savedAt));\n        if (changed == 0) throw conflict(subject, find(subject.kind(), subject.id()));\n        // 返回本次条件更新确认写入的值；再次查询可能读到另一页面随后保存的更高 revision。\n        return new FeedbackDtos.View(subject.kind(), subject.id(), assessment,\n                request.comment(), expected + 1, savedAt);\n    }\n\n    private Subject requireSubject(String kind, String id) {\n        String validId;\n        try {\n            validId = AgentIds.requireValid(id, \"反馈主体 ID\");\n        } catch (IllegalArgumentException invalid) {\n            throw new ApiException(ErrorCode.VALIDATION_FAILED, \"反馈主体 ID 不合法\");\n        }\n        if (\"ISSUE\".equals(kind)) {\n            AgentIssue issue = db.mapper(AgentIssueMapper.class).selectById(validId);\n            if (issue == null) throw new ApiException(ErrorCode.NOT_FOUND, \"问题不存在\");\n            AgentReviewResult result = db.mapper(AgentReviewResultMapper.class).selectById(issue.getResultId());\n            if (result == null || !\"ISSUE\".equals(result.getKind()) || !\"COMPLETE\".equals(result.getCompleteness())) {\n                throw new ApiException(ErrorCode.CONFLICT, \"仅完整的问题审查结果允许反馈\");\n            }\n            return new Subject(\"ISSUE\", validId);\n        }\n        if (\"RESULT\".equals(kind)) {\n            AgentReviewResult result = db.mapper(AgentReviewResultMapper.class).selectById(validId);\n            if (result == null) throw new ApiException(ErrorCode.NOT_FOUND, \"审查结果不存在\");\n            if (!\"COMPLETE\".equals(result.getCompleteness())\n                    || !(\"PATTERN\".equals(result.getKind()) || \"COUPLING\".equals(result.getKind()))) {\n                throw new ApiException(ErrorCode.CONFLICT, \"仅完整的模式或耦合结果允许结果级反馈\");\n            }\n            return new Subject(\"RESULT\", validId);\n        }\n        throw new ApiException(ErrorCode.VALIDATION_FAILED, \"主体类型只能是 ISSUE 或 RESULT\");\n    }\n\n    private AgentFeedback find(String kind, String id) {\n        return db.mapper(AgentFeedbackMapper.class).selectOne(new LambdaQueryWrapper<AgentFeedback>()\n                .eq(AgentFeedback::getSubjectKind, kind).eq(AgentFeedback::getSubjectId, id));\n    }\n\n    private FeedbackDtos.View view(Subject subject, AgentFeedback row) {\n        return row == null\n                ? new FeedbackDtos.View(subject.kind(), subject.id(), null, null, 0, null)\n                : new FeedbackDtos.View(subject.kind(), subject.id(), row.getAssessment(), row.getComment(),\n                        row.getRevision(), row.getUpdatedAt());\n    }\n\n    private ApiException conflict(Subject subject, AgentFeedback current) {\n        return new ApiException(ErrorCode.REVISION_CONFLICT, \"反馈已被其他页面修改；读取最新内容并手动合并后再保存\",\n                Map.of(\"current\", view(subject, current)));\n    }\n\n    private static String blankToNull(String value) {\n        return value == null || value.isBlank() ? null : value;\n    }\n\n    private record Subject(String kind, String id) { }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 16.0,
+        "fileLineCount": 133
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 120,
+        "path": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M13",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+          "startLine": 1,
+          "endLine": 108,
+          "content": "package com.codereview.agent.api;\n\nimport com.codereview.agent.dto.ReportDtos;\nimport com.codereview.agent.report.ReportGenerationService;\nimport com.codereview.agent.service.ReportInputService;\nimport jakarta.validation.Valid;\nimport org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;\nimport org.springframework.http.ContentDisposition;\nimport org.springframework.http.HttpHeaders;\nimport org.springframework.http.MediaType;\nimport org.springframework.http.ResponseEntity;\nimport org.springframework.web.bind.annotation.GetMapping;\nimport org.springframework.web.bind.annotation.PathVariable;\nimport org.springframework.web.bind.annotation.PostMapping;\nimport org.springframework.web.bind.annotation.RequestBody;\nimport org.springframework.web.bind.annotation.RequestMapping;\nimport org.springframework.web.bind.annotation.RequestParam;\nimport org.springframework.web.bind.annotation.RestController;\n\nimport java.net.URI;\nimport java.nio.charset.StandardCharsets;\nimport java.util.List;\n\n/**\n * 报告 v2 入口。\n *\n * <p>候选与冻结是报告生成的前置步骤：候选只返回完整结果，冻结创建一条\n * {@code INPUT_FROZEN} 报告并保存来源快照；正文生成由独立入口选择模型后异步执行。\n * 下载只返回已成功保存的正文，失败报告没有可下载的成功内容。\n */\n@RestController\n@RequestMapping(\"/api/v2/reports\")\n@ConditionalOnProperty(prefix = \"agent.datasource\", name = \"url\")\npublic class ReportV2Controller {\n\n    private final ReportInputService inputService;\n    private final ReportGenerationService generationService;\n\n    public ReportV2Controller(ReportInputService inputService,\n                              ReportGenerationService generationService) {\n        this.inputService = inputService;\n        this.generationService = generationService;\n    }\n\n    @GetMapping(\"/candidates\")\n    public PageResponse<ReportDtos.Candidate> candidates(\n            @RequestParam(required = false) String projectId,\n            @RequestParam(required = false) String taskId,\n            @RequestParam(required = false) String kind,\n            @RequestParam(required = false) String cursor,\n            @RequestParam(required = false) Integer limit) {\n        return inputService.candidates(projectId, taskId, kind, cursor, limit);\n    }\n\n    @PostMapping(\"/inputs\")\n    public ResponseEntity<ReportDtos.FrozenInput> freeze(\n            @Valid @RequestBody ReportDtos.FreezeRequest request) {\n        ReportDtos.FrozenInput frozen = inputService.freeze(request);\n        return ResponseEntity.created(URI.create(\"/api/v2/reports/\" + frozen.reportId() + \"/inputs\"))\n                .body(frozen);\n    }\n\n    @GetMapping(\"/{id}/inputs\")\n    public ReportDtos.FrozenInput inputs(@PathVariable String id) {\n        return inputService.frozenInput(id);\n    }\n\n    @GetMapping\n    public PageResponse<ReportDtos.ReportSummary> list(\n            @RequestParam(required = false) String cursor,\n            @RequestParam(required = false) Integer limit) {\n        return generationService.list(cursor, limit);\n    }\n\n    /** 受理后返回 202；HTTP 成功只表示进入生成队列，正文状态须继续读取报告。 */\n    @PostMapping(\"/{id}/generate\")\n    public ResponseEntity<ReportDtos.ReportDetail> generate(\n            @PathVariable String id, @Valid @RequestBody ReportDtos.GenerateRequest request) {\n        ReportDtos.ReportDetail detail = generationService.start(id, request);\n        return ResponseEntity.accepted().body(detail);\n    }\n\n    @GetMapping(\"/{id}\")\n    public ReportDtos.ReportDetail detail(@PathVariable String id) {\n        return generationService.detail(id);\n    }\n\n    @GetMapping(\"/{id}/sources/{ordinal}\")\n    public ReportDtos.FrozenSource source(@PathVariable String id, @PathVariable int ordinal) {\n        return generationService.source(id, ordinal);\n    }\n\n    @GetMapping(\"/{id}/calls\")\n    public List<ReportDtos.CallSummary> calls(@PathVariable String id) {\n        return generationService.calls(id);\n    }\n\n    @GetMapping(\"/{id}/download\")\n    public ResponseEntity<byte[]> download(@PathVariable String id) {\n        ReportGenerationService.Download download = generationService.download(id);\n        ContentDisposition disposition = ContentDisposition.attachment()\n                .filename(download.fileName(), StandardCharsets.UTF_8).build();\n        return ResponseEntity.ok()\n                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())\n                .contentType(MediaType.parseMediaType(\"text/markdown; charset=UTF-8\"))\n                .body(download.content());\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 15.0,
+        "fileLineCount": 108
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent/db",
+        "query": "inTransaction",
+        "version": "V1"
+      },
+      "millis": 63.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 2,
+        "matches": [
+          {
+            "id": "M14",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+            "startLine": 26,
+            "endLine": 26,
+            "content": " * {@link #mapper(Class)} 与 {@link #inTransaction(Supplier)} 内部可见。"
+          },
+          {
+            "id": "M15",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+            "startLine": 105,
+            "endLine": 105,
+            "content": "    public <T> T inTransaction(Supplier<T> work) {"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 40,
+        "path": "backend/src/main/java/com/codereview/agent/report",
+        "query": "sourceCount",
+        "version": "V1"
+      },
+      "millis": 62.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 14,
+        "matches": [
+          {
+            "id": "M16",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 26,
+            "endLine": 26,
+            "content": "    public static int validate(String body, int sourceCount) {"
+          },
+          {
+            "id": "M17",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 37,
+            "endLine": 37,
+            "content": "                throw invalid(matcher.group(), sourceCount);"
+          },
+          {
+            "id": "M18",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 39,
+            "endLine": 39,
+            "content": "            if (ordinal < 1 || ordinal > sourceCount) {"
+          },
+          {
+            "id": "M19",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 40,
+            "endLine": 40,
+            "content": "                throw invalid(matcher.group(), sourceCount);"
+          },
+          {
+            "id": "M20",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 46,
+            "endLine": 46,
+            "content": "                    \"报告正文没有引用任何冻结来源，不能作为完成报告\", Map.of(\"sourceCount\", sourceCount));"
+          },
+          {
+            "id": "M21",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 51,
+            "endLine": 51,
+            "content": "    private static ApiException invalid(String citation, int sourceCount) {"
+          },
+          {
+            "id": "M22",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 53,
+            "endLine": 53,
+            "content": "                \"报告引用了不存在的冻结来源 \" + citation + \"（共 \" + sourceCount + \" 个来源）\","
+          },
+          {
+            "id": "M23",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+            "startLine": 54,
+            "endLine": 54,
+            "content": "                Map.of(\"citation\", citation, \"sourceCount\", sourceCount));"
+          },
+          {
+            "id": "M24",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java",
+            "startLine": 102,
+            "endLine": 102,
+            "content": "            ReportCitationValidator.validate(body, facts.sourceCount());"
+          },
+          {
+            "id": "M25",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java",
+            "startLine": 493,
+            "endLine": 493,
+            "content": "    public record ReportFacts(List<PromptFact> facts, List<String> missingNotes, int sourceCount,"
+          },
+          {
+            "id": "M26",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java",
+            "startLine": 122,
+            "endLine": 122,
+            "content": "                instruction(report.getInstructionSnapshot()), sourceCount(frozen, sources.size()),"
+          },
+          {
+            "id": "M27",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java",
+            "startLine": 182,
+            "endLine": 182,
+            "content": "                sourceCount(frozen, 0), taskCount(frozen), versionCount(frozen), kinds(frozen),"
+          },
+          {
+            "id": "M28",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java",
+            "startLine": 289,
+            "endLine": 289,
+            "content": "    private int sourceCount(JsonNode frozen, int fallback) {"
+          },
+          {
+            "id": "M29",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/report/ReportGenerationService.java",
+            "startLine": 290,
+            "endLine": 290,
+            "content": "        JsonNode node = frozen == null ? null : frozen.get(\"sourceCount\");"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 140,
+        "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+        "start": 80,
+        "version": "V1"
+      },
+      "millis": 47.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M30",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+          "startLine": 80,
+          "endLine": 121,
+          "content": "\n    private SqlSessionFactory newFactory() {\n        MybatisConfiguration configuration = new MybatisConfiguration();\n        configuration.setEnvironment(new Environment(\n                \"agent\", new SpringManagedTransactionFactory(), pool));\n        configuration.setMapUnderscoreToCamelCase(true);\n        GlobalConfig global = new GlobalConfig();\n        global.setBanner(false);\n        global.setDbConfig(new GlobalConfig.DbConfig()\n                .setLogicDeleteField(\"isDeleted\")\n                .setLogicDeleteValue(\"1\")\n                .setLogicNotDeleteValue(\"0\"));\n        GlobalConfigUtils.setGlobalConfig(configuration, global);\n        for (Class<?> mapper : mappers) {\n            configuration.addMapper(mapper);\n        }\n        return new MybatisSqlSessionFactoryBuilder().build(configuration);\n    }\n\n    /** 取 MyBatis 映射器；每次调用都通过当前线程的会话取代理，不做跨请求缓存。 */\n    public <T> T mapper(Class<T> mapperType) {\n        return template.getMapper(mapperType);\n    }\n\n    /** 在新库事务内执行；抛异常整体回滚。 */\n    public <T> T inTransaction(Supplier<T> work) {\n        return transactionTemplate.execute(status -> work.get());\n    }\n\n    /** 只读健康检查用：库名与版本标记。 */\n    public String schemaVersion() {\n        guard.postMigrate(pool);\n        return AgentSchemaGuard.EXPECTED_VERSION;\n    }\n\n    @Override\n    public void destroy() {\n        if (pool != null) {\n            pool.close();\n        }\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 0.0,
+        "fileLineCount": 121
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 60,
+        "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "millis": 47.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M31",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/report/ReportCitationValidator.java",
+          "startLine": 1,
+          "endLine": 56,
+          "content": "package com.codereview.agent.report;\n\nimport com.codereview.agent.api.ApiException;\nimport com.codereview.agent.api.ErrorCode;\n\nimport java.util.LinkedHashSet;\nimport java.util.Map;\nimport java.util.Set;\nimport java.util.regex.Matcher;\nimport java.util.regex.Pattern;\n\n/**\n * 报告引用校验。\n *\n * <p>只接受统一组装协议约定的 {@code [S1]} 形式；引用序号必须落在冻结来源范围内。\n * 至少要求一处引用，避免正文看似完整却没有可追溯来源。这里不判断结论真伪，\n * 也不允许把未知来源自动改写成最近来源。\n */\npublic final class ReportCitationValidator {\n\n    private static final Pattern CITATION = Pattern.compile(\"\\\\[S(\\\\d+)]\");\n\n    private ReportCitationValidator() {\n    }\n\n    public static int validate(String body, int sourceCount) {\n        if (body == null || body.isBlank()) {\n            throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, \"模型没有返回报告正文\");\n        }\n        Matcher matcher = CITATION.matcher(body);\n        Set<Integer> cited = new LinkedHashSet<>();\n        while (matcher.find()) {\n            int ordinal;\n            try {\n                ordinal = Integer.parseInt(matcher.group(1));\n            } catch (NumberFormatException e) {\n                throw invalid(matcher.group(), sourceCount);\n            }\n            if (ordinal < 1 || ordinal > sourceCount) {\n                throw invalid(matcher.group(), sourceCount);\n            }\n            cited.add(ordinal);\n        }\n        if (cited.isEmpty()) {\n            throw new ApiException(ErrorCode.REPORT_CITATION_INVALID,\n                    \"报告正文没有引用任何冻结来源，不能作为完成报告\", Map.of(\"sourceCount\", sourceCount));\n        }\n        return cited.size();\n    }\n\n    private static ApiException invalid(String citation, int sourceCount) {\n        return new ApiException(ErrorCode.REPORT_CITATION_INVALID,\n                \"报告引用了不存在的冻结来源 \" + citation + \"（共 \" + sourceCount + \" 个来源）\",\n                Map.of(\"citation\", citation, \"sourceCount\", sourceCount));\n    }\n}"
+        },
+        "hasMore": false,
+        "requestedRangeComplete": true,
+        "apiMillis": 0.0,
+        "fileLineCount": 56
+      }
+    },
+    {
+      "name": "search_code",
+      "arguments": {
+        "limit": 30,
+        "path": "backend/src/main/java/com/codereview/agent/db",
+        "query": "TransactionTemplate",
+        "version": "V1"
+      },
+      "millis": 47.0,
+      "result": {
+        "status": "OK",
+        "complete": true,
+        "totalMatches": 3,
+        "matches": [
+          {
+            "id": "M32",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+            "startLine": 16,
+            "endLine": 16,
+            "content": "import org.springframework.transaction.support.TransactionTemplate;"
+          },
+          {
+            "id": "M33",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+            "startLine": 37,
+            "endLine": 37,
+            "content": "    private TransactionTemplate transactionTemplate;"
+          },
+          {
+            "id": "M34",
+            "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+            "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+            "startLine": 63,
+            "endLine": 63,
+            "content": "        this.transactionTemplate = new TransactionTemplate(new DataSourceTransactionManager(pool));"
+          }
+        ],
+        "diagnostic": null
+      }
+    },
+    {
+      "name": "read_code",
+      "arguments": {
+        "end": 79,
+        "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+        "start": 40,
+        "version": "V1"
+      },
+      "millis": 94.0,
+      "result": {
+        "status": "OK",
+        "material": {
+          "id": "M35",
+          "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+          "path": "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+          "startLine": 40,
+          "endLine": 79,
+          "content": "    public AgentDatabase(AgentDataSourceProperties props, List<Class<?>> mappers) {\n        this.props = props;\n        this.mappers = mappers;\n        start();\n    }\n\n    private void start() {\n        if (props.getUrl() == null || props.getUrl().isBlank()) {\n            throw new AgentSchemaMismatchException(\"未配置 agent.datasource.url，无法初始化新库\");\n        }\n        this.guard = new AgentSchemaGuard(props.getExpectedDatabase(), props.getHistoryTable());\n        this.pool = newPool();\n        guard.preMigrate(pool);\n        Flyway flyway = Flyway.configure()\n                .dataSource(pool)\n                .locations(props.getMigrationLocation())\n                .table(props.getHistoryTable())\n                .baselineOnMigrate(false)\n                .validateMigrationNaming(true)\n                .load();\n        flyway.migrate();\n        guard.postMigrate(pool);\n        this.template = new SqlSessionTemplate(newFactory());\n        this.transactionTemplate = new TransactionTemplate(new DataSourceTransactionManager(pool));\n    }\n\n    private HikariDataSource newPool() {\n        HikariConfig config = new HikariConfig();\n        config.setPoolName(\"agent-db\");\n        config.setJdbcUrl(props.getUrl());\n        config.setUsername(props.getUsername());\n        config.setPassword(props.getPassword());\n        if (props.getDriverClassName() != null && !props.getDriverClassName().isBlank()) {\n            config.setDriverClassName(props.getDriverClassName());\n        }\n        config.setMaximumPoolSize(props.getMaximumPoolSize());\n        config.setMinimumIdle(1);\n        config.setConnectionTimeout(10_000);\n        return new HikariDataSource(config);\n    }"
+        },
+        "hasMore": true,
+        "requestedRangeComplete": true,
+        "apiMillis": 31.0,
+        "fileLineCount": 121
+      }
+    }
+  ],
+  "checks": {
+    "citationsValid": true,
+    "expectedFilesRead": {
+      "ReportInputService.java": true,
+      "ReportExecutionWorker.java": true
+    }
+  },
+  "stopReason": "SUBMITTED",
+  "final": {
+    "title": "报告冻结来源与生成读取链路核对",
+    "answerStatus": "ANSWERED",
+    "markdown": "## 结论\n\n报告生成之所以“冻结”审查结果、代码证据与人工反馈，是因为**冻结时把当时的结果正文、问题、材料片段正文、任务/目标版本和反馈值一次性序列化进 `report_source.source_snapshot`（以及 `report.frozen_input` 摘要）**；之后生成、详情、来源查看都只读这些快照，不再联查 `review_result` / `issue` / `feedback` / `material` 或仓库。因此事后修改反馈（`feedback` 表 revision 递增）不会改变已有报告来源。\n\n## 1. 候选准入\n\n- 候选查询固定 `completeness = COMPLETE`，可按项目（子查询 `review_task.project_id`）、任务、kind 过滤；kind 只允许 ISSUE/PATTERN/COUPLING/AGENT [E1]。\n- 任务缺失的结果直接跳过，不返回“半条材料” [E2]。\n- 候选里展示的反馈只是当前值（`resultFeedback` 仅对非 ISSUE 结果取 RESULT 级反馈），用于选择参考，不是冻结内容 [E2]。\n- 冻结入口 `POST /api/v2/reports/inputs` 调用 `inputService.freeze` [E3]。\n\n## 2. 冻结事务\n\n- `freeze` 用 `db.inTransaction(...)` 包裹整个 `freezeInTransaction`，注释说明可重复读事务覆盖读取与写入，避免问题级与结果级反馈来自不同读取时刻 [E4]；`inTransaction` 由 `TransactionTemplate` + `DataSourceTransactionManager` 实现，异常整体回滚 [E5][E6]。\n- 事务内校验：结果 ID 非空、去重、格式合法；结果必须存在（否则 NOT_FOUND）；必须 `COMPLETE`（否则 CONFLICT）[E7]。\n- 事务内一次性读取任务、目标、项目、按 ordinal 排序的问题、问题级反馈（subjectKind=ISSUE）与结果级反馈（subjectKind=RESULT）[E7][E8]。\n- 逐条来源校验任务/目标存在，然后 `snapshot(...)` 生成快照 [E9]。\n- 写入：新建 `AgentReport`（state=`INPUT_FROZEN`、revision=0、`frozen_input`=摘要 JSON），再按 ordinal 逐条插入 `AgentReportSource`（`result_id` + `source_snapshot`）[E9]。\n\n## 3. 快照里冻结了什么\n\n`snapshot()` 写入 `snapshotVersion`、`frozenAt`、resultId/taskId/targetId/kind/schemaVersion/completeness/resultCreatedAt；`project`（id/name/repoUrl）、`task`（route/specialistType/state/sourceKind/branch/commitSha/baseSha）、`target`（path/oldPath/headSha/baseSha）[E10]。\n\n- **审查结果**：`result.body`（AGENT 为文本，其余为 JSON 对象，正文缺失直接报错）与 `result.provenance` [E10][E11]。\n- **代码证据**：`materials` 由 provenance 的 `materials` 引用逐个查 `AgentMaterial` 后**复制片段正文**（id/projectId/sha/path/side/startLine/endLine/content/contentHash/completeness/diagnostic），注释明确“不向仓库重新读取，也不把元数据引用当成代码快照”；材料缺失则 CONFLICT 拒绝冻结 [E11]。\n- **人工反馈**：每个 issue 节点内嵌 `feedback`（assessment/comment/revision/updatedAt），非 ISSUE 结果另存 `resultFeedback`；无反馈写 null [E10][E12]。\n- 摘要 `summary()` 只放列表/导航用的最小字段（来源、任务、版本分组、issueCount、反馈计数），完整正文与证据仍在 `report_source` 快照 [E13]。\n\n## 4. 生成时读取冻结来源\n\n- `ReportGenerationService.start` 要求报告状态为 `INPUT_FROZEN`，校验模型可用后，用**条件更新**（`id + state=INPUT_FROZEN + revision`）改为 `QUEUED`，同时写入模型快照与补充要求快照、清空 body/错误、`revision+1`；更新 0 行则 CONFLICT [E14]。随后 `dispatcher.dispatch` 异步执行 [E14]。\n- `ReportExecutionWorker.execute` 先条件更新 QUEUED→RUNNING（带 revision 乐观锁），再**只按 reportId 从 `AgentReportSource` 读取快照**，交给 `ReportFactsBuilder.build` [E15]。\n- `ReportFactsBuilder` 注释与实现均只解析 `source_snapshot`：问题、模式、耦合事实、人工反馈、证据正文都取自快照内 `materials` 的已保存片段，不联查最新结果/反馈/材料/仓库；材料缺失只记入“材料缺口”而不回源 [E16][E17]。\n- 生成成功后 `ReportCitationValidator` 要求正文至少引用一个 `[S1..Sn]` 且序号落在冻结来源数内，否则失败 [E18][E15]；失败只写错误、不写正文，冻结来源与输入摘要不变 [E15]。\n- 读取侧：`detail`/`summary` 从 `report.frozen_input` 取来源摘要，`source(reportId, ordinal)` 直接返回 `report_source.source_snapshot`；旧记录无 `sources` 时也只逐条读快照，注释明确“不联查最新结果” [E19][E20]。\n\n## 5. 为什么之后改反馈不影响已有报告\n\n`FeedbackService.save` 只更新 `agent_feedback` 行（assessment/comment/revision+1/updatedAt），带 revision 乐观锁 [E21]。该表与 `report_source.source_snapshot` 无外键式联动，冻结后没有任何代码回写快照；生成与展示路径均不读 `agent_feedback`（只读快照内嵌的 feedback 节点）[E16][E19]。所以反馈修改只影响**下一次冻结**的新报告，已有报告的来源、证据与反馈值保持冻结时刻的值。\n\n## 6. 需要注意的边界\n\n- 冻结事务的隔离级别由 `TransactionTemplate` 默认值决定，代码中未显式设置隔离级别；注释所称“可重复读”依赖数据库默认隔离级别 [E4][E6]。\n- 模型凭据不在快照内：`model()` 用快照的 id 回查当前 `AgentModelConfig` 取 credential，模型被删除则失败 [E22]；这不影响审查结果/证据/反馈的冻结性。",
+    "citations": [
+      {
+        "id": "E1",
+        "materialId": "M6",
+        "startLine": 74,
+        "endLine": 92
+      },
+      {
+        "id": "E2",
+        "materialId": "M6",
+        "startLine": 108,
+        "endLine": 128
+      },
+      {
+        "id": "E3",
+        "materialId": "M13",
+        "startLine": 54,
+        "endLine": 60
+      },
+      {
+        "id": "E4",
+        "materialId": "M6",
+        "startLine": 141,
+        "endLine": 146
+      },
+      {
+        "id": "E5",
+        "materialId": "M30",
+        "startLine": 104,
+        "endLine": 107
+      },
+      {
+        "id": "E6",
+        "materialId": "M35",
+        "startLine": 62,
+        "endLine": 63
+      },
+      {
+        "id": "E7",
+        "materialId": "M6",
+        "startLine": 147,
+        "endLine": 190
+      },
+      {
+        "id": "E8",
+        "materialId": "M6",
+        "startLine": 191,
+        "endLine": 200
+      },
+      {
+        "id": "E9",
+        "materialId": "M6",
+        "startLine": 201,
+        "endLine": 240
+      },
+      {
+        "id": "E10",
+        "materialId": "M6",
+        "startLine": 262,
+        "endLine": 330
+      },
+      {
+        "id": "E11",
+        "materialId": "M8",
+        "startLine": 483,
+        "endLine": 517
+      },
+      {
+        "id": "E12",
+        "materialId": "M8",
+        "startLine": 452,
+        "endLine": 470
+      },
+      {
+        "id": "E13",
+        "materialId": "M6",
+        "startLine": 331,
+        "endLine": 340
+      },
+      {
+        "id": "E14",
+        "materialId": "M7",
+        "startLine": 55,
+        "endLine": 100
+      },
+      {
+        "id": "E15",
+        "materialId": "M11",
+        "startLine": 66,
+        "endLine": 110
+      },
+      {
+        "id": "E16",
+        "materialId": "M9",
+        "startLine": 20,
+        "endLine": 32
+      },
+      {
+        "id": "E17",
+        "materialId": "M9",
+        "startLine": 128,
+        "endLine": 160
+      },
+      {
+        "id": "E18",
+        "materialId": "M31",
+        "startLine": 26,
+        "endLine": 48
+      },
+      {
+        "id": "E19",
+        "materialId": "M7",
+        "startLine": 116,
+        "endLine": 145
+      },
+      {
+        "id": "E20",
+        "materialId": "M7",
+        "startLine": 186,
+        "endLine": 220
+      },
+      {
+        "id": "E21",
+        "materialId": "M12",
+        "startLine": 40,
+        "endLine": 88
+      },
+      {
+        "id": "E22",
+        "materialId": "M11",
+        "startLine": 160,
+        "endLine": 178
+      }
+    ],
+    "unresolved": [
+      "冻结事务的实际隔离级别未在代码中显式设置，仅依赖数据库默认值；注释中的“可重复读”无法从代码直接证实。"
+    ]
+  },
+  "repeatToolRequests": 0,
+  "totalMillis": 51328.0,
+  "summary": {
+    "rounds": 10,
+    "toolCalls": 17,
+    "maxRequestBytes": 128808,
+    "maxInputEstimate": 129320,
+    "inputTokens": 212045,
+    "outputTokens": 3886,
+    "networkMillis": 50061.0
+  }
+}

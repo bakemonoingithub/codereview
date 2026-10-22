@@ -5,7 +5,9 @@
 - 本目录 `H:\myProjects\aiCodeReview\agent` 是新路线 Git 工作树，后续开发均在本目录的 `refactor/agent` 分支进行。从本目录核对分支与工作区状态，保留现有未提交内容。
 - 先读 [STATE](docs/STATE.md) 与 [ROADMAP](docs/ROADMAP.md)，再读[业务契约](docs/work/agent-redesign/business-contract.md)和[成果盘点](docs/work/agent-redesign/review-inventory.md)。业务以契约为准，实施顺序以本目录 ROADMAP 为准。
 - `../code` 是旧 `refactor/review` 工作树，不从其 STATE、ROADMAP、P20/P18、历史授权或 skills 自动接续任务；外层 docs 也不是当前行动来源。
-- 当前 active 以 STATE 与 ROADMAP 为准。负责人已于 2026-10-20 批准 P29 共用设计及专项 HTML 原型，P29 已完成，当前无 active。P30–P33 已细化为实施子任务；后续阶段仍须明确启动，编制 ROADMAP、讨论或读取不构成启动业务开发的指令。
+- 当前 active 以 STATE 与 ROADMAP 为准。P29–P32 与 P33.1 已完成；负责人于 2026-10-22 按 D-91 确认 P33.1 设计及原型，将 P33.2 设为 active，但明确本次不做开发。后续需负责人明确指示开始 P33.2 开发；P33.3–P33.6 保持 todo。先读 [P33 入口](docs/work/agent-redesign/p33/README.md)。后续阶段仍须明确启动，编制 ROADMAP、讨论或读取不构成启动业务开发的指令。
+
+- P33 设计、实现或验收前，必须阅读[预算与接口对照实验](docs/work/agent-redesign/p33/budget-calibration.md)，核对失败样本、预算依据与未验证边界；不得只读状态摘要，也不得把实验工具桥的结果当作正式实现已通过验收。
 
 ## 已确认边界
 

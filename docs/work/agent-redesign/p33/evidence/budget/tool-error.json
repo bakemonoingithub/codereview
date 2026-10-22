@@ -1,0 +1,9 @@
+{
+  "tool": "read_diff",
+  "arguments": {
+    "comparisonId": "C2",
+    "path": "frontend/src/views/ReportDetail.vue"
+  },
+  "errorType": "RuntimeError",
+  "reason": "diff_hunk_mismatch"
+}
