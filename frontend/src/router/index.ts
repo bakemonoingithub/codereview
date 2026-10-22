@@ -51,6 +51,12 @@ const appRoutes: RouteRecordRaw[] = [
     meta: { title: '任务详情', hideMenu: true }
   },
   {
+    path: 'agents/new',
+    name: 'agent-launch',
+    component: () => import('@/views/AgentLaunch.vue'),
+    meta: { title: '发起 Agent 调查', hideMenu: true }
+  },
+  {
     path: 'reports',
     name: 'reports',
     component: () => import('@/views/ReportList.vue'),

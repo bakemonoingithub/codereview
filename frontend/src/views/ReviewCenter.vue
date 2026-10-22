@@ -5,6 +5,7 @@
   >
     <template #actions>
       <a-button @click="router.push('/reports/new')">生成报告</a-button>
+      <a-button @click="router.push('/agents/new')">Agent 调查</a-button>
       <a-button type="primary" @click="router.push('/reviews/new')">＋ 发起审查</a-button>
     </template>
 

@@ -123,7 +123,7 @@ public class AgentToolLoopValidator {
     }
 
     /** 绑定模型修订、适配器、工具 schema 与本次选项；任一变化都应重新验证。 */
-    static String optionsHash(ModelSnapshot model) {
+    public static String optionsHash(ModelSnapshot model) {
         return sha256("revision=" + model.revision()
                 + "|model=" + model.modelName()
                 + "|adapter=" + PromptAssemblyService.ADAPTER_VERSION

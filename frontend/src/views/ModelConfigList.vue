@@ -58,6 +58,7 @@
             {{ validationLabel(record.validationStatus) }}
           </StatusBadge>
           <div class="cell-sub">可达性与简单 JSON；未验证完整窗口</div>
+          <div class="cell-sub">Agent 工具协议：{{ validationLabel(record.agentValidationStatus) }}</div>
         </template>
       </a-table-column>
       <a-table-column title="操作" width="210">
@@ -71,6 +72,15 @@
             @click="onValidate(record)"
           >
             验证
+          </a-button>
+          <a-button
+            type="link"
+            size="small"
+            :loading="agentValidatingId === record.id"
+            :disabled="!!agentValidatingId"
+            @click="onValidateAgent(record)"
+          >
+            Agent 验证
           </a-button>
           <a-popconfirm title="删除后历史调用与任务快照不受影响，确认删除？" @confirm="onDelete(record.id)">
             <a-button type="link" size="small" danger>删除</a-button>
@@ -142,6 +152,7 @@ const keyword = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
 const validatingId = ref('')
+const agentValidatingId = ref('')
 const editing = ref<ModelView | null>(null)
 const credentialConfigured = ref(false)
 const form = ref({
@@ -269,6 +280,24 @@ async function onValidate(record: ModelView) {
     message.error(e?.message || '验证失败')
   } finally {
     validatingId.value = ''
+    await refresh()
+  }
+}
+
+async function onValidateAgent(record: ModelView) {
+  if (agentValidatingId.value) return
+  agentValidatingId.value = record.id
+  try {
+    const result = await modelsApi.validateAgent(record.id)
+    if (result.result === 'PASSED') {
+      message.success(`Agent 工具协议通过（配置修订 ${result.configRevision}）：${result.detail}`)
+    } else {
+      message.error(`Agent 工具协议未通过：${result.detail}`)
+    }
+  } catch (e: any) {
+    message.error(e?.message || 'Agent 验证失败')
+  } finally {
+    agentValidatingId.value = ''
     await refresh()
   }
 }

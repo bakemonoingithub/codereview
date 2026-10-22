@@ -82,6 +82,8 @@ export interface ModelView {
   tokenizer: string | null
   protocol: string
   validationStatus: 'NONE' | 'EXPIRED' | 'PASSED' | 'FAILED'
+  /** 原生工具协议验证（AGENT_TOOL_LOOP_V1）；与连通性状态分开。 */
+  agentValidationStatus: 'NONE' | 'EXPIRED' | 'PASSED' | 'FAILED'
   revision: number
   createdAt: string
   updatedAt: string
@@ -246,8 +248,48 @@ export interface TaskTargetInput {
   note?: string | null
 }
 
-export interface TaskCreateInput {
+export interface AgentTaskScopeInput {
+  kind: 'TEXT' | 'FILES' | 'COMMITS'
+  branch?: string
+  observedSha?: string
+  paths?: string[]
+  commits?: string[]
+  description?: string
+}
+
+export interface AgentTaskCreateInput {
   projectId: string
+  name?: string
+  modelConfigId: string
+  guidancePromptId?: string
+  scope: AgentTaskScopeInput
+  requirements: string
+  referenceResultId?: string
+}
+
+export interface AgentTaskCreated {
+  id: string
+  state: string
+  route: string
+  detailUrl: string
+}
+
+export interface AgentTaskCopyInput extends AgentTaskCreateInput {
+  reobserveHead: boolean
+}
+
+export const agentTasksApi = {
+  create: (body: AgentTaskCreateInput, idempotencyKey: string) =>
+    v2
+      .post<AgentTaskCreated>('/agent-tasks', body, {
+        headers: { 'Idempotency-Key': idempotencyKey }
+      })
+      .then((r) => r.data),
+  copyInput: (id: string) =>
+    v2.get<AgentTaskCopyInput>(`/agent-tasks/${id}/copy-input`).then((r) => r.data)
+}
+
+export interface TaskCreateInput {  projectId: string
   route?: string
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
   source: {
@@ -569,7 +611,10 @@ export const modelsApi = {
     }
   ) => v2.put<ModelView>(`/models/${id}`, body).then((r) => r.data),
   remove: (id: string) => v2.delete(`/models/${id}`).then((r) => r.data),
-  validate: (id: string) => v2.post<ModelValidation>(`/models/${id}/validate`).then((r) => r.data)
+  validate: (id: string) => v2.post<ModelValidation>(`/models/${id}/validate`).then((r) => r.data),
+  /** 原生工具协议验证：真实两轮调用，结果绑定当前配置修订。 */
+  validateAgent: (id: string) =>
+    v2.post<ModelValidation>(`/models/${id}/validate-agent`).then((r) => r.data)
 }
 
 export const promptsApi = {
