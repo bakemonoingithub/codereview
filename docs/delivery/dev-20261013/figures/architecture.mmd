@@ -2,18 +2,13 @@ flowchart TB
   PC["PC 浏览器<br/>Vue 3 + Ant Design Vue"]
   subgraph APP["Spring Boot 3.3.5 / Java 17 / 单进程"]
     STATIC["JAR 内 static 前端"]
-    OLD["/api 旧审查链<br/>五种分析器<br/>Flyway db/migration"]
-    NEW["/api/v2 当前工作台<br/>专项 + Agent 工具循环<br/>Flyway db/agent-migration"]
+    API["/api/v2<br/>专项、Agent 工具循环、报告<br/>Flyway db/agent-migration"]
     PC --> STATIC
-    PC --> OLD
-    PC --> NEW
+    PC --> API
   end
-  DB[("MySQL<br/>code_review<br/>ai_code_review_agent")]
+  DB[("MySQL 8.0.36<br/>ai_code_review_agent")]
   GIT["GitHub / Gitea<br/>JGit bare 镜像"]
   AI["AI 网关 /chat/completions"]
-  OLD -.-> DB
-  NEW -.-> DB
-  NEW --> GIT
-  OLD --> GIT
-  NEW --> AI
-  OLD --> AI
+  API -.-> DB
+  API --> GIT
+  API --> AI

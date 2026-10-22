@@ -26,16 +26,16 @@
 <text x="795.0" y="434.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">mysql 容器  8.0.36</text>
 <text x="795.0" y="458.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">只在网络内提供 mysql:3306</text>
 <text x="795.0" y="482.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">不发布宿主端口</text>
-<text x="795.0" y="506.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">库 code_review：模板会创建</text>
-<text x="795.0" y="530.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">库 ai_code_review_agent：需另行创建</text>
+<text x="795.0" y="506.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">库 ai_code_review_agent</text>
+<text x="795.0" y="530.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">由 agent.datasource 连接</text>
 <line x1="526" y1="470" x2="560" y2="470" stroke="#245E8D" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-245E8D)"/>
 <text x="543" y="458" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="14" fill="#245E8D">JDBC</text>
 <rect x="56" y="590" width="470" height="190" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
 <text x="291.0" y="641.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">内网 PC 浏览器</text>
 <text x="291.0" y="665.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">http://&lt;目标机内网IP&gt;:18080</text>
-<text x="291.0" y="689.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">当前首页为审查中心</text>
-<text x="291.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">未配置新库时 /api/v2 不注册</text>
-<text x="291.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">页面请求新接口会失败</text>
+<text x="291.0" y="689.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">首页为审查中心</text>
+<text x="291.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">须配置 agent.datasource</text>
+<text x="291.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">后业务接口才可用</text>
 <rect x="560" y="590" width="470" height="190" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
 <text x="795.0" y="641.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">经宿主出站访问</text>
 <text x="795.0" y="665.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">内网 Gitea：REST / .diff / Git</text>
@@ -43,6 +43,6 @@
 <text x="795.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Agent 检索使用镜像目录中的 git</text>
 <text x="795.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">镜像路径不宜过深</text>
 <line x1="291" y1="590" x2="291" y2="568" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
-<text x="550" y="850" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">应用镜像回退不回退 Flyway。两套迁移分别记在 flyway_schema_history 与 agent_schema_history。</text>
-<text x="550" y="920" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">交付模板默认不写入 agent.datasource。启用当前工作台前必须单独建库并重启应用。</text>
+<text x="550" y="850" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">镜像回退不撤销 agent_schema_history。应用配置须包含 agent.datasource。</text>
+<text x="550" y="920" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">交付模板默认不写入 agent.datasource。启用工作台前须创建应用库并重启应用。</text>
 </svg>

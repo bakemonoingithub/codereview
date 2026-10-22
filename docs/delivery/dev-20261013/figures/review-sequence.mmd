@@ -5,4 +5,4 @@ flowchart TB
   R --> AG["Agent：只读工具，submit_result 后发布<br/>不压缩上下文，命中预算即停止"]
   SP --> P["浏览器轮询至终态"]
   AG --> P
-  P --> N["重启把遗留 QUEUED/RUNNING 标为 INTERRUPTED"]
+  P --> N["重启把尚未结束的 QUEUED/RUNNING 标为 INTERRUPTED"]

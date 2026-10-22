@@ -2,6 +2,6 @@ flowchart TB
   CI["GitHub Actions<br/>Node 22 + Java 17"] -.-> PKG["离线包"]
   PKG -.-> HOST["内网 Compose"]
   HOST --> APP["app：JRE 17 + static<br/>18080 到 8080"]
-  HOST --> MYSQL[("mysql:8.0.36<br/>code_review<br/>ai_code_review_agent")]
+  HOST --> MYSQL[("mysql:8.0.36<br/>ai_code_review_agent")]
   APP -.-> MYSQL
   APP --> GIT["内网 Gitea 与 AI 网关"]

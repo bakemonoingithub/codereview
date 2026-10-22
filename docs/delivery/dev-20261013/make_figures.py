@@ -72,72 +72,48 @@ def svg_wrap(width, height, body: str) -> str:
 
 
 def architecture() -> str:
-    w, h = 1100, 980
+    w, h = 1100, 910
     parts = []
     parts.append(box(310, 24, 480, 78, ["PC 浏览器", "Vue 3 · Ant Design Vue · 浅色工作台"], "#F5F6F7", "#65737B", 18, "600"))
     parts.append(arrow(550, 102, 550, 138))
     parts.append(label(550, 128, "同源 HTTP", 14, "#1A703A"))
     parts.append(
-        f'<rect x="36" y="146" width="1028" height="520" rx="12" fill="#FFFFFF" stroke="#1A703A" stroke-width="2"/>'
+        f'<rect x="36" y="146" width="1028" height="420" rx="12" fill="#FFFFFF" stroke="#1A703A" stroke-width="2"/>'
     )
     parts.append(label(550, 176, "Spring Boot 3.3.5 · Java 17 · 单进程 · JAR 内 static 前端 · 容器端口 8080", 16, "#1A703A"))
-    parts.append(box(56, 196, 480, 440, [], "#EEF5EF", "#1A703A"))
-    # redraw left panel with text manually because empty box then texts
-    parts[-1] = box(
-        56, 196, 480, 440,
-        [
-            "/api  旧审查链",
-            "未配置新库时仍然启动",
-            "",
-            "项目、模型、提示词、策略",
-            "审查记录、旧报告、人工标记",
-            "",
-            "五种分析器",
-            "全文 LLM · 耦合度 · 设计模式",
-            "外部 API · 单提交 diff",
-            "",
-            "ReviewExecutor / ReportExecutor",
-            "Flyway  db/migration  V1–V7",
-            "历史表 flyway_schema_history",
-        ],
-        "#EEF5EF", "#1A703A", 16,
-    )
     parts.append(box(
-        564, 196, 480, 440,
+        70, 196, 960, 340,
         [
-            "/api/v2  当前工作台",
-            "仅在配置新库地址后注册",
+            "/api/v2  审查、Agent 与报告",
+            "配置 agent.datasource.url 后注册",
             "",
             "专项：问题审查、设计模式、耦合度",
-            "Agent：只读工具循环",
+            "Agent：只读工具 tree / find_files / search_code / read_code / read_diff",
+            "完成动作 submit_result",
             "报告：冻结来源后生成",
             "",
-            "工具：tree · find_files",
-            "search_code · read_code · read_diff",
-            "完成动作 submit_result",
-            "",
-            "Flyway  db/agent-migration  V1–V6",
-            "历史表 agent_schema_history",
+            "Flyway  classpath:db/agent-migration  V1–V6",
+            "历史表 agent_schema_history，身份版本 1",
         ],
         "#EEF5EF", "#1A703A", 16,
     ))
-    parts.append(arrow(220, 666, 220, 712, "#245E8D", "6 4"))
-    parts.append(arrow(550, 666, 550, 712, "#1A703A"))
-    parts.append(arrow(880, 666, 880, 712, "#1A703A"))
+    parts.append(arrow(220, 566, 220, 612, "#245E8D", "6 4"))
+    parts.append(arrow(550, 566, 550, 612, "#1A703A"))
+    parts.append(arrow(880, 566, 880, 612, "#1A703A"))
     parts.append(box(
-        36, 720, 330, 220,
+        36, 620, 330, 250,
         [
             "MySQL 8.0.36",
-            "同一容器内两个库",
-            "code_review",
-            "ai_code_review_agent",
-            "新库不得带有",
-            "flyway_schema_history",
+            "库 ai_code_review_agent",
+            "由 agent.datasource 连接",
+            "库名须与 expected-database 一致",
+            "历史表 agent_schema_history",
+            "身份版本 1",
         ],
         "#EFF5FA", "#245E8D", 16,
     ))
     parts.append(box(
-        386, 720, 330, 220,
+        386, 620, 330, 250,
         [
             "Git 宿主",
             "GitHub REST",
@@ -149,7 +125,7 @@ def architecture() -> str:
         "#F5F6F7", "#65737B", 16,
     ))
     parts.append(box(
-        736, 720, 328, 220,
+        736, 620, 328, 250,
         [
             "内网 AI 网关",
             "OpenAI Chat 兼容",
@@ -204,12 +180,11 @@ def sequence() -> str:
         [
             "浏览器轮询至终态：专项详情约 3 秒，Agent 详情约 2 秒",
             "审查中心列表不自动轮询，需手动刷新",
-            "进程重启时，遗留 QUEUED / RUNNING 标为 FAILED，原因 INTERRUPTED",
+            "进程重启时，尚未结束的 QUEUED / RUNNING 标为 FAILED，原因 INTERRUPTED",
         ],
         "#EFF5FA", "#245E8D", 16,
     ))
     parts.append(label(550, 830, "人工反馈、报告冻结与下载发生在任务到达终态之后，不改写模型原始输出。", 15))
-    parts.append(label(550, 900, "旧 /api 审查仍由 ReviewExecutor 异步执行，状态值为 0–4；当前菜单不进入该页面。", 15))
     return svg_wrap(w, h, "\n".join(parts))
 
 
@@ -229,14 +204,14 @@ def deployment() -> str:
     )
     parts.append(label(550, 368, "内网运行区 · Docker Compose 项目 codereview", 16, "#1A703A"))
     parts.append(box(56, 388, 470, 180, ["app 容器", "JRE 17 + app.jar + static 前端", "宿主 APP_PORT 默认 18080 → 8080", "只读挂载 config/application.yml", "持久化 data/git-mirrors"], "#EEF5EF", "#1A703A", 16))
-    parts.append(box(560, 388, 470, 180, ["mysql 容器  8.0.36", "只在网络内提供 mysql:3306", "不发布宿主端口", "库 code_review：模板会创建", "库 ai_code_review_agent：需另行创建"], "#EFF5FA", "#245E8D", 16))
+    parts.append(box(560, 388, 470, 180, ["mysql 容器  8.0.36", "只在网络内提供 mysql:3306", "不发布宿主端口", "库 ai_code_review_agent", "由 agent.datasource 连接"], "#EFF5FA", "#245E8D", 16))
     parts.append(arrow(526, 470, 560, 470, "#245E8D", "6 4"))
     parts.append(label(543, 458, "JDBC", 14, "#245E8D"))
-    parts.append(box(56, 590, 470, 190, ["内网 PC 浏览器", "http://<目标机内网IP>:18080", "当前首页为审查中心", "未配置新库时 /api/v2 不注册", "页面请求新接口会失败"], "#F5F6F7", "#65737B", 16))
+    parts.append(box(56, 590, 470, 190, ["内网 PC 浏览器", "http://<目标机内网IP>:18080", "首页为审查中心", "须配置 agent.datasource", "后业务接口才可用"], "#F5F6F7", "#65737B", 16))
     parts.append(box(560, 590, 470, 190, ["经宿主出站访问", "内网 Gitea：REST / .diff / Git", "AI 网关：/chat/completions", "Agent 检索使用镜像目录中的 git", "镜像路径不宜过深"], "#F5F6F7", "#65737B", 16))
     parts.append(arrow(291, 590, 291, 568, "#1A703A"))
-    parts.append(label(550, 850, "应用镜像回退不回退 Flyway。两套迁移分别记在 flyway_schema_history 与 agent_schema_history。", 15))
-    parts.append(label(550, 920, "交付模板默认不写入 agent.datasource。启用当前工作台前必须单独建库并重启应用。", 15))
+    parts.append(label(550, 850, "镜像回退不撤销 agent_schema_history。应用配置须包含 agent.datasource。", 15))
+    parts.append(label(550, 920, "交付模板默认不写入 agent.datasource。启用工作台前须创建应用库并重启应用。", 15))
     return svg_wrap(w, h, "\n".join(parts))
 
 
@@ -251,7 +226,7 @@ def render_png(svg_path: Path, png_path: Path, width: int, height: int) -> None:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     specs = {
-        "architecture": (architecture(), 1100, 980),
+        "architecture": (architecture(), 1100, 910),
         "review-sequence": (sequence(), 1100, 980),
         "deployment": (deployment(), 1100, 980),
     }

@@ -18,9 +18,9 @@ PAGE_NUMBERS = {
     "DeliveryTChapter3": "8",
     "DeliveryTChapter4": "10",
     "DeliveryTChapter5": "13",
-    "DeliveryTChapter6": "15",
-    "DeliveryTChapter7": "17",
-    "DeliveryTChapter8": "19",
+    "DeliveryTChapter6": "14",
+    "DeliveryTChapter7": "16",
+    "DeliveryTChapter8": "18",
     "DeliveryUChapter1": "5",
     "DeliveryUChapter2": "7",
     "DeliveryUChapter3": "10",
@@ -353,14 +353,16 @@ def rewrite_zip(src: Path, dest: Path, replacements: dict, drop_prefixes: tuple[
         infos = zin.infolist()
         payload = {info.filename: zin.read(info.filename) for info in infos}
     with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+        written = set()
         for info in infos:
             name = info.filename
             if any(name.startswith(prefix) for prefix in drop_prefixes):
                 continue
             data = replacements.get(name, payload[name])
             zout.writestr(name, data)
+            written.add(name)
         for name, data in replacements.items():
-            if name not in payload:
+            if name not in written:
                 zout.writestr(name, data)
 
 

@@ -34,7 +34,6 @@
 <rect x="140" y="676" width="820" height="110" rx="8" fill="#EFF5FA" stroke="#245E8D" stroke-width="2"/>
 <text x="550.0" y="711.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">浏览器轮询至终态：专项详情约 3 秒，Agent 详情约 2 秒</text>
 <text x="550.0" y="735.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">审查中心列表不自动轮询，需手动刷新</text>
-<text x="550.0" y="759.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">进程重启时，遗留 QUEUED / RUNNING 标为 FAILED，原因 INTERRUPTED</text>
+<text x="550.0" y="759.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">进程重启时，尚未结束的 QUEUED / RUNNING 标为 FAILED，原因 INTERRUPTED</text>
 <text x="550" y="830" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">人工反馈、报告冻结与下载发生在任务到达终态之后，不改写模型原始输出。</text>
-<text x="550" y="900" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">旧 /api 审查仍由 ReviewExecutor 异步执行，状态值为 0–4；当前菜单不进入该页面。</text>
 </svg>

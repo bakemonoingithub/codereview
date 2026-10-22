@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="980" viewBox="0 0 1100 980">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="910" viewBox="0 0 1100 910">
   <rect width="100%" height="100%" fill="#FFFFFF"/>
   <defs>
     <marker id="arrow-1A703A" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1A703A"/></marker><marker id="arrow-245E8D" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#245E8D"/></marker><marker id="arrow-9B6100" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#9B6100"/></marker><marker id="arrow-65737B" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#65737B"/></marker>
@@ -9,58 +9,41 @@
 <text x="550.0" y="81.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="18" font-weight="600" fill="#263238">Vue 3 · Ant Design Vue · 浅色工作台</text>
 <line x1="550" y1="102" x2="550" y2="138" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
 <text x="550" y="128" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="14" fill="#1A703A">同源 HTTP</text>
-<rect x="36" y="146" width="1028" height="520" rx="12" fill="#FFFFFF" stroke="#1A703A" stroke-width="2"/>
+<rect x="36" y="146" width="1028" height="420" rx="12" fill="#FFFFFF" stroke="#1A703A" stroke-width="2"/>
 <text x="550" y="176" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" fill="#1A703A">Spring Boot 3.3.5 · Java 17 · 单进程 · JAR 内 static 前端 · 容器端口 8080</text>
-<rect x="56" y="196" width="480" height="440" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
-<text x="296.0" y="276.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">/api  旧审查链</text>
-<text x="296.0" y="300.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">未配置新库时仍然启动</text>
-<text x="296.0" y="324.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
-<text x="296.0" y="348.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">项目、模型、提示词、策略</text>
-<text x="296.0" y="372.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">审查记录、旧报告、人工标记</text>
-<text x="296.0" y="396.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
-<text x="296.0" y="420.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">五种分析器</text>
-<text x="296.0" y="444.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">全文 LLM · 耦合度 · 设计模式</text>
-<text x="296.0" y="468.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">外部 API · 单提交 diff</text>
-<text x="296.0" y="492.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
-<text x="296.0" y="516.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">ReviewExecutor / ReportExecutor</text>
-<text x="296.0" y="540.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Flyway  db/migration  V1–V7</text>
-<text x="296.0" y="564.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">历史表 flyway_schema_history</text>
-<rect x="564" y="196" width="480" height="440" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
-<text x="804.0" y="276.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">/api/v2  当前工作台</text>
-<text x="804.0" y="300.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">仅在配置新库地址后注册</text>
-<text x="804.0" y="324.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
-<text x="804.0" y="348.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">专项：问题审查、设计模式、耦合度</text>
-<text x="804.0" y="372.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Agent：只读工具循环</text>
-<text x="804.0" y="396.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">报告：冻结来源后生成</text>
-<text x="804.0" y="420.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
-<text x="804.0" y="444.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">工具：tree · find_files</text>
-<text x="804.0" y="468.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">search_code · read_code · read_diff</text>
-<text x="804.0" y="492.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">完成动作 submit_result</text>
-<text x="804.0" y="516.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
-<text x="804.0" y="540.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Flyway  db/agent-migration  V1–V6</text>
-<text x="804.0" y="564.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">历史表 agent_schema_history</text>
-<line x1="220" y1="666" x2="220" y2="712" stroke="#245E8D" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-245E8D)"/>
-<line x1="550" y1="666" x2="550" y2="712" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
-<line x1="880" y1="666" x2="880" y2="712" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
-<rect x="36" y="720" width="330" height="220" rx="8" fill="#EFF5FA" stroke="#245E8D" stroke-width="2"/>
-<text x="201.0" y="774.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">MySQL 8.0.36</text>
-<text x="201.0" y="798.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">同一容器内两个库</text>
-<text x="201.0" y="822.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">code_review</text>
-<text x="201.0" y="846.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">ai_code_review_agent</text>
-<text x="201.0" y="870.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">新库不得带有</text>
-<text x="201.0" y="894.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">flyway_schema_history</text>
-<rect x="386" y="720" width="330" height="220" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
-<text x="551.0" y="774.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Git 宿主</text>
-<text x="551.0" y="798.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">GitHub REST</text>
-<text x="551.0" y="822.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Gitea 1.16.1</text>
-<text x="551.0" y="846.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">REST 与 .diff</text>
-<text x="551.0" y="870.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">JGit bare 镜像</text>
-<text x="551.0" y="894.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">供三点差异与检索</text>
-<rect x="736" y="720" width="328" height="220" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
-<text x="900.0" y="774.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">内网 AI 网关</text>
-<text x="900.0" y="798.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">OpenAI Chat 兼容</text>
-<text x="900.0" y="822.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">POST …/chat/completions</text>
-<text x="900.0" y="846.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Bearer 令牌</text>
-<text x="900.0" y="870.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">专项与报告走 JSON</text>
-<text x="900.0" y="894.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Agent 携带工具定义</text>
+<rect x="70" y="196" width="960" height="340" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
+<text x="550.0" y="262.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">/api/v2  审查、Agent 与报告</text>
+<text x="550.0" y="286.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">配置 agent.datasource.url 后注册</text>
+<text x="550.0" y="310.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
+<text x="550.0" y="334.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">专项：问题审查、设计模式、耦合度</text>
+<text x="550.0" y="358.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Agent：只读工具 tree / find_files / search_code / read_code / read_diff</text>
+<text x="550.0" y="382.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">完成动作 submit_result</text>
+<text x="550.0" y="406.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">报告：冻结来源后生成</text>
+<text x="550.0" y="430.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238"></text>
+<text x="550.0" y="454.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Flyway  classpath:db/agent-migration  V1–V6</text>
+<text x="550.0" y="478.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">历史表 agent_schema_history，身份版本 1</text>
+<line x1="220" y1="566" x2="220" y2="612" stroke="#245E8D" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-245E8D)"/>
+<line x1="550" y1="566" x2="550" y2="612" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<line x1="880" y1="566" x2="880" y2="612" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<rect x="36" y="620" width="330" height="250" rx="8" fill="#EFF5FA" stroke="#245E8D" stroke-width="2"/>
+<text x="201.0" y="689.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">MySQL 8.0.36</text>
+<text x="201.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">库 ai_code_review_agent</text>
+<text x="201.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">由 agent.datasource 连接</text>
+<text x="201.0" y="761.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">库名须与 expected-database 一致</text>
+<text x="201.0" y="785.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">历史表 agent_schema_history</text>
+<text x="201.0" y="809.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">身份版本 1</text>
+<rect x="386" y="620" width="330" height="250" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
+<text x="551.0" y="689.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Git 宿主</text>
+<text x="551.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">GitHub REST</text>
+<text x="551.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Gitea 1.16.1</text>
+<text x="551.0" y="761.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">REST 与 .diff</text>
+<text x="551.0" y="785.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">JGit bare 镜像</text>
+<text x="551.0" y="809.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">供三点差异与检索</text>
+<rect x="736" y="620" width="328" height="250" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
+<text x="900.0" y="689.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">内网 AI 网关</text>
+<text x="900.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">OpenAI Chat 兼容</text>
+<text x="900.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">POST …/chat/completions</text>
+<text x="900.0" y="761.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Bearer 令牌</text>
+<text x="900.0" y="785.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">专项与报告走 JSON</text>
+<text x="900.0" y="809.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Agent 携带工具定义</text>
 </svg>
