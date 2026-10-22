@@ -1,0 +1,901 @@
+{
+  "scope": "P33.1 isolated experiment; not production Agent validation",
+  "date": "2026-10-22",
+  "productApi": "http://127.0.0.1:8081/api/v2",
+  "comparisons": [
+    {
+      "id": "C1",
+      "sha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+      "baseSha": "2660ce0bb90bee33fc0573e672a58d38a339d4c7",
+      "fileCount": 30,
+      "truncated": false,
+      "equalsGitDiffNames": true
+    },
+    {
+      "id": "C2",
+      "sha": "0343a9566d2c2e3112c0ac5102887f625e875f9d",
+      "baseSha": "dfe2d5d7668182136eed47c9d4cb3e81b561f1e6",
+      "fileCount": 24,
+      "truncated": false,
+      "equalsGitDiffNames": true
+    }
+  ],
+  "searches": [
+    {
+      "version": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+      "path": "backend/src/main/java/com/codereview/agent/service",
+      "query": "getCancelRequestedAt",
+      "apiSourceFiles": 9,
+      "millis": 63.0,
+      "totalHits": 2,
+      "returned": 2,
+      "equalsGitGrep": true,
+      "implementation": "temporary HTTP bridge scanning product-API text, not a production search endpoint"
+    },
+    {
+      "version": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+      "path": "backend/src/main/java/com/codereview/agent/execution",
+      "query": "requireActive",
+      "apiSourceFiles": 13,
+      "millis": 62.0,
+      "totalHits": 11,
+      "returned": 11,
+      "equalsGitGrep": true,
+      "implementation": "temporary HTTP bridge scanning product-API text, not a production search endpoint"
+    },
+    {
+      "version": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+      "path": "backend/src/main/java/com/codereview/agent/service",
+      "query": "source_snapshot",
+      "apiSourceFiles": 9,
+      "millis": 78.0,
+      "totalHits": 1,
+      "returned": 1,
+      "equalsGitGrep": true,
+      "implementation": "temporary HTTP bridge scanning product-API text, not a production search endpoint"
+    },
+    {
+      "version": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+      "path": "backend/src/main/java/com/codereview/agent/service",
+      "query": "__P33_NO_MATCH_20261022__",
+      "apiSourceFiles": 9,
+      "millis": 63.0,
+      "totalHits": 0,
+      "returned": 0,
+      "equalsGitGrep": true,
+      "implementation": "temporary HTTP bridge scanning product-API text, not a production search endpoint"
+    }
+  ],
+  "reads": [],
+  "notes": [],
+  "project": {
+    "id": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+    "name": "codereview",
+    "repoUrl": "https://github.com/bakemonoingithub/codereview",
+    "revision": 4
+  },
+  "fixedSha": "b8b0b50e4cce07188debd775ee80f70e13709cf5",
+  "branch": "refactor/agent",
+  "localHead": "af82b348513a1bba83b4baedc30ae3b912edbdd6",
+  "paths": {
+    "count": 640,
+    "apiMillis": 0.0,
+    "truncated": false,
+    "equalsGitLsTree": true
+  },
+  "programFacts": {
+    "comparisonFileOverlap": [
+      "frontend/src/components/ReportSourceDrawer.vue",
+      "frontend/src/views/ReportCreate.vue",
+      "frontend/src/views/__tests__/ReportCreate.spec.ts"
+    ],
+    "instruction": "These file set facts are computed from complete API change lists. Preserve them; do not claim the comparisons have no shared files."
+  },
+  "diffs": [
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/dto/ReportDtos.java",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/main/java/com/codereview/agent/report/ReportDispatchService.java",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/dto/ReportDtos.java",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/dto/TaskDtos.java",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/entity/AgentReviewTask.java",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/service/AgentProjectService.java",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/service/ReportInputService.java",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/service/TaskNames.java",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "after": true
+      },
+      "materialRangesVerified": 1
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 12
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/main/resources/db/agent-migration/V5__review_task_name.sql",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "after": true
+      },
+      "materialRangesVerified": 1
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/test/java/com/codereview/agent/service/AgentProjectServiceTest.java",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 10
+    },
+    {
+      "comparisonId": "C1",
+      "path": "backend/src/test/java/com/codereview/agent/service/TaskServiceTest.java",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/components.d.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/api/v2.ts",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 12
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/components/CallReaderModal.vue",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": false,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/components/CodeViewer.vue",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "after": true
+      },
+      "materialRangesVerified": 1
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/components/MaterialReaderModal.vue",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/components/ReportSourceDrawer.vue",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/components/ScopePickerModal.vue",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 8
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/components/__tests__/MaterialReaderModal.spec.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/utils/markdown.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/utils/taskLabel.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "after": true
+      },
+      "materialRangesVerified": 1
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/CodeBrowser.vue",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": false,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 20
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/ProjectList.vue",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 14
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/ReportCreate.vue",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 16
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/ReviewCenter.vue",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 10
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/ReviewLaunch.vue",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 20
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/TaskDetail.vue",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 10
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/__tests__/ProjectList.spec.ts",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/__tests__/ReportCreate.spec.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C1",
+      "path": "frontend/src/views/__tests__/ReviewLaunch.spec.ts",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": false,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/main/java/com/codereview/agent/report/ReportDispatchService.java",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/main/java/com/codereview/agent/report/ReportExecutionWorker.java",
+      "apiMillis": 32.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/main/java/com/codereview/agent/report/ReportFactsBuilder.java",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 20
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/main/java/com/codereview/agent/report/ReportGenerationProperties.java",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/main/resources/application.example.yml",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/test/java/com/codereview/agent/report/ReportDispatchServiceTest.java",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "after": true
+      },
+      "materialRangesVerified": 1
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/test/java/com/codereview/agent/report/ReportExecutionWorkerTest.java",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C2",
+      "path": "backend/src/test/java/com/codereview/agent/report/ReportFactsBuilderTest.java",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/ROADMAP.md",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/STATE.md",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/work/agent-redesign/p32/README.md",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/work/agent-redesign/p32/p32-4-7-review-fixes.md",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "after": true
+      },
+      "materialRangesVerified": 1
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/work/agent-redesign/p32/p32-4-report-generation.md",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/work/agent-redesign/p32/p32-5-report-ui.md",
+      "apiMillis": 31.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/work/agent-redesign/p32/p32-6-validation.md",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "docs/work/agent-redesign/p32/p32-7-delivery.md",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/components/ReportSourceDrawer.vue",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 14
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/components/__tests__/ReportSourceDrawer.spec.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "after": true
+      },
+      "materialRangesVerified": 1
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/views/ReportCreate.vue",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": false,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 12
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/views/ReportDetail.vue",
+      "apiMillis": 0.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": false,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 8
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/views/ReportList.vue",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 6
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/views/__tests__/ReportCreate.spec.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/views/__tests__/ReportDetail.spec.ts",
+      "apiMillis": 16.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 4
+    },
+    {
+      "comparisonId": "C2",
+      "path": "frontend/src/views/__tests__/ReportList.spec.ts",
+      "apiMillis": 15.0,
+      "patchPresent": true,
+      "hunkTextEqualsGitDiff": true,
+      "apiPatchAppliedEqualsLocalAfter": true,
+      "equalsGitDiff": true,
+      "sideEqualsGitShow": {
+        "before": true,
+        "after": true
+      },
+      "materialRangesVerified": 2
+    }
+  ]
+}

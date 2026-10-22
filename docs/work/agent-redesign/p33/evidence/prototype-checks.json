@@ -1,0 +1,99 @@
+{
+  "scope": "Standalone HTML only; not production or owner approval",
+  "browser": "155.0.8059.85",
+  "checks": [
+    {
+      "name": "existing Agent result layout opens without runtime errors",
+      "passed": true
+    },
+    {
+      "name": "explicit result submission is a native tool request",
+      "passed": true
+    },
+    {
+      "name": "same-result references group by file and fixed version",
+      "passed": true
+    },
+    {
+      "name": "reference starts at top and all current-result ranges highlight",
+      "passed": true
+    },
+    {
+      "name": "previous reference changes current position and stops at first",
+      "passed": true
+    },
+    {
+      "name": "keyboard navigation preserves reference group",
+      "passed": true
+    },
+    {
+      "name": "saved material retains original line numbers",
+      "passed": true
+    },
+    {
+      "name": "full-version failure retains references and supports retry",
+      "passed": true
+    },
+    {
+      "name": "Escape closes evidence dialog",
+      "passed": true
+    },
+    {
+      "name": "submitted insufficient-evidence result remains readable and selectable",
+      "passed": true
+    },
+    {
+      "name": "mixed report freeze preserves insufficiency and old snapshots",
+      "passed": true
+    },
+    {
+      "name": "different versions never share a reference group",
+      "passed": true
+    },
+    {
+      "name": "limit termination has no complete report candidate",
+      "passed": true
+    },
+    {
+      "name": "non-contiguous commits keep individual comparison inputs",
+      "passed": true
+    },
+    {
+      "name": "call reader uses preserved request and native final response",
+      "passed": true
+    },
+    {
+      "name": "blank required instructions block creation",
+      "passed": true
+    },
+    {
+      "name": "multi-commit form excludes selected file targets",
+      "passed": true
+    },
+    {
+      "name": "new task uses current model and prompt snapshots",
+      "passed": true
+    },
+    {
+      "name": "cancel rejects subsequent demo advancement",
+      "passed": true
+    },
+    {
+      "name": "historical input preserves guidance snapshot",
+      "passed": true
+    },
+    {
+      "name": "no horizontal page overflow at 1366",
+      "passed": true
+    },
+    {
+      "name": "no horizontal page overflow at 1920",
+      "passed": true
+    },
+    {
+      "name": "no browser JavaScript errors",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

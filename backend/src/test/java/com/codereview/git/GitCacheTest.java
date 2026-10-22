@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,11 +39,53 @@ class GitCacheTest {
     }
 
     @Test
-    void keyScopesByOwnerRepoAndRef() {
-        assertEquals("o/r@sha1", GitCache.key("o", "r", "sha1"));
+    void keyScopesByHostRepositoryAndCredential() {
+        GitRepoRef repo = GitRepoRef.parse("https://github.com/o/r");
+        GitRepoRef otherHost = GitRepoRef.parse("https://gitea.example.com/o/r");
+        String key = GitCache.key(repo, "token-a", "sha1");
+
+        assertTrue(key.startsWith("https://github.com/o/r#"), key);
+        assertTrue(key.endsWith("@sha1"), key);
+        assertEquals(key, GitCache.key(repo, "token-a", "sha1"), "同宿主同凭据同提交应命中同一键");
+        assertFalse(key.equals(GitCache.key(otherHost, "token-a", "sha1")), "不同宿主不能共用缓存");
+        assertFalse(key.equals(GitCache.key(repo, "token-b", "sha1")), "换凭据不能复用旧缓存");
+        assertTrue(key.contains(GitCache.fingerprint("token-a")));
+        assertFalse(key.contains("token-a"), "键里不能出现凭据原文");
+    }
+
+    @Test
+    void keySeparatesSiteRootsAndSchemesOnTheSameHost() {
+        GitRepoRef first = GitRepoRef.parse("https://git.example/site-a/o/r");
+        GitRepoRef otherRoot = GitRepoRef.parse("https://git.example/site-b/o/r");
+        GitRepoRef otherScheme = GitRepoRef.parse("http://git.example/site-a/o/r");
+
+        assertNotEquals(GitCache.key(first, "token", "sha"),
+                GitCache.key(otherRoot, "token", "sha"), "同宿主的不同站点不能共用缓存");
+        assertNotEquals(GitCache.key(first, "token", "sha"),
+                GitCache.key(otherScheme, "token", "sha"), "不同协议端点不能共用缓存");
+        assertEquals(GitCache.key(first, "token", "sha"),
+                GitCache.key(GitRepoRef.parse("https://git.example/site-a/o/r.git/"), "token", "sha"));
     }
 
     // ---------------- 命中行为 ----------------
+
+    @Test
+    void differentCredentialsNeverShareRawFileEntries() {
+        GitCache cache = newCache();
+        AtomicInteger loads = new AtomicInteger();
+        GitRepoRef repo = GitRepoRef.parse("https://github.com/o/r");
+
+        cache.rawFile(GitCache.key(repo, "token-a", "sha1") + ":A.java", () -> {
+            loads.incrementAndGet();
+            return "A";
+        });
+        cache.rawFile(GitCache.key(repo, "token-b", "sha1") + ":A.java", () -> {
+            loads.incrementAndGet();
+            return "A";
+        });
+
+        assertEquals(2, loads.get(), "换凭据后不能复用底层缓存");
+    }
 
     @Test
     void commitDetailLoadsOnceThenHitsCache() {

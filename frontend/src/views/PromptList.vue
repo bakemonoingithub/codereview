@@ -1,70 +1,82 @@
 <template>
-  <ListPageLayout title="提示词管理" subtitle="编写业务个性化审查规则；改正文会生成新版本，可对比历史版本">
+  <ListPageLayout
+    title="提示词管理"
+    subtitle="维护专项通用规则；正文按版本保存，历史版本不可改，实际调用按任务回看"
+  >
     <template #actions>
-      <a-button type="primary" @click="openCreate">新建提示词</a-button>
+      <a-button type="primary" @click="openCreate">＋ 新建提示词</a-button>
+    </template>
+
+    <template #notice>
+      <PageNotice>专项通过策略选用通用规则；逐文件临时说明仍在发起表单填写。Agent 指导提示词用途在 P33 接入。</PageNotice>
     </template>
 
     <template #filters>
-      <a-input-search v-model:value="keyword" placeholder="搜索名称/标签/正文" style="width: 280px" @search="load" />
+      <a-input-search
+        v-model:value="keyword"
+        class="filter-search"
+        placeholder="搜索名称或标签"
+        allow-clear
+        @search="reload"
+      />
     </template>
 
-    <LoadErrorAlert :message="loadError" @retry="load" />
+    <LoadErrorAlert :message="loadError" @retry="retry" />
 
-    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="false">
+    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="pagination">
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的提示词' : '还没有提示词'"
-          :hint="
-            keyword
-              ? '换个关键词，或清空搜索看全部'
-              : '提示词就是你的业务审查规则；写好后在「审查策略」里绑定即可生效'
-          "
+          :hint="keyword ? '换个关键词，或清空搜索看全部' : '提示词保存可复用的审查规则；建好后在策略里选用'"
           :action-text="keyword ? '' : '新建提示词'"
           @action="openCreate"
         />
       </template>
-      <a-table-column title="名称" data-index="name" />
-      <a-table-column title="描述" data-index="description" ellipsis />
-      <a-table-column title="标签" data-index="tags">
-        <template #default="{ text }">
-          <template v-if="parseTags(text).length">
-            <a-tag v-for="t in parseTags(text)" :key="t">{{ t }}</a-tag>
+      <a-table-column title="名称">
+        <template #default="{ record }"><strong>{{ record.name }}</strong></template>
+      </a-table-column>
+      <a-table-column title="用途" width="120">
+        <template #default="{ record }">{{ purposeLabel(record.purpose) }}</template>
+      </a-table-column>
+      <a-table-column title="标签" width="200">
+        <template #default="{ record }">
+          <template v-if="record.tags?.length">
+            <a-tag v-for="tag in record.tags" :key="tag" class="tag-chip">{{ tag }}</a-tag>
           </template>
           <span v-else>—</span>
         </template>
       </a-table-column>
-      <a-table-column title="更新时间" data-index="updatedAt" />
-      <a-table-column title="操作">
+      <a-table-column title="版本" width="100">
+        <template #default="{ record }"><code>r{{ record.revision }}</code></template>
+      </a-table-column>
+      <a-table-column title="更新时间" width="170">
+        <template #default="{ record }">{{ formatWhen(record.updatedAt) }}</template>
+      </a-table-column>
+      <a-table-column title="操作" width="280">
         <template #default="{ record }">
           <a-space>
-            <a-button size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button size="small" @click="openVersions(record)">版本</a-button>
-            <a-popconfirm title="确认删除？" @confirm="onDelete(record.id)">
-              <a-button size="small" danger>删除</a-button>
+            <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button type="link" size="small" @click="openVersions(record)">版本与对比</a-button>
+            <a-popconfirm title="删除后历史任务输入不受影响，确认删除？" @confirm="onDelete(record.id)">
+              <a-button type="link" size="small" danger>删除</a-button>
             </a-popconfirm>
           </a-space>
         </template>
       </a-table-column>
     </a-table>
 
+
+
     <a-modal
       v-model:open="modalOpen"
-      :width="maximized ? '95vw' : '80vw'"
-      :wrap-class-name="maximized ? 'prompt-edit-modal is-maximized' : 'prompt-edit-modal'"
+      :title="editingId ? '编辑提示词' : '新建提示词'"
       :confirm-loading="saving"
+      wrap-class-name="prompt-form-modal"
       @ok="onSave"
     >
-      <template #title>
-        <div class="modal-title-bar">
-          <span>{{ editingId ? '编辑提示词' : '新建提示词' }}</span>
-          <a-button type="link" size="small" @click="maximized = !maximized">
-            {{ maximized ? '还原' : '最大化' }}
-          </a-button>
-        </div>
-      </template>
-      <a-form layout="vertical">
+      <a-form class="form-grid" layout="vertical">
         <a-form-item label="名称" required>
-          <a-input v-model:value="form.name" placeholder="如 通用代码审查规则" />
+          <a-input v-model:value="form.name" placeholder="如 订单服务通用规则" />
         </a-form-item>
         <a-form-item label="描述">
           <a-input v-model:value="form.description" />
@@ -78,93 +90,107 @@
             placeholder="回车或逗号添加标签"
           />
         </a-form-item>
-        <a-form-item label="正文" required>
-          <a-textarea v-model:value="form.content" :auto-size="textareaAutoSize" show-count />
-          <div v-if="detailLoading" class="field-hint">正在加载当前正文…此时输入的内容不会被覆盖</div>
+        <a-form-item label="用途">
+          <a-select v-model:value="form.purpose" :options="purposeOptions" />
+          <div class="field-hint">专项通用规则在策略里选用；Agent 指导提示词在 P33 接入。</div>
         </a-form-item>
-        <a-form-item v-if="editingId">
-          <a-checkbox v-model:checked="form.createNewVersion">保存为新版本（不勾选则覆盖当前版本）</a-checkbox>
+        <a-form-item class="span-2" label="正文" required>
+          <a-textarea
+            v-model:value="form.content"
+            :auto-size="{ minRows: 12, maxRows: 28 }"
+            show-count
+          />
+          <div v-if="detailLoading" class="field-hint">正在加载当前正文…此时输入的内容不会被覆盖</div>
+          <div v-else-if="editingId" class="field-hint">保存时若正文有变化，会创建新版本；当前版本不会被覆盖。</div>
         </a-form-item>
       </a-form>
     </a-modal>
 
     <a-modal
       v-model:open="versionOpen"
-      title="版本对比"
       :width="'90vw'"
-      wrap-class-name="prompt-diff-modal"
       :footer="null"
+      wrap-class-name="prompt-diff-modal"
     >
+      <template #title>
+        <div class="modal-title-block">
+          <div>{{ versionPromptName }} · 版本与对比</div>
+          <p>正文版本独立保存；实际调用输入按任务回看</p>
+        </div>
+      </template>
       <a-space style="margin-bottom: 12px">
-        <a-select v-model:value="fromVersion" style="width: 180px" :options="versionOptions" placeholder="旧版本" />
-        <a-select v-model:value="toVersion" style="width: 180px" :options="versionOptions" placeholder="新版本" />
+        <a-select v-model:value="fromVersion" style="width: 160px" :options="versionOptions" placeholder="旧版本" />
+        <a-select v-model:value="toVersion" style="width: 160px" :options="versionOptions" placeholder="新版本" />
         <a-button
           type="primary"
           :loading="diffLoading"
           :disabled="!fromVersion || !toVersion || diffLoading || versionLoading"
           @click="loadDiff"
         >
-          对比
+          对比正文
         </a-button>
       </a-space>
       <LoadErrorAlert :message="diffError" @retry="loadDiff" />
       <div class="diff-scroll">
         <a-empty v-if="!diffLines.length" style="margin: 24px 0" description="暂无对比内容" />
         <a-empty v-else-if="!hasAnyChange" style="margin: 24px 0" description="两版内容相同" />
-        <DiffViewer
-          v-else
-          :patch="patch"
-          :old-file-name="oldLabel"
-          :new-file-name="newLabel"
-          mode="split"
-        />
+        <DiffViewer v-else :patch="patch" :old-file-name="oldLabel" :new-file-name="newLabel" mode="split" />
       </div>
     </a-modal>
   </ListPageLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { listPrompts, createPrompt, getPrompt, updatePrompt, updatePromptContent, deletePrompt, diffPrompt } from '@/api/prompt'
+import {
+  promptsApi,
+  type PromptDiffRow,
+  type PromptSummary,
+  type PromptVersion
+} from '@/api/v2'
+import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
-import DiffViewer from '@/components/DiffViewer.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
-import { hasChanges, toUnifiedPatch, type PromptDiffRow } from '@/utils/promptDiff'
+import PageNotice from '@/components/PageNotice.vue'
+import DiffViewer from '@/components/DiffViewer.vue'
+import { hasChanges, toUnifiedPatch } from '@/utils/promptDiff'
 
-const records = ref<any[]>([])
-const loading = ref(false)
-// 原先 load 没有 catch：请求失败时表格永远空着，且不给任何提示与重试入口
-const loadError = ref('')
 const keyword = ref('')
 const modalOpen = ref(false)
 const saving = ref(false)
-const maximized = ref(false)
 const editingId = ref('')
+const editingRevision = ref(0)
 const detailLoading = ref(false)
-const form = ref({ name: '', description: '', tags: [] as string[], content: '', createNewVersion: true })
-const textareaAutoSize = computed(() => ({
-  minRows: maximized.value ? 20 : 12,
-  maxRows: maximized.value ? 40 : 30
-}))
+const originalContent = ref('')
+const form = ref({
+  name: '',
+  description: '',
+  tags: [] as string[],
+  purpose: 'SPECIALIST',
+  content: ''
+})
+const purposeOptions = [
+  { value: 'SPECIALIST', label: '专项通用规则' },
+  { value: 'REPORT', label: '报告生成' },
+  { value: 'AGENT', label: 'Agent 指导（P33 接入）' }
+]
 
 const versionOpen = ref(false)
 const versionPromptId = ref('')
+const versionPromptName = ref('')
 const versionOptions = ref<{ value: string; label: string }[]>([])
 const fromVersion = ref('')
 const toVersion = ref('')
 const diffLines = ref<PromptDiffRow[]>([])
 const versionLoading = ref(false)
 const diffLoading = ref(false)
-/** 版本列表/对比失败的提示（原先失败被伪装成"暂无对比内容"） */
 const diffError = ref('')
 
 const oldLabel = computed(() => `旧版本 ${versionLabel(fromVersion.value)}`.trim())
 const newLabel = computed(() => `新版本 ${versionLabel(toVersion.value)}`.trim())
 const hasAnyChange = computed(() => hasChanges(diffLines.value))
-
-/** patch 头用标识符风格的名字；人类可读的展示名由 oldLabel/newLabel 交给组件当列头 */
 const patch = computed(() =>
   toUnifiedPatch(diffLines.value, {
     oldName: `prompt-${versionLabel(fromVersion.value) || 'old'}`,
@@ -176,56 +202,62 @@ function versionLabel(id: string) {
   return versionOptions.value.find((o) => o.value === id)?.label || ''
 }
 
-function parseTags(tags: string): string[] {
-  try {
-    const arr = JSON.parse(tags || '[]')
-    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : []
-  } catch {
-    return []
-  }
+function purposeLabel(purpose: string) {
+  return purposeOptions.find((p) => p.value === purpose)?.label || purpose
 }
 
-async function load() {
-  loading.value = true
-  loadError.value = ''
-  try {
-    const page = (await listPrompts({ pageNum: 1, pageSize: 100, keyword: keyword.value || undefined })) as any
-    records.value = page?.records || []
-  } catch (e: any) {
-    loadError.value = e?.message || '提示词列表加载失败'
-  } finally {
-    loading.value = false
-  }
+function formatWhen(value: string) {
+  return value ? value.replace('T', ' ').slice(0, 16) : '—'
 }
+
+const { items: records, loading, error: loadError, pagination, load, refresh, retry } = useListPagination<PromptSummary>(
+  'prompts', params => promptsApi.list({ ...params, q: keyword.value.trim() || undefined }), '提示词列表加载失败', () => keyword.value.trim()
+)
+function reload() { return load() }
 
 function openCreate() {
   editingId.value = ''
-  maximized.value = false
-  form.value = { name: '', description: '', tags: [], content: '', createNewVersion: true }
+  originalContent.value = ''
+  detailLoading.value = false
+  form.value = {
+    name: '',
+    description: '',
+    tags: [],
+    purpose: 'SPECIALIST',
+    content: ''
+  }
   modalOpen.value = true
 }
 
-function openEdit(record: any) {
+function openEdit(record: PromptSummary) {
   const id = record.id
-  const blank = ''
   editingId.value = id
-  maximized.value = false
-  form.value = { name: record.name, description: record.description || '', tags: parseTags(record.tags), content: blank, createNewVersion: true }
+  editingRevision.value = record.revision
+  originalContent.value = ''
+  form.value = {
+    name: record.name,
+    description: '',
+    tags: [...(record.tags || [])],
+    purpose: record.purpose || 'SPECIALIST',
+    content: ''
+  }
   modalOpen.value = true
   detailLoading.value = true
-  getPrompt(id)
-    .then((d: any) => {
-      // 只回填**仍是这条记录**且**用户还没动过正文**的表单：
-      // ① 慢响应期间用户可能已切到别的记录或点了"新建"（editingId 变了）—— 写进去会把另一条记录的正文搞坏；
-      // ② 用户可能已经开始输入 —— 覆盖就是静默丢数据（原先就是无条件回填，`|| ''` 连空响应也会清空）。
-      if (editingId.value !== id) return
-      if (form.value.content !== blank) return
-      form.value.content = d.currentContent || ''
+  promptsApi
+    .detail(id)
+    .then((detail) => {
+      // 只回填仍是这条记录且用户还没动过正文的表单，避免慢响应覆盖输入或串到别的记录
+      if (editingId.value !== id || form.value.content !== '') return
+      form.value.name = detail.name
+      form.value.description = detail.description || ''
+      form.value.tags = [...(detail.tags || [])]
+      form.value.purpose = detail.purpose || 'SPECIALIST'
+      form.value.content = detail.currentVersion?.content || ''
+      originalContent.value = form.value.content
+      editingRevision.value = detail.revision
     })
     .catch((e: any) => {
-      if (editingId.value !== id) return
-      // 原先没有 catch：失败时正文永久空着，用户点保存只会被告知"请填写名称与正文"
-      message.error(e?.message || '加载提示词正文失败，请重试')
+      if (editingId.value === id) message.error(e?.message || '加载提示词正文失败，请重试')
     })
     .finally(() => {
       if (editingId.value === id) detailLoading.value = false
@@ -233,7 +265,8 @@ function openEdit(record: any) {
 }
 
 async function onSave() {
-  if (!form.value.name || !form.value.content) {
+  if (saving.value) return
+  if (!form.value.name.trim() || !form.value.content.trim()) {
     message.warning('请填写名称与正文')
     return
   }
@@ -241,14 +274,36 @@ async function onSave() {
   try {
     const tags = Array.from(new Set(form.value.tags.map((t) => t.trim()).filter(Boolean)))
     if (editingId.value) {
-      await updatePrompt(editingId.value, { name: form.value.name, description: form.value.description, tags })
-      await updatePromptContent(editingId.value, { content: form.value.content, createNewVersion: form.value.createNewVersion })
+      const updated = await promptsApi.update(editingId.value, {
+        name: form.value.name.trim(),
+        description: form.value.description.trim() || undefined,
+        tags,
+        purpose: form.value.purpose,
+        expectedRevision: editingRevision.value
+      })
+      // 元数据已提交；后续正文保存失败时，也必须以此修订号继续重试。
+      editingRevision.value = updated.revision
+      if (form.value.content !== originalContent.value) {
+        const versioned = await promptsApi.addVersion(editingId.value, {
+          content: form.value.content,
+          expectedRevision: editingRevision.value
+        })
+        editingRevision.value = versioned.revision
+        originalContent.value = versioned.currentVersion?.content || form.value.content
+      }
+      message.success('保存成功')
     } else {
-      await createPrompt({ name: form.value.name, description: form.value.description, tags, content: form.value.content })
+      await promptsApi.create({
+        name: form.value.name.trim(),
+        description: form.value.description.trim() || undefined,
+        tags,
+        purpose: form.value.purpose,
+        content: form.value.content
+      })
+      message.success('创建成功')
     }
-    message.success('保存成功')
     modalOpen.value = false
-    await load()
+    await (editingId.value ? refresh() : load())
   } catch (e: any) {
     message.error(e?.message || '保存失败')
   } finally {
@@ -258,19 +313,18 @@ async function onSave() {
 
 async function onDelete(id: string) {
   try {
-    await deletePrompt(id)
+    await promptsApi.remove(id)
     message.success('删除成功')
-    await load()
+    await refresh()
   } catch (e: any) {
     message.error(e?.message || '删除失败')
   }
 }
 
-async function openVersions(record: any) {
+async function openVersions(record: PromptSummary) {
   versionPromptId.value = record.id
+  versionPromptName.value = record.name
   versionOpen.value = true
-  // 先清空上一次的选项与结果：失败时若残留上一条提示词的版本，
-  // 用户点「对比」会带着"新记录的 id + 旧记录的版本 id"发出**跨提示词**的请求，结果毫无意义
   versionOptions.value = []
   diffLines.value = []
   diffError.value = ''
@@ -278,17 +332,18 @@ async function openVersions(record: any) {
   toVersion.value = ''
   versionLoading.value = true
   try {
-    const d = (await getPrompt(record.id)) as any
-    if (versionPromptId.value !== record.id) return // 期间切到了别的提示词/关了弹窗
-    versionOptions.value = (d.versions || []).map((v: any) => ({ value: v.id, label: `v${v.versionNo}` }))
+    const versions: PromptVersion[] = await promptsApi.versions(record.id)
+    if (versionPromptId.value !== record.id) return
+    versionOptions.value = versions.map((v) => ({ value: v.id, label: `v${v.versionNo}` }))
     if (versionOptions.value.length >= 2) {
       fromVersion.value = versionOptions.value[versionOptions.value.length - 2].value
       toVersion.value = versionOptions.value[versionOptions.value.length - 1].value
       await loadDiff()
     }
   } catch (e: any) {
-    if (versionPromptId.value !== record.id) return
-    diffError.value = e?.message || '加载版本列表失败，请重试'
+    if (versionPromptId.value === record.id) {
+      diffError.value = e?.message || '加载版本列表失败，请重试'
+    }
   } finally {
     if (versionPromptId.value === record.id) versionLoading.value = false
   }
@@ -299,9 +354,8 @@ async function loadDiff() {
   diffLoading.value = true
   diffError.value = ''
   try {
-    diffLines.value = await diffPrompt(versionPromptId.value, fromVersion.value, toVersion.value)
+    diffLines.value = await promptsApi.diff(versionPromptId.value, fromVersion.value, toVersion.value)
   } catch (e: any) {
-    // 失败不能伪装成"暂无对比内容"，也不能把上一对版本的 diff 留在屏幕上冒充结果
     diffLines.value = []
     diffError.value = e?.message || '对比失败，请重试'
   } finally {
@@ -317,37 +371,17 @@ onMounted(load)
   max-height: 70vh;
   overflow: auto;
 }
-.modal-title-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: 24px;
-}
-
 .field-hint {
   margin-top: 4px;
+  color: var(--muted);
   font-size: 12px;
-  color: rgb(0 0 0 / 45%);
 }
 </style>
 
-<!-- 弹窗被传送到 body，scoped 样式够不到，故用非 scoped 块给 90vw 加个上限 -->
 <style lang="less">
 .prompt-diff-modal {
   .ant-modal {
     max-width: 1400px;
-  }
-}
-.prompt-edit-modal {
-  .ant-modal {
-    max-width: 1200px;
-  }
-  .ant-modal-body {
-    max-height: 70vh;
-    overflow: auto;
-  }
-  &.is-maximized .ant-modal {
-    max-width: none;
   }
 }
 </style>

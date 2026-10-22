@@ -95,6 +95,8 @@ function retryButton(wrapper: any) {
 }
 
 function alertMessage(wrapper: any) {
+  const notice = wrapper.find('.load-error')
+  if (notice.exists()) return notice.text()
   const alert = wrapper.find('a-alert-stub')
   return alert.exists() ? String(alert.attributes('message') ?? '') : ''
 }

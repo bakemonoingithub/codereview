@@ -268,10 +268,10 @@ class GiteaClientTest {
                 ? new StubResponse(500, java.util.Map.of(), "boom")
                 : StubResponse.ok("{\"sha\":\"s\",\"commit\":{\"message\":\"m\"},\"files\":[]}"));
 
-        IllegalStateException e = assertThrows(IllegalStateException.class,
+        HostHttpException e = assertThrows(HostHttpException.class,
                 () -> newClient().commitDetail("", 1, repo("o", "r"), "s"));
 
-        assertTrue(e.getMessage().contains("diff"), "失败要显式报错，不能静默返回没有 patch 的结果：" + e.getMessage());
+        assertEquals(500, e.statusCode(), "失败要保留宿主状态，不能静默返回没有 patch 的结果");
     }
 
     // ---------------------------------------------------------------- API 根与认证

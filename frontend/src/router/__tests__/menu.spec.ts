@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // 需要 DOM：本测试导入 @/router，该模块会 createWebHashHistory()（读 location）
 import { describe, expect, it } from 'vitest'
-import { activeMenuKey, menuItems } from '@/router'
+import { activeMenuKey, menuGroups, menuItems } from '@/router'
 
 /**
  * 导航与"我在哪"（C2）。
@@ -13,12 +13,16 @@ describe('侧边栏菜单', () => {
   it('由路由表生成，且排除 hideMenu 的项（项目详情不进菜单）', () => {
     const paths = menuItems.map((m) => m.path)
 
-    expect(paths).toEqual(['/projects', '/models', '/strategies', '/prompts'])
+    expect(paths).toEqual(['/reviews', '/browser', '/reports', '/projects', '/models', '/prompts', '/strategies'])
     expect(paths).not.toContain('/projects/:id')
+    expect(paths).not.toContain('/reports/new')
+    expect(paths).not.toContain('/reports/:id')
   })
 
   it('菜单标题取自路由 meta.title（不再是另写一份硬编码）', () => {
-    expect(menuItems.map((m) => m.title)).toEqual(['项目', '模型', '策略', '提示词'])
+    expect(menuItems.map((m) => m.title)).toEqual([
+      '审查中心', '代码浏览', '报告', '项目管理', '模型管理', '提示词管理', '策略管理'
+    ])
   })
 
   /**
@@ -30,12 +34,19 @@ describe('侧边栏菜单', () => {
   it('每个菜单项都配了图标（否则折叠后该项是空白）', () => {
     expect(menuItems.every((m) => !!m.icon)).toBe(true)
   })
+
+  it('按工作台和管理两组展示，路径不变', () => {
+    expect(menuGroups.map((group) => group.label)).toEqual(['WORKSPACE', 'MANAGE'])
+    expect(menuGroups[0].items.map((item) => item.path)).toEqual(['/reviews', '/browser', '/reports'])
+    expect(menuGroups[1].items.map((item) => item.path)).toEqual(['/projects', '/models', '/prompts', '/strategies'])
+  })
 })
 
 describe('菜单高亮归属', () => {
   it('列表页精确匹配', () => {
     expect(activeMenuKey('/projects')).toBe('/projects')
     expect(activeMenuKey('/strategies')).toBe('/strategies')
+    expect(activeMenuKey('/reviews/new')).toBe('/reviews')
   })
 
   it('详情页归到它的上一级 —— 这是原先缺失的行为', () => {

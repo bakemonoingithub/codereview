@@ -74,4 +74,46 @@ describe('ListPageLayout', () => {
 
     expect(wrapper.find('.my-table').text()).toBe('表格')
   })
+
+  it('默认把筛选和内容放进同一张卡片', () => {
+    const wrapper = mount(ListPageLayout, {
+      props: { title: '审查中心' },
+      slots: {
+        filters: '<div class="my-filter">搜索</div>',
+        'filters-extra': '<button class="refresh">刷新</button>',
+        default: '<div class="my-table">表格</div>'
+      },
+      ...options
+    })
+
+    const card = wrapper.find('.page-card')
+    expect(card.find('.my-filter').exists()).toBe(true)
+    expect(card.find('.refresh').exists()).toBe(true)
+    expect(card.find('.my-table').exists()).toBe(true)
+  })
+
+  it('渲染页头说明和页脚插槽', () => {
+    const wrapper = mount(ListPageLayout, {
+      props: { title: '项目管理' },
+      slots: {
+        notice: '<div class="page-notice">说明</div>',
+        footer: '<div class="foot-note">页脚</div>'
+      },
+      ...options
+    })
+
+    expect(wrapper.find('.page-notices .page-notice').text()).toBe('说明')
+    expect(wrapper.find('.page-footer .foot-note').text()).toBe('页脚')
+  })
+
+  it('关掉卡片后筛选不再包进 page-card', () => {
+    const wrapper = mount(ListPageLayout, {
+      props: { title: '项目管理', card: false },
+      slots: { filters: '<div class="my-filter">搜索</div>' },
+      ...options
+    })
+
+    expect(wrapper.find('.page-card').exists()).toBe(false)
+    expect(wrapper.find('.page-filters .my-filter').exists()).toBe(true)
+  })
 })

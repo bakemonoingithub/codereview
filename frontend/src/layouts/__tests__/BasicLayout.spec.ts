@@ -15,7 +15,11 @@ import { mount } from '@vue/test-utils'
 vi.mock('vue-router', async (importOriginal) => {
   // 保留 createRouter/createWebHashHistory：@/router 模块初始化时要用
   const actual = await importOriginal<typeof import('vue-router')>()
-  return { ...actual, useRoute: () => ({ path: '/projects' }), useRouter: () => ({ push: vi.fn() }) }
+  return {
+    ...actual,
+    useRoute: () => ({ path: '/projects', meta: { title: '项目管理' } }),
+    useRouter: () => ({ push: vi.fn() })
+  }
 })
 
 import BasicLayout from '@/layouts/BasicLayout.vue'
@@ -48,10 +52,13 @@ describe('侧边栏菜单图标', () => {
     const icons = wrapper.findAll('.ant-menu-item .anticon').map((i) => i.attributes('class'))
 
     // @ant-design/icons 会把组件名渲染成 kebab 的 class（FolderOutlined → anticon-folder）
-    expect(icons[0]).toContain('anticon-folder')
-    expect(icons[1]).toContain('anticon-robot')
-    expect(icons[2]).toContain('anticon-setting')
-    expect(icons[3]).toContain('anticon-file-text')
+    expect(icons[0]).toContain('anticon-audit')
+    expect(icons[1]).toContain('anticon-code')
+    expect(icons[2]).toContain('anticon-file-done')
+    expect(icons[3]).toContain('anticon-folder')
+    expect(icons[4]).toContain('anticon-robot')
+    expect(icons[5]).toContain('anticon-file-text')
+    expect(icons[6]).toContain('anticon-setting')
   })
 
   it('菜单项带 title，折叠态才有中文 tooltip', () => {
@@ -61,7 +68,7 @@ describe('侧边栏菜单图标', () => {
       ...new Set(wrapper.findAllComponents({ name: 'AMenuItem' }).map((m) => m.props('title')))
     ]
 
-    expect(titles).toEqual(['项目', '模型', '策略', '提示词'])
+    expect(titles).toEqual(['审查中心', '代码浏览', '报告', '项目管理', '模型管理', '提示词管理', '策略管理'])
   })
 })
 
@@ -83,8 +90,14 @@ describe('侧边栏品牌区', () => {
 
     expect(wrapper.find('.logo-mark').exists()).toBe(true)
     expect(wrapper.find('.logo-text').exists()).toBe(false)
-    // 只看侧栏：页头那句"智能代码分析工具"不在此列
     expect(wrapper.findComponent({ name: 'ALayoutSider' }).text()).not.toContain('智能代码分析')
+  })
+
+  it('顶栏面包屑使用当前页标题', () => {
+    const wrapper = mountLayout()
+
+    expect(wrapper.find('.breadcrumbs').text()).toContain('工作空间')
+    expect(wrapper.find('.crumb-current').text()).toBe('项目管理')
   })
 
   it('再展开时文字回来', async () => {

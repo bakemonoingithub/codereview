@@ -6,7 +6,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
@@ -52,6 +54,12 @@ public class GitHubClient implements GitHostClient {
 
     @Override
     public List<GitTreeEntry> tree(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
+        return treeWithMeta(token, credentialType, repoRef, branch).entries();
+    }
+
+    /** GitHub 的 trees 接口用 {@code truncated} 明示"还有条目没有返回"，必须原样带出。 */
+    @Override
+    public GitTree treeWithMeta(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
         String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo()
                 + "/git/trees/" + branch + "?recursive=1";
         JsonNode root = getJson(url, token, credentialType);
@@ -62,13 +70,13 @@ public class GitHubClient implements GitHostClient {
                 entries.add(new GitTreeEntry(node.path("path").asText(), type));
             }
         }
-        return entries;
+        return new GitTree(entries, root.path("truncated").asBoolean(false));
     }
 
     @Override
     public String rawFile(String token, Integer credentialType, GitRepoRef repoRef, String ref, String path) {
         if (GitCache.isImmutableRef(ref)) {
-            String key = GitCache.key(repoRef.owner(), repoRef.repo(), ref) + ":" + path;
+            String key = GitCache.key(repoRef, effectiveCredential(token), ref) + ":" + path;
             return cache.rawFile(key, () -> rawFileAtRef(token, credentialType, repoRef, ref, path));
         }
         return rawFileAtRef(token, credentialType, repoRef, ref, path);
@@ -98,8 +106,21 @@ public class GitHubClient implements GitHostClient {
     public String headCommitSha(String token, Integer credentialType, GitRepoRef repoRef, String branch) {
         String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/branches/"
                 + UriUtils.encodePathSegment(branch, StandardCharsets.UTF_8);
-        JsonNode root = getJson(url, token, credentialType);
-        return root.path("commit").path("sha").asText();
+        try {
+            JsonNode root = getJson(url, token, credentialType);
+            return root.path("commit").path("sha").asText();
+        } catch (HostHttpException e) {
+            if (e.statusCode() != 404 || branch == null || !branch.contains("/")) {
+                throw e;
+            }
+            // Some GitHub routes reject an encoded slash in the branch path. Retry through the
+            // commits endpoint, where the complete branch name is a query parameter.
+            List<CommitInfo> first = commitPage(token, credentialType, repoRef, branch, 1, 1).commits();
+            if (!first.isEmpty() && first.get(0).sha() != null) {
+                return first.get(0).sha();
+            }
+            throw e;
+        }
     }
 
     @Override
@@ -142,7 +163,7 @@ public class GitHubClient implements GitHostClient {
                                      String base, String head) {
         // 仅当两端都是 commit sha 时才缓存（任一端是分支名就可能在移动）
         if (GitCache.isImmutableRef(base) && GitCache.isImmutableRef(head)) {
-            String key = GitCache.key(repoRef.owner(), repoRef.repo(), base + "..." + head);
+            String key = GitCache.key(repoRef, effectiveCredential(token), base + "..." + head);
             return cache.changedFiles(key, () -> fetchChangedFiles(token, credentialType, repoRef, base, head));
         }
         return fetchChangedFiles(token, credentialType, repoRef, base, head);
@@ -166,7 +187,7 @@ public class GitHubClient implements GitHostClient {
 
     @Override
     public CommitDetail commitDetail(String token, Integer credentialType, GitRepoRef repoRef, String sha) {
-        return cache.commitDetail(GitCache.key(repoRef.owner(), repoRef.repo(), sha),
+        return cache.commitDetail(GitCache.key(repoRef, effectiveCredential(token), sha),
                 () -> fetchCommitDetail(token, credentialType, repoRef, sha));
     }
 
@@ -202,17 +223,29 @@ public class GitHubClient implements GitHostClient {
         if (auth != null) {
             spec = spec.header(HttpHeaders.AUTHORIZATION, auth);
         }
-        return spec.retrieve().toEntity(String.class);
+        try {
+            return spec.retrieve().toEntity(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
+        }
     }
 
     private String get(String url, String token, Integer credentialType) {
         String auth = authHeader(token, credentialType);
-        if (auth == null) {
-            return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+        try {
+            if (auth == null) {
+                return restClient.get().uri(encodedUri(url)).retrieve().body(String.class);
+            }
+            return restClient.get().uri(encodedUri(url))
+                    .header(HttpHeaders.AUTHORIZATION, auth)
+                    .retrieve().body(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
         }
-        return restClient.get().uri(encodedUri(url))
-                .header(HttpHeaders.AUTHORIZATION, auth)
-                .retrieve().body(String.class);
     }
 
     /**
@@ -230,6 +263,11 @@ public class GitHubClient implements GitHostClient {
      */
     private static URI encodedUri(String url) {
         return URI.create(url);
+    }
+
+    /** 缓存身份用的有效凭据：项目凭据优先，未配置时用全局兜底令牌。 */
+    private String effectiveCredential(String token) {
+        return token != null && !token.isBlank() ? token : properties.getToken();
     }
 
     /** 项目级 credential 优先（token→Bearer / 密码→Basic），其次全局兜底 token。 */
