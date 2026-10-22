@@ -31,6 +31,7 @@ public record AgentSubmission(String title, String summary, String answerStatus,
     private static final Set<String> CITATION_FIELDS =
             Set.of("id", "materialId", "startLine", "endLine");
     private static final Pattern MARKER = Pattern.compile("\\[E(\\d+)]");
+    private static final int MAX_VALIDATION_DETAILS = 10;
 
     public AgentSubmission {
         citations = citations == null ? List.of() : List.copyOf(citations);
@@ -81,7 +82,6 @@ public record AgentSubmission(String title, String summary, String answerStatus,
             if (citationNode.size() > 100) {
                 throw new AgentProtocolException("RESULT_INVALID", "citations 最多 100 项");
             }
-            Set<String> ids = new LinkedHashSet<>();
             for (JsonNode item : citationNode) {
                 if (!item.isObject()) {
                     throw new AgentProtocolException("RESULT_INVALID", "citation 必须是对象");
@@ -92,19 +92,9 @@ public record AgentSubmission(String title, String summary, String answerStatus,
                     }
                 });
                 String id = citationText(item, "id");
-                if (!id.matches("E[0-9]{1,3}")) {
-                    throw new AgentProtocolException("RESULT_INVALID", "引用 ID 必须形如 E1：" + id);
-                }
-                if (!ids.add(id)) {
-                    throw new AgentProtocolException("RESULT_INVALID", "引用 ID 重复：" + id);
-                }
                 String materialId = citationText(item, "materialId");
                 int start = citationInt(item, "startLine");
                 int end = citationInt(item, "endLine");
-                if (end < start) {
-                    throw new AgentProtocolException("RESULT_INVALID",
-                            "引用行范围结束早于开始：" + id);
-                }
                 citations.add(new Citation(id, materialId, start, end));
             }
         }
@@ -136,23 +126,40 @@ public record AgentSubmission(String title, String summary, String answerStatus,
     public static AgentSubmission validate(AgentSubmission submission,
                                            Map<String, SentMaterial> sentMaterials) {
         Map<String, Citation> byId = new LinkedHashMap<>();
+        List<String> citationErrors = new ArrayList<>();
+        Set<String> ids = new LinkedHashSet<>();
         for (Citation citation : submission.citations()) {
+            boolean validId = citation.id().matches("E[0-9]{1,3}");
+            if (!validId) {
+                citationErrors.add("引用 ID 必须形如 E1：" + citation.id());
+            } else if (!ids.add(citation.id())) {
+                citationErrors.add("引用 ID 重复：" + citation.id());
+                validId = false;
+            }
+            if (citation.endLine() < citation.startLine()) {
+                citationErrors.add(citation.id() + " 行范围结束早于开始");
+                continue;
+            }
             SentMaterial material = sentMaterials.get(citation.materialId());
             if (material == null) {
-                throw new AgentProtocolException("CITATION_INVALID",
-                        "引用指向未实际送入模型的材料：" + citation.materialId());
+                citationErrors.add(citation.id() + " 指向未实际送入模型的材料："
+                        + citation.materialId());
+                continue;
             }
             if (material.startLine() == null || material.endLine() == null) {
-                throw new AgentProtocolException("CITATION_INVALID",
-                        "材料没有行范围，不能按行引用：" + citation.materialId());
+                citationErrors.add(citation.id() + " 指向没有行范围的材料：" + citation.materialId());
+                continue;
             }
             if (citation.startLine() < material.startLine()
                     || citation.endLine() > material.endLine()) {
-                throw new AgentProtocolException("CITATION_INVALID",
-                        "引用行 " + citation.startLine() + "-" + citation.endLine()
-                                + " 超出材料范围 " + material.startLine() + "-" + material.endLine());
+                citationErrors.add(citation.id() + " 行 " + citation.startLine() + "-"
+                        + citation.endLine() + " 超出材料范围 " + material.startLine() + "-"
+                        + material.endLine());
+                continue;
             }
-            byId.put(citation.id(), citation);
+            if (validId) {
+                byId.put(citation.id(), citation);
+            }
         }
 
         Set<String> referenced = new LinkedHashSet<>();
@@ -160,11 +167,12 @@ public record AgentSubmission(String title, String summary, String answerStatus,
         while (matcher.find()) {
             String id = "E" + matcher.group(1);
             if (!byId.containsKey(id)) {
-                throw new AgentProtocolException("CITATION_INVALID",
-                        "正文引用了未声明的引用：" + id);
+                citationErrors.add("正文引用了未声明或无效的引用：" + id);
+                continue;
             }
             referenced.add(id);
         }
+        throwCitationErrors("CITATION_INVALID", citationErrors);
         List<Citation> used = new ArrayList<>();
         for (Citation citation : submission.citations()) {
             if (referenced.contains(citation.id())) {
@@ -208,5 +216,17 @@ public record AgentSubmission(String title, String summary, String answerStatus,
             throw new AgentProtocolException("RESULT_INVALID", "citation." + field + " 必须是整数");
         }
         return value.intValue();
+    }
+
+    private static void throwCitationErrors(String code, List<String> errors) {
+        if (errors.isEmpty()) {
+            return;
+        }
+        int shown = Math.min(errors.size(), MAX_VALIDATION_DETAILS);
+        String message = String.join("；", errors.subList(0, shown));
+        if (errors.size() > shown) {
+            message += "；另有 " + (errors.size() - shown) + " 项错误未展开";
+        }
+        throw new AgentProtocolException(code, "引用校验发现 " + errors.size() + " 项问题：" + message);
     }
 }

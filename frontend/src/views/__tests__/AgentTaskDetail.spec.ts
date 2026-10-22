@@ -138,22 +138,30 @@ describe('Agent 任务详情', () => {
   it('调用记录分页并打开逐次调用详情', async () => {
     vi.mocked(agentTasksApi.toolCalls).mockResolvedValue(page([
       { id: 'c1', turnNo: 1, ordinal: 1, toolName: 'read_code', status: 'OK',
-        startedAt: '2026-10-22 17:00:01', finishedAt: '2026-10-22 17:00:02' }
-    ], 1) as any)
-    vi.mocked(agentTasksApi.toolCall).mockResolvedValue({
-      id: 'c1', turnNo: 1, ordinal: 1, toolName: 'read_code', status: 'OK',
-      providerToolCallId: 'p1', arguments: '{"version":"V1"}',
-      envelope: { status: 'OK' }, materialIds: ['m1'],
+        startedAt: '2026-10-22 17:00:01', finishedAt: '2026-10-22 17:00:02' },
+      { id: 'c2', turnNo: 2, ordinal: 1, toolName: 'submit_result', status: 'REJECTED_BATCH',
+        startedAt: '2026-10-22 17:00:03', finishedAt: '2026-10-22 17:00:03' }
+    ], 2) as any)
+    vi.mocked(agentTasksApi.toolCall).mockImplementation(async (_taskId, callId) => ({
+      id: callId, turnNo: callId === 'c1' ? 1 : 2, ordinal: 1,
+      toolName: callId === 'c1' ? 'read_code' : 'submit_result',
+      status: callId === 'c1' ? 'OK' : 'REJECTED_BATCH',
+      providerToolCallId: callId === 'c1' ? 'p1' : 'p2', arguments: '{"version":"V1"}',
+      envelope: { status: callId === 'c1' ? 'OK' : 'INVALID_ARGUMENT' },
+      materialIds: callId === 'c1' ? ['m1'] : [],
       startedAt: '2026-10-22 17:00:01', finishedAt: '2026-10-22 17:00:02'
-    } as any)
+    } as any))
 
     const wrapper = await start()
     const s = state(wrapper)
-    expect(s.calls).toHaveLength(1)
+    expect(s.calls).toHaveLength(2)
 
     await s.openCall('c1')
     expect(agentTasksApi.toolCall).toHaveBeenCalledWith('task-1', 'c1')
     expect(s.callDetail.toolName).toBe('read_code')
+    await s.openCall('c2')
+    expect(agentTasksApi.toolCall).toHaveBeenCalledWith('task-1', 'c2')
+    expect(wrapper.text()).toContain('整批拒绝（未执行）')
     wrapper.unmount()
   })
 

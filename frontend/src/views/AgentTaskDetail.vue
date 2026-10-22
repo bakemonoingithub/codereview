@@ -153,7 +153,7 @@
           <div class="section-top">
             <h2>可观察的执行记录</h2>
             <span class="spacer" />
-            <span class="muted small">{{ callTotal }} 次工具调用</span>
+            <span class="muted small">{{ callTotal }} 条调用记录</span>
           </div>
           <div class="pad">
             <a-alert v-if="callError" type="error" show-icon :message="callError" class="mb16" />
@@ -162,7 +162,7 @@
                 <div class="row wrap">
                   <strong>{{ String(index + 1).padStart(2, '0') }} · {{ call.toolName }}</strong>
                   <span class="spacer" />
-                  <StatusBadge :tone="callTone(call.status)">{{ call.status }}</StatusBadge>
+                  <StatusBadge :tone="callTone(call.status)">{{ callStatusText(call.status) }}</StatusBadge>
                   <button type="button" class="quiet" @click="openCall(call.id)">查看调用 ↗</button>
                 </div>
                 <p>第 {{ call.turnNo }} 轮 · 序号 {{ call.ordinal }} · {{ formatTime(call.startedAt) }}</p>
@@ -180,7 +180,7 @@
 
         <section v-show="activeTab === 'calls'" class="card">
           <div class="section-top">
-            <h2>逐次实际调用</h2>
+            <h2>逐次调用记录</h2>
             <span class="spacer" />
             <span class="muted small">完整正文按需打开</span>
           </div>
@@ -205,7 +205,7 @@
                   <div class="row wrap">
                     <strong>{{ callDetail.toolName }}</strong>
                     <span class="spacer" />
-                    <StatusBadge :tone="callTone(callDetail.status)">{{ callDetail.status }}</StatusBadge>
+                    <StatusBadge :tone="callTone(callDetail.status)">{{ callStatusText(callDetail.status) }}</StatusBadge>
                   </div>
                   <p class="muted small">提供方 {{ callDetail.providerToolCallId }} · {{ formatTime(callDetail.startedAt) }}</p>
                   <h3>参数</h3>
@@ -484,9 +484,13 @@ function limitMax(key: string) {
 function callTone(status: string): 'green' | 'amber' | 'blue' | 'red' | 'default' {
   const value = status.toUpperCase()
   if (value === 'OK' || value === 'SUCCEEDED') return 'green'
-  if (value.includes('TRUNC') || value.includes('LIMIT')) return 'amber'
+  if (value.includes('TRUNC') || value.includes('LIMIT') || value === 'REJECTED_BATCH') return 'amber'
   if (value.includes('FAIL') || value.includes('ERROR') || value.includes('TIMEOUT')) return 'red'
   return 'blue'
+}
+
+function callStatusText(status: string) {
+  return status === 'REJECTED_BATCH' ? '整批拒绝（未执行）' : status
 }
 
 async function openCall(callId: string) {

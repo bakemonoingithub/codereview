@@ -37,6 +37,7 @@ import com.codereview.agent.tools.AgentToolScope;
 import com.codereview.agent.tools.ReadOnlyToolService;
 import com.codereview.agent.tools.ToolEnvelope;
 import com.codereview.agent.tools.ToolEnvelopes;
+import com.codereview.agent.tools.ToolFailure;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -195,9 +196,20 @@ public class AgentTaskWorker implements TaskWorker {
                     return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);
                 }
                 execution.history.add(PromptMessage.assistantToolCalls(calls, result.content()));
+                String batchError = "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，"
+                        + "不能与其他工具同批。本批工具没有执行。";
+                for (int index = 0; index < calls.size(); index++) {
+                    ToolCall call = calls.get(index);
+                    ToolEnvelope rejected = ToolEnvelope.failure(call.id(),
+                            ToolFailure.invalid("TOOL_BATCH_INVALID", batchError), execution.scope);
+                    String envelopeJson = ToolEnvelopes.writeString(mapper, rejected);
+                    persistToolCall(task.getId(), result.callId(), turn, index + 1, call,
+                            rejected, envelopeJson, "REJECTED_BATCH");
+                    execution.history.add(PromptMessage.toolResult(call.id(), envelopeJson));
+                }
                 execution.history.add(new PromptMessage("user", """
-                        上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，
-                        不能与其他工具同批。本批工具没有执行，请重新发起。"""));
+                        上一轮工具批次不合法，已为其中每个调用返回拒绝结果；本批工具没有执行。
+                        请减少为每轮最多 4 个工具，且 submit_result 必须单独调用，然后重新发起。"""));
                 updateRun(run, turn, run.getToolAttempts(), run.getNetworkAttempts(),
                         "PROTOCOL_RETRY");
                 continue;
@@ -363,6 +375,13 @@ public class AgentTaskWorker implements TaskWorker {
 
     private void persistToolCall(String taskId, String callId, int turn, int ordinal,
                                  ToolCall call, ToolEnvelope envelope, String envelopeJson) {
+        persistToolCall(taskId, callId, turn, ordinal, call, envelope, envelopeJson,
+                envelope.status());
+    }
+
+    private void persistToolCall(String taskId, String callId, int turn, int ordinal,
+                                 ToolCall call, ToolEnvelope envelope, String envelopeJson,
+                                 String recordStatus) {
         LocalDateTime now = AgentTime.now();
         AgentToolCall row = new AgentToolCall();
         row.setId(AgentIds.next());
@@ -376,7 +395,7 @@ public class AgentTaskWorker implements TaskWorker {
         row.setEnvelope(envelopeJson);
         row.setMaterialIds(toJson(envelope.materials().stream()
                 .map(ToolEnvelope.ToolMaterial::materialId).toList()));
-        row.setStatus(envelope.status());
+        row.setStatus(recordStatus);
         row.setStartedAt(now);
         row.setFinishedAt(now);
         db.mapper(AgentToolCallMapper.class).insert(row);

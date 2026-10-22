@@ -59,6 +59,56 @@ class AgentSubmissionTest {
     }
 
     @Test
+    void reportsAllInvalidCitationRangesTogether() {
+        AgentSubmission submission = AgentSubmission.parse(mapper, """
+                {"title":"t","summary":"s","answerStatus":"ANSWERED",
+                 "markdown":"[E1] [E2]",
+                 "citations":[
+                   {"id":"E1","materialId":"m1","startLine":1,"endLine":2},
+                   {"id":"E2","materialId":"m1","startLine":25,"endLine":26}]}
+                """);
+
+        AgentProtocolException error = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(submission, sent));
+
+        assertEquals("CITATION_INVALID", error.code());
+        assertTrue(error.getMessage().contains("E1"), error.getMessage());
+        assertTrue(error.getMessage().contains("E2"), error.getMessage());
+    }
+
+    @Test
+    void reportsMultipleMalformedCitationIdsTogether() {
+        AgentSubmission submission = AgentSubmission.parse(mapper, """
+                {"title":"t","summary":"s","answerStatus":"ANSWERED",
+                 "markdown":"x", "citations":[
+                   {"id":"S1","materialId":"m1","startLine":10,"endLine":10},
+                   {"id":"S2","materialId":"m1","startLine":11,"endLine":11}]}
+                """);
+        AgentProtocolException error = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(submission, sent));
+
+        assertEquals("CITATION_INVALID", error.code());
+        assertTrue(error.getMessage().contains("S1"), error.getMessage());
+        assertTrue(error.getMessage().contains("S2"), error.getMessage());
+    }
+
+    @Test
+    void combinesMalformedIdsAndOutOfRangeCitationsInOneDiagnostic() {
+        AgentSubmission submission = AgentSubmission.parse(mapper, """
+                {"title":"t","summary":"s","answerStatus":"ANSWERED",
+                 "markdown":"x", "citations":[
+                   {"id":"S1","materialId":"m1","startLine":10,"endLine":10},
+                   {"id":"E2","materialId":"m1","startLine":25,"endLine":26}]}
+                """);
+        AgentProtocolException error = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(submission, sent));
+
+        assertTrue(error.getMessage().contains("S1"), error.getMessage());
+        assertTrue(error.getMessage().contains("E2"), error.getMessage());
+        assertTrue(error.getMessage().contains("材料范围 10-20"), error.getMessage());
+    }
+
+    @Test
     void markdownMarkersMustResolveToDeclaredCitations() {
         AgentSubmission unknownMarker = AgentSubmission.parse(mapper, """
                 {"title":"t","summary":"s","answerStatus":"ANSWERED","markdown":"x [E2]",
@@ -104,12 +154,13 @@ class AgentSubmissionTest {
 
     @Test
     void duplicateCitationIdsAreRejected() {
+        AgentSubmission submission = AgentSubmission.parse(mapper, """
+                {"title":"t","summary":"s","answerStatus":"ANSWERED","markdown":"x [E1]",
+                 "citations":[{"id":"E1","materialId":"m1","startLine":10,"endLine":10},
+                              {"id":"E1","materialId":"m1","startLine":11,"endLine":11}]}
+                """);
         AgentProtocolException error = assertThrows(AgentProtocolException.class,
-                () -> AgentSubmission.parse(mapper, """
-                        {"title":"t","summary":"s","answerStatus":"ANSWERED","markdown":"x [E1]",
-                         "citations":[{"id":"E1","materialId":"m1","startLine":1,"endLine":1},
-                                      {"id":"E1","materialId":"m1","startLine":2,"endLine":2}]}
-                        """));
-        assertEquals("RESULT_INVALID", error.code());
+                () -> AgentSubmission.validate(submission, sent));
+        assertEquals("CITATION_INVALID", error.code());
     }
 }

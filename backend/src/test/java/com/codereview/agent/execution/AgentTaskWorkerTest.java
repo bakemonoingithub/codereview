@@ -9,6 +9,7 @@ import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentRun;
 import com.codereview.agent.entity.AgentToolCall;
+import com.codereview.agent.invocation.InvocationRequest;
 import com.codereview.agent.invocation.InvocationResult;
 import com.codereview.agent.invocation.ModelInvocationService;
 import com.codereview.agent.mapper.AgentCallMaterialMapper;
@@ -16,6 +17,7 @@ import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentToolCallMapper;
+import com.codereview.agent.prompt.PromptMessage;
 import com.codereview.agent.prompt.PromptAssemblyService;
 import com.codereview.agent.prompt.ToolCall;
 import com.codereview.agent.support.AgentTime;
@@ -184,6 +186,60 @@ class AgentTaskWorkerTest {
     }
 
     @Test
+    void rejectedOversizedToolBatchGetsOneToolResultPerCallBeforeRetry() {
+        List<ToolCall> oversized = java.util.stream.IntStream.range(0, 8)
+                .mapToObj(index -> new ToolCall("bad-" + index, "read_code", "{}"))
+                .toList();
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-invalid", oversized))
+                .thenReturn(toolCallResult("call-read", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-submit", "submit_result", submitJson()));
+
+        TaskWorker.TaskOutcome outcome = worker.execute(task);
+
+        assertEquals(TaskStates.SUCCEEDED, outcome.state());
+        ArgumentCaptor<InvocationRequest> requests = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation, org.mockito.Mockito.times(3)).invoke(requests.capture());
+        List<PromptMessage> retryMessages = requests.getAllValues().get(1).prompt().messages();
+        List<PromptMessage> rejectedAssistant = retryMessages.stream()
+                .filter(message -> "assistant".equals(message.role()) && !message.toolCalls().isEmpty())
+                .toList();
+        List<PromptMessage> rejectedResults = retryMessages.stream()
+                .filter(message -> "tool".equals(message.role()))
+                .toList();
+        assertEquals(1, rejectedAssistant.size());
+        assertEquals(8, rejectedAssistant.get(0).toolCalls().size());
+        assertEquals(8, rejectedResults.size());
+        assertEquals(rejectedAssistant.get(0).toolCalls().stream().map(ToolCall::id).toList(),
+                rejectedResults.stream().map(PromptMessage::toolCallId).toList());
+        verify(tools, org.mockito.Mockito.times(1)).execute(anyString(), eq("read_code"), anyString(), any());
+    }
+
+    @Test
+    void mixedSubmitBatchIsRejectedRecordedAndNotExecuted() {
+        List<ToolCall> mixed = List.of(
+                new ToolCall("bad-submit", "submit_result", submitJson()),
+                new ToolCall("bad-read", "read_code", "{}"));
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-invalid", mixed))
+                .thenReturn(toolCallResult("call-read", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-submit", "submit_result", submitJson()));
+
+        TaskWorker.TaskOutcome outcome = worker.execute(task);
+
+        assertEquals(TaskStates.SUCCEEDED, outcome.state());
+        ArgumentCaptor<AgentToolCall> records = ArgumentCaptor.forClass(AgentToolCall.class);
+        verify(toolCallMapper, org.mockito.Mockito.times(4)).insert(records.capture());
+        List<AgentToolCall> rejected = records.getAllValues().stream()
+                .filter(record -> "REJECTED_BATCH".equals(record.getStatus())).toList();
+        assertEquals(2, rejected.size());
+        assertTrue(rejected.stream().allMatch(record -> record.getEnvelope().contains("本批工具没有执行")));
+        verify(tools, org.mockito.Mockito.times(1)).execute(anyString(), eq("read_code"), anyString(), any());
+    }
+
+    @Test
     void finishingPersistsTheTurnThatEndedTheRun() {
         when(invocation.invoke(any()))
                 .thenReturn(toolCallResult("call-1", "read_code",
@@ -267,6 +323,10 @@ class AgentTaskWorkerTest {
     private InvocationResult toolCallResult(String callId, String name, String arguments) {
         return new InvocationResult(callId, null, null, "tool_calls", 1, 100, 1024, "m", "v",
                 List.of(new ToolCall("p1", name, arguments)));
+    }
+
+    private InvocationResult toolCallResult(String callId, List<ToolCall> calls) {
+        return new InvocationResult(callId, null, null, "tool_calls", 1, 100, 1024, "m", "v", calls);
     }
 
     private InvocationResult textResult(String callId, String content) {

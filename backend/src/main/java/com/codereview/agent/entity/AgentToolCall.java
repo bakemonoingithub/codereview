@@ -7,7 +7,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/** 一次实际工具执行；参数、envelope 与材料 ID 原样保存，便于调用记录阅读与来源引用。 */
+/** 一次工具调用尝试；包括已执行调用与未执行的整批拒绝记录。 */
 @Data
 @TableName("agent_tool_call")
 public class AgentToolCall {

@@ -77,7 +77,8 @@ public class TaskDeadlineSweeper {
         }
         Long calls = db.mapper(AgentToolCallMapper.class).selectCount(
                 new LambdaQueryWrapper<AgentToolCall>()
-                        .eq(AgentToolCall::getTaskId, taskId));
+                        .eq(AgentToolCall::getTaskId, taskId)
+                        .ne(AgentToolCall::getStatus, "REJECTED_BATCH"));
         return calls != null && calls > 0;
     }
 
