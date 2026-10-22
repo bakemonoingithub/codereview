@@ -1,6 +1,6 @@
 # P33.2 统一只读工具、受限检索与模型协议适配
 
-状态：工程实现与本地回归完成，真实模型双轮工具验证待在服务重启后执行；在此之前不把 P33.2 记为 done。日期：2026-10-22（Asia/Taipei）。
+状态：工程实现、全量回归与真实模型双轮工具验证已完成；P33.2 的未验证边界（大仓库、Gitea 检索、并发）记入第 7 节。日期：2026-10-22（Asia/Taipei）。
 
 接续：[P33 入口](README.md)、[技术设计](design.md#4-统一只读工具)、[预算与接口对照实验](budget-calibration.md)、[ROADMAP 第 7 节](../../../ROADMAP.md#7-p33-agent-专属设计html-原型实现及验收)。本文件记录本轮实现、检查结果与未验证边界，不替代 P33.6 的真实 Agent 验收。
 
@@ -48,12 +48,21 @@
 
 - 新增回归：工具 schema 4 项、参数解析 11 项、游标 5 项、glob 5 项、hunk 解析 4 项、读取 7 项、tree／find 8 项、diff 6 项、真实 grep 5 项、真实镜像检索 5 项、协议适配 5 项、双轮准入 6 项、共享镜像 1 项。
 - 真实 grep 与镜像检索回归依赖本机 `git`，缺失时按 JUnit assumption 跳过；跳过不计为通过。
-- 既有回归（模型调用、提示词组装、Gitea 客户端、专项执行、报告执行）在本轮修改后通过。
-- 全量后端回归结果见提交记录与 STATE。
+- 全量后端回归：749 项、0 失败、0 异常、9 跳过；跳过来自既有的真实网关／宿主探针开关，不计为通过。项目既有专项、报告、Gitea 与模型调用回归在本轮修改后仍通过。
 
-## 6. 未验证与后续
+## 6. 真实模型双轮验证
 
-- 真实模型双轮工具验证：需部署本轮后端后调用 `validate-agent`，记录实际 `deepseek-flash` 的两轮返回；未执行前不把模型准入记为已验证。
+2026-10-22 16:19（Asia/Taipei）在重启后的本机服务（8081，新库 `ai_code_review_agent`）对数据库中的 DeepSeek 配置 `01M23AKQZRG40082QFECKMC36N`（`deepseek-flash`，修订 2）执行 `POST /api/v2/models/{id}/validate-agent`：
+
+- 结果 `PASSED`，`scope=AGENT_TOOL_LOOP_V1`，耗时 4 秒；详情为「第 1 轮调用 read_code，第 2 轮返回 40 字符」。
+- 两次 `model_call` 均 `SUCCEEDED`、`attempt=1`：第 1 轮请求 5706 字节、输入 1733／输出 91 token，响应含 `tool_calls`；第 2 轮请求 6764 字节（含工具历史）、输入 2092／输出 21 token。
+- 两次请求都含 `tools` 与 `tool_choice=auto`；optionsHash `df70758452ee1e3636bc84f4ee11d840ba80934fb1162d29bc9a2bbcca7a4b21`；adapterVersion `openai-chat-v1`、toolSchemaVersion `agent-tools-v1`。
+- 模型视图 `agentValidationStatus` 由 `NONE` 变为 `PASSED`，连通性状态单独保留。
+
+这次验证只证明原生工具调用、工具结果回放与最终文本在真实网关可用，不证明检索质量、Agent 结论正确性或大仓库承载。
+
+## 7. 未验证与后续
+
 - 内网大仓库、Gitea 宿主真实检索、2 路并发搜索、冷镜像 120 秒准备以及超时／取消竞争仍需在目标环境实测。
 - 工具结果尚未接入执行循环与界面；材料「已取得未发送」、调用记录、进度和 Markdown 结果由 P33.4／P33.5 实现。
 - 报告选材对 Agent 结果的适配仍按设计第 6 节在 P33.6 联调。

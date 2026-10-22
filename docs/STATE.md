@@ -4,127 +4,57 @@
 
 ## 当前状态
 
-当前: P33.2（active；本次不开发）
+当前: P33.3（active）
 
-2026-10-22 负责人按 D-91 统一确认 P33.1 整体技术方案及补齐后的原型，P33.1 标为 done，P33.2 设为 active。本次仅更新状态并提交 P33.1 产物，不开展 P33.2 开发；后续需负责人明确指示开始开发。P33.3–P33.6 保持 todo，P33 父阶段保持 active。
+2026-10-22 负责人要求开始 P33 剩余开发。P33.2 已于当日交付：五类只读工具、严格参数与 envelope、共享镜像上的受限 `git grep`、原生工具协议适配、`validate-agent` 双轮真实调用；全量后端 749 项通过（9 跳过），真实 `deepseek-flash` 验证 `PASSED`。P33.3 设为 active，P33.4–P33.6 保持 todo，P33 父阶段 active。
 
-2026-10-22 负责人补充 D-90：材料不足但完整提交的结果允许选材；预算由实际实验确定，内网不以节省费用为目标；首版只使用 DeepSeek，不使用 Qwen。本轮使用数据库实际项目和固定 SHA，对照接口与本地 Git 搜索／差异，并记录实验工具与正式能力的区别。此项当时未关闭 P33.1；后续整体确认见 D-91。
+P33.1 已完成：技术设计、原型与真实项目预算实验按 D-91 确认；默认预算（48 轮／96 次网络尝试／192 次工具／20 分钟／16384 输出）以[预算实验](work/agent-redesign/p33/budget-calibration.md)为据。材料不足结果可选材、只使用 DeepSeek 已由 D-90 确认。
 
-P33.1 真实项目实验已交付：数据库项目 `codereview` 固定远端 `b8b0b50…`，取消／冻结／非连续提交调查最终分别 15／10／30 轮；保留引用越界、无分页循环和错误文件交集反例。默认运行预算及接口／本地对照见[预算实验](work/agent-redesign/p33/budget-calibration.md)。材料不足选材已确认、只使用 DeepSeek；Qwen 历史探针不再作为准入或待配置任务。未实现正式 Agent 搜索或业务执行链。
+P29–P32 已完成并经负责人确认：共用设计与专项原型、公共基础与新库、三类专项、反馈／统计／报告、专项验收；P31.9 补齐真实仓库与 PC 视觉，P32.6 补齐真实模型报告流程。未执行的并发／重启／输入超限与部署演练按各阶段文档保留，不记为通过。
 
-2026-10-22 负责人明确启动 P33.1：开展 Agent 技术设计、模型工具协议验证及独立 HTML 原型，交付后等待负责人统一确认。当时 P33 为 active，P33.2–P33.6 尚未启动；当前状态见 D-91。
+## P33.2 交付
 
-P33.1 首轮设计与原型交付见 [P33 入口](work/agent-redesign/p33/README.md)、[技术设计](work/agent-redesign/p33/design.md)、[原型说明](work/agent-redesign/p33/prototype.md)及[验证记录](work/agent-redesign/p33/validation.md)。沿用负责人指定的既有 Agent HTML 并结合代码高亮，原型浏览器 23 项检查通过。此前 DeepSeek／Qwen 各两次协议探针保留为历史；当前按 D-90 仅使用 DeepSeek。未改正式业务代码或数据库，整体设计及原型已随后按 D-91 确认；正式实施与验收仍未完成。
-
-2026-10-22 P33 调研已落盘：[极简嵌入式 Agent 调研与实施参考](work/agent-redesign/p33/minimal-agent-research.md)收录官方来源、实现取舍及真实任务验证建议。P33.1 设计及后续实施前先读此文；调研建议与 D-89 已确认约定分别标明，P33 状态不变。
-
-2026-10-22 P33 讨论确认：负责人同意执行循环、任务内串行工具调用、优先实测原生工具协议及显式「提交结果」方向，已记录为 D-89。业务细节见[契约第 4.11 节](work/agent-redesign/business-contract.md#411-p33-执行循环与显式结果提交)，实施与验证安排见 [ROADMAP 第 7 节](ROADMAP.md#7-p33-agent-专属设计html-原型实现及验收)。字段、限额及材料不足结果的报告选材资格留待 P33.1；本次仅更新确认记录，P33 仍未启动。
-
-2026-10-22 P31.9 目标仓库校准完成：真实 GitHub 仓库 `codereview`（`refactor/agent` @ `b8b0b50e`）与 `deepseek-flash` 完成 7 个采样任务（小／普通／大文件、提交差异、并发），7/7 成功；token 实测为字节估算的 0.25–0.27，估算偏保守；宿主 404／422、并发重叠 3 秒、材料前后侧与声明摘要均留证。PC 视觉由负责人本人确认。P31.9 与 P31 标为 done，当前无 active；429／超时、真实多单元拆分、`CONTEXT_LIMIT`、双宽度截图记入备忘。见[P31.9 验收](work/agent-redesign/p31/p31-9-validation.md)。
-
-2026-10-22 P32.6 视觉验证：负责人确认 PC 视觉完成；P32.1–P32.7 全部交付，P32 标为 done。双页面并发生成／服务重启收敛、真实输入超限与 P32.7 的实际封存／切换／回退演练未执行，留待部署前补测，不记为通过。见[P32.6 验收](work/agent-redesign/p32/p32-6-validation.md)。
-
-2026-10-22 负责人确认列表分页原型，6 个正式列表及接口已完成页码分页与独立 Cookie 偏好。后端全量 677 项（9 条件跳过）、前端 484 项、类型检查与构建通过；本机接口和正式页面偏好已复核，服务已重启并保持运行。见[分页改造记录](work/agent-redesign/list-pagination.md)。该交付本身不改变当时 P31.9 与 P33 的状态（P31.9 随后于当日完成）。
-
-P29 已完成并经负责人批准（D-88）。P30 于 2026-10-20 完成，P30.1–P30.8 全部交付。2026-10-21 负责人依次要求完成 P31.1–P31.3、P31.4–P31.6、P31.7–P31.9。P31.1–P31.8 已完成工程实现与本地测试；P31.9 于 2026-10-22 补齐目标仓库与真实资源验收，P31 已完成。
-
-2026-10-21 负责人明确启动 P32，并要求先处理 P32.1–P32.3、测试无误后提交，随后要求完成 P32.4–P32.7。P31.9 当时的目标仓库、真实宿主／模型和 PC 视觉尚未完成（2026-10-22 已补齐）；未执行项按备忘保留，不记为通过。
-
-P32 已完成（2026-10-22），P32.1–P32.7 全部交付；P32.6 已完成真实新库、真实模型、反馈与报告流程验证及负责人 PC 视觉确认：
-- P32.1 反馈：问题级／结果级读写、稳定主体校验、revision 条件更新、结果页编辑器、跨主体草稿、离页提示与冲突手工合并。见 [P32.1](work/agent-redesign/p32/p32-1-feedback.md)。
-- P32.2 统计：`GET /api/v2/review-tasks/{id}/statistics` 按 taskId 分开聚合问题级与结果级；未反馈、无法判断、空分母分别展示。见 [P32.2](work/agent-redesign/p32/p32-2-statistics.md)。
-- P32.3 报告输入：完整结果候选查询、输入冻结与冻结来源读取；快照保存正文、问题、版本、材料引用与当时反馈。见 [P32.3](work/agent-redesign/p32/p32-3-report-inputs.md)。
-- P32.4 生成：程序事实与指标、统一组装、公共调用、`[S]` 引用校验、异步状态、失败保留冻结来源；报告输出预留 16384。见 [P32.4](work/agent-redesign/p32/p32-4-report-generation.md)。
-- P32.5 界面：报告列表、独立表单、候选跨页选材、状态轮询、多结果详情、可点击引用、冻结来源抽屉与 Markdown 下载。见 [P32.5](work/agent-redesign/p32/p32-5-report-ui.md)。
-- P32.6 真实验证：新库 V1–V4、`deepseek-flash` 四来源报告成功；首次输出截断失败与修复后成功、冻结后反馈不变、下载／来源／失败状态均留证。PC 用户视觉、并发双页面与真实输入超限未执行。见 [P32.6](work/agent-redesign/p32/p32-6-validation.md)。
-- P32.7 交付：功能差异核对表、检查／未验证清单、封存与切换／回退操作单、独立配置与脚本入口。实际备份、封存、生产库、切换和回退演练未执行。见 [P32.7](work/agent-redesign/p32/p32-7-delivery.md)。
-
-2026-10-21 完成 P32.1–P32.3 的 R01–R11 审查修复，覆盖统计查询列、反馈保存竞争、清空草稿、冲突基线、卸载迟到响应、保存后统计刷新、读取失败重试、统计错误提示、冻结事务、代码证据及结构完整性。新增后端 6 项、前端 12 项正式回归；最终复验见[修复与复验记录](work/agent-redesign/p32/p32-1-3-review-fixes.md)。真实验证中发现并修复报告输出预算不足（4096→16384）。
-
-2026-10-21 完成 P32.4–P32.7 的 R01–R11 独立审查修复，覆盖结果评论、辅助证据与材料缺口、版本分组、期限与调度异常、分页及报告身份隔离、重复提交、冻结来源阅读和运维操作限制。新增后端 7 项、前端 7 项正式回归，并只读复核 DS 的成功／失败报告和下载一致性；最终复验见[修复与复验记录](work/agent-redesign/p32/p32-4-7-review-fixes.md)。P32.6 PC 视觉、P31.9 与 P32 当时保持 active。
-
-P31.1–P31.3 交付：
-- 材料准备与结构解析：固定版本整文件/差异两侧、JavaParser 声明事实、完整性/原始行号、`material` 来源记录；读取失败或必需 AST 缺失时该文件失败，不返回空成功。见 [P31.1](work/agent-redesign/p31/p31-1-materials.md)。
-- 有限声明增强：限定名/导入/同包定位、读取后核对声明、父类与接口广度优先、循环/菱形去重、声明摘要与直接类型补充，限额和缺口分别记录。见 [P31.2](work/agent-redesign/p31/p31-2-declarations.md)。
-- 协议与位置校验：三类 schema 版本 1、严格 JSON、目标/辅助与前后侧规则、changeRelation、耦合事实与 dependencyId 校验、初次加最多 2 次格式重试策略。见 [P31.3](work/agent-redesign/p31/p31-3-protocol.md)。
-
-2026-10-21 已修复 P31.1–P31.3 审查的 R01–R09，补入 27 项正式回归；源码根、限定身份、构造器、摘要范围、依赖关系、JSON 类型及共享读取预算均已复验。见[修复与复验记录](work/agent-redesign/p31/p31-1-3-review-fixes.md)。
-
-P31.4–P31.6 交付：
-- 容量与拆分：`SpecialistSplitPlanner` 整文件优先、辅助材料裁剪、类型/成员/行区间拆分、原始位置与 32 单元上限；`SpecialistResultMerger` 只合并确定重复项。见 [P31.4](work/agent-redesign/p31/p31-4-capacity.md)。
-- 执行与发布：`SpecialistTaskWorker` 接入 `TaskWorker`，逐目标独立执行；格式重试最多 2 次，部分成功发布 `INCOMPLETE`，完整结果/问题/单元/调用材料落库。见 [P31.5](work/agent-redesign/p31/p31-5-execution.md)。
-- 发起与复制：审查中心、发起表单、独立范围弹窗与文件/差异预览、复制参数重定版本；后端补分支 HEAD、提交列表与提交详情读取。见 [P31.6](work/agent-redesign/p31/p31-6-launch.md)。
-
-2026-10-21 完成 P31.4–P31.6 的 R01–R12 审查修复，覆盖整文件估算、拆分容量与覆盖、结构化超限重规划、取消后发布、调用材料关联、结果来源、配置快照、前端来源隔离、幂等提交及列表分页。见[修复与复验记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。
-
-P31.7–P31.9 交付：
-- 代码浏览与审查中心：`CodeBrowser` 分支/提交/文件/差异浏览与勾选带入；任务 ID 搜索、筛选、游标分页、返回现场与异步防串用。见 [P31.7](work/agent-redesign/p31/p31-7-browser.md)。
-- 统一详情：三类结果、目标状态、材料片段/全文/差异、实际调用完整请求与返回，反馈仅预留。见 [P31.8](work/agent-redesign/p31/p31-8-detail.md)。
-- 验证与交付：A07–A15、A21、A24 的本地证据映射、固定版本/位置/拆分/去重/片段失败复核；目标仓库与真实资源未执行。见 [P31.9](work/agent-redesign/p31/p31-9-validation.md)。
-
-2026-10-21 完成 P31.7–P31.9 的 R01–R11 审查修复，覆盖保存片段还原、材料与调用异步隔离、代码浏览来源及分页、返回现场、详情轮询与调用分页、耦合事实和材料缺口展示、读取一致性及调用摘要。新增后端 6 项、前端 29 项正式回归；复验后端 603 项、0 失败、0 异常、9 跳过，前端 50 个文件、417 项通过，类型检查和生产构建通过。见[修复与复验记录](work/agent-redesign/p31/p31-7-9-review-fixes.md)。P31.9 的目标仓库校准、真实资源与 PC 视觉仍未执行，保持 active。
-
-P30.5–P30.8 交付：
-- 统一组装与公共调用：`PromptAssemblyService`、`ModelCapacityService`、`ModelInvocationService`、`ModelCallConcurrencyLimiter`、`HttpModelTransport`；请求先落盘、200 次原子额度、全局 4／单任务 2 并发、一次暂态重试；验证调用同入口。见 [P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)。
-- 任务控制：`TaskService`、`TaskDispatchService`、`TaskExecutionGuard`、`TaskDeadlineSweeper`、`TaskRecoveryRunner`；幂等键、固定快照、取消、期限与重启收敛、终态条件更新。见 [P30.6](work/agent-redesign/p30/p30-6-task-control.md)。
-- 四页管理：项目、模型、提示词、策略改用 `/api/v2`；设计基线与人工视觉清单见 [design.md](design.md) 和 [P30.7](work/agent-redesign/p30/p30-7-admin-pages.md)。
-- 隔离验证：A01–A06、A22、A23 证据、V2／V3 迁移契约与计量样本。见 [P30.8](work/agent-redesign/p30/p30-8-validation.md)。
-
-2026-10-21 完成 P30.5–P30.8 的 9 项审查修复，覆盖 v2 响应与筛选、列表乱序、提示词保存重试、调用取消与期限、429、验证输出上限和任务目标终态。见[修复与复验记录](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
+- 工具：`tree`、`find_files`、`search_code`、`read_code`、`read_diff`；严格 JSON Schema 参数、32 KiB envelope、24 KiB 单材料、查询绑定游标；材料按固定版本与行范围去重落库。
+- 检索：从 `GiteaGitMirror` 提炼共享 `GitMirror`；`git grep` 用参数数组、查询经临时文件、`-F -n -I -z`、超时与 2 MiB 有界输出，退出码 1 只表示无匹配。
+- 协议：assistant 工具调用、tool 消息、请求 `tools`／`tool_choice=auto`、空正文工具响应；工具定义计入输入估算；`AGENT_TOOL_CHECK` 对 DeepSeek 关闭思考模式。
+- 准入：`POST /api/v2/models/{id}/validate-agent` 记录 `scope=AGENT_TOOL_LOOP_V1`，绑定修订、适配器、工具 schema 与选项哈希；模型视图新增 `agentValidationStatus`。
+- 详见 [P33.2 记录](work/agent-redesign/p33/p33-2-tools.md)。
 
 ## 验证与未验证
 
-- P30 复验为后端 474 项、0 失败、0 异常、7 跳过；前端 41 个文件、360 项通过，类型检查和生产构建通过。详情见[本轮复验](work/agent-redesign/p30/p30-5-8-review-fixes.md)。
-- P31.7–P31.8 完成后 `mvn clean test` 为 597 项、0 失败、0 异常、9 跳过；前端 46 个测试文件、388 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。跳过项不计为执行通过，真实网关和宿主探针显式禁用。
-- 2026-10-21 按负责人授权完成本机 `ai_code_review_agent` 建库、独立账号、V1–V4 迁移、前后端启动及基础只读列表验证，见[本机启停记录](work/agent-redesign/dev-launchers.md)；随后完成四类配置迁移与基础连通复验，见[配置迁移记录](work/agent-redesign/config-migration-20261021.md)。专项任务写入、Git 宿主、目标仓库、专项模型完整流程与 PC 正式页面视觉于 2026-10-22 由 P31.9 补齐；完整访问层验收仍以工程回归为据。
-- P31.7–P31.9 审查后复验为后端 603 项（9 跳过），前端 417 项，类型检查和构建通过；以[本轮记录](work/agent-redesign/p31/p31-7-9-review-fixes.md)为准。
-- 2026-10-21 P32.1–P32.3 复验为后端 626 项、0 失败、0 异常、9 跳过；前端 52 个测试文件、426 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。新增回归含反馈 10+4 项、统计 5+5 项、报告输入 7 项。真实 MySQL、真实模型／宿主、并发双页面与 PC 正式页面未执行，按 P32.6 记录。
-- P32.1–P32.3 审查修复后，后端 632 项（0 失败、0 异常、9 跳过）、前端 52 个文件 438 项通过；类型检查与生产构建通过，完整结论以[本轮记录](work/agent-redesign/p32/p32-1-3-review-fixes.md)为准。
-- 2026-10-21 P32.4–P32.7 复验：后端 650 项、0 失败、0 异常、9 跳过；前端 56 个测试文件、447 项通过，`vue-tsc --noEmit` 与 `vite build` 通过。真实 `deepseek-flash` 报告生成、输出截断失败、冻结后反馈不变、下载／来源与失败状态已验证，见[P32.6](work/agent-redesign/p32/p32-6-validation.md)；负责人 PC 视觉已于 2026-10-22 确认，并发双页面、服务重启与真实输入超限仍未执行。
-- 2026-10-22 P31.9 真实采样：7 个真实任务（小／普通／大文件、开启拆分、提交差异、并发两个）全部成功；材料 2,378–44,155 字节，单次调用 4–11 秒；`prompt_tokens` 为字节估算的 0.25–0.27，即估算比实际保守 3.7–4.0 倍。宿主错误分支／路径 404、非法 SHA 422；并发两任务执行区间重叠约 3 秒。见[P31.9 验收](work/agent-redesign/p31/p31-9-validation.md)。
-- 专项执行器已接入；`EXECUTOR_UNAVAILABLE` 不再是当前运行的预期行为。专项真实模型调用与并发已由 P31.9 采样覆盖；取消边界只有工程回归，未在真实采样中构造。
+- 2026-10-22 全量后端：749 项、0 失败、0 异常、9 跳过（既有真实网关／宿主探针开关，不计为通过）；前端本轮未改。
+- 真实 `deepseek-flash`（修订 2）`validate-agent`：`PASSED`，4 秒；第 1 轮 `read_code` 工具调用（输入 1733／输出 91 token），第 2 轮工具历史回放后返回 40 字符（2092／21）；两次请求均含 tools 与 tool_choice。
+- P33.2 未验证：内网大仓库与 Gitea 宿主真实检索、2 路并发搜索、冷镜像 120 秒、超时／取消竞争；Windows 默认 `MAX_PATH` 下镜像目录过深会让 git 读不到 pack，部署需短镜像目录。
+- P31.9／P32 备忘项在部署前补测：GitHub 429／超时、真实多单元拆分、`CONTEXT_LIMIT`、专项输出截断；P32 并发双页面、服务重启、真实输入超限与封存／切换／回退演练。
+- 项目 `currentBranch=main` 与远端实际分支不一致，待负责人决定；本次未改配置。
 
 ## 接续依据
 
-- P32.4–P32.7 独立审查最终复验：后端 657 项、0 失败、0 异常、7 跳过；前端 57 个文件、454 项通过，类型检查和生产构建通过。已有网关探针本轮实际执行，跳过数差异与真实验证边界见[修复与复验记录](work/agent-redesign/p32/p32-4-7-review-fixes.md)。
-
-- [旧库配置迁移](work/agent-redesign/config-migration-20261021.md)：项目 2、模型 2、策略 4、提示词 6、版本 9 已迁入并核对；后续配置修改保留。千问连通通过但容量待补，DeepSeek 连通未通过，详见记录。
-- [本机开发服务启停](work/agent-redesign/dev-launchers.md)：启停脚本、配置补修、本机新库初始化及真实启动记录；本次服务保持运行，停止与再次启动方法见该文档。
-- [工作区规则](../AGENTS.md)、[ROADMAP](ROADMAP.md)、[业务契约](work/agent-redesign/business-contract.md)。
-- [P29 工作记录](work/agent-redesign/p29/README.md) 与 [验收清单](work/agent-redesign/p29/acceptance.md)。
-- [P30.1 复用差异](work/agent-redesign/p30/p30-1-reuse-diff.md)、[P30.2 新库](work/agent-redesign/p30/p30-2-schema.md)、[P30.3 配置接口](work/agent-redesign/p30/p30-3-config-api.md)、[P30.4 固定读取](work/agent-redesign/p30/p30-4-fixed-version-read.md)。
-- [P30 审查修复](work/agent-redesign/p30/p30-review-fixes.md)、[P30.5](work/agent-redesign/p30/p30-5-assembly-invocation.md)、[P30.6](work/agent-redesign/p30/p30-6-task-control.md)、[P30.7](work/agent-redesign/p30/p30-7-admin-pages.md)、[P30.8](work/agent-redesign/p30/p30-8-validation.md)。
-- [P31 总览](work/agent-redesign/p31/README.md)、[P31.1 材料](work/agent-redesign/p31/p31-1-materials.md)、[P31.2 声明](work/agent-redesign/p31/p31-2-declarations.md)、[P31.3 协议](work/agent-redesign/p31/p31-3-protocol.md)、[P31.4 容量](work/agent-redesign/p31/p31-4-capacity.md)、[P31.5 执行](work/agent-redesign/p31/p31-5-execution.md)、[P31.6 发起](work/agent-redesign/p31/p31-6-launch.md)、[P31.7 浏览](work/agent-redesign/p31/p31-7-browser.md)、[P31.8 详情](work/agent-redesign/p31/p31-8-detail.md)、[P31.9 验证](work/agent-redesign/p31/p31-9-validation.md)。
-- [P32 总览](work/agent-redesign/p32/README.md)、[P32.1 反馈](work/agent-redesign/p32/p32-1-feedback.md)、[P32.2 统计](work/agent-redesign/p32/p32-2-statistics.md)、[P32.3 报告输入](work/agent-redesign/p32/p32-3-report-inputs.md)、[P32.4 生成](work/agent-redesign/p32/p32-4-report-generation.md)、[P32.5 界面](work/agent-redesign/p32/p32-5-report-ui.md)、[P32.6 验收](work/agent-redesign/p32/p32-6-validation.md)、[P32.7 交付](work/agent-redesign/p32/p32-7-delivery.md)。
+- [P33 入口](work/agent-redesign/p33/README.md)、[技术设计](work/agent-redesign/p33/design.md)、[预算实验](work/agent-redesign/p33/budget-calibration.md)、[P33.2 记录](work/agent-redesign/p33/p33-2-tools.md)、[调研参考](work/agent-redesign/p33/minimal-agent-research.md)。
+- [业务契约](work/agent-redesign/business-contract.md)、[工作区规则](../AGENTS.md)、[ROADMAP](ROADMAP.md)。
+- 公共实现：[统一调用](work/agent-redesign/p30/p30-5-assembly-invocation.md)、[任务控制](work/agent-redesign/p30/p30-6-task-control.md)、[P31 材料与拆分](work/agent-redesign/p31/README.md)、[P32 反馈与报告](work/agent-redesign/p32/README.md)。
+- [本机开发服务启停](work/agent-redesign/dev-launchers.md)；真实库 `ai_code_review_agent`，服务当前运行在 8081。
 
 ## 下一步
 
-1. 当前为 P33.2 active，但负责人明确本次不开展开发；等待明确开始开发的指示。P33.1 已按 D-91 确认完成，接续时先读 P33 入口、技术设计、预算实验及未验证清单。
-2. P31.9 备忘项在部署前补测：GitHub 429／网络超时、真实多单元拆分与 `CONTEXT_LIMIT`、专项侧输出截断样本；P29 候选值暂不上调。
-3. P32.6 的并发双页面、服务重启与真实输入超限，以及 P32.7 的实际封存／切换／回退演练，按操作单在部署前补测，未执行前不记为通过。
-4. 项目 `currentBranch=main` 与远端实际分支不一致，待负责人决定改为 `dev` 或 `refactor/agent`；本次未改配置。
-5. 列表分页与 P31.9／P32 收尾的文档改动仍在工作区未提交；按一次一事提交，push 由负责人执行。
+1. 开发 P33.3：Agent 用途提示词与优先级、范围／要求表单、文件与提交互斥、多提交固定比较关系、`inputSnapshot`／`configSnapshot` version 2；先读 P33.2 记录末节与设计第 2 节。
+2. P33.4 再接执行循环与预算终止，P33.5 做进度／调用记录／结果与来源阅读，P33.6 做验收与混合报告联调。
+3. P33.2 的检索边界与 Windows 长路径限制在目标环境实测后回填记录。
+4. 部署前补测 P31.9／P32 备忘项；push、合并与真实联调由负责人执行。
 
 ## 工作区保留
 
-- P29 文档与原型已提交（6b852a8、44abc7b、6c53b0f）；P30 代码与文档已本地提交（7a48762、d05997a、21c93b4、e45883d、7c712f1、463e83c、0cded7d），未 push。
-- P31.1–P31.3 代码与测试已本地提交（3d4e568、3b7704e、ec959e6），直接声明缺口修正为 7754931，交付文档为 3f48ac1，R01–R09 审查修复为 4f76b49。
-- P31.4–P31.6 代码、前端与交付文档已本地提交（ab283af、4e3ae02、c7697c9），范围选择跨搜索保留的修正为 7de0a15，未 push。
-- P31.4–P31.6 审查修复、正式回归及复验记录为 b9f56bb，未 push；详见[修复记录](work/agent-redesign/p31/p31-4-6-review-fixes.md)。
-- P31.7–P31.9 代码、前端与验证文档已本地提交（6e50f33、73bb55c）；P31.9 于 2026-10-22 完成目标仓库校准后标为 done，未 push。
-- 本轮 P31.7–P31.9 修复、正式回归及复验记录在当前分支本地提交，未 push；原型及开发启停脚本的会话前/会话中改动保留，不纳入修复。
-- 2026-10-21 会话前保留的模型验证修复（`fix(agent): accept plain-text model validation...`）与 GitHub 斜杠分支修复（`fix(git): fall back to commit query...`）已分别本地提交。
-- P32.1–P32.3 代码、前端、测试与工作记录在当前分支本地提交（`feat(agent): add feedback and task accuracy statistics`、`feat(agent): freeze report inputs from complete results`），未 push；提交前全量测试、类型检查和构建通过。
-- P32.1–P32.3 的 R01–R11 审查修复、正式回归与本轮记录在当前分支本地提交，未 push；详情见[修复与复验记录](work/agent-redesign/p32/p32-1-3-review-fixes.md)。
-- P32.4–P32.7 的代码、前端、V4 迁移、测试、截图与交付文档在当前分支本地提交 `352b97b`，未 push；服务已按本机新库与真实模型完成报告验证，当前仍运行在 8081／5173。
-- `../code` 工作树保留其原有 2 处未提交改动，不纳入本工作树。
-- 2026-10-22 列表分页的代码、测试、截图与文档，以及 P31.9／P32 收尾的文档改动，仍在当前分支工作区未提交；未 push。P31.9 的 7 个真实任务、调用与结果只保存在本机隔离库，不产生代码改动。
+- P29–P32 各阶段均已本地提交，未 push；最近提交 `352b97b`（P32.4–P32.7）。
+- P33.2：`1ebd1b8`（工具与协议）、`36d57d6`（共享镜像 Bean 装配），未 push。
+- `frontend/components.d.ts` 会话前已有未提交改动，不纳入本轮；`../code` 保留其原有未提交内容。
 
 ## 已知坑
 
-- 本次环境 JDK 21 在 `D:\IDEA\IntelliJ IDEA 2024.3\jbr`，Maven 在 `D:\IDEA\IntelliJ IDEA 2024.3\plugins\maven\lib\maven3\bin\mvn.cmd`；`java`／`mvn` 不在 PATH，命令前需设 `JAVA_HOME`。
-- `frontend/node_modules` 当前是指向 `../code/frontend/node_modules` 的目录联接；`pnpm install --offline` 因 `I:\uv_cache` 缺少 `@antfu/utils` 元数据失败，未完成独立安装。重新安装前先确认 store，不要误删联接。
-- 当前 pnpm 启动器引用的缓存脚本缺失；本轮通过 Node 直接调用现有依赖中的 Vitest、vue-tsc 和 Vite，没有重新安装依赖。
-- Vitest／Vite 会改写 `frontend/components.d.ts`，结束后恢复基线；本轮已恢复。
-- 本机 MySQL 新库已按负责人授权建立，V1–V3 迁移与健康检查通过；实际配置位于忽略的 `backend/src/main/resources/application.yml`，不得纳入提交。新库采用独立账号，不与旧库共用权限。
-- Surefire 报告目录会累积历史失败；统计全量结果前先 `mvn clean test`，否则旧 XML 会污染计数。不要把 `mvn` 输出重定向到 `target/` 内，`clean` 会尝试删除正在写入的日志而直接失败；日志放临时目录。
+- JDK 21 在 `D:\IDEA\IntelliJ IDEA 2024.3\jbr`，Maven 在 `D:\IDEA\IntelliJ IDEA 2024.3\plugins\maven\lib\maven3\bin\mvn.cmd`；`java`／`mvn` 不在 PATH，命令前需设 `JAVA_HOME`。
+- 后端以 `mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081` 在第 8081 端口运行；重启前先停旧进程，日志放临时目录，不写进 `target/`。
+- Spring 组件若保留多个构造器，生产装配的构造器必须标 `@Autowired`，否则启动时报 "No default constructor found"。
+- Windows 下 Java `ProcessBuilder` 会把参数内的双引号转义错，用户输入不要直接进命令行；`git grep` 的查询改经临时文件 `-f` 传入。
+- `frontend/node_modules` 是指向 `../code/frontend/node_modules` 的目录联接；pnpm 启动器缓存脚本缺失，前端检查通过 Node 直接调用现有依赖。
+- Vitest／Vite 会改写 `frontend/components.d.ts`，结束后恢复基线。
+- 实际配置在忽略的 `backend/src/main/resources/application.yml`，不得提交；新库账号与旧库分开。
+- Surefire 报告会累积历史失败，统计前先 `mvn clean test`；不要重定向到 `target/` 内。
