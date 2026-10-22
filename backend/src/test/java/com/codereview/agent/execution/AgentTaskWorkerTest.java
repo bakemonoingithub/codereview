@@ -13,6 +13,7 @@ import com.codereview.agent.invocation.InvocationResult;
 import com.codereview.agent.invocation.ModelInvocationService;
 import com.codereview.agent.mapper.AgentCallMaterialMapper;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
+import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentToolCallMapper;
 import com.codereview.agent.prompt.PromptAssemblyService;
@@ -62,6 +63,7 @@ class AgentTaskWorkerTest {
     @Mock private ReadOnlyToolService tools;
     @Mock private AgentResultPublisher publisher;
     @Mock private AgentRunMapper runMapper;
+    @Mock private AgentReviewTaskMapper taskMapper;
     @Mock private AgentModelConfigMapper modelMapper;
     @Mock private AgentToolCallMapper toolCallMapper;
     @Mock private AgentCallMaterialMapper callMaterialMapper;
@@ -97,6 +99,8 @@ class AgentTaskWorkerTest {
         task.setConfigSnapshot(configSnapshot());
 
         when(db.mapper(AgentRunMapper.class)).thenReturn(runMapper);
+        when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
         when(db.mapper(AgentModelConfigMapper.class)).thenReturn(modelMapper);
         when(db.mapper(AgentToolCallMapper.class)).thenReturn(toolCallMapper);
         when(db.mapper(AgentCallMaterialMapper.class)).thenReturn(callMaterialMapper);
@@ -140,6 +144,20 @@ class AgentTaskWorkerTest {
         assertEquals(TaskStates.PARTIAL, outcome.state());
         assertEquals(TaskStates.STOP_NO_PROGRESS_LIMIT, outcome.stopReason());
         verify(invocation, org.mockito.Mockito.times(3)).invoke(any());
+    }
+
+    @Test
+    void deadlineAlreadyClosedIsNotRecordedAsUserCancel() {
+        task.setState(TaskStates.FAILED);
+        task.setStopReason(TaskStates.STOP_TASK_DEADLINE);
+        when(guard.requireActive(TASK_ID)).thenThrow(
+                new ApiException(ErrorCode.TASK_CANCELLED, "任务已结束，停止新的调用"));
+
+        TaskWorker.TaskOutcome outcome = worker.execute(task);
+
+        assertEquals(TaskStates.FAILED, outcome.state());
+        assertEquals(TaskStates.STOP_TASK_DEADLINE, outcome.stopReason());
+        verify(publisher, never()).publish(anyString(), any(), any(), any(), anyInt());
     }
 
     @Test

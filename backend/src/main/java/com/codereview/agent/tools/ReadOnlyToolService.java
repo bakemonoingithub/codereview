@@ -237,11 +237,16 @@ public class ReadOnlyToolService {
         return (int) relative.chars().filter(ch -> ch == '/').count() + 1;
     }
 
+    /** 只数下一层直接子项，与“打开该目录、深度 1”列出的条目数一致。 */
     private static int countChildren(List<RepositorySnapshots.PathEntry> entries, String path) {
         String prefix = path + "/";
         int count = 0;
         for (RepositorySnapshots.PathEntry entry : entries) {
-            if (entry.path().startsWith(prefix)) {
+            if (!entry.path().startsWith(prefix)) {
+                continue;
+            }
+            String rest = entry.path().substring(prefix.length());
+            if (!rest.isEmpty() && rest.indexOf('/') < 0) {
                 count++;
             }
         }

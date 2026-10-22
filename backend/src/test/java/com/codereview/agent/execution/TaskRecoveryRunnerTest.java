@@ -3,9 +3,11 @@ package com.codereview.agent.execution;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.entity.AgentReviewTask;
+import com.codereview.agent.entity.AgentRun;
 import com.codereview.agent.entity.AgentTaskTarget;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
+import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,13 +36,15 @@ class TaskRecoveryRunnerTest {
     private AgentTaskTargetMapper targetMapper;
     @Mock
     private AgentModelCallMapper callMapper;
+    @Mock
+    private AgentRunMapper runMapper;
 
     private TaskRecoveryRunner runner;
 
     @BeforeEach
     void setUp() {
         for (Class<?> entity : List.of(AgentReviewTask.class, AgentTaskTarget.class,
-                AgentModelCall.class)) {
+                AgentModelCall.class, AgentRun.class)) {
             com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
                     new org.apache.ibatis.builder.MapperBuilderAssistant(
                             new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), entity);
@@ -48,7 +52,9 @@ class TaskRecoveryRunnerTest {
         when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
         when(db.mapper(AgentTaskTargetMapper.class)).thenReturn(targetMapper);
         when(db.mapper(AgentModelCallMapper.class)).thenReturn(callMapper);
+        when(db.mapper(AgentRunMapper.class)).thenReturn(runMapper);
         when(taskMapper.update(any(), any())).thenReturn(3);
+        when(runMapper.update(any(), any())).thenReturn(1);
         when(targetMapper.update(any(), any())).thenReturn(2, 4);
         when(callMapper.update(any(), any())).thenReturn(5);
         runner = new TaskRecoveryRunner(db, new TaskProperties());
@@ -61,7 +67,9 @@ class TaskRecoveryRunnerTest {
         assertEquals(3, result.tasks());
         assertEquals(6, result.targets());
         assertEquals(5, result.calls());
+        assertEquals(1, result.runs());
         verify(taskMapper).update(any(), any());
+        verify(runMapper).update(any(), any());
         verify(targetMapper, org.mockito.Mockito.times(2)).update(any(), any());
         verify(callMapper).update(any(), any());
     }

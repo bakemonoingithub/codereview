@@ -6,6 +6,7 @@ import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.api.PageResponse;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.AgentReadDtos;
+import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentRun;
@@ -53,8 +54,12 @@ public class AgentReadService {
         int toolAttempts = run == null || run.getToolAttempts() == null ? 0 : run.getToolAttempts();
         int networkAttempts = run == null || run.getNetworkAttempts() == null
                 ? 0 : run.getNetworkAttempts();
-        String state = run == null || run.getState() == null ? task.getState() : run.getState();
-        String stopReason = run == null ? task.getStopReason() : run.getStopReason();
+        // 任务行是终态的唯一事实：重启收敛或结果发布可能已经结束任务，
+        // 而 agent_run 仍停在 RUNNING。进度不能把这种过期运行显示成仍在执行。
+        boolean taskClosed = TaskStates.isTerminal(task.getState());
+        String state = !taskClosed && run != null && run.getState() != null
+                ? run.getState() : task.getState();
+        String stopReason = !taskClosed && run != null ? run.getStopReason() : task.getStopReason();
         return new AgentReadDtos.Progress(taskId, state, stopReason, turnNo, toolAttempts,
                 networkAttempts, run == null ? null : run.getCurrentAction(),
                 readJson(run == null ? null : run.getCoveredJson()), limits,

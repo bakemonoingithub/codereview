@@ -115,8 +115,7 @@ public class AgentTaskWorker implements TaskWorker {
             return loop(task, execution, run);
         } catch (ApiException e) {
             if (e.errorCode() == ErrorCode.TASK_CANCELLED) {
-                finishRun(run, TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
-                return new TaskOutcome(TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
+                return stopBecauseTaskAlreadyClosed(task, run);
             }
             if (e.errorCode() == ErrorCode.TASK_DEADLINE) {
                 return limit(execution, run, TaskStates.STOP_TASK_DEADLINE);
@@ -285,6 +284,21 @@ public class AgentTaskWorker implements TaskWorker {
         log.info("Agent 任务 {} 发布结果 {}（{}）", task.getId(), resultId, submission.answerStatus());
         return new TaskOutcome(TaskStates.SUCCEEDED,
                 submission.answered() ? null : TaskStates.STOP_INSUFFICIENT_EVIDENCE);
+    }
+
+    /**
+     * 守卫把“用户取消”和“任务已被其他路径结束”都报成 {@code TASK_CANCELLED}。
+     * 期限扫描或重启收敛已经写下的终态必须原样记到进度上，不能改成用户取消。
+     */
+    private TaskOutcome stopBecauseTaskAlreadyClosed(AgentReviewTask task, AgentRun run) {
+        AgentReviewTask current = db.mapper(AgentReviewTaskMapper.class).selectById(task.getId());
+        if (current != null && TaskStates.isTerminal(current.getState())
+                && !TaskStates.CANCELLED.equals(current.getState())) {
+            finishRun(run, current.getState(), current.getStopReason());
+            return new TaskOutcome(current.getState(), current.getStopReason());
+        }
+        finishRun(run, TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
+        return new TaskOutcome(TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
     }
 
     /** 限制类终止：有调查记录为 PARTIAL，没有任何工具/模型记录为 FAILED。 */

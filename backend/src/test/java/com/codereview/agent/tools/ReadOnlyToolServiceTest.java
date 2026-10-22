@@ -45,7 +45,8 @@ class ReadOnlyToolServiceTest {
         Map<String, Object> src = entries.get(1);
         assertEquals("tree", src.get("type"));
         assertEquals(1, src.get("depth"));
-        assertEquals(3, src.get("childCount"));
+        assertEquals(2, src.get("childCount"));
+        assertEquals(1, entries.get(3).get("childCount"));
         assertEquals(true, entries.get(0).get("reviewable"));
     }
 

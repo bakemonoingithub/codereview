@@ -83,6 +83,32 @@ class AgentReadServiceTest {
     }
 
     @Test
+    void terminalTaskStateWinsOverAStaleRun() {
+        AgentReviewTask task = new AgentReviewTask();
+        task.setId(TASK_ID);
+        task.setRoute("AGENT");
+        task.setState("FAILED");
+        task.setStopReason("INTERRUPTED");
+        task.setConfigSnapshot("{}");
+        when(taskMapper.selectById(any())).thenReturn(task);
+        AgentRun run = new AgentRun();
+        run.setTaskId(TASK_ID);
+        run.setTurnNo(4);
+        run.setToolAttempts(6);
+        run.setNetworkAttempts(4);
+        run.setState("RUNNING");
+        run.setStopReason(null);
+        when(runMapper.selectById(TASK_ID)).thenReturn(run);
+
+        AgentReadDtos.Progress progress = service.progress(TASK_ID);
+
+        assertEquals("FAILED", progress.state());
+        assertEquals("INTERRUPTED", progress.stopReason());
+        assertEquals(4, progress.turnNo());
+        assertEquals(6, progress.toolAttempts());
+    }
+
+    @Test
     void toolCallsArePagedAndScopedToTheTask() {
         AgentToolCall row = new AgentToolCall();
         row.setId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E4");

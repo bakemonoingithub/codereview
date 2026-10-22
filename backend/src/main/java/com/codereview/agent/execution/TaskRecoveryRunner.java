@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.entity.AgentReviewTask;
+import com.codereview.agent.entity.AgentRun;
 import com.codereview.agent.entity.AgentTaskTarget;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
+import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
 import com.codereview.agent.support.AgentTime;
 import org.slf4j.Logger;
@@ -42,14 +44,26 @@ public class TaskRecoveryRunner implements ApplicationRunner {
             return;
         }
         RecoveryResult result = recover();
-        if (result.tasks > 0 || result.calls > 0) {
-            log.warn("启动收敛：{} 个任务、{} 个目标、{} 条调用被标记为中断",
-                    result.tasks, result.targets, result.calls);
+        if (result.tasks > 0 || result.calls > 0 || result.runs > 0) {
+            log.warn("启动收敛：{} 个任务、{} 个目标、{} 条调用、{} 条 Agent 进度被标记为中断",
+                    result.tasks, result.targets, result.calls, result.runs);
         }
     }
 
     public RecoveryResult recover() {
         var now = AgentTime.now();
+        // 先收敛仍挂在未完成任务上的进度行。已成功发布的任务不在这个子查询里，
+        // 避免把“结果已落库、进度还没写完”的运行误标成中断。
+        int runs = db.mapper(AgentRunMapper.class).update(null,
+                new LambdaUpdateWrapper<AgentRun>()
+                        .in(AgentRun::getState, TaskStates.QUEUED, TaskStates.RUNNING)
+                        .inSql(AgentRun::getTaskId,
+                                "SELECT id FROM review_task WHERE state IN ('QUEUED','RUNNING')")
+                        .set(AgentRun::getState, TaskStates.FAILED)
+                        .set(AgentRun::getStopReason, TaskStates.STOP_INTERRUPTED)
+                        .set(AgentRun::getCurrentAction, TaskStates.FAILED)
+                        .set(AgentRun::getUpdatedAt, now)
+                        .setSql("revision = revision + 1"));
         int tasks = db.mapper(AgentReviewTaskMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentReviewTask>()
                         .in(AgentReviewTask::getState, TaskStates.QUEUED, TaskStates.RUNNING)
@@ -79,9 +93,9 @@ public class TaskRecoveryRunner implements ApplicationRunner {
                         .set(AgentModelCall::getErrorCode, TaskStates.STOP_INTERRUPTED)
                         .set(AgentModelCall::getErrorMessage, "进程重启，调用未完成")
                         .set(AgentModelCall::getFinishedAt, now));
-        return new RecoveryResult(tasks, runningTargets + queuedTargets, calls);
+        return new RecoveryResult(tasks, runningTargets + queuedTargets, calls, runs);
     }
 
-    public record RecoveryResult(int tasks, int targets, int calls) {
+    public record RecoveryResult(int tasks, int targets, int calls, int runs) {
     }
 }
