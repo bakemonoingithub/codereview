@@ -44,19 +44,38 @@ else
 fi
 
 if [ ! -f .env ]; then
-  info "未找到 .env —— 按 .env.example 生成，并自动创建两个数据库密码"
+  info "未找到 .env —— 按 .env.example 生成，并自动创建数据库密码"
   cp .env.example .env || die "无法从 .env.example 生成 .env"
   set_env MYSQL_ROOT_PASSWORD "$(gen_password)"
   set_env MYSQL_PASSWORD "$(gen_password)"
+  GEN_PWD=1
+fi
+
+# 兼容已有部署包生成的 .env：补齐 Agent 新库参数，不覆盖已有配置。
+_agent_db_name="$(get_env AGENT_DB_NAME)"; [ -n "$_agent_db_name" ] || _agent_db_name=ai_code_review_agent
+_agent_db_user="$(get_env AGENT_DB_USER)"; [ -n "$_agent_db_user" ] || _agent_db_user=codereview_agent
+_agent_db_pass="$(get_env AGENT_DB_PASSWORD)"
+set_env AGENT_DB_NAME "$_agent_db_name"
+set_env AGENT_DB_USER "$_agent_db_user"
+if [ -z "$_agent_db_pass" ]; then
+  set_env AGENT_DB_PASSWORD "$(gen_password)"
   GEN_PWD=1
 fi
 chmod 600 .env 2>/dev/null || true
 load_env
 detect_compose
 
+valid_sql_identifier "$AGENT_DB_NAME" || die "AGENT_DB_NAME 只允许字母、数字和下划线"
+valid_sql_identifier "$AGENT_DB_USER" || die "AGENT_DB_USER 只允许字母、数字和下划线"
+[ "$AGENT_DB_NAME" = "ai_code_review_agent" ] || die "AGENT_DB_NAME 必须为 ai_code_review_agent"
+[ "$AGENT_DB_NAME" != "${MYSQL_DATABASE:-code_review}" ] || die "Agent 新库不能与兼容库使用同一个 schema"
+[ -n "$AGENT_DB_PASSWORD" ] || die "AGENT_DB_PASSWORD 不能为空"
+printf '%s' "$AGENT_DB_PASSWORD" | grep -qE '^[A-Za-z0-9]+$' \
+  || die "AGENT_DB_PASSWORD 只允许字母和数字，以确保配置模板可安全渲染"
+
 # ── 步骤 2：渲染运行期配置（只做一次，之后升级不再覆盖）────────────────────
 if [ ! -f config/application.yml ]; then
-  info "生成 config/application.yml（把 .env 里的数据库与 AI 网关参数渲染进模板）"
+  info "生成 config/application.yml（配置兼容库、Agent 新库与 AI 网关）"
   cp config/application.yml.example config/application.yml || die "无法生成 config/application.yml"
 
   _db_user="$(get_env MYSQL_USER)";      [ -n "$_db_user" ]  || _db_user=codereview
@@ -69,6 +88,9 @@ if [ ! -f config/application.yml ]; then
     -e "s|__DB_USER__|${_db_user}|g" \
     -e "s|__DB_PASSWORD__|${_db_pass}|g" \
     -e "s|__DB_NAME__|${_db_name}|g" \
+    -e "s|__AGENT_DB_USER__|${AGENT_DB_USER}|g" \
+    -e "s|__AGENT_DB_PASSWORD__|${AGENT_DB_PASSWORD}|g" \
+    -e "s|__AGENT_DB_NAME__|${AGENT_DB_NAME}|g" \
     -e "s|__AI_BASE_URL__|${_ai_base}|g" \
     -e "s|__AI_MODEL__|${_ai_model}|g" \
     config/application.yml
@@ -82,7 +104,29 @@ if [ ! -f config/application.yml ]; then
   fi
   ok "已生成 config/application.yml"
 else
-  info "config/application.yml 已存在 —— 保持不动（升级不会覆盖你们的配置）"
+  # 旧部署包的配置没有 agent.datasource。只补这段新库配置，不覆盖现有运行参数。
+  if ! awk '/^agent:[[:space:]]*$/ { in_agent=1; next } /^[^[:space:]#]/ { in_agent=0 } in_agent && /^  datasource:[[:space:]]*$/ { found=1 } END { exit !found }' config/application.yml; then
+    if grep -qE '^agent:[[:space:]]*$' config/application.yml; then
+      die "config/application.yml 已有 agent 配置但没有 agent.datasource，请手工合并模板中的 Agent 数据库段"
+    fi
+    info "现有 config/application.yml 缺少 Agent 新库配置 —— 补入配置模板"
+    _agent_tmp="$(mktemp)" || die "无法创建 Agent 配置临时文件"
+    sed -n '/^agent:[[:space:]]*$/,$p' config/application.yml.example \
+      | sed -e "s|__AGENT_DB_USER__|${AGENT_DB_USER}|g" \
+            -e "s|__AGENT_DB_PASSWORD__|${AGENT_DB_PASSWORD}|g" \
+            -e "s|__AGENT_DB_NAME__|${AGENT_DB_NAME}|g" > "$_agent_tmp"
+    [ -s "$_agent_tmp" ] || { rm -f "$_agent_tmp"; die "模板中缺少 agent.datasource 配置段"; }
+    printf '\n' >> config/application.yml
+    cat "$_agent_tmp" >> config/application.yml
+    rm -f "$_agent_tmp"
+    if chown 1000:1000 config/application.yml 2>/dev/null; then
+      chmod 600 config/application.yml
+    else
+      chmod 644 config/application.yml 2>/dev/null || true
+    fi
+  else
+    info "config/application.yml 已含 agent.datasource —— 保持现有配置"
+  fi
 fi
 
 # ── 步骤 3：前置体检 ────────────────────────────────────────────────────────
@@ -141,13 +185,7 @@ fi
 docker tag "codereview-app:$NEW_TAG" codereview-app:latest || die "为版本打 latest 标签失败"
 set_env APP_TAG "$NEW_TAG"
 
-# ── 步骤 6：升级前备份数据库 ────────────────────────────────────────────────
-if [ "$(container_health codereview-mysql)" != "missing" ]; then
-  info "升级前先备份数据库"
-  bash scripts/backup.sh || warn "数据库备份失败 —— 继续部署，但请人工确认备份"
-fi
-
-# ── 步骤 7：修正 docker 网段 ────────────────────────────────────────────────
+# ── 步骤 6：修正 docker 网段 ────────────────────────────────────────────────
 _cur_subnet="$(get_env CR_SUBNET)"
 _free_subnet="$(pick_free_subnet)"
 if [ -z "$_free_subnet" ]; then
@@ -157,7 +195,31 @@ elif [ "$_cur_subnet" != "$_free_subnet" ]; then
   set_env CR_SUBNET "$_free_subnet"
 fi
 
-# ── 步骤 8：启动 ────────────────────────────────────────────────────────────
+# ── 步骤 7：启动数据库并确保 Agent 新库存在 ─────────────────────────────────
+compose up -d mysql || die "MySQL 容器启动失败"
+if ! wait_healthy codereview-mysql 180; then
+  compose logs --tail=80 mysql || true
+  die "MySQL 未能在 3 分钟内变为 healthy"
+fi
+
+# 密码按 SQL 字符串转义；数据库名和账号名已通过标识符白名单校验。
+_agent_pass_sql="$(printf '%s' "$AGENT_DB_PASSWORD" | sed "s/'/''/g")"
+_agent_sql="CREATE DATABASE IF NOT EXISTS \`$AGENT_DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE USER IF NOT EXISTS '$AGENT_DB_USER'@'%' IDENTIFIED BY '$_agent_pass_sql';
+ALTER USER '$AGENT_DB_USER'@'%' IDENTIFIED BY '$_agent_pass_sql';
+GRANT ALL PRIVILEGES ON \`$AGENT_DB_NAME\`.* TO '$AGENT_DB_USER'@'%';"
+if ! printf '%s\n' "$_agent_sql" | docker exec -i -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" codereview-mysql mysql -uroot --batch; then
+  die "Agent 新库或独立账号初始化失败；应用尚未启动"
+fi
+ok "Agent 数据库 $AGENT_DB_NAME 与独立账号已就绪"
+
+# ── 步骤 8：升级前备份两个数据库 ────────────────────────────────────────────
+if [ -n "$(container_health codereview-mysql)" ]; then
+  info "备份兼容库与 Agent 新库"
+  bash scripts/backup.sh || die "数据库备份失败，已停止本次应用部署"
+fi
+
+# ── 步骤 9：启动应用 ────────────────────────────────────────────────────────
 hr
 confirm "即将启动/更新容器：
       应用端口      ${APP_PORT:-18080}
@@ -167,7 +229,7 @@ confirm "即将启动/更新容器：
 是否继续？" || die "已取消，未做任何改动"
 hr
 
-if ! compose up -d; then
+if ! compose up -d app; then
   hr
   err "compose up 失败 —— 下面是相关容器日志（最后 40 行），方便直接定位："
   hr
@@ -220,9 +282,8 @@ info "备份目录： $BUNDLE/backups"
 
 if [ "$GEN_PWD" = "1" ]; then
   hr
-  warn "首次初始化，已自动生成数据库密码并写入 .env："
-  info "  数据库名：$(get_env MYSQL_DATABASE)"
-  info "  应用账号：$(get_env MYSQL_USER)"
-  info "  应用密码：$(get_env MYSQL_PASSWORD)"
-  warn ".env 与 data/mysql 是一体的：丢了 .env 就连不上已有数据。备份目录里已留存副本。"
+  warn "已生成数据库密码并写入 .env；请妥善保管该文件及 backups/env-*.txt。"
+  info "  Agent 新库：$(get_env AGENT_DB_NAME)（账号：$(get_env AGENT_DB_USER)）"
+  info "  兼容库：$(get_env MYSQL_DATABASE)（账号：$(get_env MYSQL_USER)）"
+  warn ".env 与 data/mysql 是一体的：丢了 .env 就无法连接已有数据。"
 fi

@@ -26,15 +26,9 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-/**
- * 新库组件的装配入口。
- *
- * <p>只有显式配置 {@code agent.datasource.url} 才创建；未配置时旧功能照常启动，
- * v2 接口不注册。不把新库做成 {@code DataSource} Bean，避免影响旧库的自动配置。
- */
+/** Agent database is required; missing configuration fails startup. */
 @Configuration
 @EnableConfigurationProperties(AgentDataSourceProperties.class)
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "agent.datasource", name = "url")
 public class AgentDataSourceConfig {
 
     static final List<Class<?>> MAPPERS = List.of(

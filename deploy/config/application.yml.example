@@ -105,3 +105,15 @@ git:
     work-dir: ${GITEA_MIRROR_DIR:/app/data/git-mirrors}
     mirror-timeout-seconds: 120
     diff-max-bytes: 5242880
+
+# 新路线业务数据使用隔离的新库。旧 spring.datasource 保持独立，不能共用同一 schema，
+# 因为两条 Flyway 迁移链与历史表不同。
+agent:
+  datasource:
+    url: jdbc:mysql://mysql:3306/__AGENT_DB_NAME__?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: __AGENT_DB_USER__
+    password: __AGENT_DB_PASSWORD__
+    expected-database: __AGENT_DB_NAME__
+    migration-location: classpath:db/agent-migration
+    history-table: agent_schema_history
+    maximum-pool-size: 5

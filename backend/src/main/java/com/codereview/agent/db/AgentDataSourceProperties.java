@@ -2,12 +2,7 @@ package com.codereview.agent.db;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/**
- * 新库（agent）独立数据源配置。
- *
- * <p>与旧库的 {@code spring.datasource.*} 完全分开：新服务只拿新库账号，旧库权限不共享。
- * 未配置 {@code agent.datasource.url} 时整套新库组件不创建，v2 接口不可用，旧功能不受影响。
- */
+/** Required configuration for the application's sole database. */
 @ConfigurationProperties(prefix = "agent.datasource")
 public class AgentDataSourceProperties {
 
@@ -17,7 +12,7 @@ public class AgentDataSourceProperties {
     private String driverClassName = "com.mysql.cj.jdbc.Driver";
 
     /** 期望的库名；连接实际指向别的库时拒绝迁移，避免误连旧库。 */
-    private String expectedDatabase;
+    private String expectedDatabase = "ai_code_review_agent";
 
     /** 新链迁移位置，独立于旧库的 classpath:db/migration。 */
     private String migrationLocation = "classpath:db/agent-migration";

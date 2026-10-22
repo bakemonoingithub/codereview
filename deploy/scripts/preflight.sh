@@ -94,7 +94,7 @@ fi
 if [ -f .env ]; then
   load_env
 
-  for k in MYSQL_ROOT_PASSWORD MYSQL_PASSWORD APP_PORT; do
+  for k in MYSQL_ROOT_PASSWORD MYSQL_PASSWORD AGENT_DB_NAME AGENT_DB_USER AGENT_DB_PASSWORD APP_PORT; do
     v="$(get_env "$k")"
     if [ -n "$v" ]; then
       pass ".env 已设置 $k"
@@ -102,6 +102,22 @@ if [ -f .env ]; then
       fail ".env 缺少必填项 $k"
     fi
   done
+
+  if [ -n "${AGENT_DB_NAME:-}" ] && ! valid_sql_identifier "$AGENT_DB_NAME"; then
+    fail "AGENT_DB_NAME 只允许字母、数字和下划线"
+  fi
+  if [ -n "${AGENT_DB_NAME:-}" ] && [ "$AGENT_DB_NAME" != "ai_code_review_agent" ]; then
+    fail "AGENT_DB_NAME 必须为 ai_code_review_agent"
+  fi
+  if [ -n "${AGENT_DB_NAME:-}" ] && [ "$AGENT_DB_NAME" = "${MYSQL_DATABASE:-code_review}" ]; then
+    fail "Agent 新库不能与兼容库使用同一个 schema"
+  fi
+  if [ -n "${AGENT_DB_USER:-}" ] && ! valid_sql_identifier "$AGENT_DB_USER"; then
+    fail "AGENT_DB_USER 只允许字母、数字和下划线"
+  fi
+  if [ -n "${AGENT_DB_PASSWORD:-}" ] && ! printf '%s' "$AGENT_DB_PASSWORD" | grep -qE '^[A-Za-z0-9]+$'; then
+    fail "AGENT_DB_PASSWORD 只允许字母和数字"
+  fi
 
   PORT="${APP_PORT:-18080}"
   if port_in_use "$PORT"; then
@@ -120,6 +136,14 @@ if [ -f .env ]; then
       fail "config/application.yml 里还有未替换的占位符（__DB_ 开头），说明它是模板而不是渲染后的文件"
     else
       pass "config/application.yml 已存在"
+    fi
+    if sed -n '/^agent:[[:space:]]*$/,$p' config/application.yml | grep -qF "url: jdbc:mysql://mysql:3306/${AGENT_DB_NAME:-ai_code_review_agent}?" \
+       && sed -n '/^agent:[[:space:]]*$/,$p' config/application.yml | grep -qF "username: ${AGENT_DB_USER:-codereview_agent}" \
+       && sed -n '/^agent:[[:space:]]*$/,$p' config/application.yml | grep -qF "expected-database: ${AGENT_DB_NAME:-ai_code_review_agent}" \
+       && sed -n '/^agent:[[:space:]]*$/,$p' config/application.yml | grep -qF "password: ${AGENT_DB_PASSWORD:-}"; then
+      pass "Agent 数据源指向 ${AGENT_DB_NAME:-ai_code_review_agent}"
+    else
+      fail "config/application.yml 的 agent.datasource 未与 .env 中的 Agent 新库和账号保持一致"
     fi
     if grep -q 'CHANGE-ME' config/application.yml; then
       warn "config/application.yml 里的 AI 网关地址还是占位符，大模型调用会失败（页面与分析器不受影响）"

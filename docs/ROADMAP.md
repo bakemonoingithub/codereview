@@ -218,3 +218,11 @@ P33.1 设计及后续实施前先读[极简嵌入式 Agent 调研与实施参考
 候选参数与真实验证落点已纳入上述子任务；剩余技术问题继续按[契约第 8.3 节](work/agent-redesign/business-contract.md#83-已确认方向下的技术设计与验收细化)处理。
 
 - 项目 `currentBranch` 与远端分支不一致（配置为 `main`，远端只有 `dev`、`experiment/*`、`refactor/agent`），发起表单默认分支会落到不存在的 main；待负责人决定改为 `dev` 或 `refactor/agent` 后再改配置。
+
+## 2026-10-23 单库启动调整
+
+负责人要求当前分支废弃旧库依赖，只使用 ai_code_review_agent。实际仓库为 H:\myProjects\aiCodeReview\code，分支 dev；原 agent 工作树入口已失效。
+
+应用只扫描 Agent 与共用 Git 组件，保留 Web/Jackson 配置；不注册旧控制器、服务和 Mapper，排除旧数据源与 Flyway 自动配置。唯一运行数据源为 agent.datasource，缺少配置直接启动失败。旧库及历史源码保留，不删除数据；本机配置、配置样例与启动检查同步调整。
+
+实际启动仅出现 agent-db 连接池，ai_code_review_agent 的 6 个迁移校验通过，无待执行迁移；通过 5173 代理调用健康检查和项目列表成功。启动脚本回归 32 项通过，后端单库启动与迁移防护相关测试 14 项通过；旧 /api/projects 返回 404。页面视觉及完整业务流程未在本次重跑。

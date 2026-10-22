@@ -49,6 +49,7 @@ get_env() { grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r
 # 改成显式按行取值，既不受空格影响，也避免把 .env 当成可执行脚本（更安全）。
 ENV_KEYS="APP_PORT APP_BIND_IP APP_TAG CR_SUBNET \
 MYSQL_ROOT_PASSWORD MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_IMAGE_TAG MYSQL_BUFFER_POOL \
+AGENT_DB_NAME AGENT_DB_USER AGENT_DB_PASSWORD \
 APP_MEM_LIMIT MYSQL_MEM_LIMIT JAVA_OPTS GITEA_MIRROR_DIR GITEA_TOKEN GITHUB_TOKEN DEEPSEEK_API_KEY \
 AI_BASE_URL AI_MODEL"
 
@@ -104,6 +105,11 @@ docker_root() { docker info --format '{{.DockerRootDir}}' 2>/dev/null; }
 
 container_health() {
   docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$1" 2>/dev/null || echo missing
+}
+
+# 仅允许简单标识符进入动态 SQL，避免数据库名或账号名改变 SQL 语义。
+valid_sql_identifier() {
+  printf '%s' "$1" | grep -qE '^[A-Za-z0-9_]+$'
 }
 
 port_in_use() {

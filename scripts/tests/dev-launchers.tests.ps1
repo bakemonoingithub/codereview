@@ -34,11 +34,12 @@ try { Get-DevBackendArguments $fixtureRoot '' } catch { $refused = $_.Exception.
 Assert-True $refused '缺少配置时在启动进程前报错'
 $env:SPRING_DATASOURCE_URL = 'jdbc:mysql://invalid/legacy'
 $refused = $false
-try { Get-DevBackendArguments $fixtureRoot '' } catch { $refused = $_.Exception.Message -match 'BOTH' }
+try { Get-DevBackendArguments $fixtureRoot '' } catch { $refused = $_.Exception.Message -match 'agent.datasource' }
 Assert-True $refused '仅有旧链环境配置不能通过来源检查'
+$env:SPRING_DATASOURCE_URL = $null
 $env:AGENT_DATASOURCE_URL = 'jdbc:mysql://invalid/agent'
 $arguments = @(Get-DevBackendArguments $fixtureRoot '')
-Assert-True ($arguments.Count -eq 1 -and $arguments[0] -eq '--server.port=8081') '两组环境数据源配置可作为来源'
+Assert-True ($arguments.Count -eq 1 -and $arguments[0] -eq '--server.port=8081') '仅新库环境配置可作为来源'
 $env:SPRING_DATASOURCE_URL = $null
 $env:AGENT_DATASOURCE_URL = $null
 $fixtureConfig = Join-Path $fixtureRoot 'local config.properties'
@@ -66,6 +67,7 @@ Assert-True ($arguments.Count -eq 1) '显式 Spring 配置来源交由应用解�
 $env:SPRING_CONFIG_LOCATION = $null
 # Existing launcher checks use configuration-source fixtures, never real databases.
 $env:SPRING_DATASOURCE_URL = 'jdbc:mysql://invalid/legacy'
+$env:SPRING_DATASOURCE_URL = $null
 $env:AGENT_DATASOURCE_URL = 'jdbc:mysql://invalid/agent'
 
 & {

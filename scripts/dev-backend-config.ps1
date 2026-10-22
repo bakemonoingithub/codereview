@@ -30,6 +30,6 @@ function Get-DevBackendArguments([string]$BackendRoot, [string]$ConfigPath) {
             }
         }
     }
-    if ($env:SPRING_DATASOURCE_URL -and $env:AGENT_DATASOURCE_URL) { return $arguments }
-    throw 'No backend configuration source found. Configure BOTH spring.datasource.* (required by the existing application) and agent.datasource.* (isolated Agent database). Copy scripts/backend-dev.example.properties to an ignored local file, fill in the actual settings, then run start-dev.ps1 -BackendConfig <file>. Alternatively provide both SPRING_DATASOURCE_URL and AGENT_DATASOURCE_URL with their credentials. No services were started.'
+    if ($env:AGENT_DATASOURCE_URL) { return $arguments }
+    throw 'No backend configuration source found. Configure agent.datasource.* for ai_code_review_agent. Supply a local BackendConfig file or AGENT_DATASOURCE_URL with credentials. No services were started.'
 }

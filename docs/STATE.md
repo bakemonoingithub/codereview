@@ -98,3 +98,11 @@ P29–P32 已完成并经负责人确认：共用设计与专项原型、公共�
 - Vitest／Vite 会改写 `frontend/components.d.ts`，结束后恢复基线。
 - 实际配置在忽略的 `backend/src/main/resources/application.yml`，不得提交；新库账号与旧库分开。
 - Surefire 报告会累积历史失败，统计前先 `mvn clean test`；不要重定向到 `target/` 内。
+
+## 2026-10-23 单库启动调整
+
+负责人要求当前分支废弃旧库依赖，只使用 ai_code_review_agent。实际仓库为 H:\myProjects\aiCodeReview\code，分支 dev；原 agent 工作树入口已失效。
+
+应用只扫描 Agent 与共用 Git 组件，保留 Web/Jackson 配置；不注册旧控制器、服务和 Mapper，排除旧数据源与 Flyway 自动配置。唯一运行数据源为 agent.datasource，缺少配置直接启动失败。旧库及历史源码保留，不删除数据；本机配置、配置样例与启动检查同步调整。
+
+实际启动仅出现 agent-db 连接池，ai_code_review_agent 的 6 个迁移校验通过，无待执行迁移；通过 5173 代理调用健康检查和项目列表成功。启动脚本回归 32 项通过，后端单库启动与迁移防护相关测试 14 项通过；旧 /api/projects 返回 404。页面视觉及完整业务流程未在本次重跑。

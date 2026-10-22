@@ -59,15 +59,22 @@ sed -i \
   -e "s|__DB_USER__|codereview|g" \
   -e "s|__DB_PASSWORD__|AbC123xyz789|g" \
   -e "s|__DB_NAME__|code_review|g" \
+  -e "s|__AGENT_DB_USER__|codereview_agent|g" \
+  -e "s|__AGENT_DB_PASSWORD__|AgentPass1234567890|g" \
+  -e "s|__AGENT_DB_NAME__|ai_code_review_agent|g" \
   -e "s|__AI_BASE_URL__|http://10.1.2.3:8000/v1|g" \
   -e "s|__AI_MODEL__|deepseek-chat|g" \
   config/application.yml
 
-chk "模板占位符已全部替换" "$(grep -c '__DB_\|__AI_' config/application.yml)" "0"
+chk "模板占位符已全部替换" "$(grep -c '__DB_\|__AGENT_DB_\|__AI_' config/application.yml)" "0"
 chk "数据库主机改为 mysql 服务名" "$(grep -c 'jdbc:mysql://mysql:3306/code_review' config/application.yml)" "1"
 chk "数据库密码已写入" "$(grep -c 'password: AbC123xyz789' config/application.yml)" "1"
 chk "AI 网关地址已写入" "$(grep -c 'base-url: http://10.1.2.3:8000/v1' config/application.yml)" "1"
 chk "Gitea 镜像目录指向持久卷" "$(grep -c 'work-dir: ${GITEA_MIRROR_DIR:/app/data/git-mirrors}' config/application.yml)" "1"
+chk "Agent 数据源指向独立新库" "$(grep -c 'jdbc:mysql://mysql:3306/ai_code_review_agent?' config/application.yml)" "1"
+chk "Agent 迁移历史与旧链隔离" "$(grep -c 'history-table: agent_schema_history' config/application.yml)" "1"
+chk "Agent 用户名已渲染" "$(grep -c 'username: codereview_agent' config/application.yml)" "1"
+chk "Agent 密码已渲染" "$(grep -c 'password: AgentPass1234567890' config/application.yml)" "1"
 chk "自带 yml 占位符未被误伤" "$(grep -c '\${DEEPSEEK_API_KEY:}' config/application.yml)" "1"
 chk "YAML 可解析" "$(python -c "import yaml,io; yaml.safe_load(io.open('config/application.yml',encoding='utf-8')); print('y')" 2>/dev/null || echo n)" "y"
 
