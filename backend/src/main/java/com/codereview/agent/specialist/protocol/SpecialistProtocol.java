@@ -38,9 +38,12 @@ public final class SpecialistProtocol {
                     只输出一个 JSON 对象：
                     {"summary":"一句话结论","observations":[{"title":"短标题","explanation":"只解释给定依赖事实","dependencyIds":["dep-1"],"evidence":[{"materialId":"target-1","startLine":1,"endLine":2}],"suggestion":"可选建议"}],"limitations":[]}
                     dependencyIds 必须来自给定事实；observations 可为空；不要输出未知字段。""";
-            case REPORT, AGENT -> """
+            case REPORT -> """
                     输出 Markdown 正文。引用使用 [S1] 形式且只能指向给定来源；
                     事实、数字和位置必须来自输入；缺失写在正文对应章节，不静默省略。""";
+            case AGENT -> """
+                    通过 submit_result 提交 Markdown 正文和 citations 数组；引用 ID 使用 E1、E2 等格式，
+                    正文引用标记必须与 citations 数组中的 id 完全一致；每条引用只能指向实际返回材料的 materialId 与原始行号。""";
             case AGENT_TOOL_CHECK -> """
                     先调用用户要求的只读工具，再根据工具返回给出一句简短中文说明；
                     不输出 JSON，不输出 Markdown 代码围栏，不分析业务内容。""";

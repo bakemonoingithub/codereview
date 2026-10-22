@@ -32,6 +32,8 @@ class PromptAssemblyAgentTest {
         assertTrue(user.contains("C1"));
         assertTrue(user.contains("根提交"));
         assertTrue(prompt.systemPrompt().contains("只读工具"));
+        assertTrue(prompt.systemPrompt().contains("引用 ID 使用 E1、E2 等格式"));
+        assertFalse(prompt.systemPrompt().contains("引用使用 [S1] 形式"));
         assertTrue(user.contains("submit_result"));
     }
 

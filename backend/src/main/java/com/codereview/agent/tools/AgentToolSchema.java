@@ -125,7 +125,7 @@ public final class AgentToolSchema {
         parameters.put("required", List.of("title", "summary", "answerStatus", "markdown"));
         return function(AgentToolNames.SUBMIT_RESULT,
                 "结束调查并提交结果，必须单独调用，不能与其他工具同批。"
-                        + "引用只能使用实际返回材料的 materialId 与原始行号；"
+                        + "引用 ID 使用 E1、E2 等格式，正文标记须与 citations.id 一致；引用只能使用实际返回材料的 materialId 与原始行号；"
                         + "ANSWERED 至少一个引用，INSUFFICIENT_EVIDENCE 必须写明未解决事项。",
                 parameters);
     }

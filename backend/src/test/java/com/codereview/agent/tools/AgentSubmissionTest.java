@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -90,6 +91,25 @@ class AgentSubmissionTest {
         assertEquals("CITATION_INVALID", error.code());
         assertTrue(error.getMessage().contains("S1"), error.getMessage());
         assertTrue(error.getMessage().contains("S2"), error.getMessage());
+    }
+
+    @Test
+    void includesEveryCitationErrorWithinTheSchemaLimit() {
+        StringBuilder citations = new StringBuilder();
+        for (int index = 1; index <= 12; index++) {
+            if (index > 1) citations.append(',');
+            citations.append("{\"id\":\"S").append(index)
+                    .append("\",\"materialId\":\"m1\",\"startLine\":10,\"endLine\":10}");
+        }
+        AgentSubmission submission = AgentSubmission.parse(mapper,
+                "{\"title\":\"t\",\"summary\":\"s\",\"answerStatus\":\"ANSWERED\","
+                        + "\"markdown\":\"x\",\"citations\":[" + citations + "]}");
+
+        AgentProtocolException error = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(submission, sent));
+
+        assertTrue(error.getMessage().contains("S12"), error.getMessage());
+        assertFalse(error.getMessage().contains("另有"), error.getMessage());
     }
 
     @Test

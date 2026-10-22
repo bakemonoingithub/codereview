@@ -31,7 +31,8 @@ public record AgentSubmission(String title, String summary, String answerStatus,
     private static final Set<String> CITATION_FIELDS =
             Set.of("id", "materialId", "startLine", "endLine");
     private static final Pattern MARKER = Pattern.compile("\\[E(\\d+)]");
-    private static final int MAX_VALIDATION_DETAILS = 10;
+    /** citations 最多 100 项；将每一项校验错误都返回给模型，避免逐条试错。 */
+    private static final int MAX_VALIDATION_DETAILS = 100;
 
     public AgentSubmission {
         citations = citations == null ? List.of() : List.copyOf(citations);
