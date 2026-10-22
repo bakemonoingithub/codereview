@@ -21,6 +21,30 @@ class ReportFactsBuilderTest {
     private final ReportFactsBuilder builder = new ReportFactsBuilder(json);
 
     @Test
+    void agentSourcesKeepAnswerStatusUnresolvedItemsAndCitedEvidence() {
+        String snapshot = """
+                {"resultId":"r3","taskId":"t3","kind":"AGENT",
+                 "project":{"id":"p1","name":"订单服务"},
+                 "task":{"id":"t3","state":"SUCCEEDED","sourceKind":"FILES","branch":"main","commitSha":"sha-1"},
+                 "target":{"headSha":"sha-1"},
+                 "result":{"body":{"title":"重试链路","summary":"调用方缺少幂等保证。",
+                   "answerStatus":"INSUFFICIENT_EVIDENCE","markdown":"结论 [E1]",
+                   "citations":[{"id":"E1","materialId":"m1","startLine":11,"endLine":12}],
+                   "unresolved":["未取得支付实现。"]}},
+                 "materials":[{"id":"m1","path":"A.java","sha":"sha-1","side":"FILE",
+                   "startLine":10,"endLine":12,"content":"guard();\\ncharge();\\nreturn;"}],
+                 "issues":[],"resultFeedback":null}
+                """;
+        var facts = builder.build(List.of(source(1, "r3", "AGENT", snapshot)));
+
+        String text = facts.facts().get(1).text();
+        assertEquals("sha-1", facts.summaries().get(0).headSha());
+        assertTrue(facts.summaries().get(0).summary().contains("INSUFFICIENT_EVIDENCE"), text);
+        assertTrue(text.contains("Agent 答案状态：INSUFFICIENT_EVIDENCE"), text);
+        assertTrue(text.contains("未解决：未取得支付实现。"), text);
+        assertTrue(text.contains("charge();"), text);
+    }
+    @Test
     void preservesResultCommentsIncludingUnassessedComments() throws Exception {
         ObjectNode snapshot = (ObjectNode) json.readTree(patternSnapshot());
         assertTrue(builder.build(List.of(source(1, "r2", "PATTERN", snapshot.toString())))

@@ -102,6 +102,14 @@
                 <span class="muted small">
                   {{ record.projectName || record.projectId }} · {{ kindText(record.kind) }} · {{ record.taskState }} · {{ record.sourceKind === 'DIFF' ? '提交差异' : '文件内容' }}
                 </span>
+                <a-space v-if="record.kind === 'AGENT'" wrap>
+                  <a-tag :color="record.answerStatus === 'ANSWERED' ? 'green' : 'orange'">
+                    {{ record.answerStatus === 'ANSWERED' ? '已回答' : '材料不足' }}
+                  </a-tag>
+                  <span v-if="record.unresolvedCount" class="muted small">
+                    未解决 {{ record.unresolvedCount }} 项
+                  </span>
+                </a-space>
               </div>
             </template>
           </a-table-column>
@@ -362,6 +370,10 @@ function pathTitle(record: { path: string | null; oldPath?: string | null }) {
 
 async function openResult(record: ReportCandidate) {
   if (!record.targetId) {
+    if (record.kind === 'AGENT') {
+      router.push({ path: `/reviews/${record.taskId}`, query: { from: '/reports/new' } })
+      return
+    }
     message.warning('这条结果没有可查看的文件目标')
     return
   }

@@ -20,7 +20,8 @@ public final class ReportDtos {
                             String projectId, String projectName, String taskRoute, String taskState,
                             String sourceKind, String path, String oldPath, String headSha,
                             String baseSha, String branch, LocalDateTime resultCreatedAt,
-                            int issueCount, Feedback feedback) {
+                            int issueCount, String answerStatus, int unresolvedCount,
+                            Feedback feedback) {
     }
 
     /** 结果级当前反馈；问题级反馈随各自问题冻结。 */

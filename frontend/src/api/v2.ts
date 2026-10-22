@@ -749,6 +749,9 @@ export interface ReportCandidate {
   branch: string | null
   resultCreatedAt: string
   issueCount: number
+  /** Agent 结果的回答状态；材料不足仍可选择，但报告必须保留限制。 */
+  answerStatus?: string | null
+  unresolvedCount?: number
   feedback: {
     assessment: 'ACCURATE' | 'INACCURATE' | 'UNKNOWN' | null
     comment: string | null

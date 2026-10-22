@@ -133,7 +133,7 @@ public class AgentResultPublisher {
         ArrayNode materialNodes = root.putArray("materials");
         for (AgentSubmission.SentMaterial material : materials) {
             ObjectNode node = materialNodes.addObject();
-            node.put("materialId", material.materialId());
+            node.put("id", material.materialId());
             node.put("path", material.path());
             putNullable(node, "side", material.side());
             putNullable(node, "sha", material.sha());

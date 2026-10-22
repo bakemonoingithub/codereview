@@ -33,7 +33,35 @@
 
         <template v-if="source.snapshot.kind === 'AGENT'">
           <h3>结果正文</h3>
+          <a-space wrap class="mb12">
+            <a-tag :color="agentStatus === 'ANSWERED' ? 'green' : 'orange'">
+              {{ agentStatus === 'ANSWERED' ? '已回答' : '材料不足' }}
+            </a-tag>
+            <span class="muted small">未解决 {{ agentUnresolved.length }} 项 · 引用 {{ agentCitations.length }} 处</span>
+          </a-space>
+          <p v-if="agentSummary" class="summary">{{ agentSummary }}</p>
+          <a-alert
+            v-if="agentStatus !== 'ANSWERED'"
+            type="warning"
+            show-icon
+            class="mb12"
+            message="该来源材料不足；报告中必须保留未解决事项，不能整理成全部问题已回答。"
+          />
           <MarkdownView :text="agentText" />
+          <template v-if="agentUnresolved.length">
+            <h3>未解决事项</h3>
+            <ul class="small">
+              <li v-for="(item, index) in agentUnresolved" :key="index">{{ item }}</li>
+            </ul>
+          </template>
+          <template v-if="agentCitations.length">
+            <h3>引用</h3>
+            <p v-for="item in agentCitations" :key="item.id" class="small">
+              <a-tag color="blue">{{ item.id }}</a-tag>
+              {{ item.path }} 行 {{ item.startLine }}–{{ item.endLine }}
+              <span class="muted">（材料 {{ item.materialId }}）</span>
+            </p>
+          </template>
         </template>
         <template v-else>
           <h3>结果结论</h3>
@@ -157,10 +185,16 @@ const limitations = computed<string[]>(() => {
   const coupling = couplingFacts.value?.limitations || []
   return [...body, ...coupling].filter((item: string) => !!item)
 })
+const agentBody = computed<any>(() => source.value?.snapshot?.result?.body || {})
 const agentText = computed(() => {
   const body = source.value?.snapshot?.result?.body
-  return typeof body === 'string' ? body : ''
+  if (typeof body === 'string') return body
+  return body?.markdown || ''
 })
+const agentStatus = computed(() => agentBody.value.answerStatus || 'UNKNOWN')
+const agentSummary = computed(() => agentBody.value.summary || '')
+const agentUnresolved = computed<string[]>(() => agentBody.value.unresolved || [])
+const agentCitations = computed<any[]>(() => agentBody.value.citations || [])
 
 watch(
   () => [props.open, props.reportId, props.ordinal] as const,

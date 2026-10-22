@@ -30,7 +30,9 @@ public enum PromptPurpose {
 
     REPORT("REPORT", false, """
             按给定事实、指标与冻结来源生成 Markdown 报告。正文必须引用来源序号，
-            不得编造数据；引用必须指向冻结来源。材料不足时明确写出缺失，不静默省略。"""),
+            不得编造数据；引用必须指向冻结来源。材料不足时明确写出缺失，不静默省略。
+            Agent 来源的 answerStatus 与 unresolved 必须保留：不得把「未取得」写成「不存在」，
+            也不得把材料不足的调查结果整理成全部问题已回答。"""),
 
     AGENT("AGENT", false, """
             在只读工具范围内调查问题，输出少量固定信息与 Markdown 结论。

@@ -176,6 +176,9 @@ public class ReportFactsBuilder {
             }
         }
 
+        if ("AGENT".equals(kind)) {
+            collectEvidence(body.path("citations"), materials, evidenceKeys, evidence, missing);
+        }
         FeedbackCounts sourceFeedback = "ISSUE".equals(kind) ? issueFeedback : resultFeedback;
         ReportDtos.SourceSummary sourceSummary = new ReportDtos.SourceSummary(
                 row.getOrdinal(), resultId, kind, projectId, projectName, taskId, text(task, "route"),
@@ -187,6 +190,14 @@ public class ReportFactsBuilder {
                 resultFeedback, evidence, missing);
         if (!"ISSUE".equals(kind)) {
             facts += "当时结果级评价与评论：" + feedbackText(snapshot.path("resultFeedback")) + "\n";
+        }
+        if ("AGENT".equals(kind)) {
+            facts += "Agent 答案状态：" + body.path("answerStatus").asText("UNKNOWN")
+                    + "；引用 " + body.path("citations").size() + " 处；未解决 "
+                    + body.path("unresolved").size() + " 项。\n";
+            for (JsonNode item : array(body.path("unresolved"))) {
+                facts += "未解决：" + item.asText() + "\n";
+            }
         }
         for (int index = 0; index < bodyIssues.size(); index++) {
             String relation = text(bodyIssues.get(index), "changeRelation");
@@ -396,9 +407,16 @@ public class ReportFactsBuilder {
 
     private String summaryOf(String kind, JsonNode body) {
         if ("AGENT".equals(kind)) {
-            return body.isTextual() ? body.asText() : "";
+            String summary = body.path("summary").asText("");
+            String status = body.path("answerStatus").asText("");
+            int unresolved = body.path("unresolved").isArray() ? body.path("unresolved").size() : 0;
+            String text = summary.strip();
+            if (!status.isBlank()) {
+                text = text + "（" + status + "，未解决 " + unresolved + " 项）";
+            }
+            return text.length() <= 200 ? text : text.substring(0, 200) + "…";
         }
-        return text(body, "summary");
+        return body.isTextual() ? body.asText() : text(body, "summary");
     }
 
     private String displaySummary(String summary) {

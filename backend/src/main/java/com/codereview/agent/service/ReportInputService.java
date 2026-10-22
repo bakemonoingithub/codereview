@@ -129,8 +129,10 @@ public class ReportInputService {
                     result.getKind(), task.getProjectId(), project == null ? task.getProjectId() : project.getName(),
                     task.getRoute(), task.getState(), source.kind(),
                     target == null ? null : target.getPath(), target == null ? null : target.getOldPath(),
-                    target == null ? null : target.getHeadSha(), target == null ? null : target.getBaseSha(),
+                    target != null ? target.getHeadSha() : source.headSha(),
+                    target == null ? null : target.getBaseSha(),
                     source.branch(), result.getCreatedAt(), issueCounts.getOrDefault(result.getId(), 0),
+                    agentAnswerStatus(result), agentUnresolvedCount(result),
                     feedback == null ? null : new ReportDtos.Feedback(feedback.getAssessment(),
                             feedback.getComment(), feedback.getRevision() == null ? 0 : feedback.getRevision(),
                             feedback.getUpdatedAt())));
@@ -288,7 +290,7 @@ public class ReportInputService {
         targetNode.put("id", target == null ? null : target.getId());
         targetNode.put("path", target == null ? null : target.getPath());
         targetNode.put("oldPath", target == null ? null : target.getOldPath());
-        targetNode.put("headSha", target == null ? null : target.getHeadSha());
+        targetNode.put("headSha", target == null ? source.headSha() : target.getHeadSha());
         targetNode.put("baseSha", target == null ? null : target.getBaseSha());
 
         ObjectNode resultNode = node.putObject("result");
@@ -382,9 +384,13 @@ public class ReportInputService {
     private static String summaryOf(String kind, JsonNode snapshot) {
         JsonNode body = snapshot.path("result").path("body");
         if ("AGENT".equals(kind)) {
-            String text = body.isTextual() ? body.asText() : "";
-            int lineBreak = text.indexOf('\n');
-            String first = (lineBreak >= 0 ? text.substring(0, lineBreak) : text).strip();
+            String text = body.isTextual() ? body.asText() : body.path("summary").asText("");
+            String status = body.path("answerStatus").asText("");
+            int unresolved = body.path("unresolved").isArray() ? body.path("unresolved").size() : 0;
+            String first = text.strip();
+            if (!status.isBlank()) {
+                first = first + "（" + status + "，未解决 " + unresolved + " 项）";
+            }
             return first.length() <= 200 ? first : first.substring(0, 200) + "…";
         }
         String summary = body.path("summary").asText("");
@@ -489,6 +495,11 @@ public class ReportInputService {
             throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的结果正文缺失，不能冻结");
         }
         if ("AGENT".equals(result.getKind())) {
+            JsonNode parsed = readJsonOrNull(body);
+            if (parsed != null && parsed.isObject()) {
+                return parsed;
+            }
+            // 兼容 P32 时期以纯文本保存的 Agent 正文。
             return mapper.getNodeFactory().textNode(body);
         }
         return requiredJson(body, true, "专项结果正文");
@@ -512,6 +523,10 @@ public class ReportInputService {
         Set<String> seen = new LinkedHashSet<>();
         for (JsonNode reference : references) {
             String id = reference.path("id").asText("");
+            if (id.isBlank()) {
+                // 兼容早期 Agent 结果把材料键写成 materialId。
+                id = reference.path("materialId").asText("");
+            }
             if (id.isBlank()) {
                 throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的材料引用缺少 ID，不能冻结");
             }
@@ -568,7 +583,8 @@ public class ReportInputService {
         JsonNode input = readJsonOrNull(task.getInputSnapshot());
         JsonNode source = input == null ? null : input.path("source");
         return new TaskSource(source == null || source.isMissingNode() ? "FILES" : source.path("kind").asText("FILES"),
-                textOrNull(source, "branch"), textOrNull(source, "commitSha"), textOrNull(source, "baseSha"));
+                textOrNull(source, "branch"), textOrNull(source, "commitSha"), textOrNull(source, "baseSha"),
+                textOrNull(source, "headSha"));
     }
 
     private static String textOrNull(JsonNode node, String field) {
@@ -577,6 +593,22 @@ public class ReportInputService {
         }
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
+    }
+
+    private String agentAnswerStatus(AgentReviewResult result) {
+        if (!"AGENT".equals(result.getKind())) {
+            return null;
+        }
+        JsonNode body = readJsonOrNull(result.getBody());
+        return body == null ? null : textOrNull(body, "answerStatus");
+    }
+
+    private int agentUnresolvedCount(AgentReviewResult result) {
+        if (!"AGENT".equals(result.getKind())) {
+            return 0;
+        }
+        JsonNode body = readJsonOrNull(result.getBody());
+        return body == null || !body.path("unresolved").isArray() ? 0 : body.path("unresolved").size();
     }
 
     private static String requireKind(String kind) {
@@ -596,7 +628,8 @@ public class ReportInputService {
         return load.apply(ids).stream().collect(Collectors.toMap(id, Function.identity(), (a, b) -> b));
     }
 
-    private record TaskSource(String kind, String branch, String commitSha, String baseSha) { }
+    private record TaskSource(String kind, String branch, String commitSha, String baseSha,
+                              String headSha) { }
 
     private record FeedbackView(String assessment, String comment, int revision, LocalDateTime updatedAt) { }
 }
