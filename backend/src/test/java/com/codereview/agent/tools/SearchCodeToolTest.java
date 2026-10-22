@@ -139,6 +139,46 @@ class SearchCodeToolTest {
     }
 
     @Test
+    void oversizedContextKeepsTheLineRangeInsideTheStoredBytes() throws Exception {
+        String huge = "x".repeat(30_000) + " oversized-needle " + "y".repeat(1_000);
+        Files.writeString(repo.resolve("src/Huge.java"), "head\n" + huge + "\ntail\n", StandardCharsets.UTF_8);
+        git("add", "-A");
+        git("commit", "-qm", "huge");
+        sha = git("rev-parse", "HEAD").trim();
+        when(repository.readFile(eq("p1"), eq(sha), anyString())).thenAnswer(invocation -> {
+            String path = invocation.getArgument(2);
+            String content = Files.readString(repo.resolve(path), StandardCharsets.UTF_8);
+            return new RepositorySnapshots.FileSnapshot(sha, path, content, ToolTexts.sha256(content),
+                    content.getBytes(StandardCharsets.UTF_8).length, ToolTexts.splitLines(content).length);
+        });
+        GiteaProperties gitea = new GiteaProperties();
+        gitea.setWorkDir(temp.resolve("mirrors-huge").toString());
+        ToolMaterialStore store = mock(ToolMaterialStore.class);
+        when(store.save(anyString(), any())).thenAnswer(invocation -> {
+            ToolEnvelope.ToolMaterial draft = invocation.getArgument(1);
+            return new ToolEnvelope.ToolMaterial("m-huge", draft.path(), draft.side(), draft.sha(),
+                    draft.startLine(), draft.endLine(), draft.contentHash(), draft.completeness(),
+                    draft.content());
+        });
+        SearchCodeTool hugeTool = new SearchCodeTool(repository, store, gitea,
+                new GitGrepRunner(new ToolProperties()), new ToolProperties());
+
+        ToolEnvelope envelope = hugeTool.execute("call-huge", new ToolInvocation(
+                AgentToolNames.SEARCH_CODE, "V1", sha, null, "src/Huge.java", null, 10, null, null,
+                "oversized-needle", List.of(), null, null), scope());
+
+        assertEquals(ToolEnvelope.OK, envelope.status(), envelope.diagnostic());
+        assertEquals(1, envelope.materials().size());
+        ToolEnvelope.ToolMaterial material = envelope.materials().get(0);
+        assertEquals(2, material.startLine());
+        assertEquals(2, material.endLine());
+        assertEquals(ToolEnvelope.PARTIAL, material.completeness());
+        assertTrue(ToolTexts.utf8Bytes(material.content()) <= ToolLimits.MATERIAL_MAX_BYTES);
+        assertTrue(material.content().contains("已截短"));
+        assertEquals(1, ToolTexts.splitLines(material.content()).length);
+    }
+
+    @Test
     void unreadableContextKeepsTheHitLineAndSaysSo() {
         when(repository.readFile(eq("p1"), eq(sha), anyString())).thenThrow(
                 new ApiException(ErrorCode.FILE_NOT_READABLE, "二进制文件"));

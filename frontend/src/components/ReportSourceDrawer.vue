@@ -280,7 +280,7 @@ function shortSha(sha: string) {
   flex-wrap: wrap;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -288,8 +288,8 @@ function shortSha(sha: string) {
 .summary {
   font-size: 14px;
   line-height: 1.7;
-  background: #f7f9fc;
-  border: 1px solid #e3e9f0;
+  background: var(--bg);
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 10px 12px;
 }
@@ -304,7 +304,7 @@ function shortSha(sha: string) {
   line-height: 1.6;
 }
 .label {
-  color: #4d5d70;
+  color: var(--muted);
   font-weight: 500;
 }
 .dependencies {
@@ -317,7 +317,7 @@ function shortSha(sha: string) {
   margin: 0;
   padding: 10px;
   background: #f6f8fc;
-  border: 1px solid #e3e9f0;
+  border: 1px solid var(--line);
   border-radius: 6px;
   font: 12px/1.75 Consolas, 'Cascadia Code', monospace;
   white-space: pre;

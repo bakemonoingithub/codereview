@@ -46,38 +46,50 @@ watch(
 
 <style scoped lang="less">
 .markdown-body {
-  max-height: 55vh;
   overflow: auto;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.95;
   word-break: break-word;
 }
 .markdown-body :deep(h1),
-.markdown-body :deep(h2),
+.markdown-body :deep(h2) {
+  margin: 4px 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
 .markdown-body :deep(h3),
 .markdown-body :deep(h4) {
-  margin: 0.5em 0 0.3em;
-  font-weight: 600;
+  margin: 24px 0 10px;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
 }
-.markdown-body :deep(p) {
-  margin: 0.4em 0;
+.markdown-body :deep(p),
+.markdown-body :deep(li) {
+  margin: 10px 0;
+  font-size: 13px;
 }
 .markdown-body :deep(code) {
-  background: #f5f5f5;
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-family: monospace;
+  background: #f1f5f9;
+  border: 1px solid var(--control-border);
+  padding: 2px 5px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
   font-size: 12px;
+  color: #334155;
+  overflow-wrap: anywhere;
 }
 .markdown-body :deep(pre) {
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 4px;
-  padding: 10px;
+  background: var(--preview);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
   overflow: auto;
 }
 .markdown-body :deep(pre code) {
   background: none;
+  border: 0;
   padding: 0;
 }
 .markdown-body :deep(ul),
@@ -85,10 +97,12 @@ watch(
   padding-left: 1.5em;
 }
 .markdown-body :deep(blockquote) {
-  border-left: 3px solid #ddd;
-  margin: 0.4em 0;
-  padding-left: 0.8em;
-  color: #666;
+  margin: 18px 0;
+  padding: 10px 16px;
+  background: var(--bg);
+  border-left: 3px solid #cbd5e1;
+  color: var(--muted);
+  font-size: 12px;
 }
 .markdown-body :deep(table) {
   border-collapse: collapse;

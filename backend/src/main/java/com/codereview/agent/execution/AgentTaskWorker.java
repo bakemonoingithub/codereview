@@ -43,6 +43,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -114,8 +115,7 @@ public class AgentTaskWorker implements TaskWorker {
             return loop(task, execution, run);
         } catch (ApiException e) {
             if (e.errorCode() == ErrorCode.TASK_CANCELLED) {
-                finishRun(run, TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
-                return new TaskOutcome(TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
+                return stopBecauseTaskAlreadyClosed(task, run);
             }
             if (e.errorCode() == ErrorCode.TASK_DEADLINE) {
                 return limit(execution, run, TaskStates.STOP_TASK_DEADLINE);
@@ -286,6 +286,21 @@ public class AgentTaskWorker implements TaskWorker {
                 submission.answered() ? null : TaskStates.STOP_INSUFFICIENT_EVIDENCE);
     }
 
+    /**
+     * 守卫把“用户取消”和“任务已被其他路径结束”都报成 {@code TASK_CANCELLED}。
+     * 期限扫描或重启收敛已经写下的终态必须原样记到进度上，不能改成用户取消。
+     */
+    private TaskOutcome stopBecauseTaskAlreadyClosed(AgentReviewTask task, AgentRun run) {
+        AgentReviewTask current = db.mapper(AgentReviewTaskMapper.class).selectById(task.getId());
+        if (current != null && TaskStates.isTerminal(current.getState())
+                && !TaskStates.CANCELLED.equals(current.getState())) {
+            finishRun(run, current.getState(), current.getStopReason());
+            return new TaskOutcome(current.getState(), current.getStopReason());
+        }
+        finishRun(run, TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
+        return new TaskOutcome(TaskStates.CANCELLED, TaskStates.STOP_USER_CANCELLED);
+    }
+
     /** 限制类终止：有调查记录为 PARTIAL，没有任何工具/模型记录为 FAILED。 */
     private TaskOutcome limit(AgentExecution execution, AgentRun run, String reason) {
         boolean investigated = run.getToolAttempts() > 0 || execution.toolCalls > 0;
@@ -310,7 +325,9 @@ public class AgentTaskWorker implements TaskWorker {
             return;
         }
         for (AgentSubmission.SentMaterial material : execution.pending.values()) {
-            execution.sent.putIfAbsent(material.materialId(), material);
+            if (execution.sent.containsKey(material.materialId())) {
+                continue;
+            }
             try {
                 AgentCallMaterial row = new AgentCallMaterial();
                 row.setCallId(callId);
@@ -318,9 +335,11 @@ public class AgentTaskWorker implements TaskWorker {
                 row.setRole("TOOL");
                 row.setDisposition("SENT");
                 db.mapper(AgentCallMaterialMapper.class).insert(row);
-            } catch (RuntimeException duplicate) {
-                // 同一材料可能被多轮引用；关联已存在时不阻断执行。
+            } catch (DuplicateKeyException duplicate) {
+                // 同一调用已经记下这份材料时不阻断；其他写入失败必须中止，
+                // 否则未落库的材料仍会被当成“已送入模型”而允许引用。
             }
+            execution.sent.put(material.materialId(), material);
         }
         execution.pending.clear();
     }
@@ -413,14 +432,21 @@ public class AgentTaskWorker implements TaskWorker {
         run.setState(state);
         run.setStopReason(stopReason);
         run.setCurrentAction(state);
+        run.setCoveredJson(fileCoverage(run));
         run.setUpdatedAt(AgentTime.now());
+        // 结束轮次的计数只写在内存里，updateRun 还没来得及落库；这里必须一并写入，
+        // 否则进度接口会少记最后一轮（例如直接提交，或协议错误耗尽时的最后一次调用）。
         db.mapper(AgentRunMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentRun>()
                         .eq(AgentRun::getTaskId, run.getTaskId())
+                        .set(AgentRun::getTurnNo, run.getTurnNo())
+                        .set(AgentRun::getToolAttempts, run.getToolAttempts())
+                        .set(AgentRun::getNetworkAttempts, run.getNetworkAttempts())
+                        .set(AgentRun::getCurrentAction, state)
+                        .set(AgentRun::getCoveredJson, run.getCoveredJson())
                         .set(AgentRun::getState, state)
                         .set(AgentRun::getStopReason, stopReason)
-                        .set(AgentRun::getCurrentAction, state)
-                        .set(AgentRun::getUpdatedAt, AgentTime.now())
+                        .set(AgentRun::getUpdatedAt, run.getUpdatedAt())
                         .setSql("revision = revision + 1"));
     }
 

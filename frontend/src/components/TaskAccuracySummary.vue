@@ -32,11 +32,13 @@ const scopeText = computed(() => props.specialistType === 'ISSUE'
 
 <style scoped lang="less">
 .accuracy-summary {
-  padding: 12px 14px;
+  padding: 13px 16px;
   margin-bottom: 16px;
-  background: #f7f9fc;
-  border: 1px solid #e3e9f0;
-  border-radius: 8px;
+  background: var(--notice);
+  border: 1px solid var(--notice-border);
+  border-radius: 14px;
+  color: var(--notice-ink);
+  font-size: 12px;
 }
 .row {
   display: flex;
@@ -50,19 +52,19 @@ const scopeText = computed(() => props.specialistType === 'ISSUE'
   flex: 1;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
 }
 .rate {
-  color: #1f3b63;
+  color: var(--ink);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .rate.unset {
   font-size: 13px;
   font-weight: 500;
-  color: #69798d;
+  color: var(--muted);
 }
 </style>

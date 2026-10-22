@@ -48,6 +48,6 @@ function shortName(fqcn: string) {
   margin-top: 4px;
 }
 .suggestion {
-  color: #1677ff;
+  color: var(--blue);
 }
 </style>

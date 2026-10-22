@@ -484,8 +484,9 @@ function shortSha(sha: string | null) {
   grid-column: 1 / -1;
 }
 .field label {
-  font-weight: 500;
-  color: #2c3e50;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink);
 }
 .create-grid {
   display: grid;
@@ -504,7 +505,7 @@ function shortSha(sha: string | null) {
   flex: 1;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -539,9 +540,9 @@ function shortSha(sha: string | null) {
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px;
-  background: #f7f9fc;
-  border: 1px solid #e3e9f0;
-  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 14px;
 }
 .selected-item > div {
   display: flex;

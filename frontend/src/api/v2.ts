@@ -603,6 +603,7 @@ export const tasksApi = {
   list: (params: ListPaginationParams & {
     projectId?: string
     type?: string
+    route?: string
     state?: string
     q?: string
     cursor?: string

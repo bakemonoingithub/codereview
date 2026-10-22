@@ -87,44 +87,53 @@ function onClick(event: MouseEvent) {
   word-break: break-word;
 }
 .report-markdown :deep(h1),
-.report-markdown :deep(h2),
-.report-markdown :deep(h3),
-.report-markdown :deep(h4) {
-  margin: 1.1em 0 0.45em;
-  font-weight: 600;
-  color: #1f3b63;
-}
-.report-markdown :deep(h1) {
-  font-size: 22px;
-  margin-top: 0;
-}
 .report-markdown :deep(h2) {
-  font-size: 18px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #eef2f7;
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
 }
 .report-markdown :deep(h3) {
-  font-size: 15px;
+  margin: 22px 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.report-markdown :deep(h4) {
+  margin: 20px 0 10px;
+  font-size: 14px;
+  font-weight: 650;
+  color: #24446d;
 }
 .report-markdown :deep(p) {
-  margin: 0.55em 0;
+  margin: 0 0 13px;
+  font-size: 13px;
+  line-height: 1.95;
+  overflow-wrap: anywhere;
+}
+.report-markdown :deep(ul) {
+  padding-left: 20px;
+  font-size: 13px;
 }
 .report-markdown :deep(code) {
-  background: #f5f5f5;
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-family: monospace;
+  background: #f1f5f9;
+  border: 1px solid var(--control-border);
+  padding: 2px 5px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
   font-size: 12px;
+  color: #334155;
 }
 .report-markdown :deep(pre) {
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 4px;
-  padding: 10px;
+  background: var(--preview);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
   overflow: auto;
 }
 .report-markdown :deep(pre code) {
   background: none;
+  border: 0;
   padding: 0;
 }
 .report-markdown :deep(ul),
@@ -132,10 +141,12 @@ function onClick(event: MouseEvent) {
   padding-left: 1.5em;
 }
 .report-markdown :deep(blockquote) {
-  border-left: 3px solid #ddd;
-  margin: 0.4em 0;
-  padding-left: 0.8em;
-  color: #666;
+  margin: 18px 0;
+  padding: 10px 16px;
+  background: var(--bg);
+  border-left: 3px solid #cbd5e1;
+  color: var(--muted);
+  font-size: 12px;
 }
 .report-markdown :deep(table) {
   border-collapse: collapse;
@@ -151,14 +162,16 @@ function onClick(event: MouseEvent) {
   margin: 0 1px;
   padding: 0 4px;
   border-radius: 3px;
-  background: #eaf2ff;
-  color: #1d5fbf;
+  background: var(--soft);
+  color: var(--blue);
+  border: 0;
   font-size: 12px;
+  font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
 }
 .report-markdown :deep(.report-citation:hover) {
-  background: #d8e7ff;
+  background: #dbe6fe;
 }
 </style>

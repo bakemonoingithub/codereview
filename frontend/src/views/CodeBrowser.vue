@@ -2,8 +2,8 @@
   <div>
     <div class="page-head">
       <div>
-        <h2>代码浏览</h2>
-        <p class="muted">按固定版本浏览文件与提交差异，勾选文件后带入发起审查。</p>
+        <h1>代码浏览</h1>
+        <p class="muted">浏览固定版本的代码，选择文件后发起专项审查。</p>
       </div>
       <a-button type="primary" :disabled="!selected.length || treeLoading || !!error" @click="launchSelected">
         审查已选文件（{{ selected.length }}）
@@ -14,7 +14,7 @@
 
     <a-alert v-if="truncated" type="warning" show-icon
       message="宿主返回的文件清单不完整，只能浏览和选择当前已列出的文件。" class="mb16" />
-    <a-card>
+    <a-card class="browser-card" :bordered="true">
       <div class="filters">
         <a-select
           v-model:value="projectId"
@@ -512,14 +512,25 @@ function statusText(status: string): string {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  align-items: flex-start;
-  margin-bottom: 18px;
+  align-items: center;
+  margin-bottom: 32px;
 }
-.page-head h2 {
-  margin: 0 0 4px;
+.page-head h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.4;
+}
+.page-head p {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+.browser-card :deep(.ant-card-body) {
+  padding: 0;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -533,29 +544,29 @@ function statusText(status: string): string {
 .filters {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
 }
 .spacer {
   flex: 1;
 }
 .browser-grid {
   display: grid;
-  grid-template-columns: minmax(360px, 38%) minmax(0, 1fr);
-  height: calc(100vh - 250px);
-  min-height: 420px;
-  border: 1px solid #e3e9f0;
-  border-radius: 8px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 540px;
+  height: calc(100vh - 280px);
   overflow: hidden;
 }
 .tree {
   min-width: 0;
   min-height: 0;
-  border-right: 1px solid #e3e9f0;
-  padding: 12px;
+  border-right: 1px solid var(--line);
+  padding: 18px;
   overflow: auto;
-  background: #fbfcfe;
+  background: #fff;
 }
 .tree :deep(.ant-tree-treenode) {
   width: max-content;
@@ -571,17 +582,17 @@ function statusText(status: string): string {
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  background: #fbfcfe;
+  background: #fcfdfe;
 }
 .code-head {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 10px 14px;
+  padding: 12px 20px;
   background: #fff;
-  border-bottom: 1px solid #e3e9f0;
+  border-bottom: 1px solid var(--line);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 .code-head strong {
@@ -594,12 +605,33 @@ function statusText(status: string): string {
   white-space: pre;
 }
 .empty {
-  padding: 40px;
+  padding: 48px 25px;
   text-align: center;
-  color: #69798d;
+  color: var(--muted);
+}
+@media (max-width: 1100px) {
+  .browser-grid {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .page-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .page-head h1 {
+    font-size: 26px;
+  }
+  .browser-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .tree {
+    max-height: 210px;
+  }
 }
 .file-link {
-  color: #2463d5;
+  color: var(--blue);
   cursor: pointer;
 }
 .status-tag {

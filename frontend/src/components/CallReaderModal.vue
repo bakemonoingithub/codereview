@@ -122,7 +122,7 @@ function close() {
   margin-bottom: 12px;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
 }
 .small {
   font-size: 12px;
@@ -142,7 +142,7 @@ function close() {
   margin: 0;
   padding: 12px;
   background: #f6f8fc;
-  border: 1px solid #e3e9f0;
+  border: 1px solid var(--line);
   border-radius: 6px;
   font: 12px/1.75 Consolas, 'Cascadia Code', monospace;
   white-space: pre-wrap;

@@ -385,9 +385,9 @@ function statusText(status: string): string {
   max-height: 46vh;
   min-height: 220px;
   overflow: auto;
-  border: 1px solid #e3e9f0;
-  border-radius: 7px;
-  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
   background: #fbfcfe;
 }
 .scope-foot {
@@ -397,14 +397,14 @@ function statusText(status: string): string {
   flex: 1;
 }
 .muted {
-  color: #69798d;
+  color: var(--muted);
   font-size: 12px;
 }
 .mb12 {
   margin-bottom: 12px;
 }
 .file-name {
-  color: #2463d5;
+  color: var(--blue);
   cursor: pointer;
 }
 .file-name.disabled {
@@ -431,9 +431,9 @@ function statusText(status: string): string {
   max-height: 52vh;
   overflow: auto;
   background: #f6f8fc;
-  border: 1px solid #e3e9f0;
-  border-radius: 6px;
-  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
   font: 12px/1.8 Consolas, 'Cascadia Code', monospace;
   white-space: pre;
 }
