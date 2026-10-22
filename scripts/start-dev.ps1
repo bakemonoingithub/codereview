@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  启动本机开发服务：前端 5173，后端 8081；Ctrl+C 停止本次启动的进程树。
+  启动本机开发服务：前端默认 5173，后端 8081；Ctrl+C 停止本次启动的进程树。
 .EXAMPLE
   pwsh scripts/start-dev.ps1
 .EXAMPLE
@@ -9,6 +9,7 @@
 param(
     [switch]$CheckOnly,
     [string]$BackendConfig,
+    [ValidateRange(1, 65535)][int]$FrontendPort = 5173,
     [ValidateRange(10, 3600)][int]$StartupTimeoutSeconds = 180
 )
 
@@ -28,6 +29,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     $launchArguments = @('-NoLogo', '-NoProfile', '-File', $PSCommandPath)
     if ($CheckOnly) { $launchArguments += '-CheckOnly' }
     if ($BackendConfig) { $launchArguments += @('-BackendConfig', $BackendConfig) }
+    if ($PSBoundParameters.ContainsKey('FrontendPort')) { $launchArguments += @('-FrontendPort', [string]$FrontendPort) }
     $launchArguments += @('-StartupTimeoutSeconds', [string]$StartupTimeoutSeconds)
     & $pwshPath @launchArguments
     exit $LASTEXITCODE
@@ -56,14 +58,43 @@ foreach ($relativePath in @('node_modules/vite/bin/vite.js', 'vite.config.ts')) 
         throw "Missing frontend dependency or configuration: $relativePath"
     }
 }
-$listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop | Where-Object { $_.LocalPort -in 5173, 8081 })
+function Get-DevPortStatus([int]$Port) {
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
+    try {
+        $listener.Server.ExclusiveAddressUse = $true
+        $listener.Start()
+        return 'Available'
+    } catch [System.Net.Sockets.SocketException] {
+        return [string]$_.Exception.SocketErrorCode
+    } finally {
+        $listener.Stop()
+    }
+}
+function Resolve-DevFrontendPort([int]$Port, [bool]$Explicit) {
+    $status = Get-DevPortStatus $Port
+    if ($status -eq 'Available') { return $Port }
+    if ($status -eq 'AccessDenied' -and -not $Explicit) {
+        foreach ($candidate in 15173..15183) {
+            if ((Get-DevPortStatus $candidate) -eq 'Available') {
+                Write-Host "Windows denied binding to frontend port $Port (possibly a reserved port). Using $candidate instead."
+                return $candidate
+            }
+        }
+    }
+    throw "Cannot bind frontend port $Port ($status). Choose an available port with -FrontendPort <port>. Windows reserved ports can be inspected with: netsh interface ipv4 show excludedportrange protocol=tcp"
+}
+if ($FrontendPort -eq 8081) { throw 'FrontendPort must differ from backend port 8081.' }
+$listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop | Where-Object { $_.LocalPort -in $FrontendPort, 8081 })
 if ($listeners.Count -gt 0) {
     $details = ($listeners | ForEach-Object { "port $($_.LocalPort), PID $($_.OwningProcess)" } | Sort-Object -Unique) -join '; '
     throw "Development ports already in use: $details. Stop the existing services before retrying."
 }
+$FrontendPort = Resolve-DevFrontendPort $FrontendPort ($PSBoundParameters.ContainsKey('FrontendPort'))
+$backendPortStatus = Get-DevPortStatus 8081
+if ($backendPortStatus -ne 'Available') { throw "Cannot bind backend port 8081 ($backendPortStatus). No services were started." }
 Write-Host "Java: $javaHome"
 Write-Host "Maven: $mavenPath"
-Write-Host 'Ports 5173 and 8081 are available.'
+Write-Host "Ports $FrontendPort and 8081 passed binding checks."
 Write-Host 'Backend configuration source found. Database connectivity and migrations are checked only during application startup.'
 if ($CheckOnly) { Write-Host 'Preflight passed; no services started or files written.'; return }
 
@@ -77,11 +108,12 @@ export default {
   ...base,
   server: {
     ...base.server,
-    host: '127.0.0.1', port: 5173, strictPort: true,
+    host: '127.0.0.1', port: __FRONTEND_PORT__, strictPort: true,
     proxy: { ...base.server?.proxy, '/api': { target: 'http://127.0.0.1:8081', changeOrigin: true } }
   }
 }
 '@
+$viteConfig = $viteConfig.Replace('__FRONTEND_PORT__', [string]$FrontendPort)
 $runtimeConfig = Join-Path $runtimeRoot 'vite.config.mts'
 [System.IO.File]::WriteAllText($runtimeConfig, ($viteConfig.Replace("`r`n", "`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
 
@@ -138,9 +170,9 @@ try {
                 $backendReady = $true
                 Write-Host 'Backend ready: http://127.0.0.1:8081 (database and migrations checked).'
             }
-            if ($backendReady -and (Test-ServiceReady 'http://127.0.0.1:5173/api/v2/health')) {
+            if ($backendReady -and (Test-ServiceReady "http://127.0.0.1:$FrontendPort/api/v2/health")) {
                 $proxyReady = $true
-                Write-Host "Both services are ready ($([int]$startupWatch.Elapsed.TotalSeconds)s). Open http://127.0.0.1:5173/"
+                Write-Host "Both services are ready ($([int]$startupWatch.Elapsed.TotalSeconds)s). Open http://127.0.0.1:$FrontendPort/"
             }
             $nextProbe = $startupWatch.Elapsed.TotalSeconds + 2
         }

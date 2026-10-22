@@ -20,7 +20,7 @@ pwsh -NoProfile -File .\scripts\start-dev.ps1 -BackendConfig .\backend\applicati
 
 从 `scripts` 目录执行时，配置路径相应使用 `..\backend\application-local.properties`。`-BackendConfig` 按调用终端的当前目录解析，支持包含空格的路径。
 
-启动后保留终端，等待前后端均就绪，再打开 <http://127.0.0.1:5173/>。后端使用 `8081`，前端 `/api` 请求转发到该端口。按 `Ctrl+C` 停止本次启动的服务，或从另一个终端执行：
+启动后保留终端，等待前后端均就绪，再打开终端输出的地址。前端默认使用 `5173`；默认端口被 Windows 禁止绑定时，从 `15173–15183` 中选择首个可绑定端口，也可通过 `-FrontendPort 15173` 显式指定。显式端口不可用或端口被进程占用时直接报错。后端使用 `8081`，前端 `/api` 请求转发到该端口。按 `Ctrl+C` 停止本次启动的服务，或从另一个终端执行：
 
 ```powershell
 pwsh -NoProfile -File .\scripts\stop-dev.ps1 -CheckOnly
@@ -34,7 +34,7 @@ pwsh -NoProfile -File .\scripts\stop-dev.ps1
 - 需要 Windows、PowerShell 7、Node.js、已安装的前端依赖、Maven 与 JDK。Windows PowerShell 5.1 调用脚本时会尝试切换到 PowerShell 7。
 - Maven 优先从 `PATH` 查找，Java 优先使用 `JAVA_HOME`。本机候选路径在 [dev.config.psd1](../../../scripts/dev.config.psd1) 中维护。
 - 后端配置通过本机 `application.yml`、`-BackendConfig` 或 Spring Boot 支持的环境配置提供。当前应用仍装配旧链组件，必须配置 `spring.datasource.*`；同时需要配置隔离的 `agent.datasource.*`。仅有旧库配置不能启用新接口。字段参考 [application.example.yml](../../../backend/src/main/resources/application.example.yml)。
-- `-CheckOnly` 检查工具、前端依赖文件、配置来源与端口。配置来源检查只确认默认文件、显式文件或配置环境变量存在，不解析配置有效值，不验证数据库连接、账号或迁移。正常启动会执行应用既有的数据库检查与迁移流程。本次迁移及故障修复没有创建实际配置文件、复制凭据或执行数据库操作。
+- `-CheckOnly` 检查工具、前端依赖文件、配置来源与端口；端口通过短暂绑定后释放来检查，覆盖无监听进程但被系统禁止的情况。配置来源检查只确认默认文件、显式文件或配置环境变量存在，不解析配置有效值，不验证数据库连接、账号或迁移。正常启动会执行应用既有的数据库检查与迁移流程。
 - 每次启动的配置、日志和进程记录放在 `frontend/.dev-runtime/<runId>/`，已加入忽略规则。后端编译输出使用 `backend/target/runtime-local-<runId>/`，避免与常规测试目录混用。
 - 停止脚本按当前工作树路径、运行标识和进程启动时间识别服务，不按端口终止进程。脚本不自动安装依赖。
 
@@ -107,3 +107,16 @@ pwsh -NoProfile -File .\scripts\tests\dev-launchers.tests.ps1
 服务保持在本机后台运行，可直接打开 <http://127.0.0.1:5173/>。停止时执行 `scripts/stop-dev.ps1`；停止后，从 `scripts` 目录运行 `./start-dev.ps1` 即可，无须再传入配置路径。当前端口已被本次服务占用时，不应重复执行启动脚本。
 
 启动日志与进程记录位于 `frontend/.dev-runtime/20261021-155338-cbe05825/`。本轮只验证本机数据库初始化、配置隔离、启动与只读列表；目标仓库、真实模型调用、专项完整流程和 PC 视觉验收仍未执行，不据此完成 P31.9。Vite 启动期间自动更新了既有未提交的 `frontend/components.d.ts`，该生成文件不纳入本次提交。
+
+## Windows 保留端口修复（2026-10-22）
+
+运行 `20261022-090437-0c793fc6` 的前端日志报 `listen EACCES: permission denied 127.0.0.1:5173`。本机 `netsh interface ipv4 show excludedportrange protocol=tcp` 显示 `5141–5240` 为排除范围，包含 `5173`。原预检仅查询监听进程，未发现系统禁止绑定的端口。
+
+启动脚本现对前后端执行实际绑定检查，并立即释放探测监听器。默认前端端口遇到 `AccessDenied` 时尝试 `15173–15183`；显式指定的端口失败、普通占用或候选耗尽均报错。生成的 Vite 配置、就绪检查和访问地址使用实际选定端口。系统端口保留设置未修改；预检结束后仍可能发生端口竞争，由实际启动失败及进程清理处理。
+
+验证结果：
+
+- 脚本回归 29 项、0 失败，覆盖默认端口可用、禁止绑定、候选跳过与耗尽、显式端口拒绝、普通占用，以及生成配置使用指定端口。
+- Windows PowerShell 5.1 自动切换到 PowerShell 7，并正确转发 `-FrontendPort 15174 -CheckOnly`，预检通过。
+- 完整启动 `20261022-091253-13617347` 自动使用 `15173`，49 秒后前后端就绪；首页返回 HTTP 200，代理健康检查返回 `database=agent`、`schemaVersion=1`。
+- 通过停止脚本结束本次验证进程，启动器正常退出。未执行专项任务或模型调用，不改变业务阶段状态。

@@ -1,4 +1,4 @@
-# 启停脚本回归：使用进程和网络替身，不启动或停止真实服务。
+# 启停脚本回归：服务进程与 HTTP 使用替身；端口预检短暂绑定后释放，不启动应用。
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $startScript = Join-Path $repoRoot 'scripts/start-dev.ps1'
@@ -94,6 +94,32 @@ $env:AGENT_DATASOURCE_URL = 'jdbc:mysql://invalid/agent'
 
 # 只加载可信源码的就绪函数，网络访问由响应替身替代。
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($startScript, [ref]$null, [ref]$null)
+$portResolver = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Resolve-DevFrontendPort' }, $true)
+& {
+    Invoke-Expression $portResolver.Extent.Text
+    function Get-DevPortStatus([int]$Port) {
+        if ($Port -eq 5173) { return $primaryStatus }
+        if ($Port -eq 15175 -and $fallbackAvailable) { return 'Available' }
+        return 'AddressAlreadyInUse'
+    }
+    $primaryStatus = 'Available'
+    $fallbackAvailable = $true
+    Assert-True ((Resolve-DevFrontendPort 5173 $false) -eq 5173) '默认端口可绑定时保持 5173'
+    $primaryStatus = 'AccessDenied'
+    Assert-True ((Resolve-DevFrontendPort 5173 $false) -eq 15175) '默认端口被禁止时跳过不可用候选，选择可绑定端口'
+    $refused = $false
+    try { Resolve-DevFrontendPort 5173 $true } catch { $refused = $_.Exception.Message -match 'AccessDenied.*FrontendPort' }
+    Assert-True $refused '显式端口被禁止时明确报错，不擅自换端口'
+    $fallbackAvailable = $false
+    $refused = $false
+    try { Resolve-DevFrontendPort 5173 $false } catch { $refused = $_.Exception.Message -match 'Cannot bind frontend' }
+    Assert-True $refused '候选全部不可用时停止启动'
+    $primaryStatus = 'AddressAlreadyInUse'
+    $fallbackAvailable = $true
+    $refused = $false
+    try { Resolve-DevFrontendPort 5173 $false } catch { $refused = $_.Exception.Message -match 'AddressAlreadyInUse' }
+    Assert-True $refused '普通占用不触发自动端口切换'
+}
 $ready = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Test-ServiceReady' }, $true)
 & {
     Invoke-Expression $ready.Extent.Text
@@ -183,8 +209,10 @@ try {
             return $fake
         }
         $expectedExit = $false
-        try { & (Join-Path $probeRoot 'scripts/start-dev.ps1') } catch { $expectedExit = $_.Exception.Message -match 'Service process .* exited' }
+        try { & (Join-Path $probeRoot 'scripts/start-dev.ps1') -FrontendPort 15173 } catch { $expectedExit = $_.Exception.Message -match 'Service process .* exited' }
         Assert-True ($expectedExit -and $seenPaths.Count -eq 2 -and $seenPaths[1] -eq 'mock-node-first') '重复 Node/Maven 候选只选择首个，完整启动流程使用标量路径'
+        $generatedConfig = Get-ChildItem -LiteralPath (Join-Path $probeRoot 'frontend/.dev-runtime') -Filter vite.config.mts -Recurse | Select-Object -First 1
+        Assert-True ($generatedConfig -and ([IO.File]::ReadAllText($generatedConfig.FullName) -match 'port: 15173, strictPort: true')) '显式端口写入实际 Vite 配置'
     }
 } finally {
     $resolvedProbe = [IO.Path]::GetFullPath($probeRoot)
