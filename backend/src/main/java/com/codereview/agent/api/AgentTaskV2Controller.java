@@ -1,6 +1,8 @@
 package com.codereview.agent.api;
 
+import com.codereview.agent.dto.AgentReadDtos;
 import com.codereview.agent.dto.AgentTaskDtos;
+import com.codereview.agent.service.AgentReadService;
 import com.codereview.agent.service.AgentTaskService;
 import jakarta.validation.Valid;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -27,9 +30,11 @@ import java.net.URI;
 public class AgentTaskV2Controller {
 
     private final AgentTaskService service;
+    private final AgentReadService readService;
 
-    public AgentTaskV2Controller(AgentTaskService service) {
+    public AgentTaskV2Controller(AgentTaskService service, AgentReadService readService) {
         this.service = service;
+        this.readService = readService;
     }
 
     @PostMapping
@@ -43,5 +48,29 @@ public class AgentTaskV2Controller {
     @GetMapping("/{id}/copy-input")
     public AgentTaskDtos.CopyInput copyInput(@PathVariable String id) {
         return service.copyInput(id);
+    }
+
+    @GetMapping("/{id}/progress")
+    public AgentReadDtos.Progress progress(@PathVariable String id) {
+        return readService.progress(id);
+    }
+
+    @GetMapping("/{id}/tool-calls")
+    public PageResponse<AgentReadDtos.ToolCallSummary> toolCalls(
+            @PathVariable String id,
+            @RequestParam(required = false) Integer pageNum,
+            @RequestParam(required = false) Integer pageSize) {
+        return readService.toolCalls(id, pageNum, pageSize);
+    }
+
+    @GetMapping("/{id}/tool-calls/{callId}")
+    public AgentReadDtos.ToolCallDetail toolCall(@PathVariable String id,
+                                                 @PathVariable String callId) {
+        return readService.toolCall(id, callId);
+    }
+
+    @GetMapping("/{id}/result")
+    public AgentReadDtos.Result result(@PathVariable String id) {
+        return readService.result(id);
     }
 }

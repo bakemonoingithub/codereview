@@ -278,6 +278,62 @@ export interface AgentTaskCopyInput extends AgentTaskCreateInput {
   reobserveHead: boolean
 }
 
+export interface AgentProgress {
+  taskId: string
+  state: string
+  stopReason: string | null
+  turnNo: number
+  toolAttempts: number
+  networkAttempts: number
+  currentAction: string | null
+  covered: Record<string, unknown>
+  limits: Record<string, unknown>
+  updatedAt: string | null
+}
+
+export interface AgentToolCallSummary {
+  id: string
+  turnNo: number
+  ordinal: number
+  toolName: string
+  status: string
+  startedAt: string | null
+  finishedAt: string | null
+}
+
+export interface AgentToolCallDetail extends AgentToolCallSummary {
+  providerToolCallId: string
+  arguments: string | null
+  envelope: Record<string, unknown>
+  materialIds: string[]
+}
+
+export interface AgentCitation {
+  id: string
+  materialId: string
+  path: string
+  side: string | null
+  sha: string | null
+  startLine: number
+  endLine: number
+}
+
+export interface AgentResultView {
+  id: string
+  schemaVersion: string
+  completeness: string
+  createdAt: string
+  body: {
+    title: string
+    summary: string
+    answerStatus: string
+    markdown: string
+    citations: AgentCitation[]
+    unresolved: string[]
+  }
+  provenance: Record<string, unknown>
+}
+
 export const agentTasksApi = {
   create: (body: AgentTaskCreateInput, idempotencyKey: string) =>
     v2
@@ -286,7 +342,16 @@ export const agentTasksApi = {
       })
       .then((r) => r.data),
   copyInput: (id: string) =>
-    v2.get<AgentTaskCopyInput>(`/agent-tasks/${id}/copy-input`).then((r) => r.data)
+    v2.get<AgentTaskCopyInput>(`/agent-tasks/${id}/copy-input`).then((r) => r.data),
+  progress: (id: string) =>
+    v2.get<AgentProgress>(`/agent-tasks/${id}/progress`).then((r) => r.data),
+  toolCalls: (id: string, params: { pageNum?: number; pageSize?: number } = {}) =>
+    v2.get<Page<AgentToolCallSummary>>(`/agent-tasks/${id}/tool-calls`, { params }).then((r) => r.data),
+  toolCall: (id: string, callId: string) =>
+    v2
+      .get<AgentToolCallDetail>(`/agent-tasks/${id}/tool-calls/${callId}`)
+      .then((r) => r.data),
+  result: (id: string) => v2.get<AgentResultView>(`/agent-tasks/${id}/result`).then((r) => r.data)
 }
 
 export interface TaskCreateInput {  projectId: string

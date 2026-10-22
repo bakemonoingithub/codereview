@@ -47,7 +47,7 @@ const appRoutes: RouteRecordRaw[] = [
   {
     path: 'reviews/:id',
     name: 'review-detail',
-    component: () => import('@/views/TaskDetail.vue'),
+    component: () => import('@/views/TaskDetailRoute.vue'),
     meta: { title: '任务详情', hideMenu: true }
   },
   {
