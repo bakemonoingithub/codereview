@@ -25,16 +25,15 @@
               <h1>{{ report.title }}</h1>
               <StatusBadge :tone="stateTone(report.state)">{{ stateText(report.state) }}</StatusBadge>
             </div>
-            <p class="muted">
-              {{ report.sourceCount }} 个审查结果 · {{ report.taskCount }} 个来源任务 ·
-              {{ report.versionCount }} 个仓库版本
+            <TaskDetailMetadata :task-id="report.id" id-label="报告 ID">
+              {{ projectSummary }} · 审查报告
               <span v-if="report.model"> · {{ report.model.name }}（{{ report.model.modelName }}）</span>
-            </p>
-            <p class="muted small">
-              冻结于 {{ formatTime(report.createdAt) }}
-              <span v-if="report.finishedAt"> · 结束于 {{ formatTime(report.finishedAt) }}</span>
-              <span v-if="report.model"> · 模型配置修订 {{ report.model.revision }}</span>
-            </p>
+              <template #extra>
+                冻结于 {{ formatTime(report.createdAt) }}
+                <span v-if="report.finishedAt"> · 结束于 {{ formatTime(report.finishedAt) }}</span>
+                <span v-if="report.model"> · 模型配置修订 {{ report.model.revision }}</span>
+              </template>
+            </TaskDetailMetadata>
           </div>
           <div class="actions">
             <a-button :loading="refreshing" @click="load">刷新</a-button>
@@ -86,7 +85,13 @@
           <div><b>{{ report.sourceCount }}</b><span>个审查结果</span></div>
           <div><b>{{ report.taskCount }}</b><span>个来源任务</span></div>
           <div><b>{{ report.versionCount }}</b><span>个仓库版本</span></div>
-          <div><b>{{ kindSummary }}</b><span>类型分布</span></div>
+          <div class="kind-distribution">
+            <span>类型分布</span>
+            <div class="kind-tags">
+              <a-tag v-for="item in kindDistribution" :key="item.kind">{{ item.label }} {{ item.count }}</a-tag>
+              <span v-if="!kindDistribution.length">—</span>
+            </div>
+          </div>
         </div>
 
         <div class="report-layout">
@@ -215,6 +220,7 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { modelsApi, reportsApi, type ModelView, type ReportDetail } from '@/api/v2'
+import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
 import ReportMarkdown from '@/components/ReportMarkdown.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ReportSourceDrawer from '@/components/ReportSourceDrawer.vue'
@@ -251,12 +257,16 @@ const modelOptions = computed(() =>
     label: `${model.name} · ${model.modelName}${model.contextWindow ? '' : '（未声明窗口，不可用于报告）'}${model.validationStatus === 'PASSED' ? '' : '（未验证）'}`
   }))
 )
-const kindSummary = computed(() => {
-  const counts = report.value?.kindCounts || {}
-  const entries = Object.entries(counts)
-  if (!entries.length) return '—'
-  return entries.map(([key, count]) => `${kindText(key)} ${count}`).join(' / ')
+const projectSummary = computed(() => {
+  const projects = new Map<string, string>()
+  for (const source of report.value?.sources || []) {
+    projects.set(source.projectId, source.projectName || source.projectId)
+  }
+  return [...projects.values()].join('、') || '项目未记录'
 })
+const kindDistribution = computed(() =>
+  Object.entries(report.value?.kindCounts || {}).map(([kind, count]) => ({ kind, count, label: kindText(kind) }))
+)
 
 watch(
   () => id.value,
@@ -509,6 +519,22 @@ function formatTime(value: string) {
 .overview span {
   color: var(--muted);
   font-size: 12px;
+}
+.overview > .kind-distribution {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.kind-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kind-tags :deep(.ant-tag) {
+  margin: 0;
+  font-size: 13px;
+  white-space: normal;
 }
 .report-layout {
   display: grid;

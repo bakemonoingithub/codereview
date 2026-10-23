@@ -17,11 +17,10 @@
               <StatusBadge :tone="stateTone">{{ stateLabel(task.state) }}</StatusBadge>
               <span class="agent-label">只读</span>
             </div>
-            <p class="sub">
-              {{ task.projectId }} / Agent 分析 / {{ sourceLabel(task.sourceKind) }}
-              <template v-if="task.headSha"> / <code>{{ task.headSha.slice(0, 7) }}</code></template>
-            </p>
-            <p class="muted small mono">{{ task.id }}</p>
+            <TaskDetailMetadata :task-id="task.id">
+              {{ projectName || task.projectId }} · Agent 分析 · {{ sourceLabel(task.sourceKind) }}
+              <template v-if="task.headSha"> · <code>{{ task.headSha.slice(0, 7) }}</code></template>
+            </TaskDetailMetadata>
           </div>
           <div class="actions">
             <a-button :loading="refreshing" @click="refreshAll">刷新</a-button>
@@ -33,7 +32,7 @@
             >
               取消任务
             </a-button>
-            <a-button @click="router.push({ path: '/agents/new', query: { copyFrom: task.id } })">按此参数新建</a-button>
+            <a-button @click="router.push({ path: '/agents/new', query: { copyFrom: task.id } })">复制参数新建</a-button>
           </div>
         </div>
 
@@ -87,7 +86,6 @@
 
         <div class="tabbar">
           <button type="button" :class="{ active: activeTab === 'result' }" @click="activeTab = 'result'">审查结果</button>
-          <button type="button" :class="{ active: activeTab === 'progress' }" @click="activeTab = 'progress'">执行记录</button>
           <button type="button" :class="{ active: activeTab === 'calls' }" @click="activeTab = 'calls'">实际调用 · {{ callTotal }}</button>
           <button type="button" :class="{ active: activeTab === 'input' }" @click="activeTab = 'input'">任务输入</button>
         </div>
@@ -149,42 +147,10 @@
             </div>
             <div v-else-if="resultError" class="card pad">
               <a-alert type="warning" show-icon :message="resultError" description="任务已终止，但只保留调查过程与调用记录；这类结果不进入报告候选。" />
-              <div class="row wrap" style="margin-top: 16px">
-                <a-button @click="activeTab = 'progress'">查看已有执行记录</a-button>
-              </div>
             </div>
             <div v-else class="card empty">调查尚未结束，结果发布后显示</div>
           </a-spin>
         </div>
-
-        <section v-show="activeTab === 'progress'" class="card">
-          <div class="section-top">
-            <h2>可观察的执行记录</h2>
-            <span class="spacer" />
-            <span class="muted small">{{ callTotal }} 条调用记录</span>
-          </div>
-          <div class="pad">
-            <a-alert v-if="callError" type="error" show-icon :message="callError" class="mb16" />
-            <div class="agent-timeline">
-              <div v-for="(call, index) in calls" :key="call.id" class="agent-event">
-                <div class="row wrap">
-                  <strong>{{ String(index + 1).padStart(2, '0') }} · {{ call.toolName }}</strong>
-                  <span class="spacer" />
-                  <StatusBadge :tone="callTone(call.status)">{{ callStatusText(call.status) }}</StatusBadge>
-                  <button type="button" class="quiet" @click="openCall(call.id)">查看调用 ↗</button>
-                </div>
-                <p>第 {{ call.turnNo }} 轮 · 序号 {{ call.ordinal }} · {{ formatTime(call.startedAt) }}</p>
-              </div>
-              <p v-if="!calls.length" class="muted small">尚未保存工具调用。</p>
-              <div v-if="task.state === 'QUEUED' || task.state === 'RUNNING'" class="agent-event">
-                <strong>当前：{{ progress?.currentAction || '准备调查' }}</strong>
-                <p>下一步会追加调用记录，不修改已有记录。</p>
-              </div>
-            </div>
-            <div class="section-top flat"><h3>已查范围</h3></div>
-            <pre class="preview-code">{{ JSON.stringify(progress?.covered || {}, null, 2) }}</pre>
-          </div>
-        </section>
 
         <section v-show="activeTab === 'calls'" class="card">
           <div class="section-top">
@@ -195,7 +161,7 @@
           <a-alert v-if="callError" type="error" show-icon :message="callError" class="pad-alert" />
           <div v-if="!calls.length" class="empty">尚未发送模型调用，当前没有请求快照。</div>
           <div v-else class="agent-call-layout">
-            <aside class="agent-call-list">
+            <div class="agent-call-list" aria-label="逐次调用记录">
               <button
                 v-for="call in calls"
                 :key="call.id"
@@ -204,9 +170,12 @@
                 @click="openCall(call.id)"
               >
                 第 {{ call.turnNo }} 轮 · {{ call.ordinal }}
-                <small>{{ call.toolName }} · {{ call.status }}</small>
+                <small class="call-tags">
+                  <a-tag color="blue">{{ call.toolName }}</a-tag>
+                  <a-tag :color="callTone(call.status)">{{ callStatusText(call.status) }}</a-tag>
+                </small>
               </button>
-            </aside>
+            </div>
             <div class="agent-call-content">
               <a-spin :spinning="callLoading">
                 <template v-if="callDetail">
@@ -220,21 +189,9 @@
                   <pre class="preview-code">{{ pretty(callDetail.arguments) }}</pre>
                   <h3>返回</h3>
                   <pre class="preview-code">{{ JSON.stringify(callDetail.envelope, null, 2) }}</pre>
-                  <div v-if="callDetail.materialIds.length" class="row wrap materials">
-                    <a-button v-for="material in callDetail.materialIds" :key="material" size="small" @click="openMaterial(material)">
-                      {{ material }}
-                    </a-button>
-                  </div>
                 </template>
                 <div v-else class="empty">选择左侧一次调用，查看保存的参数与返回。</div>
               </a-spin>
-            </div>
-          </div>
-          <div class="table-footer">
-            <span>第 {{ callPage }} 页 · 共 {{ callTotal }} 次</span>
-            <div class="row">
-              <a-button size="small" :disabled="callPage <= 1" @click="changeCallPage(-1)">上一页</a-button>
-              <a-button size="small" :disabled="calls.length < callPageSize" @click="changeCallPage(1)">下一页</a-button>
             </div>
           </div>
         </section>
@@ -316,12 +273,14 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 import CodeViewer from '@/components/CodeViewer.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
   agentTasksApi,
+  projectsApi,
   repositoryApi,
   tasksApi,
   type AgentTaskCopyInput,
@@ -337,6 +296,7 @@ const router = useRouter()
 const taskId = computed(() => String(route.params.id))
 
 const task = ref<TaskView | null>(null)
+const projectName = ref('')
 const inputScope = ref<AgentTaskCopyInput | null>(null)
 const inputLoading = ref(false)
 const taskLoading = ref(false)
@@ -354,8 +314,6 @@ const resultError = ref('')
 const downloadingMarkdown = ref(false)
 
 const calls = ref<AgentToolCallSummary[]>([])
-const callPage = ref(1)
-const callPageSize = 20
 const callTotal = ref(0)
 const callError = ref('')
 
@@ -415,7 +373,7 @@ async function loadTask() {
   loadError.value = ''
   try {
     task.value = await tasksApi.detail(taskId.value)
-    await Promise.all([loadProgress(), loadCalls(), loadInput()])
+    await Promise.all([loadProjectName(), loadProgress(), loadCalls(), loadInput()])
     if (isTerminal(task.value.state)) {
       await loadResult()
     } else {
@@ -425,6 +383,18 @@ async function loadTask() {
     loadError.value = `任务加载失败：${(e as Error).message}`
   } finally {
     taskLoading.value = false
+  }
+}
+
+async function loadProjectName() {
+  const projectId = task.value?.projectId
+  projectName.value = ''
+  if (!projectId) return
+  try {
+    const project = await projectsApi.detail(projectId)
+    if (task.value?.projectId === projectId) projectName.value = project.name
+  } catch {
+    // 项目名称读取失败时保留项目 ID，不影响任务详情。
   }
 }
 
@@ -498,24 +468,25 @@ async function loadResult() {
 async function loadCalls() {
   const epoch = ++callEpoch
   try {
-    const page = await agentTasksApi.toolCalls(taskId.value, {
-      pageNum: callPage.value,
-      pageSize: callPageSize
-    })
-    if (epoch !== callEpoch) return
-    calls.value = page.items
-    callTotal.value = page.total || page.items.length
+    const collected: AgentToolCallSummary[] = []
+    let pageNum = 1
+    let total = 0
+    do {
+      const page = await agentTasksApi.toolCalls(taskId.value, { pageNum, pageSize: 100 })
+      if (epoch !== callEpoch) return
+      collected.push(...page.items)
+      total = page.total || collected.length
+      pageNum += 1
+      if (!page.items.length) break
+    } while (collected.length < total)
+    calls.value = collected
+    callTotal.value = total
     callError.value = ''
   } catch (e) {
     if (epoch === callEpoch) {
       callError.value = `调用记录读取失败：${(e as Error).message}`
     }
   }
-}
-
-async function changeCallPage(delta: number) {
-  callPage.value = Math.max(1, callPage.value + delta)
-  await loadCalls()
 }
 
 function stateLabel(state: string) {
@@ -558,10 +529,10 @@ function limitMax(key: string) {
 
 function callTone(status: string): 'green' | 'amber' | 'blue' | 'red' | 'default' {
   const value = status.toUpperCase()
-  if (value === 'OK' || value === 'SUCCEEDED') return 'green'
-  if (value.includes('TRUNC') || value.includes('LIMIT') || value === 'REJECTED_BATCH') return 'amber'
-  if (value.includes('FAIL') || value.includes('ERROR') || value.includes('TIMEOUT')) return 'red'
-  return 'blue'
+  if (value === 'OK') return 'blue'
+  if (value.includes('TRUNC') || value.includes('LIMIT') || value.startsWith('REJECTED')) return 'amber'
+  if (value.includes('FAIL') || value.includes('ERROR') || value.includes('INVALID') || value.includes('TIMEOUT')) return 'red'
+  return 'amber'
 }
 
 function callStatusText(status: string) {
@@ -893,23 +864,27 @@ function formatTime(value: string | null | undefined) {
 }
 .agent-event p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
 .agent-event strong { font-size: 13px; }
-.agent-call-layout { display: grid; grid-template-columns: 215px minmax(0, 1fr); min-height: 420px; }
-.agent-call-list { border-right: 1px solid var(--line); max-height: 610px; overflow: auto; }
-.agent-call-list button {
-  display: block;
-  width: 100%;
-  white-space: normal;
+.agent-call-layout { display: flex; flex-direction: column; min-width: 0; }
+.agent-call-list { display: flex; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; }
+.agent-call-list > button {
+  display: flex;
+  flex: 0 0 150px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 10px 12px;
+  color: var(--ink);
   text-align: left;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: none;
-  padding: 16px 20px;
-  font-weight: 500;
+  white-space: nowrap;
   background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+  font-weight: 500;
 }
-.agent-call-list button.active { background: var(--soft); color: var(--blue); }
-.agent-call-list small { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; }
+.agent-call-list > button.active { background: var(--soft); border-color: #b9d0ff; color: var(--blue); }
+.agent-call-list small.call-tags { display: flex; gap: 5px; margin: 0; }
+.agent-call-list .call-tags :deep(.ant-tag) { margin: 0; }
 .agent-call-content { padding: 20px; min-width: 0; }
 .agent-call-content h3 { margin: 18px 0 8px; font-size: 14px; }
 .agent-call-content .preview-code { max-height: 470px; }
@@ -947,15 +922,11 @@ function formatTime(value: string | null | undefined) {
   .agent-meters { gap: 10px; }
   .agent-meter { padding: 14px; }
   .agent-article { padding: 24px; }
-  .agent-call-layout { grid-template-columns: 180px minmax(0, 1fr); }
 }
 @media (max-width: 1000px) {
   .agent-layout { grid-template-columns: 1fr; }
   .agent-meters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .agent-call-layout { grid-template-columns: 1fr; }
   .agent-side .pad { height: min(60vh, 560px); }
-  .agent-call-list { display: flex; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); overflow: auto; }
-  .agent-call-list button { min-width: 170px; border-right: 1px solid var(--line); }
 }
 @media (max-width: 760px) {
   .heading { flex-wrap: wrap; align-items: flex-start; }

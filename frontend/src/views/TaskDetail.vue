@@ -14,18 +14,17 @@
               <h1 :title="task.id">{{ taskLabel(task.name, task.id) }}</h1>
               <StatusBadge :tone="stateTone(task.state)">{{ stateText(task.state) }}</StatusBadge>
             </div>
-            <p class="muted">
+            <TaskDetailMetadata :task-id="task.id">
               {{ projectName }} · {{ typeText(task.specialistType) }} ·
               {{ task.sourceKind === 'DIFF' ? '提交差异' : '文件内容' }} ·
               <code>{{ (task.headSha || '').slice(0, 7) }}</code>
               <span v-if="task.baseSha"> → 父 {{ task.baseSha.slice(0, 7) }}</span>
-            </p>
-            <p class="muted small task-id" :title="task.id">任务 ID {{ task.id }}</p>
-            <p class="muted small">
+              <template #extra>
               文件完成 {{ succeededCount }} / {{ task.targets.length }}
               <span v-if="failedCount">（失败 {{ failedCount }}）</span>
               · {{ task.smartSplit ? '允许智能拆分' : '整文件提交' }}
-            </p>
+              </template>
+            </TaskDetailMetadata>
           </div>
           <div class="actions">
             <a-button :loading="refreshing" @click="loadTask">刷新</a-button>
@@ -233,6 +232,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
+import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
 import SpecialistResultView from '@/components/SpecialistResultView.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'

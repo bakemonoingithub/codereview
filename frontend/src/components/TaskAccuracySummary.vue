@@ -19,7 +19,10 @@ import type { TaskStatistics } from '@/api/v2'
 
 const props = defineProps<{ specialistType: TaskStatistics['specialistType']; stats: TaskStatistics }>()
 const counts = computed(() => props.specialistType === 'ISSUE' ? props.stats.issues : props.stats.results)
-const percent = computed(() => counts.value.accuracyPercent)
+const percent = computed(() => {
+  const value = counts.value.accuracyPercent
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+})
 const percentText = computed(() =>
   percent.value === null ? '— · 暂无明确判定' : `${percent.value}%`)
 const title = computed(() => (
