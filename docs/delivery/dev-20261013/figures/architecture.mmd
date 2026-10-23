@@ -1,42 +1,14 @@
 flowchart TB
   PC["PC 浏览器<br/>Vue 3 + Ant Design Vue"]
-  subgraph APP["Spring Boot 3.3.5 / Java 17 / 单进程单端口"]
-    STATIC["JAR 内 static 前端<br/>页面与静态资源"]
-    C["Controller<br/>项目 配置 审查 报告 人工复核"]
-    S["Service<br/>业务配置 审查记录 报告 issueMark"]
-    RE["ReviewExecutor<br/>异步审查 生命周期与结果落库"]
-    RPE["ReportExecutor<br/>聚合审查结果 生成报告"]
-    A["Analyzer 注册表 按类型分发<br/>1 全文 LLM / 2 耦合度 / 3 设计模式<br/>4 API 审查 / 5 diff 变更审查"]
-    G["GitHostClientRegistry<br/>GitHubClient / GiteaClient<br/>Gitea 含 JGit bare 本地镜像"]
-    MP["MyBatis Plus 业务数据读写<br/>Flyway 启动迁移"]
-    L["LlmClient<br/>OpenAI 兼容 HTTP 客户端"]
-    PC -->|同源 HTTP| STATIC
-    PC -->|同源 HTTP REST API| C
-    C --> S
-    S --> RE
-    S --> RPE
-    RE --> A
-    A -->|仓库素材读取| G
-    A -->|4 类模型分析器| L
-    RPE -->|报告调用模型| L
-    S -.->|业务数据读写| MP
+  subgraph APP["Spring Boot 3.3.5 / Java 17 / 单进程"]
+    STATIC["JAR 内 static 前端"]
+    API["/api/v2<br/>专项、Agent 工具循环、报告<br/>Flyway db/agent-migration"]
+    PC --> STATIC
+    PC --> API
   end
-  GH["GitHub REST API"]
-  GT["Gitea 宿主<br/>REST / .diff / Git 传输"]
-  DB[("MySQL<br/>配置 记录 报告 人工复核标注")]
-  AI["内网 AI 网关<br/>/chat/completions"]
-  G --> GH
-  G --> GT
-  MP -.-> DB
-  L --> AI
-  NOTE["API 审查按配置调用外部接口<br/>不经 LlmClient 本图未展开该可选接口"]
-  classDef app fill:#EEF5EF,stroke:#1A703A,color:#263238,stroke-width:2px;
-  classDef ext fill:#F5F6F7,stroke:#65737B,color:#263238,stroke-width:2px;
-  classDef store fill:#EFF5FA,stroke:#245E8D,color:#263238,stroke-width:2px;
-  classDef note fill:#FFFFFF,stroke:#FFFFFF,color:#65737B;
-  class STATIC,C,S,RE,RPE,A,G,L app;
-  class PC,GH,GT,AI ext;
-  class MP,DB store;
-  class NOTE note;
-  linkStyle default stroke:#1A703A,stroke-width:2px;
-  linkStyle 9,12 stroke:#245E8D,stroke-width:2px,stroke-dasharray:6 4;
+  DB[("MySQL 8.0.36<br/>ai_code_review_agent")]
+  GIT["GitHub / Gitea<br/>JGit bare 镜像"]
+  AI["AI 网关 /chat/completions"]
+  API -.-> DB
+  API --> GIT
+  API --> AI

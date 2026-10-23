@@ -1,98 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1600" viewBox="0 0 1600 1600"><rect width="1600" height="1600" fill="white"/>
-<text x="800" y="64" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="44" font-weight="700" fill="#263238" text-anchor="middle">内网离线部署拓扑</text>
-<text x="800" y="105" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#65737B" text-anchor="middle">默认 Docker Compose 拓扑  镜像构建与内网运行分离</text>
-<path d="M55,160 L735,160 L735,460 L55,460 L55,160" fill="none" stroke="#65737B" stroke-width="3" stroke-dasharray="12 8"/>
-<rect x="55" y="160" width="680" height="300" rx="12" fill="#F5F6F7" stroke="#65737B" stroke-width="3" stroke-dasharray="12 8"/>
-<rect x="256.34375" y="146" width="267.3125" height="45" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="390" y="179" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="400" fill="#65737B" text-anchor="middle">开发与 CI 构建区</text>
-<rect x="95" y="220" width="600" height="145" rx="13" fill="#FFFFFF" stroke="#65737B" stroke-width="3"/>
-<text x="395.0" y="263.65" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">GitHub Actions / 构建环境</text>
-<text x="395.0" y="305.7" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="middle">构建前端并打入 Spring Boot JAR</text>
-<text x="395.0" y="347.75" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="middle">导出 linux/amd64 Docker 镜像</text>
-<rect x="875" y="220" width="670" height="145" rx="13" fill="#FFFFFF" stroke="#9B6100" stroke-width="3"/>
-<text x="1210.0" y="263.65" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">离线部署包</text>
-<text x="1210.0" y="305.7" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="middle">应用镜像  MySQL 镜像  配置模板</text>
-<text x="1210.0" y="347.75" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="middle">部署脚本与镜像校验信息</text>
-<path d="M695,293 L875,293" fill="none" stroke="#9B6100" stroke-width="4" stroke-dasharray="14 8"/>
-<polygon points="875,293 860.0,285.2 860.0,300.8" fill="#9B6100"/>
-<rect x="760.0" y="244" width="74.0" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="797" y="272" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#9B6100" text-anchor="middle">打包</text>
-<rect x="55" y="530" width="1490" height="880" rx="18" fill="#FFFFFF" stroke="#1A703A" stroke-width="3"/>
-<rect x="148.5" y="516" width="183.0" height="45" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="240" y="549" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="400" fill="#1A703A" text-anchor="middle">内网运行区</text>
-<rect x="640" y="585" width="875" height="790" rx="14" fill="#FFFFFF" stroke="#65737B" stroke-width="3"/>
-<rect x="859.7109375" y="572" width="440.578125" height="45" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="1080" y="605" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="400" fill="#65737B" text-anchor="middle">部署宿主  Docker Compose</text>
-<rect x="95" y="630" width="455" height="120" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="322.5" y="682.175" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">内网 PC 浏览器</text>
-<text x="322.5" y="724.2249999999999" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="middle">访问宿主 IP:APP_PORT</text>
-<rect x="710" y="650" width="750" height="86" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="1085.0" y="705.0" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="700" fill="#263238" text-anchor="middle">端口发布  APP_PORT 默认 18080 → app:8080</text>
-<path d="M550,690 L710,690" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="710,690 695.0,682.2 695.0,697.8" fill="#1A703A"/>
-<rect x="580.26171875" y="646" width="89.4765625" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="625" y="674" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">HTTP</text>
-<path d="M1210,365 L1210,520 L1490,520 L1490,623 L1450,623" fill="none" stroke="#9B6100" stroke-width="4" stroke-dasharray="14 8"/>
-<polygon points="1450,623 1465.0,630.8 1465.0,615.2" fill="#9B6100"/>
-<rect x="1046.671875" y="456" width="326.65625" height="41" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="1210" y="485" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#9B6100" text-anchor="middle">离线摆渡 / docker load</text>
-<rect x="710" y="785" width="750" height="150" rx="13" fill="#EEF5EF" stroke="#1A703A" stroke-width="3"/>
-<text x="1085.0" y="829.7" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">app 容器</text>
-<text x="1085.0" y="873.2" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">JRE 17 + app.jar + static 前端</text>
-<text x="1085.0" y="916.7" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="400" fill="#263238" text-anchor="middle">容器端口 8080</text>
-<path d="M1085,736 L1085,785" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="1085,785 1092.8,770.0 1077.2,770.0" fill="#1A703A"/>
-<rect x="710" y="990" width="320" height="145" rx="13" fill="#EFF5FA" stroke="#245E8D" stroke-width="3"/>
-<text x="870.0" y="1033.9" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="30" font-weight="700" fill="#263238" text-anchor="middle">config/</text>
-<text x="870.0" y="1074.5" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">application.yml</text>
-<text x="870.0" y="1115.1" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">只读挂载 :ro</text>
-<rect x="710" y="1200" width="320" height="115" rx="13" fill="#EFF5FA" stroke="#245E8D" stroke-width="3"/>
-<text x="870.0" y="1248.4" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="700" fill="#263238" text-anchor="middle">data/git-mirrors</text>
-<text x="870.0" y="1289.0" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">bare 镜像持久化</text>
-<rect x="1115" y="990" width="345" height="150" rx="13" fill="#EFF5FA" stroke="#245E8D" stroke-width="3"/>
-<text x="1287.5" y="1036.15" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">mysql 容器</text>
-<text x="1287.5" y="1078.2" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="middle">内部 mysql:3306</text>
-<text x="1287.5" y="1120.25" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="middle">不发布宿主端口</text>
-<rect x="1115" y="1220" width="345" height="95" rx="13" fill="#EFF5FA" stroke="#245E8D" stroke-width="3"/>
-<text x="1287.5" y="1258.8" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="700" fill="#263238" text-anchor="middle">data/mysql</text>
-<text x="1287.5" y="1299.3999999999999" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">挂载 /var/lib/mysql</text>
-<path d="M870,990 L870,935" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="870,935 862.2,950.0 877.8,950.0" fill="#245E8D"/>
-<rect x="805.0" y="945" width="130.0" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="870" y="973" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#245E8D" text-anchor="middle">读取配置</text>
-<path d="M1030,1257 L1060,1257 L1060,958 L990,958 L990,935" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="990,935 982.2,950.0 997.8,950.0" fill="#245E8D"/>
-<path d="M990,935 L990,958 L1060,958 L1060,1257 L1030,1257" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1030,1257 1045.0,1264.8 1045.0,1249.2" fill="#245E8D"/>
-<path d="M1287,935 L1287,990" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1287,990 1294.8,975.0 1279.2,975.0" fill="#245E8D"/>
-<rect x="1243.640625" y="946" width="86.71875" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="1287" y="974" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#245E8D" text-anchor="middle">JDBC</text>
-<path d="M1287,1140 L1287,1220" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1287,1220 1294.8,1205.0 1279.2,1205.0" fill="#245E8D"/>
-<rect x="1222.0" y="1159" width="130.0" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="1287" y="1187" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#245E8D" text-anchor="middle">数据目录</text>
-<rect x="95" y="1010" width="455" height="120" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="322.5" y="1062.9" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">内网 Gitea</text>
-<text x="322.5" y="1103.5" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">REST / .diff / Git 仓库访问</text>
-<rect x="95" y="1190" width="455" height="125" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="322.5" y="1225.1" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="33" font-weight="700" fill="#263238" text-anchor="middle">内网 AI 模型网关</text>
-<text x="322.5" y="1265.6999999999998" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">OpenAI 兼容接口</text>
-<text x="322.5" y="1306.2999999999997" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">/chat/completions</text>
-<path d="M710,833 L604,833 L604,1070 L550,1070" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="550,1070 565.0,1077.8 565.0,1062.2" fill="#1A703A"/>
-<path d="M710,887 L577,887 L577,1250 L550,1250" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="550,1250 565.0,1257.8 565.0,1242.2" fill="#1A703A"/>
-<rect x="150.0" y="924" width="270.0" height="40" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="285" y="952" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#263238" text-anchor="middle">经宿主出站路由访问</text>
-<path d="M60,1480 L145,1480" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="145,1480 130.0,1472.2 130.0,1487.8" fill="#1A703A"/>
-<text x="165" y="1490" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="start">调用 / 控制</text>
-<path d="M425,1480 L510,1480" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="510,1480 495.0,1472.2 495.0,1487.8" fill="#245E8D"/>
-<text x="530" y="1490" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="start">读写 / 持久化</text>
-<path d="M790,1480 L875,1480" fill="none" stroke="#9B6100" stroke-width="4" stroke-dasharray="14 8"/>
-<polygon points="875,1480 860.0,1472.2 860.0,1487.8" fill="#9B6100"/>
-<text x="895" y="1490" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="29" font-weight="400" fill="#263238" text-anchor="start">离线包传递</text>
-<text x="800" y="1545" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="28" font-weight="400" fill="#65737B" text-anchor="middle">实线边界表示运行单元 ；虚线边界表示构建区与运行区分离</text>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="980" viewBox="0 0 1100 980">
+  <rect width="100%" height="100%" fill="#FFFFFF"/>
+  <defs>
+    <marker id="arrow-1A703A" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1A703A"/></marker><marker id="arrow-245E8D" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#245E8D"/></marker><marker id="arrow-9B6100" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#9B6100"/></marker><marker id="arrow-65737B" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#65737B"/></marker>
+  </defs>
+  <rect x="36" y="24" width="1028" height="150" rx="12" fill="#F5F6F7" stroke="#65737B" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="550" y="52" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" fill="#65737B">开发与 CI 构建区</text>
+<rect x="70" y="68" width="960" height="84" rx="8" fill="#FFFFFF" stroke="#65737B" stroke-width="2"/>
+<text x="550.0" y="102.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">GitHub Actions：Node 22 / pnpm 10.18.2 构建前端，Java 17 / Maven 打包</text>
+<text x="550.0" y="126.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">导出 linux/amd64 应用镜像，并拉取 mysql:8.0.36，组成离线包</text>
+<line x1="550" y1="174" x2="550" y2="214" stroke="#9B6100" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#arrow-9B6100)"/>
+<rect x="250" y="220" width="600" height="72" rx="8" fill="#FFFFFF" stroke="#9B6100" stroke-width="2"/>
+<text x="550.0" y="248.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">离线包 codereview-offline-&lt;版本&gt;.tar.gz</text>
+<text x="550.0" y="272.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">镜像、Compose、脚本、配置模板、源码快照、校验和</text>
+<line x1="550" y1="292" x2="550" y2="332" stroke="#9B6100" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#arrow-9B6100)"/>
+<rect x="36" y="340" width="1028" height="470" rx="12" fill="#FFFFFF" stroke="#1A703A" stroke-width="2"/>
+<text x="550" y="368" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" fill="#1A703A">内网运行区 · Docker Compose 项目 codereview</text>
+<rect x="56" y="388" width="470" height="180" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
+<text x="291.0" y="434.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">app 容器</text>
+<text x="291.0" y="458.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">JRE 17 + app.jar + static 前端</text>
+<text x="291.0" y="482.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">宿主 APP_PORT 默认 18080 → 8080</text>
+<text x="291.0" y="506.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">只读挂载 config/application.yml</text>
+<text x="291.0" y="530.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">持久化 data/git-mirrors</text>
+<rect x="560" y="388" width="470" height="180" rx="8" fill="#EFF5FA" stroke="#245E8D" stroke-width="2"/>
+<text x="795.0" y="434.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">mysql 容器  8.0.36</text>
+<text x="795.0" y="458.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">只在网络内提供 mysql:3306</text>
+<text x="795.0" y="482.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">不发布宿主端口</text>
+<text x="795.0" y="506.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">库 ai_code_review_agent</text>
+<text x="795.0" y="530.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">由 agent.datasource 连接</text>
+<line x1="526" y1="470" x2="560" y2="470" stroke="#245E8D" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-245E8D)"/>
+<text x="543" y="458" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="14" fill="#245E8D">JDBC</text>
+<rect x="56" y="590" width="470" height="190" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
+<text x="291.0" y="641.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">内网 PC 浏览器</text>
+<text x="291.0" y="665.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">http://&lt;目标机内网IP&gt;:18080</text>
+<text x="291.0" y="689.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">首页为审查中心</text>
+<text x="291.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">须配置 agent.datasource</text>
+<text x="291.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">后业务接口才可用</text>
+<rect x="560" y="590" width="470" height="190" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
+<text x="795.0" y="641.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">经宿主出站访问</text>
+<text x="795.0" y="665.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">内网 Gitea：REST / .diff / Git</text>
+<text x="795.0" y="689.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">AI 网关：/chat/completions</text>
+<text x="795.0" y="713.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Agent 检索使用镜像目录中的 git</text>
+<text x="795.0" y="737.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">镜像路径不宜过深</text>
+<line x1="291" y1="590" x2="291" y2="568" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<text x="550" y="850" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">镜像回退不撤销 agent_schema_history。应用配置须包含 agent.datasource。</text>
+<text x="550" y="920" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">交付模板默认不写入 agent.datasource。启用工作台前须创建应用库并重启应用。</text>
 </svg>
