@@ -491,3 +491,24 @@ pre.code {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* 页面与详情切换共用的轻量淡入过渡。 */
+.soft-switch-enter-active,
+.soft-switch-leave-active {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.soft-switch-enter-from {
+  opacity: 0;
+  transform: translateY(5px);
+}
+.soft-switch-leave-to {
+  opacity: 0;
+  transform: translateY(-3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .soft-switch-enter-active,
+  .soft-switch-leave-active {
+    transition-duration: 0.01ms;
+  }
+}

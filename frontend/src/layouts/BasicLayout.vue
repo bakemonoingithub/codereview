@@ -58,7 +58,11 @@
       </a-layout-header>
       <a-layout-content class="content">
         <div class="content-inner">
-          <router-view />
+          <router-view v-slot="{ Component, route }">
+            <Transition name="soft-switch" mode="out-in">
+              <component :is="Component" :key="route.fullPath" />
+            </Transition>
+          </router-view>
         </div>
       </a-layout-content>
     </a-layout>

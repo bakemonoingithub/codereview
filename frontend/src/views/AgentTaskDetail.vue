@@ -161,7 +161,7 @@
           <a-alert v-if="callError" type="error" show-icon :message="callError" class="pad-alert" />
           <div v-if="!calls.length" class="empty">尚未发送模型调用，当前没有请求快照。</div>
           <div v-else class="agent-call-layout">
-            <div class="agent-call-list" aria-label="逐次调用记录">
+            <div class="agent-call-list" aria-label="逐次调用记录" @wheel.prevent="scrollCallList">
               <button
                 v-for="call in calls"
                 :key="call.id"
@@ -178,9 +178,11 @@
             </div>
             <div class="agent-call-content">
               <a-spin :spinning="callLoading">
-                <template v-if="callDetail">
+                <Transition name="soft-switch" mode="out-in">
+                  <div v-if="callDetail" :key="callDetail.id" class="call-detail-view">
                   <div class="row wrap">
                     <strong>{{ callDetail.toolName }}</strong>
+                    <span class="call-position">{{ selectedCallPosition }} / {{ callTotal }}</span>
                     <span class="spacer" />
                     <StatusBadge :tone="callTone(callDetail.status)">{{ callStatusText(callDetail.status) }}</StatusBadge>
                   </div>
@@ -189,8 +191,9 @@
                   <pre class="preview-code">{{ pretty(callDetail.arguments) }}</pre>
                   <h3>返回</h3>
                   <pre class="preview-code">{{ JSON.stringify(callDetail.envelope, null, 2) }}</pre>
-                </template>
-                <div v-else class="empty">选择左侧一次调用，查看保存的参数与返回。</div>
+                  </div>
+                  <div v-else key="empty" class="empty">选择左侧一次调用，查看保存的参数与返回。</div>
+                </Transition>
               </a-spin>
             </div>
           </div>
@@ -321,6 +324,10 @@ const callOpen = ref(false)
 const callLoading = ref(false)
 const callDetail = ref<AgentToolCallDetail | null>(null)
 const selectedCallId = ref('')
+const selectedCallPosition = computed(() => {
+  const index = calls.value.findIndex((call) => call.id === selectedCallId.value)
+  return index >= 0 ? index + 1 : 0
+})
 
 const materialOpen = ref(false)
 const materialId = ref('')
@@ -338,6 +345,7 @@ let targetPreviewEpoch = 0
 let timer: number | undefined
 let progressEpoch = 0
 let callEpoch = 0
+let callDetailEpoch = 0
 
 const terminalStates = ['SUCCEEDED', 'PARTIAL', 'FAILED', 'CANCELLED']
 const stateTone = computed(() => {
@@ -539,18 +547,24 @@ function callStatusText(status: string) {
   return status === 'REJECTED_BATCH' ? '整批拒绝（未执行）' : status
 }
 
+function scrollCallList(event: WheelEvent) {
+  const list = event.currentTarget as HTMLElement
+  list.scrollLeft += Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+}
+
 async function openCall(callId: string) {
   selectedCallId.value = callId
   activeTab.value = 'calls'
   callOpen.value = true
   callLoading.value = true
-  callDetail.value = null
+  const epoch = ++callDetailEpoch
   try {
-    callDetail.value = await agentTasksApi.toolCall(taskId.value, callId)
+    const detail = await agentTasksApi.toolCall(taskId.value, callId)
+    if (epoch === callDetailEpoch) callDetail.value = detail
   } catch (e) {
-    callError.value = `调用详情读取失败：${(e as Error).message}`
+    if (epoch === callDetailEpoch) callError.value = `调用详情读取失败：${(e as Error).message}`
   } finally {
-    callLoading.value = false
+    if (epoch === callDetailEpoch) callLoading.value = false
   }
 }
 
@@ -885,6 +899,7 @@ function formatTime(value: string | null | undefined) {
 .agent-call-list > button.active { background: var(--soft); border-color: #b9d0ff; color: var(--blue); }
 .agent-call-list small.call-tags { display: flex; gap: 5px; margin: 0; }
 .agent-call-list .call-tags :deep(.ant-tag) { margin: 0; }
+.call-position { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .agent-call-content { padding: 20px; min-width: 0; }
 .agent-call-content h3 { margin: 18px 0 8px; font-size: 14px; }
 .agent-call-content .preview-code { max-height: 470px; }
