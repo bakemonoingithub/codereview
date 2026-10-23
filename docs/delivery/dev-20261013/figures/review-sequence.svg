@@ -18,7 +18,7 @@
 <rect x="36" y="348" width="490" height="280" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
 <text x="281.0" y="432.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">专项审查</text>
 <text x="281.0" y="456.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">按文件或提交差异制备单元</text>
-<text x="281.0" y="480.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">超限则拆分；无法拆分则该目标失败</text>
+<text x="281.0" y="480.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">超限则拆分；无法拆分则当前目标失败</text>
 <text x="281.0" y="504.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">JSON 模式调用模型</text>
 <text x="281.0" y="528.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">问题、模式或耦合观察写入结果</text>
 <text x="281.0" y="552.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">反馈在结果发布后单独保存</text>

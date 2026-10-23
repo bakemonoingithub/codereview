@@ -105,7 +105,7 @@ def placeholder(caption_text: str) -> str:
     gap = (
         "<w:p><w:pPr><w:spacing w:before=\"200\" w:after=\"2800\"/><w:jc w:val=\"center\"/>"
         f"<w:rPr>{fonts('宋体')}</w:rPr></w:pPr>"
-        f"{run('（现场截图预留，约 6 厘米。按上一段采集说明补入后，请更新目录页码。）', size=21, color='666666')}</w:p>"
+        f"{run('（现场截图预留，约 6 厘米。按上一段采集说明补入后，更新目录页码。）', size=21, color='666666')}</w:p>"
     )
     return gap + caption(caption_text)
 
@@ -331,6 +331,7 @@ def document_xml(raw: str, blocks, images, kind: str, sect: str) -> str:
         cover = cover.replace(old, new, 1)
     elif new not in cover:
         raise SystemExit(f"{kind} 封面日期未找到")
+    cover = cover.replace("基于AI的智能代码分析工具", "基于 AI 的智能代码分析工具")
     body, entries, _used = render_blocks(blocks, images)
     start = raw[: match.end()]
     return start + cover + toc_block(entries, kind) + body + sect + "</w:body></w:document>"
@@ -419,6 +420,14 @@ def build_one(kind: str, blocks, src_name: str, dest_name: str, image_keys: list
         "word/_rels/document.xml.rels": rels.encode("utf-8"),
         "docProps/core.xml": core.encode("utf-8"),
     }
+    footer_name = "word/footer1.xml"
+    with zipfile.ZipFile(src) as zin:
+        footer_exists = footer_name in zin.namelist()
+    if footer_exists:
+        footer = zip_text(src, footer_name).replace(
+            "基于AI的智能代码分析工具", "基于 AI 的智能代码分析工具"
+        )
+        replacements[footer_name] = footer.encode("utf-8")
     for key, rel in images.items():
         replacements[f"word/media/{filenames[rel]}"] = (FIG / f"{key}.png").read_bytes()
     rewrite_zip(src, tmp, replacements, ("word/media/",))
