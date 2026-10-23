@@ -1,6 +1,6 @@
 # STATE - 专项审查与 Agent 分析
 
-跨会话接续入口；工作树为 `H:\myProjects\aiCodeReview\agent`，分支为 `refactor/agent`。
+跨会话接续入口；当前工作树为 `H:\myProjects\aiCodeReview\code`，主线分支为 `dev`。此前 `agent/` 开发路径已随 `agent` 分支合并至本分支，不再是独立 Git 工作树。
 
 ## 当前状态
 
