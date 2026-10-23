@@ -137,6 +137,29 @@ class AgentTaskWorkerTest {
     }
 
     @Test
+    void frozenFilePathsReachFirstAndFollowUpModelRequests() throws Exception {
+        var snapshot = mapper.readTree(task.getInputSnapshot());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) snapshot.path("scope"))
+                .putArray("paths").add("src/A.java").add("src/test/BTest.java");
+        task.setInputSnapshot(mapper.writeValueAsString(snapshot));
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-1", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-2", "submit_result", submitJson()));
+
+        assertEquals(TaskStates.SUCCEEDED, worker.execute(task).state());
+
+        ArgumentCaptor<InvocationRequest> requests = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation, org.mockito.Mockito.times(2)).invoke(requests.capture());
+        for (InvocationRequest request : requests.getAllValues()) {
+            String user = request.prompt().messages().get(1).content();
+            assertTrue(user.contains("- src/A.java\n"));
+            assertTrue(user.contains("- src/test/BTest.java\n"));
+            assertTrue(user.contains("V1 = " + SHA));
+        }
+    }
+
+    @Test
     void repeatedIdenticalCallsStopAsNoProgress() {
         when(invocation.invoke(any())).thenReturn(toolCallResult("call-x", "read_code",
                 "{\"version\":\"V1\",\"path\":\"src/A.java\"}"));
@@ -172,6 +195,40 @@ class AgentTaskWorkerTest {
         assertEquals(TaskStates.CANCELLED, outcome.state());
         assertEquals(TaskStates.STOP_USER_CANCELLED, outcome.stopReason());
         verify(publisher, org.mockito.Mockito.never()).publish(anyString(), any(), any(), any(), anyInt());
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("AGT-017 cancellation while model response is held after a successful read")
+    void agt017LateModelResponseCannotExecuteTools() throws Exception {
+        task.setName("AGT-017 受控模型等待取消");
+        var reached = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var cancelled = new java.util.concurrent.atomic.AtomicBoolean(false);
+        when(guard.requireActive(TASK_ID)).thenAnswer(i -> {
+            if (cancelled.get()) throw new ApiException(ErrorCode.TASK_CANCELLED, "AGT-017 cancelled");
+            return task;
+        });
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-1", "read_code", "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenAnswer(i -> {
+                    reached.countDown();
+                    assertTrue(release.await(20, java.util.concurrent.TimeUnit.SECONDS));
+                    return toolCallResult("late-call", "read_code", "{\"version\":\"V1\",\"path\":\"src/B.java\"}");
+                });
+        var executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            var future = executor.submit(() -> worker.execute(task));
+            assertTrue(reached.await(20, java.util.concurrent.TimeUnit.SECONDS));
+            cancelled.set(true);
+            release.countDown();
+            assertEquals(TaskStates.CANCELLED, future.get(20, java.util.concurrent.TimeUnit.SECONDS).state());
+            verify(invocation, org.mockito.Mockito.times(2)).invoke(any());
+            verify(tools, org.mockito.Mockito.times(1)).execute(anyString(), anyString(), anyString(), any());
+            verify(publisher, never()).publish(anyString(), any(), any(), any(), anyInt());
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+        }
     }
 
     @Test

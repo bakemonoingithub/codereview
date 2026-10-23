@@ -26,4 +26,9 @@ public class ModelCallV2Controller {
                                       @RequestParam(defaultValue = "response") String part) {
         return service.callDetail(id, part);
     }
+
+    @GetMapping("/{id}/full")
+    public TaskDtos.CallDetailFull full(@PathVariable String id) {
+        return service.callDetailFull(id);
+    }
 }

@@ -92,12 +92,13 @@
               <span class="muted small">{{ sideText(material.side) }}</span>
               <span class="muted small">{{ material.completeness }}</span>
             </div>
-            <CodeViewer
-              v-if="material.content"
-              :text="material.content"
-              :path="material.path || ''"
-              :start-line="material.startLine || 1"
-            />
+            <div v-if="material.content" class="code" tabindex="0" role="region" aria-label="冻结代码材料，可横向滚动">
+              <CodeViewer
+                :text="material.content"
+                :path="material.path || ''"
+                :start-line="material.startLine || 1"
+              />
+            </div>
             <a-alert v-else type="warning" show-icon message="保存的代码正文缺失，不能用当前源码替换。" />
             <p v-if="material.diagnostic" class="muted small">{{ material.diagnostic }}</p>
           </a-collapse-panel>
@@ -291,14 +292,14 @@ function shortSha(sha: string) {
   line-height: 1.7;
 }
 .code {
+  min-width: 0;
+  max-width: 100%;
   max-height: 45vh;
   overflow: auto;
+  overscroll-behavior: contain;
   margin: 0;
-  padding: 10px;
   background: #f6f8fc;
   border: 1px solid var(--line);
   border-radius: 6px;
-  font: 12px/1.75 Consolas, 'Cascadia Code', monospace;
-  white-space: pre;
 }
 </style>

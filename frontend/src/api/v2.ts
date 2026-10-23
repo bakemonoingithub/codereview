@@ -860,6 +860,6 @@ export const reportsApi = {
 }
 
 export const modelCallsApi = {
-  detail: (id: string, part: 'request' | 'response' = 'response') =>
-    v2.get<CallDetailFull>(`/model-calls/${id}`, { params: { part } }).then((r) => r.data)
+  detail: (id: string) =>
+    v2.get<CallDetailFull>(`/model-calls/${id}/full`).then((r) => r.data)
 }

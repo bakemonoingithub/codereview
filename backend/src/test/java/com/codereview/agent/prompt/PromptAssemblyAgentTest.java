@@ -79,9 +79,27 @@ class PromptAssemblyAgentTest {
     }
 
     @Test
+    void fileScopeListsExactTargetsAndDirectReadGuidanceOnEveryTurn() {
+        List<String> paths = List.of("src/A.java", "src/test/BTest.java");
+        AgentPromptInput files = new AgentPromptInput("检查调用链", "FILES", "dev", sha(1),
+                null, paths, List.of(new AgentPromptInput.Version("V1", sha(1))),
+                List.of(), null, null);
+        for (List<PromptMessage> history : List.of(List.<PromptMessage>of(),
+                List.of(new PromptMessage("assistant", "继续读取")))) {
+            String user = assembly.assembleAgent(files, history, tools).messages().get(1).content();
+            for (String path : paths) {
+                assertTrue(user.contains("- " + path + "\n"));
+            }
+            assertTrue(user.contains("优先使用 read_code 直接读取"));
+            assertTrue(user.contains("关联文件不自动成为审查目标"));
+            assertTrue(user.contains("V1 = " + sha(1)));
+        }
+    }
+
+    @Test
     void optionalSectionsAreOmittedWhenAbsent() {
         AgentPromptInput bare = new AgentPromptInput("要求", "TEXT", null, null, null,
-                List.of(), List.of(), null, null);
+                List.of(), List.of(), List.of(), null, null);
 
         AssembledPrompt prompt = assembly.assembleAgent(bare, List.of(), tools);
 
@@ -94,6 +112,7 @@ class PromptAssemblyAgentTest {
     private static AgentPromptInput input() {
         return new AgentPromptInput("检查重试链路，并说明材料缺口。", "COMMITS", null, null,
                 "两次提交的重试改动",
+                List.of(),
                 List.of(new AgentPromptInput.Version("V1", sha(1)),
                         new AgentPromptInput.Version("V2", sha(2))),
                 List.of(new AgentPromptInput.Comparison("C1", sha(2), null)),

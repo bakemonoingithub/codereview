@@ -9,11 +9,12 @@ import java.util.List;
  * 工具返回不在这里重复，它们已经作为 tool 消息进入历史；组装层只负责顺序与计量。
  */
 public record AgentPromptInput(String requirements, String scopeKind, String branch, String headSha,
-                               String description, List<Version> versions,
+                               String description, List<String> paths, List<Version> versions,
                                List<Comparison> comparisons, String guidancePrompt,
                                String referenceBody) {
 
     public AgentPromptInput {
+        paths = paths == null ? List.of() : List.copyOf(paths);
         versions = versions == null ? List.of() : List.copyOf(versions);
         comparisons = comparisons == null ? List.of() : List.copyOf(comparisons);
     }

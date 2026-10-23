@@ -10,11 +10,18 @@ axios.defaults.adapter = async (config) => {
   if (failure) throw failure
   return { data: payload, status: 200, statusText: 'OK', headers: {}, config }
 }
-const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, reportsApi, repositoryApi } = await import('@/api/v2')
+const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, reportsApi, repositoryApi, modelCallsApi } = await import('@/api/v2')
 afterAll(() => { axios.defaults.adapter = originalAdapter })
 beforeEach(() => { failure = undefined })
 
 describe('v2 客户端的真实响应链', () => {
+  it('报告调用读取完整详情端点，保留请求、返回和调用元数据', async () => {
+    payload = { id: 'c1', state: 'SUCCEEDED', purpose: 'REPORT', attempt: 1,
+      requestBody: '{"messages":[]}', responseBody: '{"choices":[]}', usageJson: '{"total_tokens":12}' }
+    expect(await modelCallsApi.detail('c1')).toEqual(payload)
+    expect(sent.url).toBe('/model-calls/c1/full')
+    expect(sent.params).toBeUndefined()
+  })
   it.each([
     ['项目', projectsApi.list], ['模型', modelsApi.list], ['提示词', promptsApi.list],
     ['策略', strategiesApi.list], ['审查中心', tasksApi.list], ['报告', reportsApi.list]

@@ -292,7 +292,9 @@
       <div class="preview-version">固定版本 <code>{{ targetPreviewSha || '—' }}</code></div>
       <a-spin :spinning="targetPreviewLoading">
         <a-alert v-if="targetPreviewError" type="error" show-icon :message="targetPreviewError" />
-        <CodeViewer v-else-if="targetPreviewContent !== null" :text="targetPreviewContent" :path="targetPreviewPath" />
+        <div v-else-if="targetPreviewContent !== null" class="target-code-preview" tabindex="0" role="region" aria-label="固定版本代码，可横向滚动">
+          <CodeViewer :text="targetPreviewContent" :path="targetPreviewPath" />
+        </div>
       </a-spin>
     </a-modal>
 
@@ -750,6 +752,13 @@ function formatTime(value: string | null | undefined) {
 .spacer { flex: 1; }
 .muted { color: var(--muted); }
 .snapshot-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.target-code-preview {
+  min-width: 0;
+  max-width: 100%;
+  max-height: 55vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .small { font-size: 12px; }
 .mono { font-family: var(--font-mono); }
 .mb16 { margin: 0 0 16px; }

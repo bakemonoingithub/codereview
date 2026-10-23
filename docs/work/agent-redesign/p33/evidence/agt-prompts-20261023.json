@@ -1,0 +1,4647 @@
+{
+  "date": "2026-10-23",
+  "timezone": "Asia/Taipei",
+  "fixedSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+  "serviceHead": "7b57ae8814d5f3c71ed8e8ae23510019132562ff",
+  "promptV1": {
+    "id": "01M5KN10R10EWJ6Z7M5M97Y87W",
+    "name": "AGT-008 AGT-009 专用测试提示词",
+    "description": "仅用于指导生效与冻结验证，结束恢复原正文",
+    "tags": [
+      "AGT-008",
+      "AGT-009"
+    ],
+    "purpose": "AGENT",
+    "currentVersion": {
+      "id": "01M5KN10R1SCS5NKDPN8SCT0X2",
+      "versionNo": 1,
+      "content": "先给出最多三条结论，再列证据，最后说明限制；重点关注状态一致性。",
+      "createdAt": "2026-10-23 05:51:32"
+    },
+    "revision": 0,
+    "createdAt": "2026-10-23 05:51:32",
+    "updatedAt": "2026-10-23 05:51:32"
+  },
+  "promptV2": {
+    "id": "01M5KN10R10EWJ6Z7M5M97Y87W",
+    "name": "AGT-008 AGT-009 专用测试提示词",
+    "description": "仅用于指导生效与冻结验证，结束恢复原正文",
+    "tags": [
+      "AGT-008",
+      "AGT-009"
+    ],
+    "purpose": "AGENT",
+    "currentVersion": {
+      "id": "01M5KN12HE0HVWJ5BMYNKGQMAS",
+      "versionNo": 2,
+      "content": "先列证据，再给出最多三条结论，最后说明限制；重点关注状态一致性。",
+      "createdAt": "2026-10-23 05:51:33"
+    },
+    "revision": 1,
+    "createdAt": "2026-10-23 05:51:32",
+    "updatedAt": "2026-10-23 05:51:33"
+  },
+  "promptRestored": {
+    "id": "01M5KN10R10EWJ6Z7M5M97Y87W",
+    "name": "AGT-008 AGT-009 专用测试提示词",
+    "description": "仅用于指导生效与冻结验证，结束恢复原正文",
+    "tags": [
+      "AGT-008",
+      "AGT-009"
+    ],
+    "purpose": "AGENT",
+    "currentVersion": {
+      "id": "01M5KN8Z5X1HD991BG8E5W2Y9F",
+      "versionNo": 3,
+      "content": "先给出最多三条结论，再列证据，最后说明限制；重点关注状态一致性。",
+      "createdAt": "2026-10-23 05:55:52"
+    },
+    "revision": 2,
+    "createdAt": "2026-10-23 05:51:32",
+    "updatedAt": "2026-10-23 05:55:52"
+  },
+  "change": {
+    "changedAtUtc": "2026-10-23T05:51:33.9617996Z",
+    "originalState": "RUNNING",
+    "originalFirstCall": "01M5KN1262N5DF90DX3JRYYP87",
+    "originalFirstCallState": "RUNNING"
+  },
+  "runs": [
+    {
+      "run": "AGT-008-009-R01",
+      "taskId": "01M5KN124JDNKETWR1SY0Q7D6E",
+      "state": "SUCCEEDED",
+      "stopReason": null,
+      "turns": 17,
+      "toolAttempts": 22,
+      "networkAttempts": 17,
+      "answerStatus": "ANSWERED",
+      "audit": {
+        "citationCount": 22,
+        "notInCurrentToolMessages": 0,
+        "invalidRanges": 0
+      },
+      "requestChecks": [
+        {
+          "callId": "01M5KN358RSEMBK4MQMKX2T9MS",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN32PR4P615E3HJ7HHVHWB",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN2Y2847FPEBJPDBG8C74J",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN2CA1GRQNG26KQ3G8EFRS",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN2AV17VQBQWFWZYC84C6J",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN22VWAVQ0J5HQ8FC0XJHN",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1WMM4PMPMDS1ZRH2KWS8",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1SYG8P3HKBH2R7WQDWYW",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1RMN9HACQG21KHJFVS7Q",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1G6KQF44CMBPJ208TYKE",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1DJVYZHRFRZJZCT9WXYW",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1B75Y88T3535XKVSZ9M1",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN19KGVYE3FMD85EMHWRZD",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN17WC4KJ3KB71625SXC3E",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN16J8SZDAC60FJDT1EQFW",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN15C1PQRNGGHS37SG4JNH",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1262N5DF90DX3JRYYP87",
+          "complete": true,
+          "hasV1": true,
+          "hasV2": false,
+          "hasReference": false
+        }
+      ],
+      "tools": [
+        {
+          "turn": 1,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 1,
+            "end": 200
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 1,
+            "endLine": 200,
+            "contentHash": "80ffb8470983a86f139f75bde0858b44be75ce4d1a1df1a84c5f044b83f407c8",
+            "nextStartLine": 201
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 2,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 420,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 201,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 201,
+            "endLine": 420,
+            "contentHash": "a5ffc78db1152987897be5f0d4e7f2067a70fba2533b400980c024091d50ee7d",
+            "nextStartLine": 421
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 3,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 579,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 421,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 421,
+            "endLine": 579,
+            "contentHash": "90fdd4a112be24d859b58f551b99ad34e5f073087076b0aabdb17565a95b04eb"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 4,
+          "tool": "find_files",
+          "status": "OK",
+          "arguments": {
+            "glob": "backend/src/main/java/com/codereview/agent/{tools,execution}/*.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "glob": "backend/src/main/java/com/codereview/agent/{tools,execution}/*.java",
+            "totalMatches": 0,
+            "matches": []
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "find_files",
+          "status": "OK",
+          "arguments": {
+            "glob": "backend/src/main/java/com/codereview/agent/tools/*.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "glob": "backend/src/main/java/com/codereview/agent/tools/*.java",
+            "totalMatches": 23,
+            "matches": [
+              "backend/src/main/java/com/codereview/agent/tools/AgentProtocolException.java",
+              "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+              "backend/src/main/java/com/codereview/agent/tools/AgentToolLoopValidator.java",
+              "backend/src/main/java/com/codereview/agent/tools/AgentToolNames.java",
+              "backend/src/main/java/com/codereview/agent/tools/AgentToolSchema.java",
+              "backend/src/main/java/com/codereview/agent/tools/AgentToolScope.java",
+              "backend/src/main/java/com/codereview/agent/tools/GitGrepRunner.java",
+              "backend/src/main/java/com/codereview/agent/tools/ReadCodeTool.java",
+              "backend/src/main/java/com/codereview/agent/tools/ReadDiffTool.java",
+              "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+              "backend/src/main/java/com/codereview/agent/tools/SearchCodeTool.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolArgumentParser.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolCursor.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolEnvelopes.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolFailure.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolGlobs.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolInvocation.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolLimits.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolMaterialStore.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolPatch.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolProperties.java",
+              "backend/src/main/java/com/codereview/agent/tools/ToolTexts.java"
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "find_files",
+          "status": "OK",
+          "arguments": {
+            "glob": "backend/src/main/java/com/codereview/agent/execution/*.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "glob": "backend/src/main/java/com/codereview/agent/execution/*.java",
+            "totalMatches": 16,
+            "matches": [
+              "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentTaskConfig.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistExecutionProperties.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistTargetOutcome.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistUnitExecution.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskDeadlineSweeper.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskProperties.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java"
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 140,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 255,
+            "startLine": 1,
+            "endLine": 140,
+            "contentHash": "7e71071b552ded651cb9843a28d5e6e54ea884fa8e17d731200656061305829f",
+            "nextStartLine": 141
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 120,
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 62,
+            "startLine": 1,
+            "endLine": 62,
+            "contentHash": "b00f2b1ef3c30a5abb26c5b77358c4b436eb84962be5fe69442787690315a5ef"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 160,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 177,
+            "startLine": 1,
+            "endLine": 160,
+            "contentHash": "c204224eea225375cb5939444facf268c6ce21d58a8cb882f7fccf48673b73eb",
+            "nextStartLine": 161
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 100,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 55,
+            "startLine": 1,
+            "endLine": 55,
+            "contentHash": "d817c1f0e391690c7a75d47d7c7bc90b437c13f10ea254a9192c2e6c86b5440a"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 8,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "query": "static AgentSubmission validate",
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "static AgentSubmission validate",
+            "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+                "line": 127,
+                "text": "    public static AgentSubmission validate(AgentSubmission submission,",
+                "materialId": "01M5KN1J9K5WXGT5TZQ4BHDN5X"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 9,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 200,
+            "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+            "start": 110,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 233,
+            "startLine": 110,
+            "endLine": 200,
+            "contentHash": "0a19a1a2d958beb338f2ed106e8f7935d2a0588dd53445e20e1d9e8d8f839dc4",
+            "nextStartLine": 201
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 10,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 80,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 30,
+            "startLine": 1,
+            "endLine": 30,
+            "contentHash": "d8aa553a9b9817ddf864ceb88b68b625a5c0ff3cbcabff292541a5bca9940b04"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+            "query": "AgentRun",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "AgentRun",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+            "totalHits": 10,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 7,
+                "text": "import com.codereview.agent.entity.AgentRun;",
+                "materialId": "01M5KN1WKA3DDS23Z3M5RDCMTE"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 11,
+                "text": "import com.codereview.agent.mapper.AgentRunMapper;",
+                "materialId": "01M5KN1WKFDQCYFPRVP6NM2SYE"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 57,
+                "text": "        int runs = db.mapper(AgentRunMapper.class).update(null,",
+                "materialId": "01M5KN1WKJA6M80SGFC40R8S3T"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 58,
+                "text": "                new LambdaUpdateWrapper<AgentRun>()",
+                "materialId": "01M5KN1WKMSHS19YY2G4VHTYK9"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 59,
+                "text": "                        .in(AgentRun::getState, TaskStates.QUEUED, TaskStates.RUNNING)",
+                "materialId": "01M5KN1WKMSRXSM3FVQNFBF3HN"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 60,
+                "text": "                        .inSql(AgentRun::getTaskId,",
+                "materialId": "01M5KN1WKMED6RCTPGQ2DZ100M"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 62,
+                "text": "                        .set(AgentRun::getState, TaskStates.FAILED)",
+                "materialId": "01M5KN1WKMXRBHF727NCKR3W24"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 63,
+                "text": "                        .set(AgentRun::getStopReason, TaskStates.STOP_INTERRUPTED)",
+                "materialId": "01M5KN1WM40A6ENMJ4T2WC9C85"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 64,
+                "text": "                        .set(AgentRun::getCurrentAction, TaskStates.FAILED)",
+                "materialId": "01M5KN1WM4KV4C8FCP62K16GAM"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+                "line": 65,
+                "text": "                        .set(AgentRun::getUpdatedAt, now)",
+                "materialId": "01M5KN1WM4EBQ0R97B06WE23DJ"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 255,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "start": 200,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 255,
+            "startLine": 200,
+            "endLine": 255,
+            "contentHash": "e6b05fe3c663e4ee626190f160ed170f603db964268ebdf8f0b5e2829c8c9f76"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "query": "outcome",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "outcome",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+                "line": 76,
+                "text": "            TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZYTBY6WV0949MWBBDSQ"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+                "line": 77,
+                "text": "            finish(taskId, outcome.state(), outcome.stopReason());",
+                "materialId": "01M5KN2ATHQZRVHZF3A83G6TNP"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 150,
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "start": 60,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 229,
+            "startLine": 60,
+            "endLine": 150,
+            "contentHash": "41bc177b7e12eccd32988c51d3fdc106d07613e0f5a4d13cd85198c66a487d2b",
+            "nextStartLine": 151
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 306,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 277,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 277,
+            "endLine": 306,
+            "contentHash": "a6644e93fbbc41e2fbc6a74b9f518fd69b24b7b96210d8e422757e81c14f06e7",
+            "nextStartLine": 307
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 470,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 437,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 437,
+            "endLine": 470,
+            "contentHash": "f8eef70486e959a03f312f9a218e79cff4b365248778ccfba9bc2299502f355b",
+            "nextStartLine": 471
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 15,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 250,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 225,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 225,
+            "endLine": 250,
+            "contentHash": "c52c373e812cd9b510c027a04e5e2b1f737110f5e346a7a0c02ba644734f4175",
+            "nextStartLine": 251
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 15,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 560,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 528,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 528,
+            "endLine": 560,
+            "contentHash": "69ac12c853c31b0ed0d8f8ca6afdfbddc6d8bfba1af606ed0e1104d1d413f232",
+            "nextStartLine": 561
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 16,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 579,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 560,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 560,
+            "endLine": 579,
+            "contentHash": "28cebeb6e428b784de8b6110556f7627ac3e05f273ec6f0376734a272e09cf01"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 17,
+          "tool": "submit_result",
+          "status": "OK",
+          "arguments": null,
+          "diagnostic": "提交结果：ANSWERED",
+          "data": null,
+          "completeness": "UNKNOWN"
+        }
+      ]
+    },
+    {
+      "run": "AGT-009-R02",
+      "taskId": "01M5KN12ZA3GS672GZSPT9B0C7",
+      "state": "PARTIAL",
+      "stopReason": "PROTOCOL_INVALID",
+      "turns": 18,
+      "toolAttempts": 31,
+      "networkAttempts": 18,
+      "answerStatus": null,
+      "audit": null,
+      "requestChecks": [
+        {
+          "callId": "01M5KN4V5PAN1FEC086V2ZDDFC",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN4DJRB13GHGKNFTF94AZG",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN38KKNPH6ECW61W9HWD6Z",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN2VXQ3SMAA8F7WHVNR8NT",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN2Q5A61XV028J7JJQJC83",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN2KJYR6NGV0MGP3ARV9XB",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN25V7BHEN7MB7S9FY1SPN",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN22PAGFJ42HGMC8AX4SYE",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN20DK838ZRTK88ADY18T3",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1M8C6TVWR1WSGMHKM46F",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1J9WSD799BAWVH8C0PGE",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1FM56VQHDHEH7M40DW9P",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1DAPWPB7DAMX8C8XKWXV",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1BKVN4HS0HRPN7PE0ANA",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1A2YEY51APEH53BVXYEP",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN16J8VKYKKTWX4F7YGK4Q",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN15C22X0HHYEV1MC3F8S7",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1304A7E0YX0XYE0YGPH8",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": true,
+          "hasReference": false
+        }
+      ],
+      "tools": [
+        {
+          "turn": 1,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 1,
+            "end": 400
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 1,
+            "endLine": 400,
+            "contentHash": "e8893c98022bfd81c5cf275ac3e02d8e30df73d4e0eab2e7c3eca7a07bc56b15",
+            "nextStartLine": 401
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 2,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 579,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 401,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 401,
+            "endLine": 579,
+            "contentHash": "965e72ddfcdc6a926247b9696975b9576de02dc34f1549af78183808b254603b"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 3,
+          "tool": "find_files",
+          "status": "OK",
+          "arguments": {
+            "glob": "backend/src/main/java/com/codereview/agent/**/*.java",
+            "version": "V1",
+            "limit": 100
+          },
+          "diagnostic": null,
+          "data": {
+            "glob": "backend/src/main/java/com/codereview/agent/**/*.java",
+            "totalMatches": 185,
+            "matches": [
+              "backend/src/main/java/com/codereview/agent/api/AgentHealthController.java",
+              "backend/src/main/java/com/codereview/agent/api/AgentTaskV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/ApiErrorBody.java",
+              "backend/src/main/java/com/codereview/agent/api/ApiException.java",
+              "backend/src/main/java/com/codereview/agent/api/ErrorCode.java",
+              "backend/src/main/java/com/codereview/agent/api/FeedbackV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/ModelCallV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/PageResponse.java",
+              "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/StrategyV2Controller.java",
+              "backend/src/main/java/com/codereview/agent/api/V2ExceptionHandler.java",
+              "backend/src/main/java/com/codereview/agent/db/AgentDataSourceConfig.java",
+              "backend/src/main/java/com/codereview/agent/db/AgentDataSourceProperties.java",
+              "backend/src/main/java/com/codereview/agent/db/AgentDatabase.java",
+              "backend/src/main/java/com/codereview/agent/db/AgentSchemaGuard.java",
+              "backend/src/main/java/com/codereview/agent/db/AgentSchemaMismatchException.java",
+              "backend/src/main/java/com/codereview/agent/dto/AgentReadDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/AgentTaskDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/FeedbackDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/ModelDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/ProjectDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/PromptDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/ReportDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/StrategyDtos.java",
+              "backend/src/main/java/com/codereview/agent/dto/TaskDtos.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentCallMaterial.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentExecutionUnit.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentFeedback.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentIssue.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentMaterial.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentModelCall.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentModelConfig.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentModelValidation.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentProject.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentPrompt.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentPromptVersion.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentReport.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentReportSource.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentReviewResult.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentReviewStrategy.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentReviewTask.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentRun.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentTaskQuota.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentTaskTarget.java",
+              "backend/src/main/java/com/codereview/agent/entity/AgentToolCall.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentTaskConfig.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistExecutionProperties.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistTargetOutcome.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistUnitExecution.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskDeadlineSweeper.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskProperties.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java",
+              "backend/src/main/java/com/codereview/agent/invocation/CapacityEstimate.java",
+              "backend/src/main/java/com/codereview/agent/invocation/HttpModelTransport.java",
+              "backend/src/main/java/com/codereview/agent/invocation/InvocationRequest.java",
+              "backend/src/main/java/com/codereview/agent/invocation/InvocationResult.java",
+              "backend/src/main/java/com/codereview/agent/invocation/InvocationScope.java",
+              "backend/src/main/java/com/codereview/agent/invocation/ModelCallConcurrencyLimiter.java",
+              "backend/src/main/java/com/codereview/agent/invocation/ModelCapacityService.java",
+              "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationProperties.java",
+              "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+              "backend/src/main/java/com/codereview/agent/invocation/ModelSnapshot.java",
+              "backend/src/main/java/com/codereview/agent/invocation/ModelTransport.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentCallMaterialMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentExecutionUnitMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentFeedbackMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentIssueMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentMaterialMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentModelCallMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentModelConfigMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentModelValidationMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentProjectMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentPromptMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentPromptVersionMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentReportMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentReportSourceMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentReviewResultMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentReviewStrategyMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentReviewTaskMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentRunMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentTaskQuotaMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentTaskTargetMapper.java",
+              "backend/src/main/java/com/codereview/agent/mapper/AgentToolCallMapper.java",
+              "backend/src/main/java/com/codereview/agent/model/HttpModelProbe.java",
+              "backend/src/main/java/com/codereview/agent/model/ModelProbe.java",
+              "backend/src/main/java/com/codereview/agent/model/ModelProbeOutcome.java"
+            ]
+          },
+          "completeness": "PARTIAL"
+        },
+        {
+          "turn": 3,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "query": "class ReadOnlyToolService",
+            "version": "V1",
+            "extensions": [
+              ".java"
+            ]
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "class ReadOnlyToolService",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+                "line": 26,
+                "text": "public class ReadOnlyToolService {",
+                "materialId": "01M5KN19NX4KQ9ZCC8KHA6KBH5"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/tools/ReadOnlyToolServiceTest.java",
+                "line": 19,
+                "text": "class ReadOnlyToolServiceTest {",
+                "materialId": "01M5KN1A2E5PMDQC635XMQ33X7"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 4,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 200,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 255,
+            "startLine": 1,
+            "endLine": 200,
+            "contentHash": "f0de0a23a7a74ed32f4f20b7175ee2790707d0d5e6227b5facaee77b718f23b3",
+            "nextStartLine": 201
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 255,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "start": 201,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 255,
+            "startLine": 201,
+            "endLine": 255,
+            "contentHash": "2893b0110520c2dff6891cadab8e01d9acfc707d4420596f25bd716763a5aeea"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 140,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 55,
+            "startLine": 1,
+            "endLine": 55,
+            "contentHash": "d817c1f0e391690c7a75d47d7c7bc90b437c13f10ea254a9192c2e6c86b5440a"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 120,
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 62,
+            "startLine": 1,
+            "endLine": 62,
+            "contentHash": "b00f2b1ef3c30a5abb26c5b77358c4b436eb84962be5fe69442787690315a5ef"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 80,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 30,
+            "startLine": 1,
+            "endLine": 30,
+            "contentHash": "d8aa553a9b9817ddf864ceb88b68b625a5c0ff3cbcabff292541a5bca9940b04"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 200,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 177,
+            "startLine": 1,
+            "endLine": 177,
+            "contentHash": "4bd64fb187faeaedc55de6ff3de7fe13b12a0662e2cded2a8be6a9e8811b9245"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "query": "static AgentSubmission validate",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "static AgentSubmission validate",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+                "line": 127,
+                "text": "    public static AgentSubmission validate(AgentSubmission submission,",
+                "materialId": "01M5KN1J9K5WXGT5TZQ4BHDN5X"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 8,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 210,
+            "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+            "start": 60,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/AgentSubmission.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 233,
+            "startLine": 60,
+            "endLine": 210,
+            "contentHash": "7f1fe61d0054308230ce101e7e30b55f81ea299df86daddddf5a8aded4cffca0",
+            "nextStartLine": 211
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 8,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 80,
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 41,
+            "startLine": 1,
+            "endLine": 41,
+            "contentHash": "e67b1f0e377a3ee148e3cc4ebef1140c711f787a4b773f7eb5bb7d18ce11f02c"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 9,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 120,
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 41,
+            "startLine": 1,
+            "endLine": 41,
+            "contentHash": "fac0c7f3a84d943e0b5cdd19fc8ab8097deabebdffb5a5fe4d9d4eb652353bd4"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 9,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "query": "TaskOutcome outcome = worker.execute",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "TaskOutcome outcome = worker.execute",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 17,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+                "line": 76,
+                "text": "            TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZYTBY6WV0949MWBBDSQ"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 128,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZZA527GE1DEN6KK0C7Y"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 144,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZZAXN16ZE0YT2Y0EK31"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 158,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZZAPA9C1TYJWC4SD14X"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 170,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZZSNS9HHQ3R7YBDFA6Y"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 181,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZZSS7W5RQAJ4ARMQECD"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 199,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZZSPXDSJV1AJQRSJKCY"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 230,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN1ZZSV54S654AR1MQ95N3"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 274,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN200CHD1CZEQF7ST1VM8J"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 290,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN200GV58T2GA88PYGNQXF"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 300,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN200MJ2SN3YNW4FSTX3MJ"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 317,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN200MEP9T7DHSAXKHGPVN"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 148,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN20C003G3EE961S6S3G84"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 162,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN20CECEBBFTAMMR651Z0A"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 181,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN20CE4554TM95WV46M2W2"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 196,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN20CYKCMP53C6FXATGX7K"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 209,
+                "text": "        TaskWorker.TaskOutcome outcome = worker.execute(task);",
+                "materialId": "01M5KN20D4S9M53531CZBF7W4P"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 10,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 170,
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "start": 40,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 229,
+            "startLine": 40,
+            "endLine": 170,
+            "contentHash": "e4363302d536200971ed494945755e86f3507fca1a1a1e18a44277cea82687d0",
+            "nextStartLine": 171
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "query": "ErrorCode.QUOTA_EXCEEDED",
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/invocation"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "ErrorCode.QUOTA_EXCEEDED",
+            "path": "backend/src/main/java/com/codereview/agent/invocation",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 468,
+                "text": "        throw new ApiException(ErrorCode.QUOTA_EXCEEDED,",
+                "materialId": "01M5KN1J6M513NTSZYM5K6M81P"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "query": "MODEL_OUTPUT_INVALID",
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/invocation"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "MODEL_OUTPUT_INVALID",
+            "path": "backend/src/main/java/com/codereview/agent/invocation",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 7,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 194,
+                "text": "            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,",
+                "materialId": "01M5KN25SS5RTD3P877FHASVAN"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 201,
+                "text": "            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,",
+                "materialId": "01M5KN25SS980DNB7KBR2A27QN"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 209,
+                "text": "            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,",
+                "materialId": "01M5KN25SSV8AC10M0DAA5B3XJ"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 218,
+                "text": "            ApiException failure = new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,",
+                "materialId": "01M5KN25T83347MFM66MZFDW1W"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 244,
+                "text": "            throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, \"tool_calls 不是数组\",",
+                "materialId": "01M5KN25T8BTGFCRX4WY57KAPV"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 257,
+                "text": "                throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,",
+                "materialId": "01M5KN25T8YG2PKKM9T7DBHMQY"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 261,
+                "text": "                throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID,",
+                "materialId": "01M5KN25TQWM586JVGREK94RJM"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "guard.requireActive(task.getId());",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "guard.requireActive(task.getId());",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 142,
+                "text": "            guard.requireActive(task.getId());",
+                "materialId": "01M5KN2K9WPPF4B0SSW59KC5AW"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 230,
+                "text": "                guard.requireActive(task.getId());",
+                "materialId": "01M5KN2K9WDXJ8BHSC2B5KDZS0"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "publisher.publish",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "publisher.publish",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 292,
+                "text": "        String resultId = publisher.publish(task.getId(), submission,",
+                "materialId": "01M5KN2KCWQKDPMDG0BAPES4WX"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "boolean investigated = run.getToolAttempts() > 0",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "boolean investigated = run.getToolAttempts() > 0",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 318,
+                "text": "        boolean investigated = run.getToolAttempts() > 0 || execution.toolCalls > 0;",
+                "materialId": "01M5K76R9VWWNXPYTG0H57T319"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "markSent(execution, result.callId());",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "markSent(execution, result.callId());",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 174,
+                "text": "            markSent(execution, result.callId());",
+                "materialId": "01M5K76XNYTJXDGQCBJA1W8W7G"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "ToolEnvelope envelope = tools.execute(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "ToolEnvelope envelope = tools.execute(",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 236,
+                "text": "                ToolEnvelope envelope = tools.execute(call.id(), call.name(), call.arguments(),",
+                "materialId": "01M5KN2PW2NTCWNG31W7WVVKRC"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "private void finishRun",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "private void finishRun",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 450,
+                "text": "    private void finishRun(AgentRun run, String state, String stopReason) {",
+                "materialId": "01M5KN2PYJ0W2Q8DCBHQ4QPPFQ"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_NO_PROGRESS_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_NO_PROGRESS_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 258,
+                "text": "                    return limit(execution, run, TaskStates.STOP_NO_PROGRESS_LIMIT);",
+                "materialId": "01M5KN2Q23WXNNARSR73AS9X3K"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "private void markSent",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "private void markSent",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 335,
+                "text": "    private void markSent(AgentExecution execution, String callId) {",
+                "materialId": "01M5KN2Q4TZ9GHVS5S12GNJ8ET"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_TURN_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_TURN_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 265,
+                "text": "        return limit(execution, run, TaskStates.STOP_TURN_LIMIT);",
+                "materialId": "01M5KN2VQ1GC1WKZYWB5XXTD75"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "AgentSubmission.validate(submission, execution.sent)",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "AgentSubmission.validate(submission, execution.sent)",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 276,
+                "text": "            submission = AgentSubmission.validate(submission, execution.sent);",
+                "materialId": "01M5KN2VSYSDPTE4QSK6S28AG6"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 480,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 440,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 440,
+            "endLine": 480,
+            "contentHash": "dc1afe44228f90971413345243882724e9889d8c128c6eb9ed41bedf74cc5444",
+            "nextStartLine": 481
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "\"TOOL_CALL\"",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "\"TOOL_CALL\"",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 263,
+                "text": "            updateRun(run, turn, run.getToolAttempts(), run.getNetworkAttempts(), \"TOOL_CALL\");",
+                "materialId": "01M5KN2VX304RCZ0YHXV6WHWB3"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 15,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 190,
+            "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+            "start": 60,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 541,
+            "startLine": 60,
+            "endLine": 190,
+            "contentHash": "7042f2a4c95489b1b785cb3350226e7c3fb76a753bd167f36bb6f277f3b8b76f",
+            "nextStartLine": 191
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 16,
+          "tool": "submit_result",
+          "status": "INVALID_ARGUMENT",
+          "arguments": null,
+          "diagnostic": "引用校验发现 4 项问题：E8 行 316-322 超出材料范围 316-320；E10 行 439-468 超出材料范围 440-480；E13 行 274-288 超出材料范围 274-278；E14 行 289-299 超出材料范围 290-294",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 17,
+          "tool": "submit_result",
+          "status": "INVALID_ARGUMENT",
+          "arguments": null,
+          "diagnostic": "ANSWERED 结果至少需要一个实际引用",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 18,
+          "tool": "submit_result",
+          "status": "INVALID_ARGUMENT",
+          "arguments": null,
+          "diagnostic": "ANSWERED 结果至少需要一个实际引用",
+          "data": null,
+          "completeness": "UNKNOWN"
+        }
+      ]
+    },
+    {
+      "run": "AGT-010-R01",
+      "taskId": "01M5KN13FCYHBRMS68XXZ5J21A",
+      "state": "SUCCEEDED",
+      "stopReason": null,
+      "turns": 13,
+      "toolAttempts": 21,
+      "networkAttempts": 13,
+      "answerStatus": "ANSWERED",
+      "audit": {
+        "citationCount": 29,
+        "notInCurrentToolMessages": 0,
+        "invalidRanges": 0
+      },
+      "requestChecks": [
+        {
+          "callId": "01M5KN5AWHSJXG5BF16D0E4GH1",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN43CBW2BHYXAQ2Y52VZCE",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN3XEBV0BDMZDVX02F73EN",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN2ZD0WZN3FCQ2Z7WKTXQ2",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN2SCVBK0S05BK2V0HK1XT",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN2N57DWCV1ZVW0F4VHRMW",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN2JTGPN2GRRZG74EC7M8Z",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN2FWH37ECF0GREKAS4D9T",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN1CVHH2MPMMKABQAQ355Q",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN1B69VHH0B5RPQ1XR08P7",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN181AR9AB1ZZG17FTTBN4",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN15RXPZNDX7X885335SVB",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        },
+        {
+          "callId": "01M5KN13GBK8ZZB9J2YSEDH6YE",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": true
+        }
+      ],
+      "tools": [
+        {
+          "turn": 1,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 1,
+            "end": 400
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 1,
+            "endLine": 400,
+            "contentHash": "e8893c98022bfd81c5cf275ac3e02d8e30df73d4e0eab2e7c3eca7a07bc56b15",
+            "nextStartLine": 401
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 1,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptMessage.java",
+            "start": 1,
+            "end": 80
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptMessage.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 51,
+            "startLine": 1,
+            "endLine": 51,
+            "contentHash": "a55159d3121ce7689f53059e9614014ddcfdc1d81cd1632dcc1815107027ffd0"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 2,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 579,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 401,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 401,
+            "endLine": 579,
+            "contentHash": "965e72ddfcdc6a926247b9696975b9576de02dc34f1549af78183808b254603b"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 2,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 220,
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptAssemblyService.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptAssemblyService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 453,
+            "startLine": 1,
+            "endLine": 220,
+            "contentHash": "34bac336114e523a2a6c90c3e2a01926ceff036b7cca352996928e341eb57e0e",
+            "nextStartLine": 221
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 3,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 100,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 55,
+            "startLine": 1,
+            "endLine": 55,
+            "contentHash": "d817c1f0e391690c7a75d47d7c7bc90b437c13f10ea254a9192c2e6c86b5440a"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 3,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 200,
+            "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 377,
+            "startLine": 1,
+            "endLine": 200,
+            "contentHash": "cf1872b8512523f6d01297b8e51772aaa42446c8192f6bb30eea7b82c62d5b84",
+            "nextStartLine": 201
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 4,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 377,
+            "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+            "start": 201,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 377,
+            "startLine": 201,
+            "endLine": 377,
+            "contentHash": "df1ad6e88a756c50bacedab59b6d7082094622f271892f031248a56a7d9b1042"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 60,
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolFailure.java",
+            "start": 1,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/tools/ToolFailure.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 43,
+            "startLine": 1,
+            "endLine": 43,
+            "contentHash": "cd89ff6fcc7c3d978e2e0f8afb1e8fcea56a7061b8e8f6ab2a371150ca0bd538"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "query": "REJECTED_BATCH",
+            "version": "V1",
+            "limit": 50
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "REJECTED_BATCH",
+            "totalHits": 7,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 207,
+                "text": "                            rejected, envelopeJson, \"REJECTED_BATCH\");",
+                "materialId": "01M5K74R9MVF6R0480BPSRMRSS"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskDeadlineSweeper.java",
+                "line": 81,
+                "text": "                        .ne(AgentToolCall::getStatus, \"REJECTED_BATCH\"));",
+                "materialId": "01M5K74RMDN52AEMB0238471BV"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 236,
+                "text": "                .filter(record -> \"REJECTED_BATCH\".equals(record.getStatus())).toList();",
+                "materialId": "01M5K74RMQY1ZP42WM3PMGA4JY"
+              },
+              {
+                "path": "frontend/src/views/AgentTaskDetail.vue",
+                "line": 560,
+                "text": "  if (value.includes('TRUNC') || value.includes('LIMIT') || value === 'REJECTED_BATCH') return 'amber'",
+                "materialId": "01M5K74RXGCA9CE7CWRBJDWZDN"
+              },
+              {
+                "path": "frontend/src/views/AgentTaskDetail.vue",
+                "line": 566,
+                "text": "  return status === 'REJECTED_BATCH' ? '整批拒绝（未执行）' : status",
+                "materialId": "01M5K74RXRHMDVJXJ7NH5PGB3H"
+              },
+              {
+                "path": "frontend/src/views/__tests__/AgentTaskDetail.spec.ts",
+                "line": 142,
+                "text": "      { id: 'c2', turnNo: 2, ordinal: 1, toolName: 'submit_result', status: 'REJECTED_BATCH',",
+                "materialId": "01M5K74S7ERYEG8KXV71X8GGMB"
+              },
+              {
+                "path": "frontend/src/views/__tests__/AgentTaskDetail.spec.ts",
+                "line": 148,
+                "text": "      status: callId === 'c1' ? 'OK' : 'REJECTED_BATCH',",
+                "materialId": "01M5K74S7QJ32H72H49JKWCSBF"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 30,
+            "query": "new AgentTaskWorker(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "new AgentTaskWorker(",
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 82,
+                "text": "        worker = new AgentTaskWorker(db, mapper, guard, new PromptAssemblyService(), invocation,",
+                "materialId": "01M5KN2JQ1TVANQQ2HMC77XJWP"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 30,
+            "query": "tool_call_id",
+            "path": "backend/src/main/java/com/codereview/agent/invocation",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "tool_call_id",
+            "path": "backend/src/main/java/com/codereview/agent/invocation",
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 315,
+                "text": "                node.put(\"tool_call_id\", message.toolCallId());",
+                "materialId": "01M5K74WYPX06H6KET2XJHHWCF"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 330,
+            "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+            "start": 240,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 541,
+            "startLine": 240,
+            "endLine": 330,
+            "contentHash": "e6b475da3d85dccd1e01015847d571a9941969e72aea75a664697b8412560a8e",
+            "nextStartLine": 331
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "find_files",
+          "status": "OK",
+          "arguments": {
+            "glob": "**/*agent_tool_call*",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "glob": "**/*agent_tool_call*",
+            "totalMatches": 0,
+            "matches": []
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 8,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 30,
+            "query": "agent_tool_call",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "agent_tool_call",
+            "totalHits": 10,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/entity/AgentToolCall.java",
+                "line": 12,
+                "text": "@TableName(\"agent_tool_call\")",
+                "materialId": "01M5KN2QDHP3NRQQAJDBJ18ANA"
+              },
+              {
+                "path": "backend/src/main/resources/db/agent-migration/V6__agent_run.sql",
+                "line": 4,
+                "text": "-- agent_tool_call：每次实际工具执行一行；provider_tool_call_id 只在同一响应内唯一，",
+                "materialId": "01M5KN2QQA4JE8QZTRG28G8HFM"
+              },
+              {
+                "path": "backend/src/main/resources/db/agent-migration/V6__agent_run.sql",
+                "line": 23,
+                "text": "CREATE TABLE agent_tool_call (",
+                "materialId": "01M5KN2QQFYR4CX11QMW1YFYNM"
+              },
+              {
+                "path": "backend/src/main/resources/db/agent-migration/V6__agent_run.sql",
+                "line": 38,
+                "text": "    UNIQUE KEY uk_agent_tool_call (task_id, turn_no, ordinal),",
+                "materialId": "01M5KN2QQKDGTWJJ226DY556HZ"
+              },
+              {
+                "path": "docs/STATE.md",
+                "line": 35,
+                "text": "- 存储：`V6__agent_run.sql` 新增 `agent_run`、`agent_tool_call`、`model_call.turn_no`；发送材料写入 `call_material(SENT)`。",
+                "materialId": "01M5KN2R20AVHX2TSCSJTH85AE"
+              },
+              {
+                "path": "docs/work/agent-redesign/p33/design.md",
+                "line": 171,
+                "text": "- 拟新增 `agent_tool_call`，保存 task_id、model_call_id、turn_no、ordinal、provider_tool_call_id、工具名、参数、envelope、materialIds、开始结束时间和状态。唯一键 `(task_id, turn_no, ordinal)`；provider ID 在同一响应内必须唯一，不能假定跨轮唯一。",
+                "materialId": "01M5KN2RCW09QDQYR65ND480PN"
+              },
+              {
+                "path": "docs/work/agent-redesign/p33/p33-2-tools.md",
+                "line": 18,
+                "text": "迁移：本轮不新增表或列，复用 `material` 与 `model_validation`；`agent_tool_call`、`agent_run` 留到 P33.4/P33.5。",
+                "materialId": "01M5KN2RQ2YQT24N2PYCR46332"
+              },
+              {
+                "path": "docs/work/agent-redesign/p33/p33-3-inputs.md",
+                "line": 18,
+                "text": "本轮不新增数据库迁移：仍使用 `review_task` 的 `input_snapshot`／`config_snapshot`；`agent_run`／`agent_tool_call` 与执行循环属 P33.4。",
+                "materialId": "01M5KN2S1CC6VJCX89ZG3SNMN7"
+              },
+              {
+                "path": "docs/work/agent-redesign/p33/p33-4-execution.md",
+                "line": 15,
+                "text": "| 存储 | 新迁移 `agent_run`、`agent_tool_call`、`model_call.turn_no` | `V6__agent_run.sql`、`AgentRun`、`AgentToolCall` |",
+                "materialId": "01M5KN2SC683YFY4PZ01R9T912"
+              },
+              {
+                "path": "docs/work/agent-redesign/p33/p33-4-execution.md",
+                "line": 40,
+                "text": "- `agent_tool_call`：每次实际工具执行一行，保存参数、envelope、材料 ID、状态与时间；唯一键 `(task_id, turn_no, ordinal)`。",
+                "materialId": "01M5KN2SCBN8PCHAR70E5J67MG"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 9,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 45,
+            "path": "backend/src/main/resources/db/agent-migration/V6__agent_run.sql",
+            "start": 20,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/resources/db/agent-migration/V6__agent_run.sql",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 45,
+            "startLine": 20,
+            "endLine": 45,
+            "contentHash": "3a9dc3a7a176aff1d7541eed1d8ab9eb705798d8648132f8b49639e48eae267d"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 9,
+          "tool": "search_code",
+          "status": "ERROR",
+          "arguments": {
+            "limit": 40,
+            "path": "backend/src/main/java",
+            "query": "toolCallId",
+            "version": "V1"
+          },
+          "diagnostic": "工具返回超过 32768 字节上限（34786），已拒绝发送",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 5,
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "query": "void contentOnlyRepliesExhaustTheProtocolRetries",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "void contentOnlyRepliesExhaustTheProtocolRetries",
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 178,
+                "text": "    void contentOnlyRepliesExhaustTheProtocolRetries() {",
+                "materialId": "01M5K7646TCE3S6DE0T8DTEK2N"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 5,
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "query": "void rejectedOversizedToolBatchGetsOneToolResultPerCallBeforeRetry",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "void rejectedOversizedToolBatchGetsOneToolResultPerCallBeforeRetry",
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 189,
+                "text": "    void rejectedOversizedToolBatchGetsOneToolResultPerCallBeforeRetry() {",
+                "materialId": "01M5K75ZCN4TGTFSJ337XXZT50"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 5,
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "query": "void mixedSubmitBatchIsRejectedRecordedAndNotExecuted",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "void mixedSubmitBatchIsRejectedRecordedAndNotExecuted",
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 220,
+                "text": "    void mixedSubmitBatchIsRejectedRecordedAndNotExecuted() {",
+                "materialId": "01M5K75ZHDWM90TPBAPX5J3Z40"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 10,
+            "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+            "query": "getAllValues().get(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "getAllValues().get(",
+            "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 204,
+                "text": "        List<PromptMessage> retryMessages = requests.getAllValues().get(1).prompt().messages();",
+                "materialId": "01M5KN437T39338YAR6STMCG9X"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 255,
+                "text": "        LambdaUpdateWrapper<AgentRun> last = updates.getAllValues().get(updates.getAllValues().size() - 1);",
+                "materialId": "01M5KN437ZC4JQXG1JDFC4TPJP"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "limit": 10,
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "query": "verify(publisher",
+            "version": "V1"
+          },
+          "diagnostic": "结果未返回完，可用 nextCursor 继续",
+          "data": {
+            "query": "verify(publisher",
+            "path": "backend/src/test/java/com/codereview/agent/execution",
+            "totalHits": 15,
+            "hits": [
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 132,
+                "text": "        verify(publisher).publish(eq(TASK_ID), submission.capture(), any(), any(), anyInt());",
+                "materialId": "01M5KN43ABKY6BVGF5T6BPX5NS"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 162,
+                "text": "        verify(publisher, never()).publish(anyString(), any(), any(), any(), anyInt());",
+                "materialId": "01M5KN43AVC6T5TN8HC7SARQSX"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 174,
+                "text": "        verify(publisher, org.mockito.Mockito.never()).publish(anyString(), any(), any(), any(), anyInt());",
+                "materialId": "01M5KN43AVX80B3APKKXNGMQDP"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 278,
+                "text": "        verify(publisher, never()).publish(anyString(), any(), any(), any(), anyInt());",
+                "materialId": "01M5KN43AV21TEX14AN6BHYCDG"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 293,
+                "text": "        verify(publisher).publish(eq(TASK_ID), any(), any(), any(), anyInt());",
+                "materialId": "01M5KN43AVZ683K1MX8KTMSM1B"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+                "line": 320,
+                "text": "        verify(publisher).publish(eq(TASK_ID), any(), any(), any(), anyInt());",
+                "materialId": "01M5KN43BB1AWV64JKX2XXGV6T"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 151,
+                "text": "        verify(publisher).publish(any(), any(), any(), any(), eq(true));",
+                "materialId": "01M5KN43BBXKNMHWQ37CYXNMGB"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 184,
+                "text": "        verify(publisher).publish(any(), any(), any(), any(), eq(true));",
+                "materialId": "01M5KN43BMPSPKQR7ZT91MSTZ7"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 199,
+                "text": "        verify(publisher).publish(any(), any(), any(), any(), eq(false));",
+                "materialId": "01M5KN43BV3ACZA0QFHH58BT7F"
+              },
+              {
+                "path": "backend/src/test/java/com/codereview/agent/execution/SpecialistTaskWorkerTest.java",
+                "line": 212,
+                "text": "        verify(publisher, org.mockito.Mockito.never()).publish(any(), any(), any(), any(), eq(true));",
+                "materialId": "01M5KN43BV343461KZSPBY2WJZ"
+              }
+            ]
+          },
+          "completeness": "PARTIAL"
+        },
+        {
+          "turn": 12,
+          "tool": "submit_result",
+          "status": "INVALID_ARGUMENT",
+          "arguments": null,
+          "diagnostic": "引用校验发现 4 项问题：E18 行 176-186 超出材料范围 176-180；E25 行 34-38 超出材料范围 36-40；正文引用了未声明或无效的引用：E18；正文引用了未声明或无效的引用：E25",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 13,
+          "tool": "submit_result",
+          "status": "OK",
+          "arguments": null,
+          "diagnostic": "提交结果：ANSWERED",
+          "data": null,
+          "completeness": "UNKNOWN"
+        }
+      ]
+    },
+    {
+      "run": "AGT-011-R01",
+      "taskId": "01M5KN13WG0131JBVRWRBF85J1",
+      "state": "SUCCEEDED",
+      "stopReason": null,
+      "turns": 20,
+      "toolAttempts": 45,
+      "networkAttempts": 20,
+      "answerStatus": "ANSWERED",
+      "audit": {
+        "citationCount": 48,
+        "notInCurrentToolMessages": 0,
+        "invalidRanges": 0
+      },
+      "requestChecks": [
+        {
+          "callId": "01M5KN7Y18HB5M1KDTFADGXDFP",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN7TR3Y2NSRY1M8KAPMBA4",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN7G78K2JB96ACNWX42QHR",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN5T1K4N6NKB51HRJWZEZE",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN4R34CW1MT426XJ2G0XR2",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN3RXES6J7E855M9CY1M5S",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN3MR0GMY49QWNNCGDK31E",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN3GZ20W1D5GJ9YQWY71AD",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN3E6VX51A64KWN7XKC73Q",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN3AH2XJ13TC31CF8PDAEN",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1TSDYGGMSJ0BZZZ0MX09",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1QMX0PPVQAA928WVZX8W",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1J73CVJ1JD2GAG59T75K",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1FEVZH4361C8TJ4R8G6W",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1CP4JXBHBB3K48K70D9W",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN1AKDKEMV8RSFBMFDCHX8",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN18EDFGS3FF9G3H1RMYSX",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN16TNYEXZ6FQ3J0PBYWS6",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN15C31TQWPCNCXEZ7BYNA",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN13X7B1TYE47Y2PX7F7SB",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        }
+      ],
+      "tools": [
+        {
+          "turn": 1,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 1,
+            "end": 200
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 1,
+            "endLine": 200,
+            "contentHash": "80ffb8470983a86f139f75bde0858b44be75ce4d1a1df1a84c5f044b83f407c8",
+            "nextStartLine": 201
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 2,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 400,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 201,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 201,
+            "endLine": 400,
+            "contentHash": "a0cf9e3cb88d62a2e758114f89d60ac24c5a9753005192933d972274a98e8e98",
+            "nextStartLine": 401
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 3,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "end": 579,
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "start": 401,
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 579,
+            "startLine": 401,
+            "endLine": 579,
+            "contentHash": "965e72ddfcdc6a926247b9696975b9576de02dc34f1549af78183808b254603b"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 4,
+          "tool": "find_files",
+          "status": "OK",
+          "arguments": {
+            "glob": "backend/src/main/java/com/codereview/agent/execution/*.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "glob": "backend/src/main/java/com/codereview/agent/execution/*.java",
+            "totalMatches": 16,
+            "matches": [
+              "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentTaskConfig.java",
+              "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistExecutionProperties.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistTargetOutcome.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+              "backend/src/main/java/com/codereview/agent/execution/SpecialistUnitExecution.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskDeadlineSweeper.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskProperties.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskRecoveryRunner.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+              "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java"
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 4,
+          "tool": "find_files",
+          "status": "OK",
+          "arguments": {
+            "glob": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "glob": "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java",
+            "totalMatches": 1,
+            "matches": [
+              "backend/src/main/java/com/codereview/agent/tools/ReadOnlyToolService.java"
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentBudget.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 30,
+            "startLine": 1,
+            "endLine": 30,
+            "contentHash": "d8aa553a9b9817ddf864ceb88b68b625a5c0ff3cbcabff292541a5bca9940b04"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 5,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskStates.java"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskStates.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 41,
+            "startLine": 1,
+            "endLine": 41,
+            "contentHash": "fac0c7f3a84d943e0b5cdd19fc8ab8097deabebdffb5a5fe4d9d4eb652353bd4"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 62,
+            "startLine": 1,
+            "endLine": 62,
+            "contentHash": "b00f2b1ef3c30a5abb26c5b77358c4b436eb84962be5fe69442787690315a5ef"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 6,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskWorker.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 41,
+            "startLine": 1,
+            "endLine": 41,
+            "contentHash": "e67b1f0e377a3ee148e3cc4ebef1140c711f787a4b773f7eb5bb7d18ce11f02c"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 177,
+            "startLine": 1,
+            "endLine": 177,
+            "contentHash": "4bd64fb187faeaedc55de6ff3de7fe13b12a0662e2cded2a8be6a9e8811b9245"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 7,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "query": "ErrorCode.QUOTA_EXCEEDED",
+            "version": "V1",
+            "path": "backend/src/main/java/com/codereview/agent",
+            "extensions": [
+              ".java"
+            ]
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "ErrorCode.QUOTA_EXCEEDED",
+            "path": "backend/src/main/java/com/codereview/agent",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 124,
+                "text": "            if (e.errorCode() == ErrorCode.QUOTA_EXCEEDED) {",
+                "materialId": "01M5KN1HQFP9JXG6CN0V6X5PKA"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 468,
+                "text": "        throw new ApiException(ErrorCode.QUOTA_EXCEEDED,",
+                "materialId": "01M5KN1J6M513NTSZYM5K6M81P"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 8,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/invocation",
+            "query": "ErrorCode.CONTEXT_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "ErrorCode.CONTEXT_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/invocation",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelCapacityService.java",
+                "line": 61,
+                "text": "            throw new ApiException(ErrorCode.CONTEXT_LIMIT,",
+                "materialId": "01M5KN1Q9GV22FZTM48HGWS8V0"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 348,
+                "text": "            return new ApiException(ErrorCode.CONTEXT_LIMIT, \"模型报告上下文超限\",",
+                "materialId": "01M5KN1Q9MBBA9RB0JH7VP4VJ3"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 8,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 229,
+            "startLine": 1,
+            "endLine": 200,
+            "contentHash": "a63962858d2a318ea921ed6e18b64f682bf6fd86fb4ebe04931ee4d0ea98a709",
+            "nextStartLine": 201
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 9,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent",
+            "query": "ErrorCode.TASK_DEADLINE",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "ErrorCode.TASK_DEADLINE",
+            "path": "backend/src/main/java/com/codereview/agent",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 11,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 121,
+                "text": "            if (e.errorCode() == ErrorCode.TASK_DEADLINE) {",
+                "materialId": "01M5KN1T1ZH3JQD6GZDF44KJ5W"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+                "line": 160,
+                "text": "                            || api.errorCode() == ErrorCode.TASK_DEADLINE)) {",
+                "materialId": "01M5KN1TDYR6MY096BBVRY2KGX"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+                "line": 226,
+                "text": "                                || failure.errorCode() == ErrorCode.TASK_DEADLINE) {",
+                "materialId": "01M5KN1TE4RH6JE8XTQ6R5EJCP"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+                "line": 271,
+                "text": "                    || failure.errorCode() == ErrorCode.TASK_DEADLINE) {",
+                "materialId": "01M5KN1TE8GTZMBF4QT95S23Y0"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+                "line": 81,
+                "text": "            } else if (e.errorCode() == ErrorCode.TASK_DEADLINE) {",
+                "materialId": "01M5KN1TEBS7WW7J0YW7S3F2SM"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskExecutionGuard.java",
+                "line": 52,
+                "text": "            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务已到达期限，停止新的调用\");",
+                "materialId": "01M5KN1TEBZ8V25V4X2FR1WDPX"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelCallConcurrencyLimiter.java",
+                "line": 74,
+                "text": "            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务已到达期限，未等待模型并发许可\");",
+                "materialId": "01M5KN1TRH292NFJX62BPKBZ3P"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelCallConcurrencyLimiter.java",
+                "line": 80,
+                "text": "        return new ApiException(ErrorCode.TASK_DEADLINE,",
+                "materialId": "01M5KN1TRHGTFYTPPTT0X5R8G1"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 387,
+                "text": "            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务已到达期限，未发送模型请求\");",
+                "materialId": "01M5KN1TRHFYC1AHQBHHH6C12X"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 391,
+                "text": "            throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务剩余期限不足一次调用\");",
+                "materialId": "01M5KN1TRYD93DSP7FA0N2WMJK"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+                "line": 406,
+                "text": "                throw new ApiException(ErrorCode.TASK_DEADLINE, \"任务剩余期限不足以重试\");",
+                "materialId": "01M5KN1TRY73PCXVV0433Q6D73"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "REJECTED_BATCH",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_TOOL_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，不能与其他工具同批。本批工具没有执行。",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "REJECTED_BATCH",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_NO_PROGRESS_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，不能与其他工具同批。本批工具没有执行。",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "REJECTED_BATCH",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_TURN_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，不能与其他工具同批。本批工具没有执行。",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "REJECTED_BATCH",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_MODEL_OUTPUT_INVALID",
+            "version": "V1"
+          },
+          "diagnostic": "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，不能与其他工具同批。本批工具没有执行。",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "REJECTED_BATCH",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_INSUFFICIENT_EVIDENCE",
+            "version": "V1"
+          },
+          "diagnostic": "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，不能与其他工具同批。本批工具没有执行。",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 10,
+          "tool": "search_code",
+          "status": "REJECTED_BATCH",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_PROTOCOL_INVALID",
+            "version": "V1"
+          },
+          "diagnostic": "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，不能与其他工具同批。本批工具没有执行。",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_TOOL_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_TOOL_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 232,
+                "text": "                    return limit(execution, run, TaskStates.STOP_TOOL_LIMIT);",
+                "materialId": "01M5KN3E2YAJTAT5JJEMZ8MFCP"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_NO_PROGRESS_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_NO_PROGRESS_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 258,
+                "text": "                    return limit(execution, run, TaskStates.STOP_NO_PROGRESS_LIMIT);",
+                "materialId": "01M5KN2Q23WXNNARSR73AS9X3K"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_TURN_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_TURN_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 265,
+                "text": "        return limit(execution, run, TaskStates.STOP_TURN_LIMIT);",
+                "materialId": "01M5KN2VQ1GC1WKZYWB5XXTD75"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 11,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_MODEL_OUTPUT_INVALID",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_MODEL_OUTPUT_INVALID",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 162,
+                "text": "                        return limit(execution, run, TaskStates.STOP_MODEL_OUTPUT_INVALID);",
+                "materialId": "01M5KN3E6D68T1PRBH2P4C1ZS0"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_PROTOCOL_INVALID",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_PROTOCOL_INVALID",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 3,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 180,
+                "text": "                    return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);",
+                "materialId": "01M5KN3GPKG4NNC50869KMC827"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 196,
+                "text": "                    return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);",
+                "materialId": "01M5KN3GPK0TCTJDMMNGQJ72YD"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 282,
+                "text": "                return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);",
+                "materialId": "01M5KN3GPKCF9JZV82VHP7FZJB"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_INSUFFICIENT_EVIDENCE",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_INSUFFICIENT_EVIDENCE",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 295,
+                "text": "                submission.answered() ? null : TaskStates.STOP_INSUFFICIENT_EVIDENCE);",
+                "materialId": "01M5KN3GS2J7JYJBAN9HQZ45DN"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 298,
+                "text": "                submission.answered() ? null : TaskStates.STOP_INSUFFICIENT_EVIDENCE);",
+                "materialId": "01M5KN3GSJ8AVFYC6TMPVDF9D9"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_NETWORK_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_NETWORK_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 125,
+                "text": "                return limit(execution, run, TaskStates.STOP_NETWORK_LIMIT);",
+                "materialId": "01M5KN3GW2KAZW63FV2WG231Y4"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 145,
+                "text": "                return limit(execution, run, TaskStates.STOP_NETWORK_LIMIT);",
+                "materialId": "01M5KN3GW2EP4ZW7PVMZDTKS6P"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 12,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "STOP_CONTEXT_LIMIT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "STOP_CONTEXT_LIMIT",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 128,
+                "text": "                return limit(execution, run, TaskStates.STOP_CONTEXT_LIMIT);",
+                "materialId": "01M5KN3GYHCQTBH05XD3XNZE6G"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 150,
+                "text": "                return limit(execution, run, TaskStates.STOP_CONTEXT_LIMIT);",
+                "materialId": "01M5KN3GZ1H0Z386SHR09BWS0M"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "TaskOutcome.failed(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "TaskOutcome.failed(",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 5,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 108,
+                "text": "            return TaskOutcome.failed(e.errorCode().code());",
+                "materialId": "01M5KN3MEJKZPZ9M7KEQ742WVK"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 111,
+                "text": "            return TaskOutcome.failed(TaskStates.STOP_EXECUTION_ERROR);",
+                "materialId": "01M5KN3MF3J93EV82D3QGAMQK9"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 132,
+                "text": "            return TaskOutcome.failed(e.errorCode().code());",
+                "materialId": "01M5KN3MF3MM7YKJGCJFJ3P1JV"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 136,
+                "text": "            return TaskOutcome.failed(TaskStates.STOP_EXECUTION_ERROR);",
+                "materialId": "01M5KN3MF39MJX3ZDF7SC40FKS"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 321,
+                "text": "        return investigated ? TaskOutcome.partial(reason) : TaskOutcome.failed(reason);",
+                "materialId": "01M5KN3MFM7M2Y1KJYF83TPRY5"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "private TaskOutcome limit(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "private TaskOutcome limit(",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 317,
+                "text": "    private TaskOutcome limit(AgentExecution execution, AgentRun run, String reason) {",
+                "materialId": "01M5KN3MJ2PZ670EYGZKNF1QFD"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "stopBecauseTaskAlreadyClosed",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "stopBecauseTaskAlreadyClosed",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 119,
+                "text": "                return stopBecauseTaskAlreadyClosed(task, run);",
+                "materialId": "01M5KN3MMHG7HZ7F65NXZ55B3R"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 305,
+                "text": "    private TaskOutcome stopBecauseTaskAlreadyClosed(AgentReviewTask task, AgentRun run) {",
+                "materialId": "01M5KN3MN1001KRZ2N5ZY719E2"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 13,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "publisher.publish(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "publisher.publish(",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 292,
+                "text": "        String resultId = publisher.publish(task.getId(), submission,",
+                "materialId": "01M5KN2KCWQKDPMDG0BAPES4WX"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "TaskOutcome outcome = submit(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "TaskOutcome outcome = submit(",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 218,
+                "text": "                TaskOutcome outcome = submit(task, execution, run, result,",
+                "materialId": "01M5KN3RQZBBNS35PQNYD61BHY"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "private void finishRun",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "private void finishRun",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 450,
+                "text": "    private void finishRun(AgentRun run, String state, String stopReason) {",
+                "materialId": "01M5KN2PYJ0W2Q8DCBHQ4QPPFQ"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "while (run.getTurnNo()",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "while (run.getTurnNo()",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 141,
+                "text": "        while (run.getTurnNo() < AgentBudget.MODEL_TURNS) {",
+                "materialId": "01M5KN3RTY8SWVGEXRN44DQ5QC"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 14,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "AgentSubmission.validate",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "AgentSubmission.validate",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 276,
+                "text": "            submission = AgentSubmission.validate(submission, execution.sent);",
+                "materialId": "01M5KN2VSYSDPTE4QSK6S28AG6"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 15,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "boolean repeated",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "boolean repeated",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 248,
+                "text": "            boolean repeated = signature.toString().equals(execution.lastSignature) && !newMaterial;",
+                "materialId": "01M5KN4QX95D6D499M2G0NX4AH"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 15,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "private TaskOutcome submit(",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "private TaskOutcome submit(",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 271,
+                "text": "    private TaskOutcome submit(AgentReviewTask task, AgentExecution execution, AgentRun run,",
+                "materialId": "01M5KN4R04B67PJT9M4619QTAM"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 15,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "if (run.getToolAttempts() >= AgentBudget.TOOL_ATTEMPTS)",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "if (run.getToolAttempts() >= AgentBudget.TOOL_ATTEMPTS)",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 231,
+                "text": "                if (run.getToolAttempts() >= AgentBudget.TOOL_ATTEMPTS) {",
+                "materialId": "01M5K75WWE49FGJ5GB95BHECH3"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 15,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "guard.requireActive(task.getId());",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "guard.requireActive(task.getId());",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 2,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 142,
+                "text": "            guard.requireActive(task.getId());",
+                "materialId": "01M5KN2K9WPPF4B0SSW59KC5AW"
+              },
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 230,
+                "text": "                guard.requireActive(task.getId());",
+                "materialId": "01M5KN2K9WDXJ8BHSC2B5KDZS0"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 16,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "query": "该任务已发布 Agent 结果",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "该任务已发布 Agent 结果",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+                "line": 70,
+                "text": "                throw new ApiException(ErrorCode.CONFLICT, \"该任务已发布 Agent 结果\");",
+                "materialId": "01M5KN5SSEJFYQD7324FXWY5AP"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 16,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "query": "TaskStates.STOP_INSUFFICIENT_EVIDENCE",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "TaskStates.STOP_INSUFFICIENT_EVIDENCE",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+                "line": 52,
+                "text": "        String stopReason = submission.answered() ? null : TaskStates.STOP_INSUFFICIENT_EVIDENCE;",
+                "materialId": "01M5KN5SVPTR7AG63Y6FJNGST9"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 16,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution",
+            "query": "未被写入：任务已取消或已结束",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "未被写入：任务已取消或已结束",
+            "path": "backend/src/main/java/com/codereview/agent/execution",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java",
+                "line": 138,
+                "text": "            log.info(\"任务 {} 的终态 {} 未被写入：任务已取消或已结束\", taskId, state);",
+                "materialId": "01M5KN5SYNSMWN44HE9X3SG3J7"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 16,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "query": ".set(AgentReviewTask::getState, TaskStates.SUCCEEDED)",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": ".set(AgentReviewTask::getState, TaskStates.SUCCEEDED)",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentResultPublisher.java",
+                "line": 90,
+                "text": "                            .set(AgentReviewTask::getState, TaskStates.SUCCEEDED)",
+                "materialId": "01M5KN5T13F6JA5CQ5CYJJX0Q9"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 17,
+          "tool": "submit_result",
+          "status": "INVALID_ARGUMENT",
+          "arguments": null,
+          "diagnostic": "引用校验发现 33 项问题：E1 指向未实际送入模型的材料：01M5K8NP7QY6R8MKXQ2CXAY9F；E2 指向未实际送入模型的材料：01M5K8NP7QY6R8MKXQ2CXAY9F；E3 指向未实际送入模型的材料：01M5K8NP7QY6R8MKXQ2CXAY9F；E4 指向未实际送入模型的材料：01M5K8NP7QY6R8MKXQ2CXAY9F；E5 指向未实际送入模型的材料：01M5K8NP7QY6R8MKXQ2CXAY9F；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E2；正文引用了未声明或无效的引用：E3；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E2；正文引用了未声明或无效的引用：E2；正文引用了未声明或无效的引用：E2；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E3；正文引用了未声明或无效的引用：E4；正文引用了未声明或无效的引用：E5；正文引用了未声明或无效的引用：E5；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E1；正文引用了未声明或无效的引用：E3；正文引用了未声明或无效的引用：E4；正文引用了未声明或无效的引用：E5；正文引用了未声明或无效的引用：E2；正文引用了未声明或无效的引用：E3；正文引用了未声明或无效的引用：E1",
+          "data": null,
+          "completeness": "UNKNOWN"
+        },
+        {
+          "turn": 18,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "if (calls.isEmpty())",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "if (calls.isEmpty())",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 177,
+                "text": "            if (calls.isEmpty()) {",
+                "materialId": "01M5KN7TFJ7T2M60V2K03GAHFY"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 18,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "MAX_TOOLS_PER_TURN || (submit",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "MAX_TOOLS_PER_TURN || (submit",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 193,
+                "text": "            if (calls.size() > MAX_TOOLS_PER_TURN || (submit && calls.size() > 1)) {",
+                "materialId": "01M5K74SCK6XSNM2CVCH4DCD82"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 18,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "MAX_PROTOCOL_ERRORS = ",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "MAX_PROTOCOL_ERRORS = ",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 74,
+                "text": "    private static final int MAX_PROTOCOL_ERRORS = 2;",
+                "materialId": "01M5KN7TMNF91YM2H20CGGHB16"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 18,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "硬限制在每轮与每次工具执行前检查",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "硬限制在每轮与每次工具执行前检查",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 64,
+                "text": " * <p>硬限制在每轮与每次工具执行前检查：48 轮、96 次网络尝试、192 次工具、20 分钟任务期限、",
+                "materialId": "01M5KN7TQM8Y5SGPFT2JESEM88"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 19,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "result.attempts()",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "result.attempts()",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 173,
+                "text": "            run.setNetworkAttempts(run.getNetworkAttempts() + Math.max(1, result.attempts()));",
+                "materialId": "01M5KN7XVG2ZG4B73BGB12DBR4"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 19,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "AgentRun run = startRun(task);",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "AgentRun run = startRun(task);",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 114,
+                "text": "        AgentRun run = startRun(task);",
+                "materialId": "01M5KN7XXZ8R6BJRKS6YFDD1AG"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 19,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "extensions": [
+              ".java"
+            ],
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "query": "private boolean withinContext",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "private boolean withinContext",
+            "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+            "extensions": [
+              ".java"
+            ],
+            "totalHits": 1,
+            "hits": [
+              {
+                "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+                "line": 324,
+                "text": "    private boolean withinContext(ModelSnapshot model, AssembledPrompt prompt) {",
+                "materialId": "01M5KN7Y0EJGTA4HW00PNW22A6"
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 20,
+          "tool": "submit_result",
+          "status": "OK",
+          "arguments": null,
+          "diagnostic": "提交结果：ANSWERED",
+          "data": null,
+          "completeness": "UNKNOWN"
+        }
+      ]
+    },
+    {
+      "run": "AGT-012-R01",
+      "taskId": "01M5KN149Y2WEAQR9X19DAS14F",
+      "state": "SUCCEEDED",
+      "stopReason": null,
+      "turns": 4,
+      "toolAttempts": 4,
+      "networkAttempts": 4,
+      "answerStatus": "ANSWERED",
+      "audit": {
+        "citationCount": 1,
+        "notInCurrentToolMessages": 0,
+        "invalidRanges": 0
+      },
+      "requestChecks": [
+        {
+          "callId": "01M5KN4PCAZBHFPSRM685W278K",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN4JH4DK9W0S6PSGQHREQE",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN4FGTDB80YBE5G59KM9VQ",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        },
+        {
+          "callId": "01M5KN4ECJT5AMDNJWPKM8GS1R",
+          "complete": true,
+          "hasV1": false,
+          "hasV2": false,
+          "hasReference": false
+        }
+      ],
+      "tools": [
+        {
+          "turn": 1,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "query": "AGENT_TEST_ABSENT_20261023_X7Q9"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "AGENT_TEST_ABSENT_20261023_X7Q9",
+            "totalHits": 0,
+            "hits": []
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 2,
+          "tool": "tree",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "depth": 1,
+            "limit": 100
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "/",
+            "depth": 1,
+            "entries": [
+              {
+                "path": ".dockerignore",
+                "type": "blob",
+                "depth": 1,
+                "reviewable": false
+              },
+              {
+                "path": ".gitattributes",
+                "type": "blob",
+                "depth": 1,
+                "reviewable": false
+              },
+              {
+                "path": ".github",
+                "type": "tree",
+                "depth": 1,
+                "childCount": 1
+              },
+              {
+                "path": ".gitignore",
+                "type": "blob",
+                "depth": 1,
+                "reviewable": false
+              },
+              {
+                "path": "AGENTS.md",
+                "type": "blob",
+                "depth": 1,
+                "reviewable": true
+              },
+              {
+                "path": "Dockerfile",
+                "type": "blob",
+                "depth": 1,
+                "reviewable": false
+              },
+              {
+                "path": "backend",
+                "type": "tree",
+                "depth": 1,
+                "childCount": 7
+              },
+              {
+                "path": "deploy",
+                "type": "tree",
+                "depth": 1,
+                "childCount": 6
+              },
+              {
+                "path": "docs",
+                "type": "tree",
+                "depth": 1,
+                "childCount": 5
+              },
+              {
+                "path": "frontend",
+                "type": "tree",
+                "depth": 1,
+                "childCount": 14
+              },
+              {
+                "path": "scripts",
+                "type": "tree",
+                "depth": 1,
+                "childCount": 10
+              }
+            ]
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 2,
+          "tool": "search_code",
+          "status": "OK",
+          "arguments": {
+            "query": "AGENT_TEST_ABSENT",
+            "version": "V1"
+          },
+          "diagnostic": null,
+          "data": {
+            "query": "AGENT_TEST_ABSENT",
+            "totalHits": 0,
+            "hits": []
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 3,
+          "tool": "read_code",
+          "status": "OK",
+          "arguments": {
+            "version": "V1",
+            "path": "AGENTS.md",
+            "start": 1,
+            "end": 40
+          },
+          "diagnostic": null,
+          "data": {
+            "path": "AGENTS.md",
+            "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+            "totalLines": 25,
+            "startLine": 1,
+            "endLine": 25,
+            "contentHash": "04fbb5949525b30610d5139abdd4031c3e838af54dd6efd85071c7c26b38a88c"
+          },
+          "completeness": "COMPLETE"
+        },
+        {
+          "turn": 4,
+          "tool": "submit_result",
+          "status": "OK",
+          "arguments": null,
+          "diagnostic": "提交结果：ANSWERED",
+          "data": null,
+          "completeness": "UNKNOWN"
+        }
+      ]
+    }
+  ]
+}

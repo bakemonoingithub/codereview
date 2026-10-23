@@ -140,6 +140,15 @@ public class PromptAssemblyService {
         if (input.description() != null && !input.description().isBlank()) {
             user.append("范围描述：").append(bound(input.description(), 2000)).append('\n');
         }
+        if ("FILES".equals(input.scopeKind()) && !input.paths().isEmpty()) {
+            user.append("指定目标文件（以下路径均属于本次固定 head 版本）：\n");
+            for (String path : input.paths()) {
+                user.append("- ").append(path).append('\n');
+            }
+            user.append("优先使用 read_code 直接读取上述目标文件，按返回的分页信息继续读取必要范围；")
+                    .append("无需先搜索这些已知路径。需要背景证据时可读取同仓库关联文件，")
+                    .append("关联文件不自动成为审查目标。\n");
+        }
         if (!input.versions().isEmpty()) {
             user.append("固定版本（工具参数只能使用这些标识）：\n");
             for (AgentPromptInput.Version version : input.versions()) {

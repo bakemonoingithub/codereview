@@ -173,6 +173,32 @@ class TaskDetailReadTest {
     }
 
     @Test
+    void reportCallFullDetailIncludesBodiesUsageAndMetadataWithoutTaskId() {
+        AgentModelCall reportCall = call();
+        reportCall.setTaskId(null);
+        reportCall.setPurpose("REPORT");
+        reportCall.setState("SUCCEEDED");
+        reportCall.setAttempt(2);
+        reportCall.setUsageJson("{\"total_tokens\":12}");
+        reportCall.setStartedAt(AgentTime.now());
+        reportCall.setFinishedAt(reportCall.getStartedAt().plusSeconds(3));
+        when(callMapper.selectById(CALL_ID)).thenReturn(reportCall);
+
+        TaskDtos.CallDetailFull detail = service.callDetailFull(CALL_ID);
+
+        assertEquals("request-body", detail.requestBody());
+        assertEquals("response-body", detail.responseBody());
+        assertEquals("{\"total_tokens\":12}", detail.usageJson());
+        assertEquals("REPORT", detail.purpose());
+        assertEquals("SUCCEEDED", detail.state());
+        assertEquals(2, detail.attempt());
+        assertEquals(reportCall.getStartedAt(), detail.startedAt());
+        assertEquals(reportCall.getFinishedAt(), detail.finishedAt());
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.callDetailFull(AgentIds.next())).errorCode());
+    }
+
+    @Test
     void aForeignTargetCannotExposeResultsOrMaterials() {
         AgentTaskTarget foreign = target();
         foreign.setTaskId(AgentIds.next());

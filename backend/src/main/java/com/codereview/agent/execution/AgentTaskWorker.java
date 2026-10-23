@@ -519,12 +519,16 @@ public class AgentTaskWorker implements TaskWorker {
                     (String) entry.get("baseSha")));
         }
         JsonNode scopeNode = input.path("scope");
+        List<String> paths = new ArrayList<>();
+        for (JsonNode path : scopeNode.path("paths")) {
+            paths.add(path.asText());
+        }
         AgentPromptInput promptInput = new AgentPromptInput(
                 input.path("requirements").asText(""), scopeNode.path("kind").asText("TEXT"),
                 scopeNode.path("branch").isNull() ? null : scopeNode.path("branch").asText(),
                 scopeNode.path("headSha").isNull() ? null : scopeNode.path("headSha").asText(),
                 scopeNode.path("description").isNull() ? null : scopeNode.path("description").asText(),
-                promptVersions, promptComparisons,
+                paths, promptVersions, promptComparisons,
                 config.path("prompt").path("content").isMissingNode() ? null
                         : config.path("prompt").path("content").asText(),
                 input.path("reference").path("body").isMissingNode() ? null

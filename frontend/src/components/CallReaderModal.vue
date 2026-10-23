@@ -33,9 +33,12 @@
             调用用量
           </a-button>
           <span class="spacer" />
+          <a-checkbox v-model:checked="wrapLines">自动换行</a-checkbox>
           <span class="muted small">保存的是当时实际发送内容，修改策略不会改变此处</span>
         </div>
-        <CodeViewer :text="current" :language="jsonLike ? 'json' : ''" />
+        <div class="code" tabindex="0" role="region" aria-label="实际调用内容">
+          <pre class="call-content" :class="{ 'wrap-lines': wrapLines }"><code v-html="highlightedCurrent"></code></pre>
+        </div>
       </template>
     </a-spin>
   </a-modal>
@@ -43,7 +46,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import CodeViewer from '@/components/CodeViewer.vue'
+import { highlightSource } from '@/utils/markdown'
 import { modelCallsApi, tasksApi, type CallDetailFull } from '@/api/v2'
 
 const props = defineProps<{ open: boolean; taskId?: string; callId: string }>()
@@ -54,6 +57,7 @@ const loading = ref(false)
 const error = ref('')
 const call = ref<CallDetailFull | null>(null)
 const part = ref<'request' | 'response' | 'usage'>('request')
+const wrapLines = ref(true)
 
 const current = computed(() => {
   if (!call.value) return ''
@@ -67,6 +71,7 @@ const current = computed(() => {
 })
 
 const jsonLike = computed(() => current.value.startsWith('{') || current.value.startsWith('['))
+const highlightedCurrent = computed(() => highlightSource(current.value, jsonLike.value ? 'json' : ''))
 
 watch(
   () => [props.open, props.taskId, props.callId] as const,
@@ -132,20 +137,39 @@ function close() {
   align-items: center;
   gap: 8px;
   margin: 12px 0;
+  flex-wrap: wrap;
 }
 .spacer {
   flex: 1;
 }
 .code {
+  min-width: 0;
+  max-width: 100%;
   max-height: 58vh;
   overflow: auto;
+  overscroll-behavior: contain;
   margin: 0;
-  padding: 12px;
   background: #f6f8fc;
   border: 1px solid var(--line);
   border-radius: 6px;
-  font: 12px/1.75 Consolas, 'Cascadia Code', monospace;
+}
+.call-content {
+  margin: 0;
+  padding: 12px 16px;
+  overflow: visible;
+  background: transparent;
+  font: 13px/22px Consolas, Monaco, monospace;
+  white-space: pre;
+}
+.call-content.wrap-lines {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.call-content code {
+  font: inherit;
+  padding: 0;
+  background: transparent;
+  white-space: inherit;
+  overflow-wrap: inherit;
 }
 </style>

@@ -113,11 +113,9 @@
             highlight
             empty-text="该文件没有可显示的差异"
           />
-          <CodeViewer
-            v-else-if="previewCode !== null"
-            :text="previewCode"
-            :path="previewPath"
-          />
+          <div v-else-if="previewCode !== null" class="source-code" tabindex="0" role="region" aria-label="代码预览，可横向滚动">
+            <CodeViewer :text="previewCode" :path="previewPath" />
+          </div>
           <pre v-else class="code-preview">{{ previewNote }}</pre>
         </template>
       </a-spin>
@@ -436,5 +434,12 @@ function statusText(status: string): string {
   padding: 16px;
   font: 12px/1.8 Consolas, 'Cascadia Code', monospace;
   white-space: pre;
+}
+.source-code {
+  min-width: 0;
+  max-width: 100%;
+  max-height: 52vh;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 </style>

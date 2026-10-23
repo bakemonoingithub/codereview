@@ -414,6 +414,20 @@ public class TaskService {
         if (call == null || !taskId.equals(call.getTaskId())) {
             throw new ApiException(ErrorCode.NOT_FOUND, "调用记录不属于当前任务：" + callId);
         }
+        return fullCallView(call);
+    }
+
+    /** 报告等非任务调用的完整详情；保留保存时的正文与调用状态。 */
+    public TaskDtos.CallDetailFull callDetailFull(String callId) {
+        AgentModelCall call = db.mapper(AgentModelCallMapper.class)
+                .selectById(AgentIds.requireValid(callId, "调用 ID"));
+        if (call == null) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "调用记录不存在：" + callId);
+        }
+        return fullCallView(call);
+    }
+
+    private TaskDtos.CallDetailFull fullCallView(AgentModelCall call) {
         return new TaskDtos.CallDetailFull(call.getId(), call.getTargetId(), call.getUnitId(),
                 call.getPurpose(), call.getAttempt() == null ? 1 : call.getAttempt(),
                 call.getState(), call.getErrorCode(), call.getErrorMessage(), call.getRequestBody(),

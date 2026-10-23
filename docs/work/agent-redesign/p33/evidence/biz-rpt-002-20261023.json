@@ -1,0 +1,343 @@
+{
+  "scenario": "BIZ-RPT-002",
+  "date": "2026-10-23",
+  "environment": {
+    "branch": "refactor/agent",
+    "sha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+    "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+    "serviceHead": "7b57ae8814d5f3c71ed8e8ae23510019132562ff",
+    "modelConfigId": "01M23AKQZRG40082QFECKMC36N"
+  },
+  "firstRunTasks": [
+    {
+      "name": "BIZ-RPT-002-ISSUE 专项审查链路评估 R01",
+      "taskId": "01M5KR7MQ2XF3G8BT51DGYSY9F",
+      "kind": "ISSUE",
+      "state": "SUCCEEDED",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "targets": [
+        {
+          "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        },
+        {
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        },
+        {
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        }
+      ]
+    },
+    {
+      "name": "BIZ-RPT-002-COUPLING 专项审查链路评估 R01",
+      "taskId": "01M5KR7N76Z9MW0YJ77ZJX05J9",
+      "kind": "COUPLING",
+      "state": "PARTIAL",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "targets": [
+        {
+          "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        },
+        {
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "state": "FAILED",
+          "errorCode": "MODEL_OUTPUT_INVALID"
+        },
+        {
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        }
+      ]
+    },
+    {
+      "name": "BIZ-RPT-002-PATTERN 专项审查链路评估 R01",
+      "taskId": "01M5KR7NN1E76DMTW6A2Q7KVMM",
+      "kind": "PATTERN",
+      "state": "SUCCEEDED",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "targets": [
+        {
+          "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        },
+        {
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        },
+        {
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+          "state": "SUCCEEDED",
+          "errorCode": null
+        }
+      ]
+    }
+  ],
+  "retry": {
+    "input": {
+      "strategyId": "01M24HF42GKCTRWRWR1JNEHD5M",
+      "route": "SPECIALIST",
+      "name": "BIZ-RPT-002-COUPLING-R02 执行器协议重试",
+      "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+      "targets": [
+        {
+          "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+          "note": "业务背景：研发负责人准备扩展审查能力，需要评估用户发起专项任务、执行分析、保存结果这条链路的可靠性，以及新增一种审查类型时的修改成本。本次只读代码审查，不声称已运行功能测试；单文件结论不能直接扩大为全系统结论。\n业务目标：评估新增审查类型或调整模型调用流程时的修改成本。依据程序提供的依赖事实，说明目标文件依赖哪些职责、哪些依赖可能扩大修改范围，以及建议如何降低影响。区分已确认依赖与推断，不编造全局耦合结论。\n本文件关注点：类型分派、执行步骤与失败处理的职责是否清晰，单文件失败是否影响其他文件的完整结果。\n输出协议提醒：严格遵守系统给出的耦合度 JSON Schema。顶层仅使用 summary、observations、limitations；每个 observation 仅使用 title、explanation、dependencyIds、evidence、suggestion，不输出 severity 或其他额外字段。此要求不改变业务审查重点。"
+        }
+      ],
+      "specialistType": "COUPLING",
+      "source": {
+        "observedSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+        "branch": "refactor/agent",
+        "kind": "FILES"
+      },
+      "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+      "smartSplit": false
+    },
+    "state": "SUCCEEDED",
+    "taskId": "01M5KRBT9PX2FS6Z59Z9Q7523R"
+  },
+  "retainedFailedCalls": [
+    {
+      "id": "01M5KR8ZCNTTXA08VWFBNWWY1C",
+      "targetId": "01M5KR7N7B4H4W8WZ4E2A83F5Z",
+      "errorCode": "MODEL_OUTPUT_INVALID",
+      "errorMessage": "模型输出不符合专项协议：Unrecognized field \"severity\" (class com.codereview.agent.specialist.protocol.SpecialistResults$CouplingObservation), not marked as ignorable"
+    },
+    {
+      "id": "01M5KR8N1G446MNRHAC47B2ZR5",
+      "targetId": "01M5KR7N7B4H4W8WZ4E2A83F5Z",
+      "errorCode": "MODEL_OUTPUT_INVALID",
+      "errorMessage": "模型输出不符合专项协议：Unrecognized field \"severity\" (class com.codereview.agent.specialist.protocol.SpecialistResults$CouplingObservation), not marked as ignorable"
+    },
+    {
+      "id": "01M5KR8G82CA1Z8VRM77KA52EJ",
+      "targetId": "01M5KR7N7CDYMWPZ0B0B4KQ9CJ",
+      "errorCode": "MODEL_OUTPUT_INVALID",
+      "errorMessage": "模型输出不符合专项协议：Unrecognized field \"severity\" (class com.codereview.agent.specialist.protocol.SpecialistResults$CouplingObservation), not marked as ignorable"
+    },
+    {
+      "id": "01M5KR86N1ZWJMYAYND9CF3XEV",
+      "targetId": "01M5KR7N7B4H4W8WZ4E2A83F5Z",
+      "errorCode": "MODEL_OUTPUT_INVALID",
+      "errorMessage": "模型输出不符合专项协议：Unrecognized field \"severity\" (class com.codereview.agent.specialist.protocol.SpecialistResults$CouplingObservation), not marked as ignorable"
+    },
+    {
+      "id": "01M5KR7RC5TWN57BCPZ747X5E1",
+      "targetId": "01M5KR7N7CDYMWPZ0B0B4KQ9CJ",
+      "errorCode": "MODEL_OUTPUT_INVALID",
+      "errorMessage": "模型输出不符合专项协议：Unrecognized field \"severity\" (class com.codereview.agent.specialist.protocol.SpecialistResults$CouplingObservation), not marked as ignorable"
+    }
+  ],
+  "report": {
+    "kindCounts": {
+      "COUPLING": 3,
+      "ISSUE": 3,
+      "PATTERN": 3
+    },
+    "sourceCount": 9,
+    "title": "BIZ-RPT-002 专项审查链路可靠性与扩展成本评估报告",
+    "state": "SUCCEEDED",
+    "taskCount": 4,
+    "bodyCharacters": 16582,
+    "id": "01M5KRC97552ZX5QNHR69QN2TY",
+    "downloadMatches": true,
+    "versionCount": 1,
+    "sourceMarkers": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "calls": [
+      {
+        "id": "01M5KRC9E05PR1XJEKBXQY1Q8Q",
+        "purpose": "REPORT",
+        "attempt": 1,
+        "state": "SUCCEEDED",
+        "createdAt": "2026-10-23 06:50:07",
+        "startedAt": "2026-10-23 06:50:07",
+        "finishedAt": "2026-10-23 06:51:08"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "ordinal": 1,
+      "resultId": "01M5KRC4VZ4P46ZDM3WY4RX4M0",
+      "kind": "COUPLING",
+      "taskId": "01M5KRBT9PX2FS6Z59Z9Q7523R",
+      "taskState": "SUCCEEDED",
+      "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 13,
+      "summary": "SpecialistTaskWorker 是执行链路的高扇出编排类，直接依赖 17 个协作 Bean 与 6 个 Mapper/实体，类型分派与失败处理集中在单类中，新增审查类型或调整模型调用流程会同时波及准备、规划、调用、校验、发布多个环节。",
+      "limitations": [
+        "SpecialistResultPublisher 源码读取达到上限，其内部依赖未纳入分析。",
+        "Logger、ObjectMapper、TaskOutcome、PrepareCommand、PreparedTarget 等 8 个类型未在仓库版本中定位，出向依赖统计未覆盖全部引用。",
+        "仅基于单文件依赖事实，未计算 fan-in/instability，不能据此推断全仓耦合状况。",
+        "未运行功能测试，失败隔离与重试行为仅依据代码结构与注释判断。"
+      ]
+    },
+    {
+      "ordinal": 2,
+      "resultId": "01M5KR8X4Z2SN69CP7DH6DRY3Y",
+      "kind": "COUPLING",
+      "taskId": "01M5KR7N76Z9MW0YJ77ZJX05J9",
+      "taskState": "PARTIAL",
+      "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 9,
+      "summary": "SpecialistResultPublisher 在单个事务内集中承担合并结果落库、问题展开与 provenance 序列化三类职责，并直接依赖 AgentDatabase 与实体/Mapper，新增审查类型或调整发布规则时改动集中于此文件，建议按“持久化端口→结果类型写入器→provenance 组装”拆分以缩小影响面。",
+      "limitations": [
+        "仅审查 SpecialistResultPublisher.java 单文件，未获得调用方与 Mapper 实现，无法确认是否存在重复发布或结果与状态不一致的实际路径。",
+        "ObjectMapper、Material、ObjectNode、IllegalArgumentException 未在仓库版本中定位，相关出向依赖未纳入指标（coverage=0.7333），耦合结论仅覆盖已解析的 11 条依赖。",
+        "未提供包级依赖图，无法判断是否存在循环依赖或分层违规的全局结论。"
+      ]
+    },
+    {
+      "ordinal": 3,
+      "resultId": "01M5KR8PGQCKPH74CD38Z6Z19C",
+      "kind": "ISSUE",
+      "taskId": "01M5KR7MQ2XF3G8BT51DGYSY9F",
+      "taskState": "SUCCEEDED",
+      "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 13,
+      "summary": "SpecialistTaskWorker 的逐文件执行与失败隔离总体清晰，但存在重规划代际未收敛、单元失败后仍发布部分结果、JSON 解析异常被静默吞掉、线程池中断与状态更新不一致等可靠性问题。",
+      "limitations": [
+        "SpecialistResultPublisher 源码不可用，无法确认 publish 对 complete=false 的实际落库语义及是否写入不可选材标记。",
+        "TaskExecutionGuard、ModelInvocationService、ModelCapacityService、SpecialistSplitPlanner 等方法体为声明摘要，无法确认 guard.requireActive 的异常类型、invoke 的中断行为与 plan 的返回约束。",
+        "Logger、ObjectMapper 被列为未找到的直接引用类型，无法核对日志与序列化实现细节。",
+        "本次为单文件只读审查，未运行功能测试；跨文件的状态一致性与事务边界结论不能扩大为全系统结论。"
+      ]
+    },
+    {
+      "ordinal": 4,
+      "resultId": "01M5KR8G9QD8EBE9JPCZM9DNEZ",
+      "kind": "COUPLING",
+      "taskId": "01M5KR7N76Z9MW0YJ77ZJX05J9",
+      "taskState": "PARTIAL",
+      "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 24,
+      "summary": "TaskService 是任务发起链路的单点聚合类：它同时承担创建/幂等、配置解析、来源校验、目标规范化、快照序列化、查询读取与结果组装，并直接依赖 14 个 Mapper 与 6 个外部服务/配置类；新增审查类型或调整模型调用流程时，修改面集中在 normalizeSpecialist、resolveConfig、configSnapshot 与 TaskDispatchService 的 worker 选择上，建议按职责拆分并引入类型注册表与配置解析接口。",
+      "limitations": [
+        "仅审查了 TaskService.java 一个目标文件；辅助材料为声明摘要（方法体省略），无法确认 TaskDispatchService.selectWorker 的具体选择条件与 TaskWorker 的接口定义。",
+        "程序计算的依赖事实 coverage=0.8604651162790697，ObjectMapper、JsonNode、ObjectNode、LambdaQueryWrapper、LambdaUpdateWrapper 等 6 个类型未定位，出向依赖未完全覆盖，因此未给出 fan-in、instability 等全仓指标。",
+        "未运行功能测试，结论仅基于静态依赖事实与源码文本，不构成运行时可靠性结论。",
+        "未提供 Controller 层与包级依赖事实，无法判断是否存在 Controller 直接依赖 Mapper 或包级循环依赖，故未对分层违规与循环依赖下结论。"
+      ]
+    },
+    {
+      "ordinal": 5,
+      "resultId": "01M5KR88NZM3WQ8M1FE504KX6K",
+      "kind": "PATTERN",
+      "taskId": "01M5KR7NN1E76DMTW6A2Q7KVMM",
+      "taskState": "SUCCEEDED",
+      "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 13,
+      "summary": "SpecialistTaskWorker 以 TaskWorker 接口实现者身份承担策略角色，并通过构造注入组合多个处理阶段；单文件内可见策略模式与模板方法/流程骨架的候选，但多数协作类仅有声明摘要，无法确认完整实现。",
+      "limitations": [
+        "SpecialistResultPublisher 源码未提供（LIMIT_REACHED），无法确认发布阶段是否另有模式或职责划分。",
+        "Logger、ObjectMapper 被标记为未在仓库版本中找到，相关类型来源无法核实。",
+        "TaskWorker、AgentDatabase、MaterialPreparationService、DeclarationEnhancementService、CouplingFactsBuilder、RepositoryReadService、JavaStructureParser、SpecialistSplitPlanner、PromptAssemblyService、SpecialistPromptBuilder、SpecialistResultParser、SpecialistResultValidator 均为声明摘要，方法体省略，无法确认其内部是否实现工厂、建造者、适配器、代理等模式。",
+        "未发现单例、工厂、抽象工厂、建造者、观察者、装饰器、适配器、代理的直接结构证据，故未报告；仅凭类名（如 Service、Builder、Planner）不构成模式判定依据。",
+        "单文件结论不能扩大为全系统结论，调度层如何选择 TaskWorker 实现未在材料中体现。"
+      ]
+    },
+    {
+      "ordinal": 6,
+      "resultId": "01M5KR86Q0X9SS9K4ZBW8K42B9",
+      "kind": "ISSUE",
+      "taskId": "01M5KR7MQ2XF3G8BT51DGYSY9F",
+      "taskState": "SUCCEEDED",
+      "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 24,
+      "summary": "TaskService 的创建链路在幂等、来源固定、目标校验和状态条件更新上整体可靠，但存在幂等键与请求哈希的竞态窗口、readJson 静默吞掉快照损坏、专项类型与路由白名单硬编码分散等影响业务正确性与扩展成本的问题。",
+      "limitations": [
+        "TaskDispatchService、AgentDatabase、RepositoryReadService 仅提供声明摘要，dispatch 的并发与失败语义、inTransaction 的回滚范围、resolveBranchHead 的异常行为无法从材料确认。",
+        "ObjectMapper、JsonNode 为第三方类型，未在仓库版本中找到源码，其序列化/反序列化边界行为未验证。",
+        "未运行功能测试，幂等唯一索引是否存在于数据库 schema 无法从当前材料确认。",
+        "单文件结论不能扩大为全系统结论；Controller 层是否已做参数校验、事务注解是否加在 Service 上未在本次材料范围内。"
+      ]
+    },
+    {
+      "ordinal": 7,
+      "resultId": "01M5KR81DY7VT3DNT5XDK50Z97",
+      "kind": "ISSUE",
+      "taskId": "01M5KR7MQ2XF3G8BT51DGYSY9F",
+      "taskState": "SUCCEEDED",
+      "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 9,
+      "summary": "SpecialistResultPublisher 在事务内完成合并、结果写入与问题写入，职责基本集中；但发布入口缺少幂等/重复发布防护，问题来源单元匹配为 O(n²) 且依赖 issueKey 语义，位置解析会静默丢弃无法解析的定位，存在结果与状态一致性风险。",
+      "limitations": [
+        "未提供 AgentDatabase.inTransaction 的实现，无法确认事务传播、嵌套调用与回滚行为，因此重复发布与部分写入风险只能基于本文件调用方式判断。",
+        "未提供 SpecialistResultMerger.merge 与 issueKey 的实现，无法确认合并去重规则是否与 publishIssues 的来源单元匹配完全一致。",
+        "未提供 AgentReviewResultMapper/AgentIssueMapper 的 SQL 与表约束，无法确认是否存在唯一约束可阻止重复发布。",
+        "未提供 SpecialistMaterials.PreparedTarget.allMaterials 与 SpecialistUnitPlan.target 的实现，无法确认 materials 映射是否覆盖所有问题引用的 materialId。",
+        "未提供调用方（执行编排）代码，无法确认 publish 是否可能被并发或重试重复调用。"
+      ]
+    },
+    {
+      "ordinal": 8,
+      "resultId": "01M5KR7ZH3H4S48798QW7S2S82",
+      "kind": "PATTERN",
+      "taskId": "01M5KR7NN1E76DMTW6A2Q7KVMM",
+      "taskState": "SUCCEEDED",
+      "path": "backend/src/main/java/com/codereview/agent/service/TaskService.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 24,
+      "summary": "TaskService 以集中式私有方法组织发起配置、来源与目标规范化，可见结构更接近模板方法式的固定创建流程与策略选择（按 specialistType/route 选择），但缺少多态子类或策略接口证据，仅能给出低置信候选。",
+      "limitations": [
+        "目标文件为单一具体服务类，未提供策略接口、抽象基类或 Builder 类型，故上述候选均为低置信形似结构，不能断言为经典模式实现。",
+        "辅助材料仅为声明摘要，方法体省略，无法验证 TaskDispatchService.selectWorker 等跨文件分派是否构成策略模式。",
+        "缺失 ObjectMapper、JsonNode 等直接引用类型源码（NOT_AVAILABLE），且辅助源码读取达到上限（LIMIT_REACHED），结论仅限本文件可见结构。",
+        "未运行功能测试，单文件结论不能扩大为全系统结论。"
+      ]
+    },
+    {
+      "ordinal": 9,
+      "resultId": "01M5KR7W62QFP1VCQF0QYESQXV",
+      "kind": "PATTERN",
+      "taskId": "01M5KR7NN1E76DMTW6A2Q7KVMM",
+      "taskState": "SUCCEEDED",
+      "path": "backend/src/main/java/com/codereview/agent/execution/SpecialistResultPublisher.java",
+      "headSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+      "completeness": "COMPLETE",
+      "materialCount": 9,
+      "summary": "SpecialistResultPublisher 是集中式结果发布/持久化服务，可见结构更接近事务脚本与委托组合，未发现可确证的单例、工厂、观察者、策略、装饰器、适配器、代理或模板方法模式。",
+      "limitations": [
+        "仅审查 SpecialistResultPublisher.java 单文件，辅助材料为声明摘要，无法确认调用方是否重复调用 publish 或是否存在幂等/去重保护，因此不能断言重复发布风险。",
+        "SpecialistResultMerger、AgentDatabase 等方法体省略，无法验证事务边界内合并与写入的一致性细节。",
+        "缺失 ObjectMapper、Material、ObjectNode 源码，序列化行为仅按调用点推断。",
+        "未发现经典模式证据，故不报告单例/工厂/观察者/策略等候选；类名含 Publisher/Service 不构成模式依据。"
+      ]
+    }
+  ]
+}

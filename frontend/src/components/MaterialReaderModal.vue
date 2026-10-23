@@ -62,14 +62,15 @@
             highlight
             empty-text="宿主未提供可显示的差异，请阅读固定版本原文"
           />
-          <CodeViewer
-            v-else
-            :text="mode === 'saved' ? (detail.content || '') : content"
-            :path="metadata.path"
-            :start-line="mode === 'saved' ? (metadata.startLine || 1) : 1"
-            :ranges="focusRanges"
-            :active-range="focusRange"
-          />
+          <div v-else class="code" tabindex="0" role="region" aria-label="材料代码，可横向滚动">
+            <CodeViewer
+              :text="mode === 'saved' ? (detail.content || '') : content"
+              :path="metadata.path"
+              :start-line="mode === 'saved' ? (metadata.startLine || 1) : 1"
+              :ranges="focusRanges"
+              :active-range="focusRange"
+            />
+          </div>
         </a-spin>
       </template>
     </a-spin>
@@ -251,14 +252,14 @@ function close() {
   flex: 1;
 }
 .code {
+  min-width: 0;
+  max-width: 100%;
   max-height: 55vh;
   overflow: auto;
+  overscroll-behavior: contain;
   margin: 0;
-  padding: 12px;
   background: #f6f8fc;
   border: 1px solid var(--line);
   border-radius: 14px;
-  font: 12px/1.95 Consolas, 'Cascadia Code', monospace;
-  white-space: pre;
 }
 </style>

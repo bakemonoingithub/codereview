@@ -1,0 +1,24 @@
+{
+  "reportId": "01M5KRC97552ZX5QNHR69QN2TY",
+  "callId": "01M5KRC9E05PR1XJEKBXQY1Q8Q",
+  "state": "SUCCEEDED",
+  "purpose": "REPORT",
+  "attempt": 1,
+  "requestBytes": "215346",
+  "responseBytes": "40655",
+  "requestCharacters": 188807,
+  "responseCharacters": 22454,
+  "usageCharacters": 248,
+  "requestSha256": "f58042b74f1d7f9625100a3a43d83311ac51dc3f744d81592f2b77919c8947f9",
+  "responseSha256": "de5ce63371396baead457b4d06a85480e329f7fb913b9712a6462516d395dbe5",
+  "fullMatchesSavedParts": true,
+  "frontendTestsPassed": 28,
+  "backendTestsPassed": 23,
+  "typeCheck": "passed",
+  "browserPartsVerified": [
+    "request",
+    "response",
+    "usage"
+  ],
+  "screenshot": "report-call-full-20261023.png"
+}

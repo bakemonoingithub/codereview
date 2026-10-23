@@ -1,0 +1,356 @@
+{
+  "taskId": "01M5K73RVKSC04RDQYSQBG032J",
+  "originalTaskId": "01M5HMKRCCJY91KD6ZGTS61W45",
+  "fixedSha": "738be95c0822f358dcb43034dfa1f919d78cc236",
+  "state": "SUCCEEDED",
+  "turnNo": 17,
+  "toolAttempts": 28,
+  "networkAttempts": 17,
+  "answerStatus": "ANSWERED",
+  "citations": 29,
+  "invalidCitations": 0,
+  "missingPromptPaths": 0,
+  "firstThreeTurnsReadAllTargets": true,
+  "tools": [
+    {
+      "id": "01M5K73TKD5AC1D6E2TXW0PXAZ",
+      "turnNo": 1,
+      "toolName": "read_code",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+        "start": 1,
+        "end": 400
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K73TWEYE2ASFMRKAATKDV7",
+      "turnNo": 1,
+      "toolName": "read_code",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/tools/ToolEnvelope.java",
+        "start": 1,
+        "end": 200
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K73WC4467FEYD0K08Y5NE1",
+      "turnNo": 2,
+      "toolName": "read_code",
+      "arguments": {
+        "end": 579,
+        "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+        "start": 401,
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K73WW6533XPNWN3MTF7RTG",
+      "turnNo": 2,
+      "toolName": "read_code",
+      "arguments": {
+        "end": 200,
+        "path": "backend/src/main/java/com/codereview/agent/prompt/PromptMessage.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K7444C6XBMEWECFHCMY1R6",
+      "turnNo": 3,
+      "toolName": "read_code",
+      "arguments": {
+        "end": 400,
+        "path": "backend/src/main/java/com/codereview/agent/prompt/PromptAssemblyService.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K744CZ1MDV5DKBS4XG07RC",
+      "turnNo": 3,
+      "toolName": "read_code",
+      "arguments": {
+        "end": 400,
+        "path": "backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java",
+        "start": 1,
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K74S7THCQKKTA9XD8PW2XM",
+      "turnNo": 4,
+      "toolName": "search_code",
+      "arguments": {
+        "query": "REJECTED_BATCH",
+        "version": "V1",
+        "limit": 40
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K74SCVPMRPVPA1EWJVRCVH",
+      "turnNo": 4,
+      "toolName": "search_code",
+      "arguments": {
+        "query": "MAX_TOOLS_PER_TURN",
+        "version": "V1",
+        "limit": 40
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K74WK56P9V4J82ZN1B2D8N",
+      "turnNo": 5,
+      "toolName": "tree",
+      "arguments": {
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent/invocation",
+        "depth": 2
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K74WZCRCWFQW01WXFZFAA0",
+      "turnNo": 5,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 30,
+        "query": "tool_call_id",
+        "version": "V1",
+        "path": "backend/src/main/java/com/codereview/agent"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K74YKPQFQCAC30E5HAVB6D",
+      "turnNo": 6,
+      "toolName": "read_code",
+      "arguments": {
+        "end": 360,
+        "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+        "start": 250,
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K75TATPW3D4TJR49X289DW",
+      "turnNo": 7,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/execution",
+        "query": "assistantToolCalls(calls",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K75TEVBE2Z1KRQH1FP1D1B",
+      "turnNo": 7,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/execution",
+        "query": "工具批次不合法",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K75WWJ72S5X58PR1DW8TTC",
+      "turnNo": 8,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/execution",
+        "query": "AgentBudget.TOOL_ATTEMPTS",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K75X19SJWQAHGFP67MWXTS",
+      "turnNo": 8,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/prompt",
+        "query": "addAll(history)",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K75ZCTGKCKENHGJ88FPWVH",
+      "turnNo": 9,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/test/java/com/codereview/agent/execution",
+        "query": "void rejectedOversizedToolBatchGetsOneToolResultPerCallBeforeRetry",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K75ZHJWBTWC1WACS78BJP1",
+      "turnNo": 9,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/test/java/com/codereview/agent/execution",
+        "query": "void mixedSubmitBatchIsRejectedRecordedAndNotExecuted",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K7642S33SMMVQKJ8YRFFXY",
+      "turnNo": 10,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/test/java/com/codereview/agent/execution",
+        "query": "assertEquals(8, rejectedResults.size())",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K76472YQF6QPNJWDEYG6TB",
+      "turnNo": 10,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/test/java/com/codereview/agent/execution",
+        "query": "void contentOnlyRepliesExhaustTheProtocolRetries",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K769SNDWX25G3QM31JFR5Q",
+      "turnNo": 11,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "PromptMessage.toolResult(call.id(),",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K769X2J2WAR7ENNJE2FQ0J",
+      "turnNo": 11,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/invocation",
+        "query": "new InvocationResult(",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K76BMDZVK4P5MHC68VY7ER",
+      "turnNo": 12,
+      "toolName": "read_code",
+      "arguments": {
+        "end": 250,
+        "path": "backend/src/main/java/com/codereview/agent/invocation/ModelInvocationService.java",
+        "start": 180,
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K76R9Z8ZAEVC2XXT0VJ5M2",
+      "turnNo": 13,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+        "query": "boolean investigated =",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K76RE13QGZW3ED03PE8Q5W",
+      "turnNo": 13,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/execution",
+        "query": "if (!withinContext(execution.model, prompt))",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K76TYQ3MYDG4GMCHSEVSV9",
+      "turnNo": 14,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+        "query": "execution.protocolErrors++;",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K76XP7NSF4H5WANY4XPGTV",
+      "turnNo": 15,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent",
+        "query": "markSent(execution, result.callId())",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K76YF8FQD3RBCM83AEG1ZE",
+      "turnNo": 15,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/tools",
+        "query": "static ToolFailure invalid",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K771KHMJ7T4XGBXH90RPYA",
+      "turnNo": 16,
+      "toolName": "search_code",
+      "arguments": {
+        "limit": 20,
+        "path": "backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java",
+        "query": "catch (RuntimeException e) {",
+        "version": "V1"
+      },
+      "status": "OK"
+    },
+    {
+      "id": "01M5K78NRND84MYV561VF18FTE",
+      "turnNo": 17,
+      "toolName": "submit_result",
+      "arguments": null,
+      "status": "OK"
+    }
+  ]
+}
