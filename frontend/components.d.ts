@@ -29,8 +29,6 @@ declare module 'vue' {
     ALayoutContent: typeof import('ant-design-vue/es')['LayoutContent']
     ALayoutHeader: typeof import('ant-design-vue/es')['LayoutHeader']
     ALayoutSider: typeof import('ant-design-vue/es')['LayoutSider']
-    AList: typeof import('ant-design-vue/es')['List']
-    AListItem: typeof import('ant-design-vue/es')['ListItem']
     AMenu: typeof import('ant-design-vue/es')['Menu']
     AMenuItem: typeof import('ant-design-vue/es')['MenuItem']
     AMenuItemGroup: typeof import('ant-design-vue/es')['MenuItemGroup']
@@ -44,8 +42,6 @@ declare module 'vue' {
     ASpin: typeof import('ant-design-vue/es')['Spin']
     ATable: typeof import('ant-design-vue/es')['Table']
     ATableColumn: typeof import('ant-design-vue/es')['TableColumn']
-    ATabPane: typeof import('ant-design-vue/es')['TabPane']
-    ATabs: typeof import('ant-design-vue/es')['Tabs']
     ATag: typeof import('ant-design-vue/es')['Tag']
     ATextarea: typeof import('ant-design-vue/es')['Textarea']
     ATree: typeof import('ant-design-vue/es')['Tree']
@@ -53,6 +49,7 @@ declare module 'vue' {
     ChangedFileTree: typeof import('./src/components/ChangedFileTree.vue')['default']
     CodeReferenceModal: typeof import('./src/components/CodeReferenceModal.vue')['default']
     CodeViewer: typeof import('./src/components/CodeViewer.vue')['default']
+    CommitPickerModal: typeof import('./src/components/CommitPickerModal.vue')['default']
     CommitTable: typeof import('./src/components/CommitTable.vue')['default']
     CouplingResult: typeof import('./src/components/CouplingResult.vue')['default']
     DiffReviewResult: typeof import('./src/components/DiffReviewResult.vue')['default']
@@ -80,5 +77,6 @@ declare module 'vue' {
     SplitPane: typeof import('./src/components/SplitPane.vue')['default']
     StatusBadge: typeof import('./src/components/StatusBadge.vue')['default']
     TaskAccuracySummary: typeof import('./src/components/TaskAccuracySummary.vue')['default']
+    TaskDetailMetadata: typeof import('./src/components/TaskDetailMetadata.vue')['default']
   }
 }

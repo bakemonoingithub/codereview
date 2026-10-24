@@ -5,7 +5,7 @@
   >
     <template #actions>
       <a-button @click="router.push('/reports/new')">生成报告</a-button>
-      <a-button @click="router.push('/reviews/new')">发起专项审查</a-button>
+      <a-button @click="openReviewLaunch()">发起专项审查</a-button>
       <a-button type="primary" @click="agentLaunchOpen = true">＋ 发起 Agent 分析</a-button>
     </template>
 
@@ -97,7 +97,7 @@
         <EmptyGuide
           title="还没有审查任务"
           action-text="发起第一个审查"
-          @action="router.push('/reviews/new')"
+          @action="openReviewLaunch()"
         />
         <a-button v-if="hasFilters" type="link" @click="resetFilters">重置筛选</a-button>
       </template>
@@ -105,6 +105,7 @@
     <div class="table-footer">
       <span>按发起时间排序</span>
     </div>
+    <ReviewLaunch v-if="reviewLaunchOpen" />
     <AgentLaunch v-model:open="agentLaunchOpen" />
   </ListPageLayout>
 </template>
@@ -121,6 +122,7 @@ import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import PageNotice from '@/components/PageNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import AgentLaunch from '@/views/AgentLaunch.vue'
+import ReviewLaunch from '@/views/ReviewLaunch.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -134,6 +136,11 @@ const filterType = ref<string | undefined>()
 const filterState = ref<string | undefined>()
 const search = ref('')
 const agentLaunchOpen = ref(false)
+const reviewLaunchOpen = computed(() => route.query.launchReview === '1')
+
+function openReviewLaunch(copyFrom?: string) {
+  router.push({ path: '/reviews', query: { ...route.query, launchReview: '1', ...(copyFrom ? { copyFrom } : {}) } })
+}
 const hasFilters = computed(
   () => !!(filterProject.value || filterType.value || filterState.value || search.value)
 )
@@ -234,7 +241,7 @@ function openTask(id: string) {
 }
 
 function copyTask(id: string) {
-  router.push({ path: '/reviews/new', query: { copyFrom: id } })
+  openReviewLaunch(id)
 }
 
 function typeText(task: TaskSummary): string {

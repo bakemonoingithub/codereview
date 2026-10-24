@@ -50,6 +50,7 @@
         <div class="field">
           <label>项目</label>
           <a-select
+                :get-popup-container="getPopupContainer"
             v-model:value="form.projectId"
             style="width: 100%"
             placeholder="选择项目"
@@ -82,6 +83,7 @@
         <div class="field">
           <label>分支</label>
           <a-select
+                :get-popup-container="getPopupContainer"
             v-model:value="form.branch"
             style="width: 100%"
             placeholder="选择该项目的分支"
@@ -100,16 +102,26 @@
         </div>
         <div v-else class="field">
           <label>审查提交</label>
-          <a-select
-            v-model:value="form.commitSha"
-            style="width: 100%"
-            placeholder="选择提交"
-            :loading="commitsLoading"
-            :options="commitOptions"
-            @change="onCommitChange"
-          />
-          <p class="muted small">
-            比较基线：{{ form.baseSha ? form.baseSha.slice(0, 7) : '根提交（无父版本）' }}
+          <div class="commit-picker-field">
+            <a-button
+              :loading="commitsLoading && !commits.length"
+              :disabled="!form.projectId || !form.branch"
+              @click="openCommitPicker"
+            >
+              {{ form.commitSha ? '更换提交' : '选择提交' }}
+            </a-button>
+            <div v-if="form.commitSha" class="selected-commit">
+              <code>{{ form.commitSha.slice(0, 10) }}</code>
+              <span :title="selectedCommitSubject">{{ selectedCommitSubject || '正在读取提交信息…' }}</span>
+            </div>
+          </div>
+          <p class="muted small commit-help">
+            <template v-if="form.commitSha">
+              比较基线：{{ form.baseSha ? form.baseSha.slice(0, 7) : '根提交（无父版本）' }}
+            </template>
+            <template v-else>
+              提交历史分页加载；选择器会明确提示是否还有更早提交。
+            </template>
           </p>
         </div>
         <div class="field full">
@@ -141,6 +153,7 @@
         <div class="field">
           <label>审查策略（可选，包含模型与通用规则）</label>
           <a-select
+                :get-popup-container="getPopupContainer"
             v-model:value="form.strategyId"
             allow-clear
             style="width: 100%"
@@ -153,6 +166,7 @@
         <div class="field">
           <label>模型</label>
           <a-select
+                :get-popup-container="getPopupContainer"
             v-model:value="form.modelConfigId"
             style="width: 100%"
             placeholder="选择模型"
@@ -199,6 +213,21 @@
       </a-button>
     </div>
 
+    <CommitPickerModal
+      v-model:open="commitPickerOpen"
+      :branch="form.branch"
+      :commits="commits"
+      :selected-sha="form.commitSha"
+      :has-more="commitsHasMore"
+      :loading="commitsLoading"
+      :loading-more="commitsLoadingMore"
+      :error="commitsError"
+      @confirm="confirmCommit"
+      @load-more="loadMoreCommits"
+      @refresh="loadCommits"
+      @retry="retryCommits"
+    />
+
     <ScopePickerModal
       v-model:open="scopeOpen"
       :project-id="form.projectId"
@@ -213,9 +242,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
 import {
   modelsApi,
@@ -239,6 +269,7 @@ interface TargetRow {
 }
 
 const route = useRoute()
+const getPopupContainer = (trigger: HTMLElement) => trigger.closest('.ant-modal-body') as HTMLElement || document.body
 const router = useRouter()
 const copyFrom = computed(() => String(route.query.copyFrom || ''))
 const projects = ref<ProjectView[]>([])
@@ -255,8 +286,14 @@ const branches = ref<string[]>([])
 const branchesLoading = ref(false)
 const headLoading = ref(false)
 const commitsLoading = ref(false)
+const commitsLoadingMore = ref(false)
 const commits = ref<CommitInfo[]>([])
+const commitsPage = ref(0)
+const commitsHasMore = ref(false)
+const commitsError = ref('')
+const failedCommitPage = ref<{ page: number; replace: boolean } | null>(null)
 const commitDetail = ref<CommitDetail | null>(null)
+const commitPickerOpen = ref(false)
 const scopeOpen = ref(false)
 const submitting = ref(false)
 const formError = ref('')
@@ -292,12 +329,11 @@ const modelOptions = computed(() => models.value.map((model) => ({ value: model.
 const selectedStrategy = computed(() =>
   strategies.value.find((strategy) => strategy.id === form.strategyId) || null
 )
-const commitOptions = computed(() =>
-  commits.value.map((commit) => ({
-    value: commit.sha,
-    label: `${commit.sha.slice(0, 7)} · ${(commit.message || '').split('\n')[0]}`
-  }))
-)
+const selectedCommitSubject = computed(() => {
+  const selected = commits.value.find((commit) => commit.sha === form.commitSha)
+  const message = selected?.message || (commitDetail.value?.sha === form.commitSha ? commitDetail.value.message : '')
+  return String(message || '').split('\n')[0]
+})
 const scopeReady = computed(() =>
   !!form.projectId && !restoring.value && (form.sourceKind === 'FILES'
     ? !!form.observedSha && !headLoading.value
@@ -313,6 +349,16 @@ const canSubmit = computed(
 )
 
 const strategyModel = computed(() => selectedStrategy.value?.modelConfigId || '')
+
+function closeDropdownOnScroll(event: Event) {
+  const target = event.target
+  if (!(target instanceof Element) || !target.closest('.launch-review-modal .ant-modal-body')) return
+  const active = document.activeElement
+  if (active instanceof HTMLElement && active.closest('.ant-select')) active.blur()
+}
+
+onMounted(() => window.addEventListener('scroll', closeDropdownOnScroll, true))
+onBeforeUnmount(() => window.removeEventListener('scroll', closeDropdownOnScroll, true))
 
 onMounted(async () => {
   await loadOptions()
@@ -383,6 +429,13 @@ watch(() => [form.projectId, form.branch, form.sourceKind], () => {
   form.targets = []
   commitDetail.value = null
   commits.value = []
+  commitsPage.value = 0
+  commitsHasMore.value = false
+  commitsError.value = ''
+  failedCommitPage.value = null
+  commitsLoading.value = false
+  commitsLoadingMore.value = false
+  commitPickerOpen.value = false
   scopeOpen.value = false
 }, { flush: 'sync' })
 
@@ -398,6 +451,10 @@ watch(
     form.commitSha = ''
     form.baseSha = ''
     commits.value = []
+    commitsPage.value = 0
+    commitsHasMore.value = false
+    commitsError.value = ''
+    failedCommitPage.value = null
     commitDetail.value = null
     await syncBranches(project.currentBranch || '')
   }
@@ -605,22 +662,68 @@ async function resolveHead() {
   }
 }
 
-async function loadCommits() {
-  if (!form.projectId || !form.branch) {
-    return
+async function loadCommitPage(pageNumber: number, replace: boolean): Promise<boolean> {
+  if (!form.projectId || !form.branch || commitsLoading.value || commitsLoadingMore.value) {
+    return false
   }
   const epoch = ++commitsEpoch
-  commitsLoading.value = true
+  const projectId = form.projectId
+  const branch = form.branch
+  if (replace) commitsLoading.value = true
+  else commitsLoadingMore.value = true
+  commitsError.value = ''
   try {
-    const page = await repositoryApi.commits(form.projectId, form.branch, 1, 30)
-    if (epoch !== commitsEpoch) return
-    commits.value = page.commits
+    const page = await repositoryApi.commits(projectId, branch, pageNumber, 30)
+    if (epoch !== commitsEpoch || projectId !== form.projectId || branch !== form.branch) return false
+    const merged = replace ? page.commits : [...commits.value, ...page.commits]
+    commits.value = Array.from(new Map(merged.map((commit) => [commit.sha, commit])).values())
+    commitsPage.value = pageNumber
+    commitsHasMore.value = Boolean(page.hasMore)
+    failedCommitPage.value = null
+    return true
   } catch (failure) {
-    if (epoch !== commitsEpoch) return
-    formError.value = (failure as Error).message || '提交列表读取失败'
+    if (epoch !== commitsEpoch || projectId !== form.projectId || branch !== form.branch) return false
+    commitsError.value = (failure as Error).message || '提交列表读取失败'
+    failedCommitPage.value = { page: pageNumber, replace }
+    return false
   } finally {
-    if (epoch === commitsEpoch) commitsLoading.value = false
+    if (epoch === commitsEpoch) {
+      if (replace) commitsLoading.value = false
+      else commitsLoadingMore.value = false
+    }
   }
+}
+
+async function loadCommits() {
+  await loadCommitPage(1, true)
+}
+
+async function loadMoreCommits() {
+  if (!commitsHasMore.value) return
+  await loadCommitPage(commitsPage.value + 1, false)
+}
+
+async function retryCommits() {
+  const failed = failedCommitPage.value
+  if (failed) {
+    await loadCommitPage(failed.page, failed.replace)
+    return
+  }
+  await loadCommitPage(commitsPage.value ? commitsPage.value + 1 : 1, commitsPage.value === 0)
+}
+
+function openCommitPicker() {
+  commitPickerOpen.value = true
+  if (!commits.value.length && !commitsLoading.value && !commitsError.value) {
+    void loadCommits()
+  }
+}
+
+async function confirmCommit(sha: string) {
+  commitPickerOpen.value = false
+  if (form.commitSha === sha && commitDetail.value?.sha === sha) return
+  form.commitSha = sha
+  await onCommitChange()
 }
 
 async function onCommitChange() {
@@ -788,6 +891,30 @@ function idempotencyKey(): string {
   gap: 10px;
   flex-wrap: wrap;
 }
+.commit-picker-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+.selected-commit {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.selected-commit code {
+  flex: 0 0 auto;
+}
+.selected-commit span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.commit-help {
+  margin: 7px 0 0;
+}
 .target-list {
   margin-top: 10px;
   border: 1px solid var(--line);
@@ -840,11 +967,10 @@ function idempotencyKey(): string {
   font-size: 13px;
 }
 .submit-bar {
-  position: sticky;
-  bottom: 0;
-  background: #fff;
-  border-top: 1px solid var(--line);
-  padding: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 2px;
 }
 .spacer {
   flex: 1;

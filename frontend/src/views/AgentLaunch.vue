@@ -32,12 +32,13 @@
     />
     <a-alert v-if="error" type="error" show-icon :message="error" class="mb12" />
 
-    <a-card class="launch-card">
-      <a-form layout="vertical">
+    <a-form layout="vertical">
+        <a-card title="1. 审查目标" class="launch-card mb16">
         <a-row :gutter="16">
           <a-col :xs="24" :md="12">
             <a-form-item label="项目" required>
               <a-select
+                :get-popup-container="getPopupContainer"
                 v-model:value="form.projectId"
                 show-search
                 option-filter-prop="label"
@@ -50,6 +51,7 @@
           <a-col :xs="24" :md="12">
             <a-form-item label="模型（仅已通过 Agent 工具协议验证）" required>
               <a-select
+                :get-popup-container="getPopupContainer"
                 v-model:value="form.modelConfigId"
                 :options="modelOptions"
                 placeholder="选择模型"
@@ -60,23 +62,15 @@
 
         <a-row :gutter="16">
           <a-col :xs="24" :md="12">
-            <a-form-item label="指导提示词（可选，仅 AGENT 用途）">
-              <a-select
-                v-model:value="form.guidancePromptId"
-                allow-clear
-                :options="promptOptions"
-                placeholder="不选则使用内置调查方法"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="12">
             <a-form-item label="参考结果 ID（可选，只能是完整结果）">
               <a-input v-model:value="form.referenceResultId" placeholder="旧结论只作线索，代码需重新读取" />
             </a-form-item>
           </a-col>
         </a-row>
 
-        <div class="step"><span class="num">1</span>审查范围</div>
+        </a-card>
+
+        <a-card title="2. 审查范围" class="launch-card mb16">
         <a-row :gutter="16">
           <a-col :xs="24" :md="10">
             <a-form-item label="任务名称（可选）">
@@ -96,6 +90,7 @@
 
         <a-form-item v-if="form.kind !== 'COMMITS'" label="分支" required>
           <a-select
+                :get-popup-container="getPopupContainer"
             v-model:value="form.branch"
             :options="branchOptions"
             :loading="branchLoading"
@@ -132,6 +127,7 @@
         <a-form-item v-if="form.kind === 'COMMITS'" label="提交比较" required>
           <a-space wrap>
             <a-select
+                :get-popup-container="getPopupContainer"
               v-model:value="form.branch"
               :options="branchOptions"
               :loading="branchLoading"
@@ -172,7 +168,16 @@
           </div>
         </a-form-item>
 
-        <div class="step"><span class="num">2</span>审查要求 <span class="muted small">必填</span></div>
+        </a-card>
+
+        <a-card title="3. 补充要求" class="launch-card mb16">
+        <a-row :gutter="16">
+          <a-col :xs="24" :md="12">
+            <a-form-item label="指导提示词（可选，仅 AGENT 用途）">
+              <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不选则使用内置调查方法" />
+            </a-form-item>
+          </a-col>
+        </a-row>
         <a-form-item label="本次要求" required>
           <a-textarea
             v-model:value="form.requirements"
@@ -183,15 +188,14 @@
           />
         </a-form-item>
 
-        <a-space>
-          <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
-            开始 Agent 分析
-          </a-button>
+        </a-card>
+        <div class="submit-bar">
+          <span class="muted small">提交后任务在后台执行，可在审查中心查看进度。</span>
+          <span class="spacer" />
           <a-button @click="close">取消</a-button>
-          <span class="muted">提交后任务在后台执行，可在审查中心查看进度。</span>
-        </a-space>
+          <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">开始 Agent 分析</a-button>
+        </div>
       </a-form>
-    </a-card>
 
     <ScopePickerModal
       v-model:open="scopeOpen"
@@ -207,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
@@ -227,6 +231,7 @@ withDefaults(defineProps<{ open?: boolean }>(), { open: true })
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const router = useRouter()
 const route = useRoute()
+const getPopupContainer = (trigger: HTMLElement) => trigger.closest('.ant-modal-body') as HTMLElement || document.body
 const copyFrom = computed(() => String(route.query.copyFrom || ''))
 
 const projectOptions = ref<Array<{ label: string; value: string }>>([])
@@ -274,6 +279,16 @@ const canSubmit = computed(() => {
   if (form.kind === 'FILES') return form.paths.length > 0 && Boolean(form.observedSha)
   return form.commits.length > 0
 })
+
+function closeDropdownOnScroll(event: Event) {
+  const target = event.target
+  if (!(target instanceof Element) || !target.closest('.agent-launch-modal .ant-modal-body')) return
+  const active = document.activeElement
+  if (active instanceof HTMLElement && active.closest('.ant-select')) active.blur()
+}
+
+onMounted(() => window.addEventListener('scroll', closeDropdownOnScroll, true))
+onBeforeUnmount(() => window.removeEventListener('scroll', closeDropdownOnScroll, true))
 
 onMounted(async () => {
   try {
@@ -505,6 +520,9 @@ async function submit() {
   margin: 8px 0 0;
   font-size: 15px;
 }
+.mb16 { margin-bottom: 16px; }
+.submit-bar { display: flex; align-items: center; gap: 10px; padding: 14px 0 2px; }
+.submit-bar .spacer { flex: 1; }
 .step {
   display: flex;
   align-items: center;

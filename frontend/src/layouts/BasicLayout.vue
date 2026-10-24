@@ -60,7 +60,7 @@
         <div class="content-inner">
           <router-view v-slot="{ Component, route }">
             <Transition name="soft-switch" mode="out-in">
-              <component :is="Component" :key="route.fullPath" />
+              <component :is="Component" :key="route.path" />
             </Transition>
           </router-view>
         </div>

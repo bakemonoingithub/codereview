@@ -41,7 +41,7 @@ const appRoutes: RouteRecordRaw[] = [
   {
     path: 'reviews/new',
     name: 'review-launch',
-    component: () => import('@/views/ReviewLaunch.vue'),
+    redirect: (to) => ({ path: '/reviews', query: { ...to.query, launchReview: '1' } }),
     meta: { title: '发起审查', hideMenu: true }
   },
   {
