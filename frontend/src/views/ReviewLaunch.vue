@@ -112,17 +112,24 @@
             </a-button>
             <div v-if="form.commitSha" class="selected-commit">
               <code>{{ form.commitSha.slice(0, 10) }}</code>
-              <span :title="selectedCommitSubject">{{ selectedCommitSubject || '正在读取提交信息…' }}</span>
+              <span :title="selectedCommitSubject">{{ selectedCommitSubject || (commitDetailLoading ? '正在读取提交信息…' : '无提交说明') }}</span>
             </div>
           </div>
           <p class="muted small commit-help">
             <template v-if="form.commitSha">
-              比较基线：{{ form.baseSha ? form.baseSha.slice(0, 7) : '根提交（无父版本）' }}
+              比较基线：{{ commitDetail?.sha === form.commitSha
+                ? (form.baseSha ? form.baseSha.slice(0, 7) : '根提交（无父版本）')
+                : '提交详情就绪后显示' }}
             </template>
             <template v-else>
               提交历史分页加载；选择器会明确提示是否还有更早提交。
             </template>
           </p>
+          <a-alert v-if="commitDetailError" type="error" show-icon :message="commitDetailError" class="commit-help">
+            <template #action>
+              <a-button size="small" :loading="commitDetailLoading" @click="loadCommitDetail(form.commitSha)">重试</a-button>
+            </template>
+          </a-alert>
         </div>
         <div class="field full">
           <label>目标文件</label>
@@ -218,14 +225,20 @@
       :branch="form.branch"
       :commits="commits"
       :selected-sha="form.commitSha"
+      :selected-commit="commitDetail"
       :has-more="commitsHasMore"
       :loading="commitsLoading"
       :loading-more="commitsLoadingMore"
       :error="commitsError"
+      :located-commit="locatedCommit"
+      :lookup-loading="commitLookupLoading"
+      :lookup-error="commitLookupError"
       @confirm="confirmCommit"
       @load-more="loadMoreCommits"
       @refresh="loadCommits"
       @retry="retryCommits"
+      @lookup="locateCommit"
+      @clear-lookup="clearCommitLookup"
     />
 
     <ScopePickerModal
@@ -278,6 +291,7 @@ const models = ref<{ id: string; name: string }[]>([])
 let lastObservedSha = ''
 let headEpoch = 0
 let commitsEpoch = 0
+let commitLookupEpoch = 0
 let detailEpoch = 0
 let branchEpoch = 0
 let submission: { fingerprint: string; key: string } | null = null
@@ -293,7 +307,12 @@ const commitsHasMore = ref(false)
 const commitsError = ref('')
 const failedCommitPage = ref<{ page: number; replace: boolean } | null>(null)
 const commitDetail = ref<CommitDetail | null>(null)
+const commitDetailLoading = ref(false)
+const commitDetailError = ref('')
 const commitPickerOpen = ref(false)
+const locatedCommit = ref<CommitInfo | null>(null)
+const commitLookupLoading = ref(false)
+const commitLookupError = ref('')
 const scopeOpen = ref(false)
 const submitting = ref(false)
 const formError = ref('')
@@ -358,7 +377,21 @@ function closeDropdownOnScroll(event: Event) {
 }
 
 onMounted(() => window.addEventListener('scroll', closeDropdownOnScroll, true))
-onBeforeUnmount(() => window.removeEventListener('scroll', closeDropdownOnScroll, true))
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', closeDropdownOnScroll, true)
+  commitsEpoch++
+  commitLookupEpoch++
+  detailEpoch++
+})
+
+watch(commitPickerOpen, (open, wasOpen) => {
+  clearCommitLookup()
+  if (!open && wasOpen) {
+    commitsEpoch++
+    commitsLoading.value = false
+    commitsLoadingMore.value = false
+  }
+}, { flush: 'sync' })
 
 onMounted(async () => {
   await loadOptions()
@@ -420,6 +453,7 @@ async function applyBrowserPrefill(): Promise<boolean> {
 watch(() => [form.projectId, form.branch, form.sourceKind], () => {
   headEpoch++
   commitsEpoch++
+  clearCommitLookup()
   detailEpoch++
   if (restoring.value) return
   form.observedSha = ''
@@ -428,6 +462,8 @@ watch(() => [form.projectId, form.branch, form.sourceKind], () => {
   form.baseSha = ''
   form.targets = []
   commitDetail.value = null
+  commitDetailLoading.value = false
+  commitDetailError.value = ''
   commits.value = []
   commitsPage.value = 0
   commitsHasMore.value = false
@@ -699,7 +735,7 @@ async function loadCommits() {
 }
 
 async function loadMoreCommits() {
-  if (!commitsHasMore.value) return
+  if (!commitsHasMore.value || commitsError.value) return
   await loadCommitPage(commitsPage.value + 1, false)
 }
 
@@ -726,6 +762,32 @@ async function confirmCommit(sha: string) {
   await onCommitChange()
 }
 
+function clearCommitLookup() {
+  commitLookupEpoch++
+  locatedCommit.value = null
+  commitLookupLoading.value = false
+  commitLookupError.value = ''
+}
+
+async function locateCommit(sha: string) {
+  if (!form.projectId || !commitPickerOpen.value || !/^[a-f0-9]{40}$/i.test(sha)) return
+  const epoch = ++commitLookupEpoch
+  const projectId = form.projectId
+  locatedCommit.value = null
+  commitLookupError.value = ''
+  commitLookupLoading.value = true
+  try {
+    const detail = await repositoryApi.commit(projectId, sha)
+    if (epoch !== commitLookupEpoch || projectId !== form.projectId || !commitPickerOpen.value) return
+    locatedCommit.value = { sha: detail.sha, message: detail.message, author: detail.author, date: detail.date }
+  } catch (failure) {
+    if (epoch !== commitLookupEpoch || projectId !== form.projectId || !commitPickerOpen.value) return
+    commitLookupError.value = (failure as Error).message || '无法定位提交，请核对完整 SHA'
+  } finally {
+    if (epoch === commitLookupEpoch) commitLookupLoading.value = false
+  }
+}
+
 async function onCommitChange() {
   form.targets = []
   await loadCommitDetail(form.commitSha)
@@ -734,10 +796,13 @@ async function onCommitChange() {
 async function loadCommitDetail(sha: string) {
   const epoch = ++detailEpoch
   commitDetail.value = null
+  commitDetailError.value = ''
   form.baseSha = ''
   if (!form.projectId || !sha) {
+    commitDetailLoading.value = false
     return
   }
+  commitDetailLoading.value = true
   try {
     const detail = await repositoryApi.commit(form.projectId, sha)
     if (epoch !== detailEpoch || form.commitSha !== sha) return
@@ -745,7 +810,9 @@ async function loadCommitDetail(sha: string) {
     form.baseSha = commitDetail.value.parents?.[0] || ''
   } catch (failure) {
     if (epoch !== detailEpoch) return
-    formError.value = (failure as Error).message || '提交详情读取失败'
+    commitDetailError.value = (failure as Error).message || '提交详情读取失败'
+  } finally {
+    if (epoch === detailEpoch) commitDetailLoading.value = false
   }
 }
 

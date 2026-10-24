@@ -133,29 +133,13 @@
               :loading="branchLoading"
               style="width: 260px"
               placeholder="选择分支后加载提交"
-              @change="loadCommits"
+              @change="onBranchChange"
             />
-            <a-button :loading="commitLoading" @click="loadCommits">刷新提交</a-button>
+            <a-button :disabled="!form.branch" @click="openCommitPicker">
+              选择提交（已选 {{ form.commits.length }}/20）
+            </a-button>
             <span class="muted">按选择顺序逐项读取，最多 20 个；不合并成首尾净差异</span>
           </a-space>
-          <a-spin :spinning="commitLoading">
-            <a-empty v-if="!commitLoading && !commits.length" description="该分支没有可读提交" />
-            <div v-else class="commit-list">
-              <button
-                v-for="commit in commits"
-                :key="commit.sha"
-                type="button"
-                class="commit-item"
-                :class="{ selected: form.commits.includes(commit.sha) }"
-                @click="toggleCommit(commit.sha)"
-              >
-                <span class="commit-order">{{ commitOrder(commit.sha) }}</span>
-                <span class="commit-sha">{{ commit.sha.slice(0, 10) }}</span>
-                <span class="commit-message">{{ commit.message }}</span>
-                <span class="muted">{{ commit.date }}</span>
-              </button>
-            </div>
-          </a-spin>
           <div v-if="form.commits.length" class="selected-paths">
             <a-tag
               v-for="(sha, index) in form.commits"
@@ -206,6 +190,27 @@
       :selected="form.paths"
       @confirm="onScopeConfirm"
     />
+    <CommitPickerModal
+      v-model:open="commitPickerOpen"
+      :branch="form.branch"
+      :commits="commits"
+      multiple
+      :selected-shas="form.commits"
+      :max-selections="20"
+      :has-more="commitsHasMore"
+      :loading="commitLoading"
+      :loading-more="commitLoadingMore"
+      :error="commitsError"
+      :located-commit="locatedCommit"
+      :lookup-loading="commitLookupLoading"
+      :lookup-error="commitLookupError"
+      @confirm-many="confirmCommits"
+      @load-more="loadMoreCommits"
+      @refresh="refreshCommits"
+      @retry="refreshCommits"
+      @lookup="locateCommit"
+      @clear-lookup="clearCommitLookup"
+    />
   </div>
   </a-modal>
 </template>
@@ -214,6 +219,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
 import {
   agentTasksApi,
@@ -243,6 +249,16 @@ const commits = ref<CommitInfo[]>([])
 const headLoading = ref(false)
 const branchLoading = ref(false)
 const commitLoading = ref(false)
+const commitLoadingMore = ref(false)
+const commitsHasMore = ref(false)
+const commitsError = ref('')
+const commitPickerOpen = ref(false)
+const locatedCommit = ref<CommitInfo | null>(null)
+const commitLookupLoading = ref(false)
+const commitLookupError = ref('')
+let commitsPage = 0
+let commitsEpoch = 0
+let commitLookupEpoch = 0
 const submitting = ref(false)
 const scopeOpen = ref(false)
 const error = ref('')
@@ -272,7 +288,6 @@ const promptOptions = computed(() =>
   prompts.value.map((prompt) => ({ label: prompt.name, value: prompt.id }))
 )
 const branchOptions = computed(() => branches.value.map((branch) => ({ label: branch, value: branch })))
-
 const canSubmit = computed(() => {
   if (!form.projectId || !form.modelConfigId || !form.requirements.trim()) return false
   if (form.kind === 'TEXT') return Boolean(form.description.trim() && form.observedSha)
@@ -364,12 +379,32 @@ function close() {
   if (route.path === '/agents/new') router.push('/reviews')
 }
 
+function onBranchChange() {
+  commitsEpoch++
+  form.commits = []
+  commits.value = []
+  commitsPage = 0
+  commitsHasMore.value = false
+  commitsError.value = ''
+  commitLoading.value = false
+  commitLoadingMore.value = false
+  clearCommitLookup()
+  if (form.branch && form.kind === 'COMMITS') void loadCommits()
+}
+
 async function selectProject(projectId: string) {
   form.projectId = projectId
   form.paths = []
   form.commits = []
   form.observedSha = ''
   commits.value = []
+  commitsPage = 0
+  commitsHasMore.value = false
+  commitsError.value = ''
+  commitsEpoch++
+  commitLoading.value = false
+  commitLoadingMore.value = false
+  clearCommitLookup()
   const project = projects.value.find((item) => item.id === projectId)
   try {
     branchLoading.value = true
@@ -407,17 +442,77 @@ async function loadHead() {
   }
 }
 
-async function loadCommits() {
+async function loadCommits(reset = true) {
   if (!form.projectId || !form.branch) return
-  commitLoading.value = true
+  if (reset) {
+    commitsPage = 1
+    commitLoading.value = true
+  } else {
+    commitLoadingMore.value = true
+  }
+  const epoch = ++commitsEpoch
+  const projectId = form.projectId
+  const branch = form.branch
   try {
-    const page = await repositoryApi.commits(form.projectId, form.branch, 1, 50)
-    commits.value = page.commits
-    form.commits = form.commits.filter((sha) => page.commits.some((commit) => commit.sha === sha))
+    const pageNumber = reset ? 1 : commitsPage + 1
+    const page = await repositoryApi.commits(projectId, branch, pageNumber, 30)
+    if (epoch !== commitsEpoch || projectId !== form.projectId || branch !== form.branch) return
+    commits.value = reset ? page.commits : [...commits.value, ...page.commits]
+    commitsPage = pageNumber
+    commitsHasMore.value = page.hasMore
+    commitsError.value = ''
   } catch (e) {
-    error.value = `读取提交失败：${(e as Error).message}`
+    if (epoch === commitsEpoch) commitsError.value = (e as Error).message || '读取提交失败'
   } finally {
-    commitLoading.value = false
+    if (epoch === commitsEpoch) {
+      commitLoading.value = false
+      commitLoadingMore.value = false
+    }
+  }
+}
+
+async function openCommitPicker() {
+  commitPickerOpen.value = true
+  if (!commits.value.length) await loadCommits()
+}
+
+function confirmCommits(shas: string[]) {
+  commitPickerOpen.value = false
+  form.commits = [...shas].slice(0, 20)
+}
+
+async function loadMoreCommits() {
+  if (commitLoading.value || commitLoadingMore.value || !commitsHasMore.value) return
+  await loadCommits(false)
+}
+
+async function refreshCommits() {
+  await loadCommits()
+}
+
+function clearCommitLookup() {
+  commitLookupEpoch++
+  locatedCommit.value = null
+  commitLookupLoading.value = false
+  commitLookupError.value = ''
+}
+
+async function locateCommit(sha: string) {
+  if (!form.projectId || !commitPickerOpen.value || !/^[a-f0-9]{40}$/i.test(sha)) return
+  const epoch = ++commitLookupEpoch
+  const projectId = form.projectId
+  locatedCommit.value = null
+  commitLookupError.value = ''
+  commitLookupLoading.value = true
+  try {
+    const detail = await repositoryApi.commit(projectId, sha)
+    if (epoch !== commitLookupEpoch || projectId !== form.projectId || !commitPickerOpen.value) return
+    locatedCommit.value = { sha: detail.sha, message: detail.message, author: detail.author, date: detail.date }
+  } catch (failure) {
+    if (epoch !== commitLookupEpoch || projectId !== form.projectId || !commitPickerOpen.value) return
+    commitLookupError.value = (failure as Error).message || '无法定位提交，请核对完整 SHA'
+  } finally {
+    if (epoch === commitLookupEpoch) commitLookupLoading.value = false
   }
 }
 
@@ -554,49 +649,6 @@ async function submit() {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-.commit-list {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-  max-height: 360px;
-  overflow: auto;
-}
-.commit-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: none;
-  text-align: left;
-  cursor: pointer;
-}
-.commit-item:hover {
-  background: var(--bg);
-}
-.commit-item.selected {
-  background: var(--soft);
-  border-color: var(--soft-border);
-  color: var(--blue);
-}
-.commit-order {
-  width: 34px;
-  font-weight: 700;
-  color: var(--blue);
-}
-.commit-sha {
-  font-family: var(--font-mono);
-  color: #334155;
-}
-.commit-message {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>
 

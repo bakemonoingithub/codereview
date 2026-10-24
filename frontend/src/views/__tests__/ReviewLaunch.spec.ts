@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import ReviewLaunch from '@/views/ReviewLaunch.vue'
 import { namedAntStubs } from '@/testUtils/antStubs'
 
@@ -18,6 +19,13 @@ function deferred<T>() { let resolve!: (v: T) => void; let reject!: (v: Error) =
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject }
 }
 const page = (items: unknown[]) => ({ items, nextCursor: null, hasMore: false })
+const sha = (character: string) => character.repeat(40)
+const commit = (commitSha: string, message: string, author = '作者') => ({
+  sha: commitSha,
+  message,
+  author,
+  date: '2026-10-24T08:00:00Z'
+})
 const state = (wrapper: any) => wrapper.vm.$.setupState as any
 async function start() {
   const wrapper = mount(ReviewLaunch, { global: { stubs: { ...namedAntStubs, ScopePickerModal: true, RouterLink: true,
@@ -31,7 +39,7 @@ beforeEach(() => {
   vi.mocked(strategiesApi.list).mockResolvedValue(page([]) as any)
   vi.mocked(repositoryApi.branches).mockResolvedValue(['main'])
   vi.mocked(repositoryApi.head).mockResolvedValue('sha-main')
-  vi.mocked(repositoryApi.commits).mockResolvedValue({ commits: [] } as any)
+  vi.mocked(repositoryApi.commits).mockResolvedValue({ commits: [], hasMore: false } as any)
   vi.mocked(repositoryApi.commit).mockImplementation(async (_id, sha) => ({ sha, parents: ['base-' + sha], files: [] }) as any)
 })
 
@@ -141,6 +149,147 @@ describe('专项发起来源和提交保护', () => {
     expect(state(w).formError).toContain('分支列表')
     w.unmount()
   })
+  it('分页追加更早提交并按 SHA 去重', async () => {
+    const first = sha('a'); const second = sha('b')
+    vi.mocked(repositoryApi.commits)
+      .mockResolvedValueOnce({ commits: [commit(first, '第一页提交')], hasMore: true } as any)
+      .mockResolvedValueOnce({ commits: [commit(first, '重复项更新'), commit(second, '第二页提交')], hasMore: false } as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+
+    expect(s.commitsPage).toBe(1); expect(s.commitsHasMore).toBe(true)
+    await s.loadMoreCommits()
+
+    expect(vi.mocked(repositoryApi.commits).mock.calls.map((call) => [call[1], call[2]])).toEqual([
+      ['main', 1], ['main', 2]
+    ])
+    expect(s.commits.map((item: any) => item.sha)).toEqual([first, second])
+    expect(s.commits[0].message).toBe('重复项更新')
+    expect(s.commitsPage).toBe(2); expect(s.commitsHasMore).toBe(false)
+    w.unmount()
+  })
+  it('更早页失败后保留已加载列表，并且只重试同一页', async () => {
+    const first = sha('a'); const second = sha('b')
+    vi.mocked(repositoryApi.commits)
+      .mockResolvedValueOnce({ commits: [commit(first, '最新提交')], hasMore: true } as any)
+      .mockRejectedValueOnce(new Error('第二页暂时失败'))
+      .mockResolvedValueOnce({ commits: [commit(second, '更早提交')], hasMore: false } as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+
+    await s.loadMoreCommits()
+    expect(s.commits.map((item: any) => item.sha)).toEqual([first])
+    expect(s.commitsPage).toBe(1); expect(s.commitsHasMore).toBe(true)
+    expect(s.commitsError).toContain('第二页')
+
+    await s.loadMoreCommits()
+    expect(repositoryApi.commits).toHaveBeenCalledTimes(2)
+    await s.retryCommits()
+    expect(vi.mocked(repositoryApi.commits).mock.calls.map((call) => call[2])).toEqual([1, 2, 2])
+    expect(s.commits.map((item: any) => item.sha)).toEqual([first, second])
+    expect(s.commitsPage).toBe(2); expect(s.commitsError).toBe('')
+    w.unmount()
+  })
+  it('加载更早提交时合并重复请求', async () => {
+    const first = sha('a'); const second = sha('b')
+    const pending = deferred<any>()
+    vi.mocked(repositoryApi.commits)
+      .mockResolvedValueOnce({ commits: [commit(first, '最新提交')], hasMore: true } as any)
+      .mockReturnValueOnce(pending.promise)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+
+    const firstRequest = s.loadMoreCommits()
+    const duplicateRequest = s.loadMoreCommits()
+    await duplicateRequest
+    expect(repositoryApi.commits).toHaveBeenCalledTimes(2)
+
+    pending.resolve({ commits: [commit(second, '更早提交')], hasMore: false })
+    await firstRequest
+    expect(s.commits.map((item: any) => item.sha)).toEqual([first, second])
+    w.unmount()
+  })
+  it('切换分支后丢弃旧分支迟到的失败', async () => {
+    const mainCommit = sha('a'); const devCommit = sha('d')
+    const stale = deferred<any>()
+    vi.mocked(repositoryApi.commits)
+      .mockResolvedValueOnce({ commits: [commit(mainCommit, 'main 提交')], hasMore: true } as any)
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValueOnce({ commits: [commit(devCommit, 'dev 提交')], hasMore: false } as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+
+    const oldRequest = s.loadMoreCommits()
+    s.form.branch = 'dev'
+    const newRequest = s.onBranchChange()
+    await newRequest
+    stale.reject(new Error('旧分支失败'))
+    await oldRequest
+
+    expect(vi.mocked(repositoryApi.commits).mock.calls.map((call) => [call[1], call[2]])).toEqual([
+      ['main', 1], ['main', 2], ['dev', 1]
+    ])
+    expect(s.commits.map((item: any) => item.sha)).toEqual([devCommit])
+    expect(s.commitsPage).toBe(1); expect(s.commitsError).toBe('')
+    w.unmount()
+  })
+  it('刷新失败保留列表和页次，不会跳过失败页续读', async () => {
+    const first = sha('a'); const second = sha('b'); const refreshed = sha('c')
+    vi.mocked(repositoryApi.commits)
+      .mockResolvedValueOnce({ commits: [commit(first, '第一页')], hasMore: true } as any)
+      .mockResolvedValueOnce({ commits: [commit(second, '第二页')], hasMore: true } as any)
+      .mockRejectedValueOnce(new Error('刷新失败'))
+      .mockResolvedValueOnce({ commits: [commit(refreshed, '刷新后提交')], hasMore: false } as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+    await s.loadMoreCommits()
+
+    await s.loadCommits()
+    expect(s.commits.map((item: any) => item.sha)).toEqual([first, second])
+    expect(s.commitsPage).toBe(2); expect(s.commitsHasMore).toBe(true)
+    expect(s.commitsError).toBe('刷新失败')
+
+    await s.loadMoreCommits()
+    expect(repositoryApi.commits).toHaveBeenCalledTimes(3)
+    await s.retryCommits()
+    expect(vi.mocked(repositoryApi.commits).mock.calls.map((call) => call[2])).toEqual([1, 2, 1, 1])
+    expect(s.commits.map((item: any) => item.sha)).toEqual([refreshed])
+    expect(s.commitsPage).toBe(1); expect(s.commitsHasMore).toBe(false)
+    w.unmount()
+  })
+  it('取消或重新确认同一提交保留范围，确认新提交才清空', async () => {
+    const selected = sha('a'); const replacement = sha('b')
+    vi.mocked(repositoryApi.commits).mockResolvedValueOnce({
+      commits: [commit(selected, '当前提交'), commit(replacement, '新提交')],
+      hasMore: false
+    } as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+    await s.confirmCommit(selected)
+    s.form.targets = [{ path: 'A.java', oldPath: null, note: '保留的说明' }]
+
+    s.openCommitPicker(); await nextTick()
+    const picker = w.findComponent(CommitPickerModal)
+    const replacementRow = () => picker.findAll('.commit-row').find((row) => row.text().includes('新提交'))!
+    const pickerButton = (label: string) => picker.findAll('a-button-stub').find((button) => button.text().trim() === label)!
+    await replacementRow().trigger('click')
+    await pickerButton('取消').trigger('click'); await nextTick()
+    expect(s.form.commitSha).toBe(selected)
+    expect(s.form.targets).toEqual([{ path: 'A.java', oldPath: null, note: '保留的说明' }])
+
+    s.openCommitPicker(); await nextTick()
+    await pickerButton('使用这个提交').trigger('click'); await flushPromises()
+    expect(s.form.commitSha).toBe(selected)
+    expect(s.form.targets).toHaveLength(1)
+
+    s.openCommitPicker(); await nextTick()
+    await replacementRow().trigger('click')
+    await pickerButton('使用这个提交').trigger('click'); await flushPromises()
+    expect(s.form.commitSha).toBe(replacement)
+    expect(s.form.baseSha).toBe('base-' + replacement)
+    expect(s.form.targets).toEqual([])
+    w.unmount()
+  })
   it('填写的审查名称随任务提交', async () => {
     const w = await start(); const s = state(w)
     s.form.name = '  支付重试  '
@@ -149,6 +298,96 @@ describe('专项发起来源和提交保护', () => {
     vi.mocked(tasksApi.create).mockResolvedValue({ id: 'task-1' } as any)
     await s.submit()
     expect(vi.mocked(tasksApi.create).mock.calls[0][0].name).toBe('支付重试')
+    w.unmount()
+  })
+
+  it('完整 SHA 可直接定位，且不改变分支历史的页次与选择', async () => {
+    const recent = sha('a'); const old = sha('b')
+    vi.mocked(repositoryApi.commits).mockResolvedValue({ commits: [commit(recent, '最近提交')], hasMore: true } as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+    s.openCommitPicker()
+    vi.mocked(repositoryApi.commit).mockResolvedValue({ ...commit(old, '很早的提交'), parents: ['parent'], files: [] } as any)
+
+    await s.locateCommit(old)
+    expect(repositoryApi.commit).toHaveBeenCalledWith('p1', old)
+    expect(s.locatedCommit.sha).toBe(old)
+    expect(s.commits.map((item: any) => item.sha)).toEqual([recent])
+    expect(s.commitsPage).toBe(1); expect(s.commitsHasMore).toBe(true)
+    expect(s.form.commitSha).toBe('')
+    await s.confirmCommit(old)
+    expect(s.form.commitSha).toBe(old); expect(s.form.baseSha).toBe('parent')
+    w.unmount()
+  })
+
+  it('查询改变、关闭或切换分支后不写回迟到的 SHA 定位结果', async () => {
+    const w = await start(); const s = state(w)
+    for (const change of ['query', 'close', 'branch']) {
+      s.openCommitPicker()
+      const pending = deferred<any>()
+      vi.mocked(repositoryApi.commit).mockReturnValueOnce(pending.promise)
+      const request = s.locateCommit(sha('b'))
+      expect(s.commitLookupLoading).toBe(true)
+      if (change === 'query') s.clearCommitLookup()
+      else if (change === 'close') s.commitPickerOpen = false
+      else s.form.branch = 'other'
+      pending.resolve({ ...commit(sha('b'), '过期定位'), parents: [], files: [] })
+      await request
+      expect(s.locatedCommit).toBeNull(); expect(s.commitLookupLoading).toBe(false)
+      expect(s.commitLookupError).toBe('')
+    }
+    w.unmount()
+  })
+
+  it('定位失败可重试，失败不影响历史列表', async () => {
+    const w = await start(); const s = state(w)
+    s.openCommitPicker()
+    vi.mocked(repositoryApi.commit).mockRejectedValueOnce(new Error('SHA 不存在'))
+      .mockResolvedValueOnce({ ...commit(sha('b'), '有效提交'), parents: [], files: [] } as any)
+    await s.locateCommit('short')
+    expect(repositoryApi.commit).not.toHaveBeenCalled()
+    await s.locateCommit(sha('b'))
+    expect(s.commitLookupError).toBe('SHA 不存在'); expect(s.commitsError).toBe('')
+    await s.locateCommit(sha('b'))
+    expect(s.commitLookupError).toBe(''); expect(s.locatedCommit.sha).toBe(sha('b'))
+    w.unmount()
+  })
+
+  it.each(['success', 'failure'])('关闭选择器后忽略在途分页的 %s 响应', async (result) => {
+    const recent = sha('a')
+    vi.mocked(repositoryApi.commits).mockResolvedValueOnce({ commits: [commit(recent, '第一页')], hasMore: true } as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+    s.openCommitPicker()
+    const pending = deferred<any>()
+    vi.mocked(repositoryApi.commits).mockReturnValueOnce(pending.promise)
+    const request = s.loadMoreCommits()
+    s.commitPickerOpen = false
+    if (result === 'success') pending.resolve({ commits: [commit(sha('b'), '迟到的第二页')], hasMore: false })
+    else pending.reject(new Error('迟到的错误'))
+    await request
+    expect(s.commits.map((item: any) => item.sha)).toEqual([recent])
+    expect(s.commitsPage).toBe(1); expect(s.commitsError).toBe('')
+    expect(s.commitsLoadingMore).toBe(false)
+    w.unmount()
+  })
+
+  it('详情未就绪或失败不显示根提交，成功重试后显示真实基线', async () => {
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'DIFF'; await nextTick(); await flushPromises()
+    s.form.commitSha = sha('a')
+    const pending = deferred<any>()
+    vi.mocked(repositoryApi.commit).mockReturnValueOnce(pending.promise)
+    const request = s.onCommitChange(); await nextTick()
+    expect(w.text()).not.toContain('根提交（无父版本）')
+    expect(s.scopeReady).toBe(false)
+    pending.reject(new Error('提交详情暂时失败')); await request; await nextTick()
+    expect(s.commitDetailError).toBe('提交详情暂时失败')
+    expect(w.text()).not.toContain('根提交（无父版本）')
+    vi.mocked(repositoryApi.commit).mockResolvedValueOnce({ ...commit(sha('a'), '真实根提交'), parents: [], files: [] } as any)
+    await s.loadCommitDetail(sha('a')); await nextTick()
+    expect(s.commitDetailError).toBe(''); expect(s.scopeReady).toBe(true)
+    expect(w.text()).toContain('根提交（无父版本）')
     w.unmount()
   })
 

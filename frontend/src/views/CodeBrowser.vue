@@ -15,40 +15,39 @@
     <a-alert v-if="truncated" type="warning" show-icon
       message="宿主返回的文件清单不完整，只能浏览和选择当前已列出的文件。" class="mb16" />
     <a-card class="browser-card" :bordered="true">
-      <div class="filters">
-        <a-select
-          v-model:value="projectId"
-          placeholder="选择项目"
-          style="width: 220px"
-          :options="projectOptions"
-          @change="onProjectChange"
-        />
-        <a-select
-          v-model:value="branch"
-          placeholder="分支"
-          style="width: 180px"
-          :loading="branchesLoading"
-          :options="branchOptions"
-          @change="onBranchChange"
-        />
-        <a-radio-group v-model:value="mode" button-style="solid" @change="onModeChange">
-          <a-radio-button value="FILES">文件内容</a-radio-button>
-          <a-radio-button value="DIFF">提交差异</a-radio-button>
-        </a-radio-group>
-        <a-select
-          v-if="mode === 'DIFF'"
-          v-model:value="commitSha"
-          placeholder="选择提交"
-          style="width: 320px"
-          :loading="commitsLoading"
-          :options="commitOptions"
-          @change="onCommitChange"
-        />
-        <a-button v-if="mode === 'DIFF' && commitsHasMore" size="small"
-          :loading="commitsLoading" @click="loadMoreCommits">加载更多提交</a-button>
-        <span class="spacer" />
-        <code v-if="version">{{ version.slice(0, 7) }}</code>
-        <span v-if="version" class="muted small">固定版本</span>
+      <div class="browser-toolbar">
+        <div class="filters">
+          <a-select
+            v-model:value="projectId"
+            placeholder="选择项目"
+            style="width: 220px"
+            :options="projectOptions"
+            @change="onProjectChange"
+          />
+          <a-select
+            v-model:value="branch"
+            placeholder="分支"
+            style="width: 180px"
+            :loading="branchesLoading"
+            :options="branchOptions"
+            @change="onBranchChange"
+          />
+          <a-radio-group v-model:value="mode" button-style="solid" @change="onModeChange">
+            <a-radio-button value="FILES">文件内容</a-radio-button>
+            <a-radio-button value="DIFF">提交差异</a-radio-button>
+          </a-radio-group>
+          <a-button v-if="mode === 'DIFF'" :disabled="!branch" @click="openCommitPicker">
+            {{ commitSha ? '更换提交' : '选择提交' }}
+          </a-button>
+          <span class="spacer" />
+          <code v-if="version && mode === 'FILES'">{{ version.slice(0, 7) }}</code>
+          <span v-if="version && mode === 'FILES'" class="muted small">固定版本</span>
+        </div>
+        <div v-if="mode === 'DIFF' && commitSha" class="commit-selection-summary">
+          <code>{{ commitSha.slice(0, 7) }}</code>
+          <span :title="selectedCommitLabel">{{ selectedCommitMessage || '提交说明暂不可用' }}</span>
+          <span class="muted small">固定版本</span>
+        </div>
       </div>
 
       <div class="browser-grid">
@@ -121,6 +120,27 @@
         </section>
       </div>
     </a-card>
+
+    <CommitPickerModal
+      v-model:open="commitPickerOpen"
+      :branch="branch"
+      :commits="commits"
+      :selected-sha="commitSha"
+      :selected-commit="selectedCommitInfo"
+      :has-more="commitsHasMore"
+      :loading="commitsLoading"
+      :loading-more="false"
+      :error="pickerCommitsError"
+      :located-commit="locatedCommit"
+      :lookup-loading="commitLookupLoading"
+      :lookup-error="commitLookupError"
+      @confirm="confirmCommit"
+      @load-more="loadMoreCommits"
+      @refresh="refreshCommits"
+      @retry="refreshCommits"
+      @lookup="locateCommit"
+      @clear-lookup="clearCommitLookup"
+    />
   </div>
 </template>
 
@@ -130,6 +150,7 @@ import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import CodeViewer from '@/components/CodeViewer.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
+import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import {
   projectsApi,
@@ -156,6 +177,12 @@ const branch = ref('')
 const mode = ref<'FILES' | 'DIFF'>('FILES')
 const commits = ref<CommitInfo[]>([])
 const commitSha = ref('')
+const confirmedCommit = ref<CommitInfo | null>(null)
+const commitPickerOpen = ref(false)
+const locatedCommit = ref<CommitInfo | null>(null)
+const commitLookupLoading = ref(false)
+const commitLookupError = ref('')
+const pickerCommitsError = ref('')
 const version = ref('')
 const entries = ref<FileTreeEntry[]>([])
 const tree = ref<FileTreeNode[]>([])
@@ -177,6 +204,7 @@ let epoch = 0
 let previewEpoch = 0
 let branchEpoch = 0
 let commitsEpoch = 0
+let commitLookupEpoch = 0
 let disposed = false
 const truncated = ref(false)
 const commitsHasMore = ref(false)
@@ -202,6 +230,9 @@ watch(() => [projectId.value, branch.value, mode.value, commitSha.value], (next,
     commits.value = []
     commitsPage = 0
     commitsHasMore.value = false
+    pickerCommitsError.value = ''
+    confirmedCommit.value = null
+    clearCommitLookup()
   }
 }, { flush: 'sync' })
 
@@ -209,11 +240,18 @@ const projectOptions = computed(() =>
   projects.value.map((project) => ({ value: project.id, label: project.name }))
 )
 const branchOptions = computed(() => branches.value.map((item) => ({ value: item, label: item })))
-const commitOptions = computed(() =>
-  commits.value.map((commit) => ({
-    value: commit.sha,
-    label: `${commit.sha.slice(0, 7)} · ${(commit.message || '').split('\n')[0]}`
-  }))
+const selectedCommitInfo = computed(() =>
+  commits.value.find((commit) => commit.sha === commitSha.value) ||
+  (locatedCommit.value?.sha === commitSha.value ? locatedCommit.value : null) ||
+  (confirmedCommit.value?.sha === commitSha.value ? confirmedCommit.value : null)
+)
+const selectedCommitLabel = computed(() => {
+  const commit = selectedCommitInfo.value
+  if (commit) return `${commit.sha.slice(0, 7)} · ${(commit.message || '').split('\n')[0]}`
+  return commitSha.value ? `${commitSha.value.slice(0, 7)} · 已选择提交` : ''
+})
+const selectedCommitMessage = computed(() =>
+  (selectedCommitInfo.value?.message || '').split('\n')[0].trim()
 )
 const treeData = computed(() => filterPathTree(tree.value, query.value))
 
@@ -339,14 +377,41 @@ async function retryBrowser() {
   await reload()
 }
 
-async function onBranchChange() { commitSha.value = ''; await reload() }
-async function onModeChange() { commitSha.value = ''; await reload() }
-async function onCommitChange() { await reload() }
+async function onBranchChange() { commitSha.value = ''; confirmedCommit.value = null; await reload() }
+async function onModeChange() { commitSha.value = ''; confirmedCommit.value = null; await reload() }
+async function openCommitPicker() {
+  commitPickerOpen.value = true
+  pickerCommitsError.value = ''
+  if (!commits.value.length) {
+    try { await loadCommits(1) }
+    catch (failure) { pickerCommitsError.value = (failure as Error).message || '提交列表读取失败' }
+  }
+}
+
+async function confirmCommit(sha: string) {
+  commitPickerOpen.value = false
+  if (commitSha.value === sha) return
+  confirmedCommit.value = commits.value.find((commit) => commit.sha === sha) ||
+    (locatedCommit.value?.sha === sha ? locatedCommit.value : null)
+  locatedCommit.value = null
+  commitSha.value = sha
+  await reload()
+}
+
+async function refreshCommits() {
+  pickerCommitsError.value = ''
+  try {
+    if (await loadCommits(1)) error.value = ''
+  } catch (failure) {
+    pickerCommitsError.value = (failure as Error).message || '提交列表读取失败'
+  }
+}
 
 async function loadMoreCommits() {
   if (commitsLoading.value || !commitsHasMore.value) return
-  try { if (await loadCommits(commitsPage + 1)) error.value = '' }
-  catch (failure) { error.value = (failure as Error).message || '更多提交读取失败' }
+  pickerCommitsError.value = ''
+  try { await loadCommits(commitsPage + 1) }
+  catch (failure) { pickerCommitsError.value = (failure as Error).message || '更多提交读取失败' }
 }
 
 async function loadCommits(page: number) {
@@ -359,12 +424,39 @@ async function loadCommits(page: number) {
     commits.value = page === 1 ? loaded.commits : [...commits.value, ...loaded.commits]
     commitsPage = page
     commitsHasMore.value = loaded.hasMore
+    pickerCommitsError.value = ''
     return true
   } catch (failure) {
     if (request !== commitsEpoch || key !== sourceKey() || disposed) return false
     throw failure
   } finally {
     if (request === commitsEpoch) commitsLoading.value = false
+  }
+}
+
+function clearCommitLookup() {
+  commitLookupEpoch++
+  locatedCommit.value = null
+  commitLookupLoading.value = false
+  commitLookupError.value = ''
+}
+
+async function locateCommit(sha: string) {
+  if (!projectId.value || !commitPickerOpen.value || !/^[a-f0-9]{40}$/i.test(sha)) return
+  const epoch = ++commitLookupEpoch
+  const id = projectId.value
+  locatedCommit.value = null
+  commitLookupError.value = ''
+  commitLookupLoading.value = true
+  try {
+    const detail = await repositoryApi.commit(id, sha)
+    if (epoch !== commitLookupEpoch || id !== projectId.value || !commitPickerOpen.value) return
+    locatedCommit.value = { sha: detail.sha, message: detail.message, author: detail.author, date: detail.date }
+  } catch (failure) {
+    if (epoch !== commitLookupEpoch || id !== projectId.value || !commitPickerOpen.value) return
+    commitLookupError.value = (failure as Error).message || '无法定位提交，请核对完整 SHA'
+  } finally {
+    if (epoch === commitLookupEpoch) commitLookupLoading.value = false
   }
 }
 
@@ -549,6 +641,33 @@ function statusText(status: string): string {
   margin-bottom: 0;
   padding: 20px 24px;
   border-bottom: 1px solid var(--line);
+}
+.browser-toolbar {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.browser-toolbar > .filters {
+  padding-bottom: 10px;
+  border-bottom: 0;
+}
+.commit-selection-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0 24px;
+  color: var(--muted);
+}
+.commit-selection-summary code {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.commit-selection-summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .spacer {
   flex: 1;

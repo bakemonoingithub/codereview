@@ -134,6 +134,7 @@
                 </div>
                 <div class="tree-toolbar">
                   <span class="hint">先选提交，再勾选要审查的变更文件</span>
+                  <a-button size="small" @click="openCommitPicker">搜索或定位提交</a-button>
                   <a-button
                     type="primary"
                     size="small"
@@ -294,6 +295,26 @@
       :git-ref="fileViewerRef"
       :mode="fileViewerMode"
     />
+    <CommitPickerModal
+      v-model:open="commitPickerOpen"
+      :branch="branch"
+      :commits="commits"
+      :selected-sha="selectedCommit"
+      :selected-commit="pickerSelectedCommit"
+      :has-more="hasMoreCommits"
+      :loading="commitsLoading"
+      :loading-more="commitsLoadingMore"
+      :error="commitsError"
+      :located-commit="locatedCommit"
+      :lookup-loading="commitLookupLoading"
+      :lookup-error="commitLookupError"
+      @confirm="confirmCommit"
+      @load-more="loadMoreCommits"
+      @refresh="refreshCommits"
+      @retry="refreshCommits"
+      @lookup="locateCommit"
+      @clear-lookup="clearCommitLookup"
+    />
 
     <!-- 查看历史记录：全屏只读快照，不影响页签里正在进行的审查 -->
     <ReviewRecordViewer
@@ -341,6 +362,7 @@ import type { AccuracyStat } from '@/utils/accuracy'
 import ReportPanel from '@/components/ReportPanel.vue'
 import SplitPane from '@/components/SplitPane.vue'
 import CommitTable from '@/components/CommitTable.vue'
+import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import ChangedFileTree from '@/components/ChangedFileTree.vue'
 import ReviewResult from '@/components/ReviewResult.vue'
 import ReviewRecordViewer from '@/components/ReviewRecordViewer.vue'
@@ -521,6 +543,11 @@ const commitsLoadingMore = ref(false)
 const commitsError = ref('')
 const selectedCommit = ref('')
 const commitDetail = ref<CommitDetail | null>(null)
+const commitPickerOpen = ref(false)
+const locatedCommit = ref<CommitInfo | null>(null)
+const commitLookupLoading = ref(false)
+const commitLookupError = ref('')
+let commitLookupEpoch = 0
 const detailLoading = ref(false)
 const detailError = ref('')
 const commitChecked = ref<string[]>([])
@@ -531,6 +558,19 @@ const strategies = ref<{ value: string; label: string; analyzerType: number }[]>
 const structureStrategyOptions = computed(() => strategies.value.filter((s) => s.analyzerType !== 5))
 // diff-review 只在提交视图可选
 const commitStrategyOptions = computed(() => strategies.value.filter((s) => s.analyzerType === 5))
+const pickerSelectedCommit = computed<CommitInfo | null>(() => {
+  const row = commits.value.find((commit) => commit.sha === selectedCommit.value)
+  if (row) return row
+  if (commitDetail.value?.sha === selectedCommit.value) {
+    return {
+      sha: commitDetail.value.sha,
+      message: commitDetail.value.message,
+      author: commitDetail.value.author,
+      date: commitDetail.value.date
+    }
+  }
+  return locatedCommit.value?.sha === selectedCommit.value ? locatedCommit.value : null
+})
 const structureAnalyzerType = computed(
   () => strategies.value.find((s) => s.value === structureStrategyId.value)?.analyzerType
 )
@@ -734,7 +774,7 @@ function collapseAll() {
 // 提交视图
 // =====================================================================
 
-async function loadCommits(reset: boolean) {
+async function loadCommits(reset: boolean, preserveSelection = false) {
   if (!branch.value) return
   if (reset) {
     commitPage.value = 1
@@ -748,7 +788,7 @@ async function loadCommits(reset: boolean) {
     const page = await listCommitPage(projectId, branch.value, commitPage.value)
     commits.value = reset ? page.commits : [...commits.value, ...page.commits]
     hasMoreCommits.value = page.hasMore
-    if (reset && page.commits.length) {
+    if (reset && page.commits.length && !preserveSelection) {
       // 默认选中最新提交（Q40）
       await onSelectCommit(page.commits[0].sha)
     }
@@ -758,6 +798,48 @@ async function loadCommits(reset: boolean) {
   } finally {
     commitsLoading.value = false
     commitsLoadingMore.value = false
+  }
+}
+
+async function openCommitPicker() {
+  commitPickerOpen.value = true
+  clearCommitLookup()
+  if (!commits.value.length) await loadCommits(true)
+}
+
+async function confirmCommit(sha: string) {
+  commitPickerOpen.value = false
+  locatedCommit.value = null
+  if (selectedCommit.value === sha && commitDetail.value?.sha === sha) return
+  await onSelectCommit(sha)
+}
+
+async function refreshCommits() {
+  await loadCommits(true, true)
+}
+
+function clearCommitLookup() {
+  commitLookupEpoch++
+  locatedCommit.value = null
+  commitLookupLoading.value = false
+  commitLookupError.value = ''
+}
+
+async function locateCommit(sha: string) {
+  if (!commitPickerOpen.value || !/^[a-f0-9]{40}$/i.test(sha)) return
+  const epoch = ++commitLookupEpoch
+  locatedCommit.value = null
+  commitLookupError.value = ''
+  commitLookupLoading.value = true
+  try {
+    const detail = await getCommitDetail(projectId, sha)
+    if (epoch !== commitLookupEpoch || !commitPickerOpen.value) return
+    locatedCommit.value = { sha: detail.sha, message: detail.message || '', author: detail.author || '', date: detail.date || '' }
+  } catch (failure) {
+    if (epoch !== commitLookupEpoch || !commitPickerOpen.value) return
+    commitLookupError.value = (failure as Error).message || '无法定位提交，请核对完整 SHA'
+  } finally {
+    if (epoch === commitLookupEpoch) commitLookupLoading.value = false
   }
 }
 
