@@ -28,8 +28,8 @@ import java.util.Objects;
 /**
  * 提示词 v2 服务。
  *
- * <p>正文只经版本写入：新建生成版本 1，追加正文生成新版本；元数据更新单独一条，
- * 两条路径都带 revision 条件。历史版本永不修改，实际调用另存快照。
+ * <p>新建生成版本 1；正文变更可追加新版本或覆盖当前版本，元数据更新单独一条，
+ * 所有写入都带 revision 条件。非当前历史版本不修改，实际调用另存快照。
  */
 @Service
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")
@@ -114,13 +114,17 @@ public class AgentPromptService {
         return toView(require(id), currentVersion(require(id)));
     }
 
-    /** 追加正文：生成新版本并设为当前版本，旧版本内容不变。 */
+    /** 保存正文：默认追加新版本；显式选择时可覆盖当前版本。 */
     public PromptDtos.View addVersion(String id, PromptDtos.VersionCreate req) {
         AgentPrompt prompt = require(id);
         if (prompt.getRevision() != req.expectedRevision()) {
             throw conflict(prompt.getRevision());
         }
         return db.inTransaction(() -> {
+            if (Boolean.FALSE.equals(req.createNewVersion())) {
+                return overwriteCurrentVersion(prompt, req);
+            }
+
             List<AgentPromptVersion> latest = db.mapper(AgentPromptVersionMapper.class).selectList(
                     new LambdaQueryWrapper<AgentPromptVersion>()
                             .eq(AgentPromptVersion::getPromptId, id)
@@ -149,6 +153,56 @@ public class AgentPromptService {
             }
             return toView(require(id), version);
         });
+    }
+
+    /** 覆盖当前版本正文，不改变版本号；所有任务仍使用创建时保存的正文快照。 */
+    private PromptDtos.View overwriteCurrentVersion(AgentPrompt prompt, PromptDtos.VersionCreate req) {
+        AgentPromptVersion version = currentVersion(prompt);
+        if (version == null) {
+            version = new AgentPromptVersion();
+            version.setId(AgentIds.next());
+            version.setPromptId(prompt.getId());
+            version.setVersionNo(1);
+            version.setContent(req.content());
+            version.setCreatedAt(AgentTime.now());
+            db.mapper(AgentPromptVersionMapper.class).insert(version);
+
+            AgentPrompt initial = new AgentPrompt();
+            initial.setCurrentVersionId(version.getId());
+            initial.setRevision(req.expectedRevision() + 1);
+            initial.setUpdatedAt(AgentTime.now());
+            int affected = db.mapper(AgentPromptMapper.class).update(initial,
+                    new LambdaUpdateWrapper<AgentPrompt>()
+                            .eq(AgentPrompt::getId, prompt.getId())
+                            .eq(AgentPrompt::getRevision, req.expectedRevision()));
+            if (affected == 0) {
+                throw conflict(require(prompt.getId()).getRevision());
+            }
+            return toView(require(prompt.getId()), version);
+        }
+
+        AgentPrompt patch = new AgentPrompt();
+        patch.setRevision(req.expectedRevision() + 1);
+        patch.setUpdatedAt(AgentTime.now());
+        int promptAffected = db.mapper(AgentPromptMapper.class).update(patch,
+                new LambdaUpdateWrapper<AgentPrompt>()
+                        .eq(AgentPrompt::getId, prompt.getId())
+                        .eq(AgentPrompt::getRevision, req.expectedRevision()));
+        if (promptAffected == 0) {
+            throw conflict(require(prompt.getId()).getRevision());
+        }
+
+        int versionAffected = db.mapper(AgentPromptVersionMapper.class).update(null,
+                new LambdaUpdateWrapper<AgentPromptVersion>()
+                        .eq(AgentPromptVersion::getId, version.getId())
+                        .eq(AgentPromptVersion::getPromptId, prompt.getId())
+                        .set(AgentPromptVersion::getContent, req.content()));
+        if (versionAffected == 0 && !Objects.equals(version.getContent(), req.content())) {
+            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,
+                    "覆盖当前提示词版本失败", Map.of("promptId", prompt.getId()));
+        }
+        version.setContent(req.content());
+        return toView(require(prompt.getId()), version);
     }
 
     public List<PromptDtos.VersionView> versions(String id) {

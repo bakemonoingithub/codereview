@@ -32,7 +32,12 @@ public final class PromptDtos {
             @NotNull Integer expectedRevision) {
     }
 
-    public record VersionCreate(@NotBlank String content, @NotNull Integer expectedRevision) {
+    /** createNewVersion omitted by older callers means append, preserving the v2 default. */
+    public record VersionCreate(@NotBlank String content, @NotNull Integer expectedRevision,
+                                Boolean createNewVersion) {
+        public VersionCreate(String content, Integer expectedRevision) {
+            this(content, expectedRevision, null);
+        }
     }
 
     public record VersionView(String id, int versionNo, String content, LocalDateTime createdAt) {

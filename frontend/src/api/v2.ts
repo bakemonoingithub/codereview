@@ -698,7 +698,11 @@ export const promptsApi = {
     id: string,
     body: { name: string; description?: string; tags?: string[]; purpose?: string; expectedRevision: number }
   ) => v2.put<PromptView>(`/prompts/${id}`, body).then((r) => r.data),
-  addVersion: (id: string, body: { content: string; expectedRevision: number }) =>
+  addVersion: (id: string, body: {
+    content: string
+    expectedRevision: number
+    createNewVersion?: boolean
+  }) =>
     v2.post<PromptView>(`/prompts/${id}/versions`, body).then((r) => r.data),
   versions: (id: string) => v2.get<PromptVersion[]>(`/prompts/${id}/versions`).then((r) => r.data),
   diff: (id: string, fromVersionId: string, toVersionId: string) =>

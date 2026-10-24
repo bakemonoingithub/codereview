@@ -101,7 +101,12 @@
             show-count
           />
           <div v-if="detailLoading" class="field-hint">正在加载当前正文…此时输入的内容不会被覆盖</div>
-          <div v-else-if="editingId" class="field-hint">保存时若正文有变化，会创建新版本；当前版本不会被覆盖。</div>
+        </a-form-item>
+        <a-form-item v-if="editingId" class="span-2" label="版本保存方式">
+          <a-checkbox v-model:checked="form.createNewVersion">保存为新版本</a-checkbox>
+          <div class="field-hint">
+            勾选会保留当前版本并新增版本；取消勾选会覆盖当前版本正文，不增加版本号。
+          </div>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -169,7 +174,8 @@ const form = ref({
   description: '',
   tags: [] as string[],
   purpose: 'SPECIALIST',
-  content: ''
+  content: '',
+  createNewVersion: true
 })
 const purposeOptions = [
   { value: 'SPECIALIST', label: '专项通用规则' },
@@ -224,7 +230,8 @@ function openCreate() {
     description: '',
     tags: [],
     purpose: 'SPECIALIST',
-    content: ''
+    content: '',
+    createNewVersion: true
   }
   modalOpen.value = true
 }
@@ -239,7 +246,8 @@ function openEdit(record: PromptSummary) {
     description: '',
     tags: [...(record.tags || [])],
     purpose: record.purpose || 'SPECIALIST',
-    content: ''
+    content: '',
+    createNewVersion: true
   }
   modalOpen.value = true
   detailLoading.value = true
@@ -284,10 +292,12 @@ async function onSave() {
       // 元数据已提交；后续正文保存失败时，也必须以此修订号继续重试。
       editingRevision.value = updated.revision
       if (form.value.content !== originalContent.value) {
-        const versioned = await promptsApi.addVersion(editingId.value, {
+        const versionRequest: { content: string; expectedRevision: number; createNewVersion?: boolean } = {
           content: form.value.content,
           expectedRevision: editingRevision.value
-        })
+        }
+        if (!form.value.createNewVersion) versionRequest.createNewVersion = false
+        const versioned = await promptsApi.addVersion(editingId.value, versionRequest)
         editingRevision.value = versioned.revision
         originalContent.value = versioned.currentVersion?.content || form.value.content
       }

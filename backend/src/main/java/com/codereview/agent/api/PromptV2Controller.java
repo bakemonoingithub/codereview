@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 
-/** 提示词 v2：正文只经版本写入，历史版本不可改，版本对比限制在同一提示词内。 */
+/** 提示词 v2：正文经版本接口写入；可追加新版本或覆盖当前版本，历史版本不可改。 */
 @RestController
 @RequestMapping("/api/v2/prompts")
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")

@@ -7,7 +7,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/** 提示词版本：历史版本不可改，实际调用另存快照。 */
+/** 提示词版本：非当前历史版本不可改，实际调用另存快照。 */
 @Data
 @TableName("prompt_version")
 public class AgentPromptVersion {
