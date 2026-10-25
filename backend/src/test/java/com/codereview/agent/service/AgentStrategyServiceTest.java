@@ -6,9 +6,11 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.StrategyDtos;
 import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentPrompt;
+import com.codereview.agent.entity.AgentPromptVersion;
 import com.codereview.agent.entity.AgentReviewStrategy;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
+import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.support.AgentIds;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,14 +41,20 @@ class AgentStrategyServiceTest {
     @Mock
     private AgentPromptMapper promptMapper;
 
+    @Mock private AgentPromptVersionMapper versionMapper;
+
     private AgentStrategyService service;
 
     @BeforeEach
     void setUp() {
+        com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
+                new org.apache.ibatis.builder.MapperBuilderAssistant(
+                        new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentReviewStrategy.class);
         service = new AgentStrategyService(db);
         when(db.mapper(AgentReviewStrategyMapper.class)).thenReturn(strategyMapper);
         when(db.mapper(AgentModelConfigMapper.class)).thenReturn(modelMapper);
         when(db.mapper(AgentPromptMapper.class)).thenReturn(promptMapper);
+        when(db.mapper(AgentPromptVersionMapper.class)).thenReturn(versionMapper);
     }
 
     @Test
@@ -102,4 +110,56 @@ class AgentStrategyServiceTest {
         assertEquals(0, view.revision());
         verify(strategyMapper).insert(any(AgentReviewStrategy.class));
     }
+    @Test
+    void strategyPinsAnOwnedHistoricalVersionAndRejectsCrossPromptOrOrphanVersions() {
+        AgentModelConfig model = new AgentModelConfig();
+        model.setId(AgentIds.next());
+        AgentPrompt prompt = new AgentPrompt();
+        prompt.setId(AgentIds.next());
+        prompt.setPurpose("SPECIALIST");
+        prompt.setCurrentVersionId(AgentIds.next());
+        AgentPromptVersion old = new AgentPromptVersion();
+        old.setId(AgentIds.next());
+        old.setPromptId(prompt.getId());
+        old.setContent("历史规则");
+        when(modelMapper.selectById(any())).thenReturn(model);
+        when(promptMapper.selectById(any())).thenReturn(prompt);
+        when(versionMapper.selectById(old.getId())).thenReturn(old);
+
+        StrategyDtos.View view = service.create(new StrategyDtos.Create(
+                "历史规则策略", "ISSUE", model.getId(), prompt.getId(), old.getId()));
+        assertEquals(old.getId(), view.promptVersionId());
+
+        old.setPromptId(AgentIds.next());
+        assertThrows(ApiException.class, () -> service.create(new StrategyDtos.Create(
+                "串用版本", "ISSUE", model.getId(), prompt.getId(), old.getId())));
+        assertThrows(ApiException.class, () -> service.create(new StrategyDtos.Create(
+                "缺失版本", "ISSUE", model.getId(), prompt.getId(), AgentIds.next())));
+        assertThrows(ApiException.class, () -> service.create(new StrategyDtos.Create(
+                "孤立版本", "ISSUE", model.getId(), null, old.getId())));
+    }
+
+    @Test
+    void editingCanClearBothPromptAndVersionReferences() {
+        String strategyId = AgentIds.next();
+        AgentReviewStrategy current = new AgentReviewStrategy();
+        current.setId(strategyId);
+        current.setRevision(2);
+        current.setPromptId(AgentIds.next());
+        current.setPromptVersionId(AgentIds.next());
+        AgentModelConfig model = new AgentModelConfig();
+        model.setId(AgentIds.next());
+        when(strategyMapper.selectById(strategyId)).thenReturn(current);
+        when(modelMapper.selectById(model.getId())).thenReturn(model);
+        when(strategyMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
+
+        service.update(strategyId, new StrategyDtos.Update("清空规则", "ISSUE", model.getId(), null, null, 2));
+        org.mockito.ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AgentReviewStrategy>> update =
+                org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(strategyMapper).update(org.mockito.ArgumentMatchers.isNull(), update.capture());
+        assertEquals(true, update.getValue().getSqlSet().contains("prompt_id="));
+        assertEquals(true, update.getValue().getSqlSet().contains("prompt_version_id="));
+        assertEquals(2, update.getValue().getParamNameValuePairs().values().stream().filter(java.util.Objects::isNull).count());
+    }
+
 }

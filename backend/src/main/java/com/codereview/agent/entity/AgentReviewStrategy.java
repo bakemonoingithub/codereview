@@ -19,6 +19,7 @@ public class AgentReviewStrategy {
     private String specialistType;
     private String modelConfigId;
     private String promptId;
+    private String promptVersionId;
     private Integer revision;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

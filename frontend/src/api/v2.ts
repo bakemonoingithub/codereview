@@ -139,6 +139,7 @@ export interface StrategyView {
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
   modelConfigId: string | null
   promptId: string | null
+  promptVersionId?: string | null
   revision: number
   createdAt: string
   updatedAt: string
@@ -263,6 +264,7 @@ export interface AgentTaskCreateInput {
   name?: string
   modelConfigId: string
   guidancePromptId?: string
+  guidancePromptVersionId?: string
   scope: AgentTaskScopeInput
   requirements: string
   referenceResultId?: string
@@ -756,6 +758,7 @@ export const strategiesApi = {
     specialistType: string
     modelConfigId?: string
     promptId?: string
+    promptVersionId?: string
   }) => v2.post<StrategyView>('/strategies', body).then((r) => r.data),
   update: (
     id: string,
@@ -764,6 +767,7 @@ export const strategiesApi = {
       specialistType: string
       modelConfigId?: string
       promptId?: string
+      promptVersionId?: string
       expectedRevision: number
     }
   ) => v2.put<StrategyView>(`/strategies/${id}`, body).then((r) => r.data),

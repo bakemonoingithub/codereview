@@ -18,7 +18,11 @@ public final class StrategyDtos {
             @NotBlank @Pattern(regexp = "ISSUE|PATTERN|COUPLING", message = "专项类型只能是 ISSUE/PATTERN/COUPLING")
             String specialistType,
             @Size(min = 26, max = 26) String modelConfigId,
-            @Size(min = 26, max = 26) String promptId) {
+            @Size(min = 26, max = 26) String promptId,
+            @Size(min = 26, max = 26) String promptVersionId) {
+        public Create(String name, String specialistType, String modelConfigId, String promptId) {
+            this(name, specialistType, modelConfigId, promptId, null);
+        }
     }
 
     public record Update(
@@ -27,6 +31,7 @@ public final class StrategyDtos {
             String specialistType,
             @Size(min = 26, max = 26) String modelConfigId,
             @Size(min = 26, max = 26) String promptId,
+            @Size(min = 26, max = 26) String promptVersionId,
             @NotNull Integer expectedRevision) {
     }
 
@@ -36,6 +41,7 @@ public final class StrategyDtos {
             String specialistType,
             String modelConfigId,
             String promptId,
+            String promptVersionId,
             int revision,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {

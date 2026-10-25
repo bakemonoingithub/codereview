@@ -22,7 +22,6 @@ import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentModelValidationMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
-import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
@@ -110,7 +109,7 @@ public class AgentTaskService {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "缺少本次调查要求");
         }
         AgentModelConfig model = requireAgentModel(req.modelConfigId());
-        FrozenPrompt guidance = optionalGuidance(req.guidancePromptId());
+        FrozenPrompt guidance = optionalGuidance(req.guidancePromptId(), req.guidancePromptVersionId());
         ScopePlan plan = resolveScope(req.scope(), project);
         FrozenReference reference = optionalReference(req.referenceResultId(), project.getId());
 
@@ -174,10 +173,11 @@ public class AgentTaskService {
                 scope.path("kind").asText("TEXT"), textOrNull(scope, "branch"),
                 textOrNull(scope, "observedSha"), paths, commits, textOrNull(scope, "description"));
         String guidanceId = textOrNull(input.path("guidance"), "promptId");
+        String guidanceVersionId = textOrNull(input.path("guidance"), "versionId");
         String referenceId = textOrNull(input.path("reference"), "resultId");
         return new AgentTaskDtos.CopyInput(task.getProjectId(),
                 TaskNames.display(task.getName(), task.getId()),
-                textOrNull(config.path("model"), "id"), guidanceId, copyScope,
+                textOrNull(config.path("model"), "id"), guidanceId, guidanceVersionId, copyScope,
                 textOrNull(input, "requirements"), referenceId,
                 !"COMMITS".equals(copyScope.kind()));
     }
@@ -347,8 +347,11 @@ public class AgentTaskService {
         return model;
     }
 
-    private FrozenPrompt optionalGuidance(String promptId) {
+    private FrozenPrompt optionalGuidance(String promptId, String versionId) {
         if (promptId == null || promptId.isBlank()) {
+            if (versionId != null) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "选择版本前必须先选择指导提示词");
+            }
             return null;
         }
         AgentPrompt prompt = db.mapper(AgentPromptMapper.class)
@@ -361,14 +364,7 @@ public class AgentTaskService {
                     "只能选择 Agent 用途的指导提示词", Map.of("promptId", promptId,
                             "purpose", prompt.getPurpose()));
         }
-        if (prompt.getCurrentVersionId() == null || prompt.getCurrentVersionId().isBlank()) {
-            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, "提示词没有当前版本：" + promptId);
-        }
-        AgentPromptVersion version = db.mapper(AgentPromptVersionMapper.class)
-                .selectById(prompt.getCurrentVersionId());
-        if (version == null || version.getContent() == null || version.getContent().isBlank()) {
-            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, "提示词当前版本缺少正文：" + promptId);
-        }
+        AgentPromptVersion version = PromptVersionResolver.resolve(db, prompt, versionId);
         return new FrozenPrompt(prompt.getId(), prompt.getName(), version.getId(),
                 version.getVersionNo(), version.getContent());
     }

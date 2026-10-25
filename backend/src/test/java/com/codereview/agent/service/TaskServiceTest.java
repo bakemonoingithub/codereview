@@ -301,6 +301,53 @@ class TaskServiceTest {
         assertEquals(MODEL_ID, view.config().modelConfigId());
     }
 
+    @Test
+    void specialistUsesPinnedVersionAndLegacyStrategyUsesCurrentVersion() throws Exception {
+        var strategy = new com.codereview.agent.entity.AgentReviewStrategy();
+        strategy.setId(com.codereview.agent.support.AgentIds.next());
+        strategy.setName("固定策略");
+        strategy.setRevision(1);
+        strategy.setModelConfigId(MODEL_ID);
+        strategy.setSpecialistType("ISSUE");
+        var prompt = new com.codereview.agent.entity.AgentPrompt();
+        prompt.setId(com.codereview.agent.support.AgentIds.next());
+        prompt.setPurpose("SPECIALIST");
+        prompt.setCurrentVersionId(com.codereview.agent.support.AgentIds.next());
+        var old = new com.codereview.agent.entity.AgentPromptVersion();
+        old.setId(com.codereview.agent.support.AgentIds.next());
+        old.setPromptId(prompt.getId());
+        old.setVersionNo(1);
+        old.setContent("旧版规则");
+        var current = new com.codereview.agent.entity.AgentPromptVersion();
+        current.setId(prompt.getCurrentVersionId());
+        current.setPromptId(prompt.getId());
+        current.setVersionNo(2);
+        current.setContent("当前规则");
+        strategy.setPromptId(prompt.getId());
+        strategy.setPromptVersionId(old.getId());
+        when(strategyMapper.selectById(strategy.getId())).thenReturn(strategy);
+        when(promptMapper.selectById(prompt.getId())).thenReturn(prompt);
+        when(promptVersionMapper.selectById(old.getId())).thenReturn(old);
+        when(promptVersionMapper.selectById(current.getId())).thenReturn(current);
+        var base = request(null);
+        var req = new TaskDtos.Create(base.projectId(), base.route(), base.specialistType(), base.source(),
+                base.targets(), strategy.getId(), null, base.smartSplit(), base.name());
+        service.create(req, null);
+        strategy.setPromptVersionId(null);
+        service.create(req, null);
+        var tasks = ArgumentCaptor.forClass(AgentReviewTask.class);
+        verify(taskMapper, org.mockito.Mockito.times(2)).insert(tasks.capture());
+        var pinnedSnapshot = mapper.readTree(tasks.getAllValues().get(0).getConfigSnapshot()).path("prompt");
+        assertEquals(old.getId(), pinnedSnapshot.path("versionId").asText());
+        assertEquals("旧版规则", pinnedSnapshot.path("content").asText());
+        assertEquals("当前规则", mapper.readTree(tasks.getAllValues().get(1).getConfigSnapshot())
+                .path("prompt").path("content").asText());
+        old.setContent("被覆盖");
+        assertEquals("旧版规则", pinnedSnapshot.path("content").asText());
+        strategy.setPromptVersionId(com.codereview.agent.support.AgentIds.next());
+        assertThrows(ApiException.class, () -> service.create(req, null));
+    }
+
     private TaskDtos.Create request(String unused) {
         return request(unused, null);
     }

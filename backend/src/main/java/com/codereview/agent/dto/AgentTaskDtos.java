@@ -1,5 +1,6 @@
 package com.codereview.agent.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,9 +26,15 @@ public final class AgentTaskDtos {
             @Size(max = 200) String name,
             @NotBlank @Size(max = 26) String modelConfigId,
             @Size(max = 26) String guidancePromptId,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+            @Size(min = 26, max = 26) String guidancePromptVersionId,
             @NotNull @Valid Scope scope,
             @NotBlank @Size(max = 16000) String requirements,
             @Size(max = 26) String referenceResultId) {
+        public Create(String projectId, String name, String modelConfigId, String guidancePromptId,
+                      Scope scope, String requirements, String referenceResultId) {
+            this(projectId, name, modelConfigId, guidancePromptId, null, scope, requirements, referenceResultId);
+        }
     }
 
     public record Scope(
@@ -51,7 +58,7 @@ public final class AgentTaskDtos {
 
     /** 复制参数：重新观察 HEAD，不继承旧 SHA、消息或额度。 */
     public record CopyInput(String projectId, String name, String modelConfigId,
-                            String guidancePromptId, Scope scope, String requirements,
+                            String guidancePromptId, String guidancePromptVersionId, Scope scope, String requirements,
                             String referenceResultId, boolean reobserveHead) {
     }
 }

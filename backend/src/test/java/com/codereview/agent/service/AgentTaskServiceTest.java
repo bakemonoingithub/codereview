@@ -269,12 +269,14 @@ class AgentTaskServiceTest {
         when(promptMapper.selectById(any())).thenReturn(prompt);
         AgentPromptVersion version = new AgentPromptVersion();
         version.setId(prompt.getCurrentVersionId());
+        version.setPromptId(prompt.getId());
         version.setVersionNo(3);
         version.setContent("先看调用方。");
-        when(promptVersionMapper.selectById(any())).thenReturn(version);
+        version.setId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E9");
+        when(promptVersionMapper.selectById(version.getId())).thenReturn(version);
 
         AgentTaskDtos.Create req = new AgentTaskDtos.Create(PROJECT_ID, null, MODEL_ID,
-                prompt.getId(), new AgentTaskDtos.Scope("FILES", "main", HEAD,
+                prompt.getId(), version.getId(), new AgentTaskDtos.Scope("FILES", "main", HEAD,
                 List.of("src/A.java"), List.of(), null), "检查重试链路", null);
         AgentReviewTask task = createAndCapture(req);
 
@@ -282,6 +284,29 @@ class AgentTaskServiceTest {
         assertEquals(prompt.getId(), config.path("id").asText());
         assertEquals(3, config.path("versionNo").asInt());
         assertEquals("先看调用方。", config.path("content").asText());
+        assertEquals(version.getId(), config.path("versionId").asText());
+        when(taskMapper.selectById(task.getId())).thenReturn(task);
+        assertEquals(version.getId(), service.copyInput(task.getId()).guidancePromptVersionId());
+        version.setContent("覆盖后的正文");
+        assertEquals("先看调用方。", read(task.getConfigSnapshot()).path("prompt").path("content").asText());
+    }
+
+    @Test
+    void legacyIdempotencyHashStillReplaysWhenVersionIsOmitted() throws Exception {
+        AgentTaskDtos.Create req = filesRequest();
+        com.fasterxml.jackson.databind.node.ObjectNode legacy = mapper.valueToTree(req);
+        legacy.remove("guidancePromptVersionId");
+        String hash = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(mapper.writeValueAsBytes(legacy)));
+        AgentReviewTask existing = new AgentReviewTask();
+        existing.setId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E6");
+        existing.setRoute("AGENT");
+        existing.setState(TaskStates.QUEUED);
+        existing.setRequestHash(hash);
+        when(taskMapper.selectList(any())).thenReturn(List.of(existing));
+
+        assertEquals(existing.getId(), service.create(req, "legacy-key").id());
+        verify(taskMapper, org.mockito.Mockito.never()).insert(any(AgentReviewTask.class));
     }
 
     @Test
@@ -322,6 +347,30 @@ class AgentTaskServiceTest {
         assertEquals("检查重试链路", copy.requirements());
         assertTrue(copy.reobserveHead());
         assertNull(copy.guidancePromptId());
+    }
+
+    @Test
+    void guidanceRejectsOrphanMissingAndCrossPromptVersionsWithoutFallback() {
+        AgentTaskDtos.Create base = filesRequest();
+        String promptId = "01J9Z6Q3W4X5Y6Z7A8B9C0D1E4";
+        String versionId = "01J9Z6Q3W4X5Y6Z7A8B9C0D1E5";
+        AgentPrompt prompt = new AgentPrompt();
+        prompt.setId(promptId);
+        prompt.setPurpose("AGENT");
+        prompt.setCurrentVersionId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E9");
+        when(promptMapper.selectById(promptId)).thenReturn(prompt);
+        assertThrows(ApiException.class, () -> service.create(new AgentTaskDtos.Create(PROJECT_ID,
+                null, MODEL_ID, null, versionId, base.scope(), base.requirements(), null), null));
+        AgentTaskDtos.Create explicit = new AgentTaskDtos.Create(PROJECT_ID, null, MODEL_ID,
+                promptId, versionId, base.scope(), base.requirements(), null);
+        assertThrows(ApiException.class, () -> service.create(explicit, null));
+        AgentPromptVersion wrong = new AgentPromptVersion();
+        wrong.setId(versionId);
+        wrong.setPromptId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E8");
+        wrong.setContent("另一个提示词");
+        when(promptVersionMapper.selectById(versionId)).thenReturn(wrong);
+        assertThrows(ApiException.class, () -> service.create(explicit, null));
+        verify(promptVersionMapper, org.mockito.Mockito.never()).selectById(prompt.getCurrentVersionId());
     }
 
     private AgentReviewTask createAndCapture(AgentTaskDtos.Create req) {

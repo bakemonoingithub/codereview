@@ -137,11 +137,14 @@ class AgentTaskWorkerTest {
     }
 
     @Test
-    void frozenFilePathsReachFirstAndFollowUpModelRequests() throws Exception {
+    void frozenFilePathsAndGuidanceReachFirstAndFollowUpModelRequests() throws Exception {
         var snapshot = mapper.readTree(task.getInputSnapshot());
         ((com.fasterxml.jackson.databind.node.ObjectNode) snapshot.path("scope"))
                 .putArray("paths").add("src/A.java").add("src/test/BTest.java");
         task.setInputSnapshot(mapper.writeValueAsString(snapshot));
+        var config = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(task.getConfigSnapshot());
+        config.putObject("prompt").put("versionNo", 1).put("content", "冻结的历史指导正文");
+        task.setConfigSnapshot(mapper.writeValueAsString(config));
         when(invocation.invoke(any()))
                 .thenReturn(toolCallResult("call-1", "read_code",
                         "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
@@ -156,6 +159,7 @@ class AgentTaskWorkerTest {
             assertTrue(user.contains("- src/A.java\n"));
             assertTrue(user.contains("- src/test/BTest.java\n"));
             assertTrue(user.contains("V1 = " + SHA));
+            assertTrue(user.contains("冻结的历史指导正文"));
         }
     }
 

@@ -29,6 +29,7 @@
 
         <PromptInfoPreview
           :prompt="prompt"
+          :version="promptVersion"
           title="通用规则提示词"
           :selected="promptSelected"
           :loading="promptLoading"
@@ -40,13 +41,14 @@
 
 <script setup lang="ts">
 import { toRefs } from 'vue'
-import type { ModelView, PromptView } from '@/api/v2'
+import type { ModelView, PromptVersion, PromptView } from '@/api/v2'
 import StatusBadge from '@/components/StatusBadge.vue'
 import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
 
 const props = withDefaults(defineProps<{
   model: ModelView | null
   prompt: PromptView | null
+  promptVersion?: PromptVersion | null
   modelSelected: boolean
   promptSelected: boolean
   loading?: boolean

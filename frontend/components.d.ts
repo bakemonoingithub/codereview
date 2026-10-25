@@ -65,6 +65,7 @@ declare module 'vue' {
     PageNotice: typeof import('./src/components/PageNotice.vue')['default']
     PatternResult: typeof import('./src/components/PatternResult.vue')['default']
     PromptInfoPreview: typeof import('./src/components/PromptInfoPreview.vue')['default']
+    PromptVersionSelect: typeof import('./src/components/PromptVersionSelect.vue')['default']
     RawResult: typeof import('./src/components/RawResult.vue')['default']
     ReportMarkdown: typeof import('./src/components/ReportMarkdown.vue')['default']
     ReportPanel: typeof import('./src/components/ReportPanel.vue')['default']

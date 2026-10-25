@@ -189,6 +189,7 @@
         v-if="selectedStrategy"
         :model="selectedStrategyModel"
         :prompt="selectedStrategyPrompt"
+        :prompt-version="selectedStrategyPromptVersion"
         :model-selected="!!selectedStrategy.modelConfigId"
         :prompt-selected="!!selectedStrategy.promptId"
         :loading="strategyAssociationLoading"
@@ -266,6 +267,7 @@
 </template>
 
 <script setup lang="ts">
+import { readPromptSelection } from '@/utils/promptSelection'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -275,7 +277,6 @@ import StrategyAssociationInfo from '@/components/StrategyAssociationInfo.vue'
 import {
   modelsApi,
   projectsApi,
-  promptsApi,
   repositoryApi,
   strategiesApi,
   tasksApi,
@@ -283,6 +284,7 @@ import {
   type CommitInfo,
   type ModelView,
   type ProjectView,
+  type PromptVersion,
   type PromptView,
   type StrategyView
 } from '@/api/v2'
@@ -304,6 +306,7 @@ const projects = ref<ProjectView[]>([])
 const strategies = ref<StrategyView[]>([])
 const models = ref<ModelView[]>([])
 const selectedStrategyModel = ref<ModelView | null>(null)
+const selectedStrategyPromptVersion = ref<PromptVersion | null>(null)
 const selectedStrategyPrompt = ref<PromptView | null>(null)
 const strategyAssociationLoading = ref(false)
 const strategyAssociationError = ref('')
@@ -381,6 +384,7 @@ const scopeReady = computed(() =>
 const canSubmit = computed(
   () =>
     scopeReady.value && !optionsLoading.value && !sourceMoved.value &&
+    (!form.strategyId || (!strategyAssociationLoading.value && !strategyAssociationError.value)) &&
     form.targets.length > 0 &&
     (!!form.strategyId || !!form.modelConfigId) &&
     (form.sourceKind === 'FILES' ? !!form.observedSha : !!form.commitSha) &&
@@ -852,6 +856,7 @@ async function loadStrategyAssociationInfo(strategy: StrategyView | null) {
   strategyAssociationError.value = ''
   selectedStrategyModel.value = null
   selectedStrategyPrompt.value = null
+  selectedStrategyPromptVersion.value = null
   if (!strategy) {
     strategyAssociationLoading.value = false
     return
@@ -867,7 +872,7 @@ async function loadStrategyAssociationInfo(strategy: StrategyView | null) {
       return null
     })
   const promptRequest = strategy.promptId
-    ? promptsApi.detail(strategy.promptId).catch((failure: unknown) => {
+    ? readPromptSelection(strategy.promptId, strategy.promptVersionId).catch((failure: unknown) => {
       failures.push((failure as Error).message || '读取策略关联提示词失败')
       return null
     })
@@ -876,7 +881,8 @@ async function loadStrategyAssociationInfo(strategy: StrategyView | null) {
   const [model, prompt] = await Promise.all([modelRequest, promptRequest])
   if (epoch !== strategyAssociationEpoch) return
   selectedStrategyModel.value = model
-  selectedStrategyPrompt.value = prompt
+  selectedStrategyPrompt.value = prompt?.prompt || null
+  selectedStrategyPromptVersion.value = prompt?.version || null
   strategyAssociationError.value = failures.join('；')
   strategyAssociationLoading.value = false
 }

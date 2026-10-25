@@ -61,7 +61,8 @@
         <template #default="{ record }">
           <template v-if="record.promptId">
             <div class="association-summary">
-              <a-button type="link" size="small" @click="openAssociationDetails('prompt', record.promptId)"><strong>{{ promptName(record.promptId) }}</strong></a-button>
+              <a-button type="link" size="small" @click="openAssociationDetails('prompt', record.promptId, record.promptVersionId)"><strong>{{ promptName(record.promptId) }}</strong></a-button>
+              <span class="muted">{{ strategyPromptVersionLabel(record) }}</span>
             </div>
           </template>
           <span v-else class="muted">不选提示词</span>
@@ -125,16 +126,29 @@
             {{ promptLoadError }}，<router-link to="/prompts">去提示词页重试</router-link>
           </div>
         </a-form-item>
+        <a-form-item v-if="form.promptId" label="提示词版本" required>
+          <PromptVersionSelect
+            v-model:value="form.promptVersionId"
+            :versions="selectedPromptVersions"
+            :current-version-id="selectedPrompt?.currentVersion?.id"
+            :loading="selectedPromptLoading"
+            :allow-follow-current="allowFollowCurrent"
+          />
+          <div class="field-hint">{{ allowFollowCurrent && !form.promptVersionId
+            ? '新任务使用创建时的当前版本，已创建任务不受影响。'
+            : '策略使用所选版本；覆盖该版本会影响之后创建的任务，已有任务保留正文快照。' }}</div>
+          <a-button v-if="selectedPromptError" type="link" size="small" @click="loadSelectedPrompt(form.promptId)">重新读取版本</a-button>
+        </a-form-item>
         <div class="span-2">
           <StrategyAssociationInfo
             :model="selectedModel"
             :prompt="selectedPrompt"
+            :prompt-version="selectedPromptVersion"
             :model-selected="!!form.modelConfigId"
             :prompt-selected="!!form.promptId"
             :prompt-loading="selectedPromptLoading"
             :error="selectedPromptError"
           />
-          <div class="field-hint">策略关联的是所选提示词记录；新任务使用它当时的当前正文版本，历史任务保留正文快照。</div>
         </div>
       </a-form>
     </a-modal>
@@ -164,14 +178,14 @@
         </template>
         <template v-else-if="associationDetailsKind === 'prompt' && associationPrompt">
           <div class="association-preview-title">
-            {{ associationPrompt.name }} · {{ formatPromptVersion(associationPrompt.currentVersion?.versionNo) }}
+            {{ associationPrompt.name }} · {{ formatPromptVersion(associationPromptVersion?.versionNo) }}
           </div>
           <p v-if="associationPrompt.description" class="field-hint">{{ associationPrompt.description }}</p>
           <div v-if="associationPrompt.tags.length" class="association-tags">
             <a-tag v-for="tag in associationPrompt.tags" :key="tag">{{ tag }}</a-tag>
           </div>
-          <pre class="prompt-content-full">{{ associationPrompt.currentVersion?.content || '该提示词当前没有正文版本。' }}</pre>
-<!--          <p class="field-hint">策略按提示词 ID 关联，不固定版本；新任务发起时读取该提示词当时的当前版本。已创建任务使用保存的正文快照。</p>-->
+          <pre class="prompt-content-full">{{ associationPromptVersion?.content || '该提示词当前没有正文版本。' }}</pre>
+
         </template>
       </a-spin>
     </a-modal>
@@ -186,6 +200,7 @@ import {
   promptsApi,
   strategiesApi,
   type ModelView,
+  type PromptVersion,
   type PromptSummary,
   type PromptView,
   type StrategyView
@@ -198,6 +213,8 @@ import PageNotice from '@/components/PageNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import StrategyAssociationInfo from '@/components/StrategyAssociationInfo.vue'
 import { formatPromptVersion } from '@/utils/promptVersion'
+import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
+import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 
 const models = ref<ModelView[]>([])
 const prompts = ref<PromptSummary[]>([])
@@ -209,12 +226,15 @@ const editing = ref<StrategyView | null>(null)
 const modelLoadError = ref('')
 const promptLoadError = ref('')
 const selectedPrompt = ref<PromptView | null>(null)
+const selectedPromptVersions = ref<PromptVersion[]>([])
+const promptVersionsById = ref<Record<string, PromptVersion[]>>({})
 const selectedPromptLoading = ref(false)
 const selectedPromptError = ref('')
 const associationDetailsOpen = ref(false)
 const associationDetailsKind = ref<'model' | 'prompt'>('model')
 const associationModel = ref<ModelView | null>(null)
 const associationPrompt = ref<PromptView | null>(null)
+const associationPromptVersion = ref<PromptVersion | null>(null)
 const associationDetailsLoading = ref(false)
 const associationDetailsError = ref('')
 let selectedPromptEpoch = 0
@@ -223,7 +243,8 @@ const form = ref({
   name: '',
   specialistType: 'ISSUE',
   modelConfigId: undefined as string | undefined,
-  promptId: undefined as string | undefined
+  promptId: undefined as string | undefined,
+  promptVersionId: undefined as string | undefined
 })
 
 const specialistOptions = [
@@ -241,9 +262,22 @@ const promptOptions = computed(() =>
     .filter((p) => p.purpose === 'SPECIALIST' || p.id === form.value.promptId)
     .map((p) => ({
       value: p.id,
-      label: `${p.name} · ${formatPromptVersion(p.currentVersionNo)}`
+      label: p.name
     }))
 )
+const allowFollowCurrent = computed(() => !!editing.value?.promptId
+  && !editing.value.promptVersionId && editing.value.promptId === form.value.promptId)
+const selectedPromptVersion = computed(() => form.value.promptVersionId
+  ? selectedPromptVersions.value.find(version => version.id === form.value.promptVersionId) || null
+  : allowFollowCurrent.value ? selectedPrompt.value?.currentVersion || null : null)
+watch(() => form.value.promptVersionId, () => {
+  if (selectedPromptVersion.value?.content?.trim()) selectedPromptError.value = ''
+}, { flush: 'sync' })
+function strategyPromptVersionLabel(record: StrategyView) {
+  if (!record.promptVersionId) return '跟随提示词当前版本'
+  const version = promptVersionsById.value[record.promptId || '']?.find(item => item.id === record.promptVersionId)
+  return version ? `固定 v${version.versionNo}` : '固定版本（详情可查看）'
+}
 const selectedModel = computed(() => modelById(form.value.modelConfigId || null))
 const associationDetailsTitle = computed(() => {
   if (associationDetailsKind.value === 'model') return '关联模型详情'
@@ -327,10 +361,13 @@ function openCreate() {
     name: '',
     specialistType: 'ISSUE',
     modelConfigId: undefined,
-    promptId: undefined
+    promptId: undefined,
+    promptVersionId: undefined
   }
   selectedPromptEpoch++
   selectedPrompt.value = null
+  selectedPromptVersions.value = []
+  selectedPromptLoading.value = false
   selectedPromptError.value = ''
   modalOpen.value = true
   ensureOptions()
@@ -342,10 +379,13 @@ function openEdit(record: StrategyView) {
     name: record.name,
     specialistType: record.specialistType,
     modelConfigId: record.modelConfigId || undefined,
-    promptId: record.promptId || undefined
+    promptId: record.promptId || undefined,
+    promptVersionId: record.promptVersionId || ''
   }
   selectedPromptEpoch++
   selectedPrompt.value = null
+  selectedPromptVersions.value = []
+  selectedPromptLoading.value = false
   selectedPromptError.value = ''
   modalOpen.value = true
   if (record.promptId) void loadSelectedPrompt(record.promptId)
@@ -353,20 +393,30 @@ function openEdit(record: StrategyView) {
 }
 
 function onPromptChange(id?: string) {
+  form.value.promptVersionId = undefined
+  selectedPromptVersions.value = []
+  selectedPromptLoading.value = false
   selectedPromptEpoch++
   selectedPrompt.value = null
   selectedPromptError.value = ''
-  if (id) void loadSelectedPrompt(id)
+  if (id) void loadSelectedPrompt(id, true)
 }
 
-async function loadSelectedPrompt(id: string) {
+async function loadSelectedPrompt(id: string, selectCurrent = false) {
   const epoch = ++selectedPromptEpoch
   selectedPromptLoading.value = true
   selectedPromptError.value = ''
   try {
-    const detail = await promptsApi.detail(id)
+    const { prompt: detail, versions, version } = await readPromptSelection(id, selectCurrent ? undefined : form.value.promptVersionId || undefined, true)
     if (epoch !== selectedPromptEpoch || form.value.promptId !== id) return
     selectedPrompt.value = detail
+    selectedPromptVersions.value = versions
+    promptVersionsById.value[id] = versions
+    if (!version) {
+      selectedPromptError.value = unavailablePromptVersion
+      return
+    }
+    if (selectCurrent || (!allowFollowCurrent.value && !form.value.promptVersionId)) form.value.promptVersionId = version.id
     const summary = promptSummaryFromDetail(detail)
     const index = prompts.value.findIndex((prompt) => prompt.id === id)
     if (index < 0) prompts.value = [...prompts.value, summary]
@@ -419,7 +469,7 @@ async function loadAssociatedModelSummary(id: string) {
   }
 }
 
-async function openAssociationDetails(kind: 'model' | 'prompt', id: string | null) {
+async function openAssociationDetails(kind: 'model' | 'prompt', id: string | null, versionId?: string | null) {
   if (!id) return
   const epoch = ++associationDetailsEpoch
   associationDetailsKind.value = kind
@@ -427,6 +477,7 @@ async function openAssociationDetails(kind: 'model' | 'prompt', id: string | nul
   associationDetailsError.value = ''
   associationModel.value = null
   associationPrompt.value = null
+  associationPromptVersion.value = null
   if (kind === 'model') {
     associationDetailsLoading.value = true
     try {
@@ -445,8 +496,11 @@ async function openAssociationDetails(kind: 'model' | 'prompt', id: string | nul
   }
   associationDetailsLoading.value = true
   try {
-    const prompt = await promptsApi.detail(id)
-    if (epoch === associationDetailsEpoch) associationPrompt.value = prompt
+    const { prompt, version } = await readPromptSelection(id, versionId)
+    if (epoch === associationDetailsEpoch) {
+      associationPrompt.value = prompt
+      associationPromptVersion.value = version
+    }
   } catch (failure) {
     if (epoch === associationDetailsEpoch) {
       associationDetailsError.value = (failure as Error).message || '读取关联提示词失败'
@@ -465,13 +519,18 @@ async function onSave() {
     message.warning('请选择关联模型')
     return
   }
+  if (form.value.promptId && (selectedPromptLoading.value || selectedPromptError.value || !selectedPromptVersion.value)) {
+    message.warning('请先读取并选择可用的提示词版本')
+    return
+  }
   saving.value = true
   try {
     const payload = {
       name: form.value.name.trim(),
       specialistType: form.value.specialistType,
       modelConfigId: form.value.modelConfigId,
-      promptId: form.value.promptId || undefined
+      promptId: form.value.promptId || undefined,
+      promptVersionId: form.value.promptId ? form.value.promptVersionId || undefined : undefined
     }
     if (editing.value) {
       await strategiesApi.update(editing.value.id, {
@@ -508,7 +567,12 @@ onMounted(async () => {
 
 watch(records, (items) => {
   const ids = [...new Set(items.map((item) => item.promptId).filter((id): id is string => !!id))]
-  ids.forEach((id) => void loadAssociatedPromptSummary(id))
+  ids.forEach((id) => {
+    void loadAssociatedPromptSummary(id)
+    if (items.some(item => item.promptId === id && item.promptVersionId)) void promptsApi.versions(id).then(versions => { promptVersionsById.value[id] = versions }).catch(() => {
+      // 详情读取失败时仍保留明确的固定版本标签。
+    })
+  })
   const modelIds = [...new Set(items.map((item) => item.modelConfigId).filter((id): id is string => !!id))]
   modelIds.forEach((id) => void loadAssociatedModelSummary(id))
 }, { immediate: true })

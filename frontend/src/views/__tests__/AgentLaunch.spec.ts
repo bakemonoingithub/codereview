@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import AgentLaunch from '@/views/AgentLaunch.vue'
+import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
 import { namedAntStubs } from '@/testUtils/antStubs'
 
 const context = vi.hoisted(() => ({ push: vi.fn(), route: { query: {} as Record<string, string> } }))
@@ -13,7 +14,7 @@ vi.mock('@/api/v2', () => ({
   agentTasksApi: { create: vi.fn(), copyInput: vi.fn() },
   projectsApi: { list: vi.fn() },
   modelsApi: { list: vi.fn(), validateAgent: vi.fn() },
-  promptsApi: { list: vi.fn() },
+  promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() },
   repositoryApi: { branches: vi.fn(), head: vi.fn(), commits: vi.fn() }
 }))
 import { agentTasksApi, projectsApi, modelsApi, promptsApi, repositoryApi } from '@/api/v2'
@@ -23,7 +24,7 @@ const state = (wrapper: any) => wrapper.vm.$.setupState as any
 
 async function start() {
   const wrapper = mount(AgentLaunch, {
-    global: { stubs: { ...namedAntStubs, ScopePickerModal: true } }
+    global: { stubs: { ...namedAntStubs, ScopePickerModal: true, 'a-modal': { name: 'AModal', template: '<div><slot /></div>' } } }
   })
   await flushPromises()
   return wrapper
@@ -136,4 +137,81 @@ describe('Agent 发起表单', () => {
     expect(s.canSubmit).toBe(true)
     wrapper.unmount()
   })
+  it('选择历史提示词版本时预览并提交该版本，清空时重置版本', async () => {
+    const versions = [
+      { id: 'v2', versionNo: 2, content: '新版调查', createdAt: '2026-10-25' },
+      { id: 'v1', versionNo: 1, content: '旧版调查', createdAt: '2026-10-24' }
+    ]
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '指导', tags: [], currentVersion: versions[0] } as any)
+    vi.mocked(promptsApi.versions).mockResolvedValue(versions)
+    const wrapper = await start(); const s = state(wrapper)
+    s.form.guidancePromptId = 'g1'
+    await flushPromises()
+    expect(s.form.guidancePromptVersionId).toBe('v2')
+    wrapper.findComponent(PromptVersionSelect).vm.$emit('update:value', 'v1')
+    s.form.paths = ['src/A.java']; s.form.requirements = '调查调用链'
+    await flushPromises()
+    expect(wrapper.text()).toContain('旧版调查')
+    expect(wrapper.text()).not.toContain('新版调查')
+    await s.submit()
+    expect(agentTasksApi.create).toHaveBeenCalledWith(expect.objectContaining({ guidancePromptVersionId: 'v1' }), expect.any(String))
+    s.form.guidancePromptId = undefined
+    expect(s.form.guidancePromptVersionId).toBeUndefined()
+    expect(s.guidancePromptVersions).toEqual([])
+    wrapper.unmount()
+  })
+
+  it('复制历史参数时保留版本，版本失效时阻止提交', async () => {
+    context.route.query = { copyFrom: 'old-task' }
+    const versions = [
+      { id: 'v2', versionNo: 2, content: '新版', createdAt: '2026-10-25' },
+      { id: 'v1', versionNo: 1, content: '旧版', createdAt: '2026-10-24' }
+    ]
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '指导', tags: [], currentVersion: versions[0] } as any)
+    vi.mocked(promptsApi.versions).mockResolvedValue(versions)
+    vi.mocked(agentTasksApi.copyInput).mockResolvedValue({ projectId: 'p1', modelConfigId: 'm1',
+      guidancePromptId: 'g1', guidancePromptVersionId: 'v1', requirements: '原要求',
+      scope: { kind: 'FILES', branch: 'main', paths: ['src/A.java'] } } as any)
+    const wrapper = await start(); const s = state(wrapper)
+    expect(s.form.guidancePromptVersionId).toBe('v1')
+    expect(s.selectedGuidanceVersion.content).toBe('旧版')
+    expect(s.canSubmit).toBe(true)
+    vi.mocked(promptsApi.versions).mockResolvedValue([versions[0]])
+    await s.loadGuidancePrompt()
+    expect(s.guidancePromptError).toContain('不可用')
+    expect(s.form.guidancePromptVersionId).toBe('v1')
+    expect(s.canSubmit).toBe(false)
+    s.form.guidancePromptVersionId = 'v2'
+    await flushPromises()
+    expect(s.guidancePromptError).toBe('')
+    expect(s.canSubmit).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('指导提示词加载失败可重试，迟到响应不能覆盖新选择或清空状态', async () => {
+    let finishOld!: (value: any) => void
+    const old = new Promise<any>(resolve => { finishOld = resolve })
+    const version = { id: 'v1', versionNo: 1, content: '规则', createdAt: '2026-10-25' }
+    vi.mocked(promptsApi.detail).mockImplementation(id => id === 'old' ? old : Promise.resolve({ id, tags: [], currentVersion: version }) as any)
+    vi.mocked(promptsApi.versions).mockResolvedValue([version])
+    const wrapper = await start(); const s = state(wrapper)
+    s.form.guidancePromptId = 'old'
+    s.form.guidancePromptId = 'new'
+    await flushPromises()
+    expect(s.selectedGuidancePrompt.id).toBe('new')
+    s.form.guidancePromptId = undefined
+    finishOld({ id: 'old', currentVersion: version })
+    await flushPromises()
+    expect(s.selectedGuidancePrompt).toBeNull()
+    expect(s.form.guidancePromptVersionId).toBeUndefined()
+    vi.mocked(promptsApi.versions).mockRejectedValueOnce(new Error('读取版本失败'))
+    s.form.guidancePromptId = 'new'
+    await flushPromises()
+    expect(s.guidancePromptError).toContain('读取版本失败')
+    await s.loadGuidancePrompt()
+    expect(s.guidancePromptError).toBe('')
+    expect(s.form.guidancePromptVersionId).toBe('v1')
+    wrapper.unmount()
+  })
+
 })

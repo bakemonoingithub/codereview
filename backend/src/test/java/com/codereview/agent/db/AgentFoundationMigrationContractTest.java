@@ -60,6 +60,15 @@ class AgentFoundationMigrationContractTest {
     }
 
     @Test
+    void strategyVersionMigrationPreservesLegacyNullReferences() throws IOException {
+        String sql = sql("V7__strategy_prompt_version.sql");
+        assertTrue(sql.contains("alter table review_strategy"));
+        assertTrue(sql.contains("add column prompt_version_id char(26) null"));
+        org.junit.jupiter.api.Assertions.assertFalse(sql.contains("update review_strategy"));
+        org.junit.jupiter.api.Assertions.assertFalse(sql.contains("drop "));
+    }
+
+    @Test
     void schemaIdentityStaysOnTheSameGenerationForAdditiveMigrations() {
         assertTrue(AgentSchemaGuard.EXPECTED_VERSION.matches("\\d+"));
     }

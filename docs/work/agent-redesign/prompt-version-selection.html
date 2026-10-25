@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>提示词版本选择原型</title>
+<style>
+body{margin:0;background:#f5f7fb;color:#243047;font:15px/1.6 system-ui}main{max-width:1050px;margin:40px auto;padding:0 24px}h1{font-size:24px}article{background:#fff;border:1px solid #dde3ed;border-radius:12px;padding:24px;margin:20px 0}.fields{display:grid;grid-template-columns:1fr 1fr;gap:20px}label{display:block;color:#526078}select,input{display:block;box-sizing:border-box;width:100%;margin:8px 0 16px;padding:10px;border:1px solid #cbd4e2;border-radius:6px;background:white;color:#243047}pre{white-space:pre-wrap;background:#f7f9fc;padding:18px;border-radius:6px}small{color:#64748b}button{background:#2563eb;color:white;border:0;border-radius:6px;padding:10px 20px}output{display:block;margin-top:12px}@media(max-width:650px){.fields{grid-template-columns:1fr}}
+</style>
+<main>
+<h1>选择提示词及具体版本</h1>
+<small>结构依据已确认方案。版本固定选择，任务创建时保存正文快照。</small>
+<article data-kind="策略">
+<h2>新建审查策略</h2>
+<label>名称<input value="订单服务规范"></label>
+<div class="fields"><label>关联提示词<select class="prompt"><option value="rule">订单服务规则</option><option value="">不选提示词</option></select></label><label>提示词版本<select class="version"><option value="3">v3 · 当前版本 · 2026-10-25</option><option value="2">v2 · 2026-10-24</option><option value="1">v1 · 2026-10-23</option></select></label></div>
+<pre></pre><small>策略使用所选版本；覆盖该版本会影响之后创建的任务，已有任务保留正文快照。</small><p><button>保存策略</button></p><output></output>
+</article>
+<article data-kind="Agent">
+<h2>发起 Agent 分析 · 补充要求</h2>
+<div class="fields"><label>指导提示词<select class="prompt"><option value="guide">重试链路调查</option><option value="">不选，使用内置调查方法</option></select></label><label>提示词版本<select class="version"><option value="3">v3 · 当前版本 · 2026-10-25</option><option value="2">v2 · 2026-10-24</option><option value="1">v1 · 2026-10-23</option></select></label></div>
+<pre></pre><small>任务创建时保存所选版本的正文；复制参数时带回版本选择。</small><p><button>发起分析</button></p><output></output>
+</article>
+<p><small>未固定版本时显示「跟随提示词当前版本」：新任务使用创建时的当前版本，已创建任务不受影响。可编辑改为具体版本。加载失败或指定版本不可用时显示错误并阻止提交，不自动切换版本。</small></p>
+</main>
+<script>
+document.querySelectorAll('article').forEach(card=>{
+ const prompt=card.querySelector('.prompt'),version=card.querySelector('.version'),preview=card.querySelector('pre');
+ const render=()=>{version.disabled=!prompt.value;preview.textContent=prompt.value?`${prompt.selectedOptions[0].text} · v${version.value}\n创建时间：2026-10-${Number(version.value)+22}\n\n${card.dataset.kind==='策略'?'检查订单处理中的事务与幂等约定。':'优先读取入口与重试实现，逐项核对调用证据。'}\n当前展示 v${version.value} 的正文。`:'未关联提示词';card.querySelector('output').textContent=''};
+ prompt.onchange=()=>{version.value='3';render()};version.onchange=render;
+ card.querySelector('button').onclick=()=>{card.querySelector('output').textContent=prompt.value?`已选择 ${prompt.selectedOptions[0].text} · v${version.value}（原型演示）`:'未选择提示词（原型演示）'};render();
+});
+</script>
+</html>

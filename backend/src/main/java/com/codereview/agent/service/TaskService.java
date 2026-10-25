@@ -34,7 +34,6 @@ import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
-import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
@@ -522,10 +521,10 @@ public class TaskService {
             if (prompt == null) {
                 throw new ApiException(ErrorCode.NOT_FOUND, "策略引用的提示词不存在");
             }
-            if (prompt.getCurrentVersionId() != null) {
-                promptVersion = db.mapper(AgentPromptVersionMapper.class)
-                        .selectById(prompt.getCurrentVersionId());
+            if (!"SPECIALIST".equals(prompt.getPurpose())) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "策略引用的提示词不再属于专项用途");
             }
+            promptVersion = PromptVersionResolver.resolve(db, prompt, strategy.getPromptVersionId());
         }
         return new ResolvedConfig(model, strategy, prompt, promptVersion);
     }
@@ -661,6 +660,7 @@ public class TaskService {
             strategyNode.put("name", config.strategy().getName());
             strategyNode.put("revision", config.strategy().getRevision());
             putNullable(strategyNode, "promptId", config.strategy().getPromptId());
+            putNullable(strategyNode, "promptVersionId", config.strategy().getPromptVersionId());
         }
         if (config.prompt() != null) {
             ObjectNode promptNode = root.putObject("prompt");

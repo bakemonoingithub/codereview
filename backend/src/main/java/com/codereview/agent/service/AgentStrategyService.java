@@ -63,7 +63,7 @@ public class AgentStrategyService {
 
     public StrategyDtos.View create(StrategyDtos.Create req) {
         requireModel(req.modelConfigId());
-        requirePrompt(req.promptId());
+        requirePrompt(req.promptId(), req.promptVersionId());
 
         AgentReviewStrategy strategy = new AgentReviewStrategy();
         strategy.setId(AgentIds.next());
@@ -71,6 +71,7 @@ public class AgentStrategyService {
         strategy.setSpecialistType(req.specialistType());
         strategy.setModelConfigId(req.modelConfigId());
         strategy.setPromptId(req.promptId());
+        strategy.setPromptVersionId(req.promptVersionId());
         strategy.setRevision(0);
         strategy.setCreatedAt(AgentTime.now());
         strategy.setUpdatedAt(AgentTime.now());
@@ -85,13 +86,14 @@ public class AgentStrategyService {
             throw conflict(current.getRevision());
         }
         requireModel(req.modelConfigId());
-        requirePrompt(req.promptId());
+        requirePrompt(req.promptId(), req.promptVersionId());
 
         AgentReviewStrategy patch = new AgentReviewStrategy();
         patch.setName(req.name().trim());
         patch.setSpecialistType(req.specialistType());
         patch.setModelConfigId(req.modelConfigId());
         patch.setPromptId(req.promptId());
+        patch.setPromptVersionId(req.promptVersionId());
         patch.setRevision(req.expectedRevision() + 1);
         patch.setUpdatedAt(AgentTime.now());
         // 允许把可选提示词清空：update 默认忽略 null，因此这里显式 set 成 null 需要 UpdateWrapper。
@@ -102,6 +104,7 @@ public class AgentStrategyService {
                 .set(AgentReviewStrategy::getSpecialistType, patch.getSpecialistType())
                 .set(AgentReviewStrategy::getModelConfigId, patch.getModelConfigId())
                 .set(AgentReviewStrategy::getPromptId, patch.getPromptId())
+                .set(AgentReviewStrategy::getPromptVersionId, patch.getPromptVersionId())
                 .set(AgentReviewStrategy::getRevision, patch.getRevision())
                 .set(AgentReviewStrategy::getUpdatedAt, patch.getUpdatedAt());
         int affected = db.mapper(AgentReviewStrategyMapper.class).update(null, where);
@@ -142,8 +145,11 @@ public class AgentStrategyService {
         }
     }
 
-    private void requirePrompt(String promptId) {
+    private void requirePrompt(String promptId, String versionId) {
         if (promptId == null || promptId.isBlank()) {
+            if (versionId != null) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "选择版本前必须先选择提示词");
+            }
             return;
         }
         AgentPrompt prompt = db.mapper(AgentPromptMapper.class)
@@ -157,6 +163,9 @@ public class AgentStrategyService {
                     "该提示词用途为 " + prompt.getPurpose() + "，不能作为专项规则",
                     Map.of("field", "promptId"));
         }
+        if (versionId != null) {
+            PromptVersionResolver.resolve(db, prompt, versionId);
+        }
     }
 
     private static ApiException conflict(int currentRevision) {
@@ -166,7 +175,7 @@ public class AgentStrategyService {
 
     private static StrategyDtos.View toView(AgentReviewStrategy strategy) {
         return new StrategyDtos.View(strategy.getId(), strategy.getName(), strategy.getSpecialistType(),
-                strategy.getModelConfigId(), strategy.getPromptId(), strategy.getRevision(),
+                strategy.getModelConfigId(), strategy.getPromptId(), strategy.getPromptVersionId(), strategy.getRevision(),
                 strategy.getCreatedAt(), strategy.getUpdatedAt());
     }
 }

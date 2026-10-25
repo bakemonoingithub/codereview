@@ -10,10 +10,11 @@ const context = vi.hoisted(() => ({ route: { query: {} as Record<string, string>
 vi.mock('vue-router', () => ({ useRoute: () => context.route, useRouter: () => ({ push: context.push }) }))
 vi.mock('@/api/v2', () => ({
   projectsApi: { list: vi.fn() }, modelsApi: { list: vi.fn() }, strategiesApi: { list: vi.fn() },
+  promptsApi: { detail: vi.fn(), versions: vi.fn() },
   repositoryApi: { head: vi.fn(), commits: vi.fn(), commit: vi.fn(), branches: vi.fn() },
   tasksApi: { create: vi.fn(), copyInput: vi.fn(), detail: vi.fn() }
 }))
-import { projectsApi, modelsApi, strategiesApi, repositoryApi, tasksApi } from '@/api/v2'
+import { projectsApi, modelsApi, strategiesApi, repositoryApi, tasksApi, promptsApi } from '@/api/v2'
 
 function deferred<T>() { let resolve!: (v: T) => void; let reject!: (v: Error) => void
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject }
@@ -389,6 +390,25 @@ describe('专项发起来源和提交保护', () => {
     expect(s.commitDetailError).toBe(''); expect(s.scopeReady).toBe(true)
     expect(w.text()).toContain('根提交（无父版本）')
     w.unmount()
+  })
+
+  it('策略固定历史版本时专项发起页预览同一正文，失效时阻止提交', async () => {
+    const current = { id: 'v2', versionNo: 2, content: '新版规则', createdAt: '2026-10-25' }
+    const old = { id: 'v1', versionNo: 1, content: '历史规则', createdAt: '2026-10-24' }
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '规则', tags: [], currentVersion: current } as any)
+    vi.mocked(promptsApi.versions).mockResolvedValue([current, old])
+    const wrapper = await start(); const s = state(wrapper)
+    const strategy = { id: 's1', modelConfigId: 'm1', promptId: 'g1', promptVersionId: 'v1' }
+    s.form.strategyId = 's1'; s.form.targets = [{ path: 'A.java' }]
+    await s.loadStrategyAssociationInfo(strategy)
+    expect(s.selectedStrategyPromptVersion.content).toBe('历史规则')
+    expect(s.strategyAssociationError).toBe('')
+    vi.mocked(promptsApi.versions).mockResolvedValue([current])
+    await s.loadStrategyAssociationInfo(strategy)
+    expect(s.strategyAssociationError).toContain('不可用')
+    expect(s.selectedStrategyPromptVersion).toBeNull()
+    expect(s.canSubmit).toBe(false)
+    wrapper.unmount()
   })
 
 })

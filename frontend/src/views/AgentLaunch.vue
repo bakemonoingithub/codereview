@@ -161,17 +161,29 @@
               <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不选则使用内置调查方法" />
             </a-form-item>
           </a-col>
+          <a-col v-if="form.guidancePromptId" :xs="24" :md="12">
+            <a-form-item label="提示词版本" required>
+              <PromptVersionSelect
+                v-model:value="form.guidancePromptVersionId"
+                :versions="guidancePromptVersions"
+                :current-version-id="selectedGuidancePrompt?.currentVersion?.id"
+                :loading="guidancePromptLoading"
+              />
+            </a-form-item>
+          </a-col>
         </a-row>
         <PromptInfoPreview
           v-if="form.guidancePromptId"
           class="mb16"
           title="指导提示词"
           :prompt="selectedGuidancePrompt"
+          :version="selectedGuidanceVersion"
           selected
           :loading="guidancePromptLoading"
           :error="guidancePromptError"
-          @retry="loadGuidancePrompt"
+          @retry="loadGuidancePrompt()"
         />
+        <p v-if="form.guidancePromptId" class="muted">任务创建时保存所选版本的正文；覆盖版本会影响之后创建的任务。</p>
         <a-form-item label="本次要求" required>
           <a-textarea
             v-model:value="form.requirements"
@@ -242,8 +254,12 @@ import {
   type ModelView,
   type ProjectView,
   type PromptSummary,
+  type PromptVersion,
   type PromptView
 } from '@/api/v2'
+
+import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
+import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 
 withDefaults(defineProps<{ open?: boolean }>(), { open: true })
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -257,6 +273,8 @@ const projects = ref<ProjectView[]>([])
 const agentModels = ref<ModelView[]>([])
 const prompts = ref<PromptSummary[]>([])
 const selectedGuidancePrompt = ref<PromptView | null>(null)
+const guidancePromptVersions = ref<PromptVersion[]>([])
+const selectedGuidanceVersion = computed(() => guidancePromptVersions.value.find(version => version.id === form.guidancePromptVersionId) || null)
 const guidancePromptLoading = ref(false)
 const guidancePromptError = ref('')
 let guidancePromptEpoch = 0
@@ -284,6 +302,7 @@ const form = reactive({
   name: '',
   modelConfigId: '',
   guidancePromptId: undefined as string | undefined,
+  guidancePromptVersionId: undefined as string | undefined,
   referenceResultId: '',
   kind: 'FILES' as 'TEXT' | 'FILES' | 'COMMITS',
   branch: '' as string,
@@ -304,20 +323,35 @@ const promptOptions = computed(() =>
   prompts.value.map((prompt) => ({ label: prompt.name, value: prompt.id }))
 )
 const branchOptions = computed(() => branches.value.map((branch) => ({ label: branch, value: branch })))
-watch(() => form.guidancePromptId, () => { void loadGuidancePrompt() }, { flush: 'sync' })
+watch(() => form.guidancePromptId, () => {
+  form.guidancePromptVersionId = undefined
+  void loadGuidancePrompt()
+}, { flush: 'sync' })
+watch(() => form.guidancePromptVersionId, () => {
+  if (selectedGuidanceVersion.value?.content?.trim()) guidancePromptError.value = ''
+}, { flush: 'sync' })
 
 async function loadGuidancePrompt() {
   const id = form.guidancePromptId
   const epoch = ++guidancePromptEpoch
   selectedGuidancePrompt.value = null
+  guidancePromptVersions.value = []
   guidancePromptError.value = ''
   guidancePromptLoading.value = false
   if (!id) return
 
   guidancePromptLoading.value = true
   try {
-    const prompt = await promptsApi.detail(id)
-    if (epoch === guidancePromptEpoch) selectedGuidancePrompt.value = prompt
+    const { prompt, versions, version } = await readPromptSelection(id, form.guidancePromptVersionId, true)
+    if (epoch === guidancePromptEpoch) {
+      selectedGuidancePrompt.value = prompt
+      guidancePromptVersions.value = versions
+      if (!version) {
+        guidancePromptError.value = unavailablePromptVersion
+        return
+      }
+      form.guidancePromptVersionId = version.id
+    }
   } catch (failure) {
     if (epoch === guidancePromptEpoch) {
       guidancePromptError.value = (failure as Error)?.message || '读取指导提示词失败，请重试。'
@@ -329,6 +363,7 @@ async function loadGuidancePrompt() {
 
 const canSubmit = computed(() => {
   if (!form.projectId || !form.modelConfigId || !form.requirements.trim()) return false
+  if (form.guidancePromptId && (guidancePromptLoading.value || guidancePromptError.value || !selectedGuidanceVersion.value)) return false
   if (form.kind === 'TEXT') return Boolean(form.description.trim() && form.observedSha)
   if (form.kind === 'FILES') return form.paths.length > 0 && Boolean(form.observedSha)
   return form.commits.length > 0
@@ -383,7 +418,9 @@ async function loadCopyInput() {
     form.projectId = copy.projectId
     form.name = copy.name || ''
     form.modelConfigId = copy.modelConfigId
-    form.guidancePromptId = copy.guidancePromptId
+    form.guidancePromptId = copy.guidancePromptId || undefined
+    form.guidancePromptVersionId = copy.guidancePromptVersionId || undefined
+    if (form.guidancePromptId) await loadGuidancePrompt()
     form.referenceResultId = copy.referenceResultId || ''
     form.kind = copy.scope.kind
     form.description = copy.scope.description || ''
@@ -611,6 +648,7 @@ async function submit() {
     name: form.name.trim() || undefined,
     modelConfigId: form.modelConfigId,
     guidancePromptId: form.guidancePromptId || undefined,
+    guidancePromptVersionId: form.guidancePromptId ? form.guidancePromptVersionId : undefined,
     referenceResultId: form.referenceResultId.trim() || undefined,
     requirements: form.requirements.trim(),
     scope: {

@@ -8,14 +8,15 @@
         </template>
       </a-alert>
       <template v-if="prompt">
-        <strong class="item-title">{{ prompt.name }} · {{ formatPromptVersion(prompt.currentVersion?.versionNo) }}</strong>
+        <strong class="item-title">{{ prompt.name }} · {{ formatPromptVersion(displayVersion?.versionNo) }}</strong>
+        <p v-if="displayVersion?.createdAt" class="description">创建时间：{{ displayVersion.createdAt.replace('T', ' ') }}</p>
         <p v-if="prompt.description" class="description">{{ prompt.description }}</p>
         <div v-if="prompt.tags.length" class="tags">
           <a-tag v-for="tag in prompt.tags" :key="tag">{{ tag }}</a-tag>
         </div>
-        <pre class="prompt-content" :class="{ expanded }">{{ prompt.currentVersion?.content || '该提示词当前没有正文版本。' }}</pre>
+        <pre class="prompt-content" :class="{ expanded }">{{ displayVersion?.content || '所选提示词版本不可用。' }}</pre>
         <a-button
-          v-if="(prompt.currentVersion?.content?.length || 0) > 360"
+          v-if="(displayVersion?.content?.length || 0) > 360"
           type="link"
           size="small"
           @click="expanded = !expanded"
@@ -29,12 +30,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { PromptView } from '@/api/v2'
+import { computed, ref, watch } from 'vue'
+import type { PromptVersion, PromptView } from '@/api/v2'
 import { formatPromptVersion } from '@/utils/promptVersion'
 
 const props = withDefaults(defineProps<{
   prompt: PromptView | null
+  version?: PromptVersion | null
   title?: string
   selected?: boolean
   loading?: boolean
@@ -46,8 +48,9 @@ const props = withDefaults(defineProps<{
   error: ''
 })
 const emit = defineEmits<{ retry: [] }>()
+const displayVersion = computed(() => props.version === undefined ? props.prompt?.currentVersion : props.version)
 const expanded = ref(false)
-watch(() => [props.prompt?.id, props.prompt?.currentVersion?.id], () => { expanded.value = false })
+watch(() => [props.prompt?.id, displayVersion.value?.id], () => { expanded.value = false })
 </script>
 
 <style scoped lang="less">
