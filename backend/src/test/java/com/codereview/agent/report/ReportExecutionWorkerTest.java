@@ -120,6 +120,31 @@ class ReportExecutionWorkerTest {
     }
 
     @Test
+    void executionUsesOnlyTheFrozenReportPromptSnapshot() {
+        AgentReport report = report();
+        report.setInstructionSnapshot("{\"version\":\"1\",\"text\":\"本次报告要求\",\"prompt\":{"
+                + "\"id\":\"01J00000000000000000000002\",\"name\":\"报告规范\","
+                + "\"versionId\":\"01J00000000000000000000003\",\"versionNo\":4,"
+                + "\"content\":\"冻结的报告规则正文\"}}");
+        when(reportMapper.selectById(REPORT_ID)).thenReturn(report);
+        when(reportMapper.update(any(), any())).thenReturn(1);
+        when(sourceMapper.selectList(any())).thenReturn(List.of(new AgentReportSource()));
+        when(factsBuilder.build(any())).thenReturn(facts());
+        when(assembly.assemble(any())).thenReturn(prompt());
+        when(invocation.invoke(any())).thenReturn(new InvocationResult("call-1", "# 报告\n\n结论 [S1]。",
+                null, "stop", 1, 1, 1, "m", "v"));
+        when(modelMapper.selectById(MODEL_ID)).thenReturn(model());
+
+        worker.execute(REPORT_ID);
+
+        ArgumentCaptor<PromptInput> input = ArgumentCaptor.forClass(PromptInput.class);
+        verify(assembly).assemble(input.capture());
+        assertEquals("报告规范", input.getValue().generalRuleName());
+        assertEquals("冻结的报告规则正文", input.getValue().generalRuleContent());
+        assertEquals("本次报告要求", input.getValue().reportInstruction());
+    }
+
+    @Test
     void unknownCitationFailsWithoutWritingBody() {
         stubQueuedReport();
         when(sourceMapper.selectList(any())).thenReturn(List.of(new AgentReportSource()));

@@ -4,7 +4,15 @@
 
 ## 当前状态
 
-当前: -
+当前：UPI-06 报告通用规则框架实现及定向工程检查已完成，等待隔离库、真实报告和负责人 PC 正式页面视觉验收。UPI-05 已于 2026-10-25 确认完成。
+
+2026-10-25 负责人确认 UPI-05 PC 正式页面视觉验收完成，UPI-05 标记 done。三类专项、Agent 与四来源报告小样本均成功，共 6 次真实模型调用、10611 输入／3507 输出 token；版本冻结、优先级、复制、引用、下载及旧策略／错用途／缺版本拒绝均核对。详见[业务测试记录](work/agent-redesign/prompt-input-unification/business-smoke-20261025.md)。未执行边界仍按未验证记录，不记作通过；验收总记录见[UPI-05 记录](work/agent-redesign/prompt-input-unification/validation-20261025.md)。
+
+2026-10-25 UPI-06 原型与接口字段稿获负责人确认后完成框架实现：报告生成可选 REPORT 通用规则及固定版本，规则正文与本次补充要求随入队快照冻结，详情显示实际冻结配置；规则置于补充要求字段上方。报告来源冻结与混合来源逻辑未改。工程检查与未执行验收边界见[UPI-06 实施记录](work/agent-redesign/prompt-input-unification/upi-06-implementation-20261025.md)。当前等待负责人 PC 正式页面视觉验收、隔离库 V8 初始化及真实混合来源报告验收，不提前标记 done；后端服务保持停止。
+
+2026-10-25 UPI 审核修复：已修复模型在途引用删除保护、规则首次加载失败重试和规则列表分页，详见[修复记录](work/agent-redesign/prompt-input-unification/review-fixes-20261025.md)。未执行边界沿用验收记录并保持未验证状态。
+
+2026-10-25 负责人确认[专项发起原型](work/agent-redesign/prompt-input-unification/prototype.html)及[接口字段稿](work/agent-redesign/prompt-input-unification/interface.md)，UPI-02 done。UPI-03 后端和 UPI-04 前端改造及定向工程检查已完成。UPI-05 已完成隔离空库 V1–V7 初始化、专项接口联调、真实调用和五类业务小样本；负责人确认 PC 正式页面视觉后，UPI-05 标记 done。未执行矩阵项继续作为未验证边界记录。负责人现已明确启动 UPI-06，业务依据及实施方案见[契约第 9 节](work/agent-redesign/business-contract.md#9-提示词输入统一与策略退出2026-10-25)、[UPI 工作包](work/agent-redesign/prompt-input-unification/README.md)、[前端方案](work/agent-redesign/prompt-input-unification/frontend.md)和[后端方案](work/agent-redesign/prompt-input-unification/backend.md)。P29–P33 保持 done。
 
 2026-10-22 负责人要求开始 P33 剩余开发。P33 全部子任务已于当日交付：P33.6 完成专项／Agent 混合报告联调，真实报告同时引用两类来源并保留材料不足限制。当前无 active，等待负责人分诊。
 
@@ -71,7 +79,7 @@ P29–P32 已完成并经负责人确认：共用设计与专项原型、公共�
 - 公共实现：[统一调用](work/agent-redesign/p30/p30-5-assembly-invocation.md)、[任务控制](work/agent-redesign/p30/p30-6-task-control.md)、[P31 材料与拆分](work/agent-redesign/p31/README.md)、[P32 反馈与报告](work/agent-redesign/p32/README.md)。
 - [本机开发服务启停](work/agent-redesign/dev-launchers.md)；真实库 `ai_code_review_agent`，服务当前运行在 8081。
 
-## 下一步
+## 下一步（2026-10-22 P33 交付时的历史安排）
 
 1. 当前无 active：负责人可分诊部署前补测（PC 视觉、并发双页面、服务重启收敛、真实上限触达、内网大仓库／Gitea、封存与回退演练）或新工作。
 2. P33.5 做进度／调用记录／结果与来源阅读，P33.6 做验收与混合报告联调。

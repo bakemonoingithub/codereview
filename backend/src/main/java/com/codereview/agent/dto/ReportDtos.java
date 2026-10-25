@@ -44,17 +44,25 @@ public final class ReportDtos {
                               int sourceCount, List<FrozenSource> sources) {
     }
 
-    /** 选择模型并发起生成；生成材料已由 P32.3 冻结，不在这里重新选材。 */
+    /** 选择模型及可选报告规则并发起生成；生成材料已冻结，不在这里重新选材。 */
     public record GenerateRequest(
             @NotBlank(message = "请选择生成模型") @Size(max = 26, message = "模型 ID 不合法")
             String modelConfigId,
-            @Size(max = 4000, message = "报告补充要求不能超过 4000 个字符")
-            String instruction) {
+            @Size(max = 4000, message = "报告补充要求不能超过 4000 个字符") String instruction,
+            @Size(max = 26, message = "提示词 ID 不合法") String promptId,
+            @Size(max = 26, message = "提示词版本 ID 不合法") String promptVersionId) {
+        public GenerateRequest(String modelConfigId, String instruction) {
+            this(modelConfigId, instruction, null, null);
+        }
     }
 
     /** 生成时冻结的模型信息；不含凭据。 */
     public record ModelView(String id, String name, String modelName, Integer contextWindow,
                             Integer maxOutput, String tokenizer, String protocol, Integer revision) {
+    }
+
+    /** 报告实际使用的提示词版本；正文来自生成请求时冻结的快照。 */
+    public record PromptView(String id, String name, String versionId, Integer versionNo, String content) {
     }
 
     /** 来源摘要；完整快照按 ordinal 单独读取，列表不重复传输代码正文。 */
@@ -81,7 +89,7 @@ public final class ReportDtos {
      * 不把程序事实当成已完成报告。
      */
     public record ReportDetail(String id, String title, String state, String body,
-                               String errorCode, String errorMessage, ModelView model,
+                               String errorCode, String errorMessage, ModelView model, PromptView prompt,
                                String instruction, int sourceCount, int taskCount, int versionCount,
                                Map<String, Integer> kindCounts, List<SourceSummary> sources,
                                List<CallSummary> calls, LocalDateTime createdAt,

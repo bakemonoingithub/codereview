@@ -15,13 +15,14 @@ vi.mock('vue-router', () => ({
 }))
 vi.mock('@/api/v2', () => ({
   reportsApi: { detail: vi.fn(), start: vi.fn(), download: vi.fn() },
-  modelsApi: { list: vi.fn() }
+  modelsApi: { list: vi.fn() },
+  promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() }
 }))
 vi.mock('@/components/ReportMarkdown.vue', () => ({
   default: { props: ['text'], template: '<div class="report-body-stub">{{ text }}</div>' }
 }))
 
-import { modelsApi, reportsApi } from '@/api/v2'
+import { modelsApi, promptsApi, reportsApi } from '@/api/v2'
 
 const source = {
   ordinal: 1, resultId: 'result-1', kind: 'ISSUE', projectId: 'project-1',
@@ -35,6 +36,7 @@ const report = {
   versionCount: 1, kindCounts: { ISSUE: 1 }, sources: [source], calls: [],
   model: { id: 'model-1', name: '默认', modelName: 'qwen', contextWindow: 32000, maxOutput: 4096, tokenizer: 'qwen', protocol: 'OPENAI_CHAT', revision: 1 },
   instruction: null, createdAt: '2026-10-21T10:00:00', updatedAt: '2026-10-21T10:05:00',
+  prompt: null,
   startedAt: '2026-10-21T10:01:00', finishedAt: '2026-10-21T10:05:00'
 }
 
@@ -62,6 +64,19 @@ beforeEach(() => {
   vi.mocked(reportsApi.detail).mockResolvedValue(report as any)
   vi.mocked(reportsApi.download).mockResolvedValue(new Blob(['# 结论']))
   vi.mocked(modelsApi.list).mockResolvedValue({ items: [], nextCursor: null, hasMore: false })
+  vi.mocked(promptsApi.list).mockResolvedValue({ items: [
+    { id: 'prompt-report', name: '报告规则', purpose: 'REPORT' },
+    { id: 'prompt-agent', name: 'Agent 指导', purpose: 'AGENT' }
+  ] as any, nextCursor: null, hasMore: false })
+  vi.mocked(promptsApi.detail).mockResolvedValue({
+    id: 'prompt-report', name: '报告规则', purpose: 'REPORT', description: null, tags: [], revision: 2,
+    currentVersion: { id: 'version-2', versionNo: 2, content: '当前正文', createdAt: '2026-10-25T00:00:00' },
+    createdAt: '', updatedAt: ''
+  } as any)
+  vi.mocked(promptsApi.versions).mockResolvedValue([
+    { id: 'version-2', versionNo: 2, content: '当前正文', createdAt: '2026-10-25T00:00:00' },
+    { id: 'version-1', versionNo: 1, content: '历史正文', createdAt: '2026-10-24T00:00:00' }
+  ] as any)
 })
 
 describe('报告详情阅读', () => {
@@ -118,6 +133,20 @@ describe('报告详情阅读', () => {
     wrapper.unmount()
   })
 
+  it('详情展示生成时冻结的报告规则正文', async () => {
+    vi.mocked(reportsApi.detail).mockResolvedValue({
+      ...report,
+      prompt: { id: 'prompt-report', name: '报告规则', versionId: 'version-1', versionNo: 1, content: '冻结规则正文' },
+      instruction: '本次报告要求'
+    } as any)
+    const wrapper = await start()
+
+    expect(wrapper.text()).toContain('报告规则 · v1')
+    expect(wrapper.text()).toContain('冻结规则正文')
+    expect(wrapper.text()).toContain('本次报告要求')
+    wrapper.unmount()
+  })
+
   it('失败状态明确展示错误，不显示成功正文入口', async () => {
     vi.mocked(reportsApi.detail).mockResolvedValue({
       ...report, state: 'FAILED', body: null, errorCode: 'CONTEXT_LIMIT',
@@ -142,6 +171,26 @@ describe('报告详情阅读', () => {
 
     expect(reportsApi.start).toHaveBeenCalledWith('report-1', { modelConfigId: 'model-1', instruction: undefined })
     expect(s.generateOpen).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('生成时提交所选报告规则的具体版本', async () => {
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, state: 'INPUT_FROZEN', body: null } as any)
+    vi.mocked(modelsApi.list).mockResolvedValue({ items: [{ id: 'model-1', name: '默认', modelName: 'qwen', contextWindow: 32000 } as any], nextCursor: null, hasMore: false })
+    const wrapper = await start()
+    const s = state(wrapper)
+    await s.openGenerate()
+    s.generateForm.modelConfigId = 'model-1'
+    s.generateForm.promptId = 'prompt-report'
+    await flushPromises()
+    s.generateForm.promptVersionId = 'version-1'
+    await s.startGeneration()
+    await flushPromises()
+
+    expect(reportsApi.start).toHaveBeenCalledWith('report-1', {
+      modelConfigId: 'model-1', instruction: undefined,
+      promptId: 'prompt-report', promptVersionId: 'version-1'
+    })
     wrapper.unmount()
   })
 })

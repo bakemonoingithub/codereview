@@ -46,7 +46,7 @@
               下载 Markdown
             </a-button>
             <a-button v-if="report.state === 'INPUT_FROZEN'" type="primary" @click="openGenerate">
-              选择模型生成
+              选择生成配置
             </a-button>
           </div>
         </div>
@@ -93,6 +93,19 @@
             </div>
           </div>
         </div>
+
+        <section class="card config-card">
+          <div class="section-head"><strong>生成配置</strong></div>
+          <div class="config-grid">
+            <div><span class="muted small">生成模型</span><strong>{{ report.model?.name || '—' }}</strong></div>
+            <div><span class="muted small">报告通用规则</span><strong>{{ report.prompt ? `${report.prompt.name} · v${report.prompt.versionNo}` : '未使用报告通用规则' }}</strong></div>
+            <div class="config-instruction"><span class="muted small">补充要求</span><p>{{ report.instruction || '无' }}</p></div>
+          </div>
+          <div v-if="report.prompt" class="frozen-prompt">
+            <div class="section-head"><strong>冻结的规则正文</strong><span class="muted small">{{ report.prompt.name }} · v{{ report.prompt.versionNo }}</span></div>
+            <pre>{{ report.prompt.content }}</pre>
+          </div>
+        </section>
 
         <div class="report-layout">
           <section class="card report-body">
@@ -174,7 +187,7 @@
 
     <a-modal
       :open="generateOpen"
-      title="选择模型生成报告"
+      title="生成配置"
       :confirm-loading="generating"
       ok-text="开始生成"
       cancel-text="取消"
@@ -193,7 +206,39 @@
         />
       </div>
       <div class="field">
-        <label>报告补充要求（可选）</label>
+        <label>报告通用规则 <span class="muted small">（可选）</span></label>
+        <a-select
+          v-model:value="generateForm.promptId"
+          allow-clear
+          style="width: 100%"
+          placeholder="选择报告规则"
+          :loading="promptOptionsLoading"
+          :options="promptOptions"
+        />
+        <span class="muted small">只显示报告生成用途的规则。</span>
+      </div>
+      <div v-if="generateForm.promptId" class="field">
+        <label>规则版本</label>
+        <PromptVersionSelect
+          v-model:value="generateForm.promptVersionId"
+          :versions="promptVersions"
+          :current-version-id="selectedPrompt?.currentVersion?.id"
+          :loading="promptLoading"
+        />
+      </div>
+      <PromptInfoPreview
+        v-if="generateForm.promptId"
+        class="mb12"
+        title="所选报告规则正文"
+        :prompt="selectedPrompt"
+        :version="selectedPromptVersion"
+        selected
+        :loading="promptLoading"
+        :error="promptError"
+        @retry="loadPromptSelection(generateForm.promptId, generateForm.promptVersionId)"
+      />
+      <div class="field">
+        <label>补充要求 <span class="muted small">（可选）</span></label>
         <a-textarea
           v-model:value="generateForm.instruction"
           :maxlength="4000"
@@ -202,7 +247,7 @@
         />
       </div>
       <p class="muted small">
-        已冻结的标题、来源、版本、问题和反馈不会因本次模型选择而改变。
+        来源、版本、问题和反馈保持冻结；本次模型、要求和规则版本在生成受理时一并固定。
       </p>
     </a-modal>
 
@@ -219,12 +264,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { modelsApi, reportsApi, type ModelView, type ReportDetail } from '@/api/v2'
+import { modelsApi, promptsApi, reportsApi, type ModelView, type PromptSummary, type PromptVersion, type PromptView, type ReportDetail } from '@/api/v2'
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
 import ReportMarkdown from '@/components/ReportMarkdown.vue'
+import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
+import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ReportSourceModal from '@/components/ReportSourceModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
+import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 
 const route = useRoute()
 const router = useRouter()
@@ -244,11 +292,19 @@ const generating = ref(false)
 const generateError = ref('')
 const models = ref<ModelView[]>([])
 const modelsLoading = ref(false)
-const generateForm = reactive({ modelConfigId: undefined as string | undefined, instruction: '' })
+const generateForm = reactive({ modelConfigId: undefined as string | undefined, instruction: '', promptId: '', promptVersionId: '' })
+const prompts = ref<PromptSummary[]>([])
+const promptsLoaded = ref(false)
+const promptOptionsLoading = ref(false)
+const promptLoading = ref(false)
+const promptError = ref('')
+const selectedPrompt = ref<PromptView | null>(null)
+const promptVersions = ref<PromptVersion[]>([])
 let loadEpoch = 0
 let pollTimer: ReturnType<typeof setTimeout> | null = null
 let disposed = false
 let reportEpoch = 0
+let promptEpoch = 0
 
 const modelOptions = computed(() =>
   models.value.map((model) => ({
@@ -256,6 +312,13 @@ const modelOptions = computed(() =>
     disabled: !model.contextWindow,
     label: `${model.name} · ${model.modelName}${model.contextWindow ? '' : '（未声明窗口，不可用于报告）'}${model.validationStatus === 'PASSED' ? '' : '（未验证）'}`
   }))
+)
+const promptOptions = computed(() => prompts.value
+  .filter(prompt => prompt.purpose === 'REPORT')
+  .map(prompt => ({ value: prompt.id, label: prompt.name }))
+)
+const selectedPromptVersion = computed(() =>
+  promptVersions.value.find(version => version.id === generateForm.promptVersionId) || null
 )
 const projectSummary = computed(() => {
   const projects = new Map<string, string>()
@@ -283,6 +346,9 @@ watch(
     generateError.value = ''
     generateForm.modelConfigId = undefined
     generateForm.instruction = ''
+    generateForm.promptId = ''
+    generateForm.promptVersionId = ''
+    promptEpoch++
     startFailed.value = !!route.query.startFailed
     void load()
   },
@@ -292,8 +358,18 @@ watch(
 onBeforeUnmount(() => {
   disposed = true
   loadEpoch++
+  promptEpoch++
   if (pollTimer) clearTimeout(pollTimer)
 })
+
+watch(() => generateForm.promptId, promptId => { void loadPromptSelection(promptId) }, { flush: 'sync' })
+watch(() => generateForm.promptVersionId, versionId => {
+  if (generateForm.promptId && versionId && !selectedPromptVersion.value && !promptLoading.value) {
+    promptError.value = unavailablePromptVersion
+  } else if (selectedPromptVersion.value) {
+    promptError.value = ''
+  }
+}, { flush: 'sync' })
 
 async function load() {
   if (!id.value) return
@@ -349,23 +425,78 @@ async function openGenerate() {
   const epoch = reportEpoch
   generateOpen.value = true
   generateError.value = ''
-  if (!models.value.length) {
+  if (!models.value.length || !promptsLoaded.value) {
     modelsLoading.value = true
+    promptOptionsLoading.value = true
     try {
-      const page = await modelsApi.list({ limit: 100 })
+      const [modelPage, reportPrompts] = await Promise.all([
+        models.value.length ? Promise.resolve({ items: models.value }) : modelsApi.list({ limit: 100 }),
+        promptsLoaded.value ? Promise.resolve(prompts.value) : loadReportPrompts()
+      ])
       if (disposed || epoch !== reportEpoch) return
-      models.value = page.items
+      models.value = modelPage.items
+      prompts.value = reportPrompts
+      promptsLoaded.value = true
     } catch (failure) {
       if (disposed || epoch !== reportEpoch) return
-      generateError.value = (failure as Error).message || '模型列表读取失败'
+      generateError.value = (failure as Error).message || '生成配置读取失败'
     } finally {
       modelsLoading.value = false
+      promptOptionsLoading.value = false
     }
   }
   if (disposed || epoch !== reportEpoch) return
   if (!generateForm.modelConfigId) {
     generateForm.modelConfigId = models.value.find((model) =>
       model.contextWindow && model.contextWindow > 0)?.id || models.value[0]?.id
+  }
+}
+
+async function loadReportPrompts(): Promise<PromptSummary[]> {
+  const items = new Map<string, PromptSummary>()
+  const seen = new Set<string>()
+  let cursor: string | undefined
+  do {
+    const page = await promptsApi.list({ limit: 100, ...(cursor ? { cursor } : {}) })
+    for (const prompt of page.items) {
+      if (prompt.purpose === 'REPORT') items.set(prompt.id, prompt)
+    }
+    if (!page.hasMore) return [...items.values()]
+    if (!page.nextCursor || seen.has(page.nextCursor)) throw new Error('报告规则分页异常，请重新加载。')
+    cursor = page.nextCursor
+    seen.add(cursor)
+  } while (true)
+}
+
+async function loadPromptSelection(promptId: string, preferredVersionId?: string | null) {
+  const epoch = ++promptEpoch
+  promptError.value = ''
+  selectedPrompt.value = null
+  promptVersions.value = []
+  generateForm.promptVersionId = preferredVersionId || ''
+  if (!promptId) {
+    promptLoading.value = false
+    return
+  }
+  promptLoading.value = true
+  try {
+    const selection = await readPromptSelection(promptId, preferredVersionId, true)
+    if (disposed || epoch !== promptEpoch) return
+    if (selection.prompt.purpose !== 'REPORT') throw new Error('所选提示词不属于报告生成用途，请重新选择。')
+    selectedPrompt.value = selection.prompt
+    promptVersions.value = selection.versions
+    if (selection.version) {
+      generateForm.promptVersionId = selection.version.id
+    } else if (preferredVersionId) {
+      generateForm.promptVersionId = preferredVersionId
+      promptError.value = unavailablePromptVersion
+    } else {
+      promptError.value = '该报告规则没有可用的正文版本，请先到提示词管理补充版本。'
+    }
+  } catch (failure) {
+    if (!disposed && epoch === promptEpoch) promptError.value = (failure as Error).message || '报告规则读取失败。'
+  } finally {
+    if (!disposed && epoch === promptEpoch) promptLoading.value = false
   }
 }
 
@@ -376,12 +507,17 @@ async function startGeneration() {
     generateError.value = '请选择生成模型。'
     return
   }
+  if (generateForm.promptId && (promptLoading.value || promptError.value || !generateForm.promptVersionId || !selectedPromptVersion.value)) {
+    generateError.value = '请确认报告规则及其有效版本。'
+    return
+  }
   generating.value = true
   generateError.value = ''
   try {
     await reportsApi.start(report.value.id, {
       modelConfigId: generateForm.modelConfigId,
-      instruction: generateForm.instruction.trim() || undefined
+      instruction: generateForm.instruction.trim() || undefined,
+      ...(generateForm.promptId ? { promptId: generateForm.promptId, promptVersionId: generateForm.promptVersionId } : {})
     })
     if (disposed || epoch !== reportEpoch) return
     generateOpen.value = false
@@ -493,6 +629,44 @@ function formatTime(value: string) {
 }
 .error {
   color: var(--red);
+}
+.config-card {
+  margin-bottom: 18px;
+  padding: 18px 22px;
+}
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.config-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.config-grid strong {
+  overflow-wrap: anywhere;
+}
+.config-instruction p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.frozen-prompt {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.frozen-prompt pre {
+  max-height: 260px;
+  margin: 10px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.65;
 }
 .overview {
   display: grid;
@@ -648,6 +822,14 @@ function formatTime(value: string) {
   }
   .overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .config-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .config-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -19,6 +19,7 @@ const summary = {
 
 const stubs = {
   ...namedAntStubs,
+  'a-input-search': silentStub('a-input-search-stub'),
   'a-table': { name: 'ATable', template: '<div class="table-stub" />' },
   'a-table-column': { name: 'ATableColumn', template: '<div />' },
   'a-card': silentStub('a-card-stub')
@@ -57,6 +58,19 @@ describe('报告列表', () => {
     expect(s.reports[0].sourceCount).toBe(2)
     s.open('report-1')
     expect(context.push).toHaveBeenCalledWith('/reports/report-1')
+    wrapper.unmount()
+  })
+
+  it('按报告名称或 ID 搜索，并从第一页读取匹配结果', async () => {
+    const wrapper = mount(ReportList, { global: { stubs } })
+    await flushPromises()
+
+    const s = (wrapper.vm as any).$.setupState
+    s.keyword = '订单'
+    s.stateFilter = 'FAILED'
+    await s.searchReports()
+
+    expect(reportsApi.list).toHaveBeenLastCalledWith({ pageNum: 1, pageSize: 20, q: '订单', state: 'FAILED' })
     wrapper.unmount()
   })
 })

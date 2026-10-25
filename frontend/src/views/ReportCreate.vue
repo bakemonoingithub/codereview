@@ -8,7 +8,7 @@
     wrap-class-name="report-create-modal"
     @cancel="closeCreate"
   >
-    <p class="muted intro">选择已完整发布的审查结果；提交后冻结来源、版本和当时反馈。</p>
+<!--    <p class="muted intro">选择已完整发布的审查结果；提交后冻结来源、版本和当时反馈。</p>-->
 
     <a-alert v-if="formError" type="error" show-icon :message="formError" class="mb16" />
     <a-alert
@@ -28,7 +28,7 @@
           <a-input v-model:value="form.title" :maxlength="200" placeholder="例如：订单服务专项审查报告" />
         </div>
         <div class="field">
-          <label>生成模型</label>
+          <label>模型</label>
           <a-select
             v-model:value="form.modelConfigId"
             style="width: 100%"
@@ -36,16 +36,7 @@
             :loading="modelsLoading"
             :options="modelOptions"
           />
-          <p class="muted small">使用模型当前声明的窗口和输出上限；超限会明确失败，不静默截断。</p>
-        </div>
-        <div class="field full">
-          <label>报告补充要求（可选）</label>
-          <a-textarea
-            v-model:value="form.instruction"
-            :maxlength="4000"
-            :auto-size="{ minRows: 2, maxRows: 4 }"
-            placeholder="例如：优先说明支付重试风险，保留来源引用。"
-          />
+<!--          <p class="muted small">使用模型当前声明的窗口和输出上限；超限会明确失败，不静默截断。</p>-->
         </div>
       </div>
     </a-card>
@@ -55,7 +46,7 @@
         <a-button type="primary" :disabled="submitting" @click="pickerOpen = true">选择审查结果</a-button>
         <span class="muted small">已选 {{ selected.size }} 个结果</span>
       </div>
-      <p v-if="!selected.size" class="muted small">尚未选择材料。点击「选择审查结果」，可同时选用专项与 Agent 的完整结果。</p>
+      <p v-if="!selected.size" class="muted small">尚未选择材料。</p>
       <div v-else class="selected-list">
         <div v-for="item in selectedList" :key="item.resultId" class="selected-item">
           <div>
@@ -73,9 +64,54 @@
         </div>
       </div>
     </a-card>
-    <a-alert type="info" show-icon class="freeze-note" message="提交后冻结来源、版本和当时反馈；后续修改反馈或源码不改变本报告。" />
+    <a-card title="3. 补充要求" class="mb16">
+      <div class="form-grid">
+        <div class="field">
+          <label>通用规则 <span class="muted small">（可选）</span></label>
+          <a-select
+            v-model:value="form.promptId"
+            allow-clear
+            style="width: 100%"
+            placeholder="选择报告规则"
+            :loading="promptOptionsLoading"
+            :options="promptOptions"
+          />
+<!--          <p class="muted small">只显示报告生成用途的规则。</p>-->
+        </div>
+        <div v-if="form.promptId" class="field">
+          <label>规则版本 <span class="required">*</span></label>
+          <PromptVersionSelect
+            v-model:value="form.promptVersionId"
+            :versions="promptVersions"
+            :current-version-id="selectedPrompt?.currentVersion?.id"
+            :loading="promptLoading"
+          />
+        </div>
+        <div v-if="form.promptId" class="field full">
+          <PromptInfoPreview
+            title="所选报告规则正文"
+            :prompt="selectedPrompt"
+            :version="selectedPromptVersion"
+            selected
+            :loading="promptLoading"
+            :error="promptError"
+            @retry="loadPromptSelection(form.promptId, form.promptVersionId)"
+          />
+        </div>
+        <div class="field full">
+          <label>补充要求 <span class="muted small">（可选）</span></label>
+          <a-textarea
+            v-model:value="form.instruction"
+            :maxlength="4000"
+            :auto-size="{ minRows: 2, maxRows: 4 }"
+            placeholder="例如：优先说明支付重试风险，保留来源引用。"
+          />
+        </div>
+      </div>
+    </a-card>
+<!--    <a-alert type="info" show-icon class="freeze-note" message="提交后冻结来源、版本和当时反馈；后续修改反馈或源码不改变本报告。" />-->
     <div class="form-footer">
-      <span class="muted small">生成在后台执行，可在报告详情查看状态。</span>
+<!--      <span class="muted small">生成在后台执行，可在报告详情查看状态。</span>-->
       <span class="spacer" />
       <a-button @click="closeCreate">取消</a-button>
       <a-button type="primary" :loading="submitting" :disabled="!hasUsableModel || !selected.size" @click="submit">冻结材料并生成</a-button>
@@ -118,16 +154,23 @@ import SpecialistResultView from '@/components/SpecialistResultView.vue'
 import AgentResultPanel from '@/components/AgentResultPanel.vue'
 import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
 import ReportResultPickerModal from '@/components/ReportResultPickerModal.vue'
+import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
+import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
 import { kindText, pathTitle, shortSha } from '@/utils/reportCandidates'
 import type { CodeReferencePayload } from '@/utils/codeReferences'
+import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 import {
   agentTasksApi,
   modelsApi,
+  promptsApi,
   projectsApi,
   reportsApi,
   tasksApi,
   type AgentResultView,
   type ModelView,
+  type PromptSummary,
+  type PromptVersion,
+  type PromptView,
   type ProjectView,
   type ReportCandidate,
   type ResultView
@@ -148,15 +191,25 @@ const resultError = ref('')
 const resultView = ref<ResultView | null>(null)
 const resultTaskId = ref('')
 const resultTitle = ref('审查结果')
-const form = reactive({ title: '专项审查报告', modelConfigId: undefined as string | undefined, instruction: '' })
+const form = reactive({
+  title: '专项审查报告', modelConfigId: undefined as string | undefined, instruction: '',
+  promptId: '', promptVersionId: ''
+})
 const formError = ref('')
 const submitting = ref(false)
 const projects = ref<ProjectView[]>([])
 const models = ref<ModelView[]>([])
 const modelsLoading = ref(false)
+const prompts = ref<PromptSummary[]>([])
+const promptOptionsLoading = ref(false)
+const promptLoading = ref(false)
+const promptError = ref('')
+const selectedPrompt = ref<PromptView | null>(null)
+const promptVersions = ref<PromptVersion[]>([])
 const selected = reactive(new Map<string, ReportCandidate>())
 let disposed = false
-onBeforeUnmount(() => { disposed = true; resultEpoch++ })
+let promptEpoch = 0
+onBeforeUnmount(() => { disposed = true; resultEpoch++; promptEpoch++ })
 watch(resultOpen, open => {
   if (!open) { resultEpoch++; resultLoading.value = false; codeOpen.value = false }
 }, { flush: 'sync' })
@@ -171,7 +224,23 @@ const modelOptions = computed(() =>
 const hasUsableModel = computed(() =>
   models.value.some((model) => !!model.contextWindow && model.contextWindow > 0)
 )
+const promptOptions = computed(() => prompts.value
+  .filter(prompt => prompt.purpose === 'REPORT')
+  .map(prompt => ({ value: prompt.id, label: prompt.name }))
+)
+const selectedPromptVersion = computed(() =>
+  promptVersions.value.find(version => version.id === form.promptVersionId) || null
+)
 const selectedList = computed(() => Array.from(selected.values()))
+
+watch(() => form.promptId, promptId => { void loadPromptSelection(promptId) }, { flush: 'sync' })
+watch(() => form.promptVersionId, versionId => {
+  if (form.promptId && versionId && !selectedPromptVersion.value && !promptLoading.value) {
+    promptError.value = unavailablePromptVersion
+  } else if (selectedPromptVersion.value) {
+    promptError.value = ''
+  }
+}, { flush: 'sync' })
 
 onMounted(async () => {
   await loadOptions()
@@ -182,17 +251,69 @@ onMounted(async () => {
 
 async function loadOptions() {
   modelsLoading.value = true
+  promptOptionsLoading.value = true
   try {
-    const [projectPage, modelPage] = await Promise.all([
+    const [projectPage, modelPage, reportPrompts] = await Promise.all([
       projectsApi.list({ limit: 100 }),
-      modelsApi.list({ limit: 100 })
+      modelsApi.list({ limit: 100 }),
+      loadReportPrompts()
     ])
     projects.value = projectPage.items
     models.value = modelPage.items
+    prompts.value = reportPrompts
   } catch (failure) {
     formError.value = (failure as Error).message || '项目或模型读取失败'
   } finally {
     modelsLoading.value = false
+    promptOptionsLoading.value = false
+  }
+}
+
+async function loadReportPrompts(): Promise<PromptSummary[]> {
+  const items = new Map<string, PromptSummary>()
+  const seen = new Set<string>()
+  let cursor: string | undefined
+  do {
+    const page = await promptsApi.list({ limit: 100, ...(cursor ? { cursor } : {}) })
+    for (const prompt of page.items) {
+      if (prompt.purpose === 'REPORT') items.set(prompt.id, prompt)
+    }
+    if (!page.hasMore) return [...items.values()]
+    if (!page.nextCursor || seen.has(page.nextCursor)) throw new Error('报告规则分页异常，请重新加载。')
+    cursor = page.nextCursor
+    seen.add(cursor)
+  } while (true)
+}
+
+async function loadPromptSelection(promptId: string, preferredVersionId?: string | null) {
+  const epoch = ++promptEpoch
+  promptError.value = ''
+  selectedPrompt.value = null
+  promptVersions.value = []
+  form.promptVersionId = preferredVersionId || ''
+  if (!promptId) {
+    promptLoading.value = false
+    return
+  }
+  promptLoading.value = true
+  try {
+    const selection = await readPromptSelection(promptId, preferredVersionId, true)
+    if (disposed || epoch !== promptEpoch) return
+    if (selection.prompt.purpose !== 'REPORT') throw new Error('所选提示词不属于报告生成用途，请重新选择。')
+    selectedPrompt.value = selection.prompt
+    promptVersions.value = selection.versions
+    if (selection.version) {
+      form.promptVersionId = selection.version.id
+    } else if (preferredVersionId) {
+      form.promptVersionId = preferredVersionId
+      promptError.value = unavailablePromptVersion
+    } else {
+      promptError.value = '该报告规则没有可用的正文版本，请先到提示词管理补充版本。'
+    }
+  } catch (failure) {
+    if (!disposed && epoch === promptEpoch) promptError.value = (failure as Error).message || '报告规则读取失败。'
+  } finally {
+    if (!disposed && epoch === promptEpoch) promptLoading.value = false
   }
 }
 
@@ -259,13 +380,18 @@ async function submit() {
     return
   }
   if (!form.modelConfigId) {
-    formError.value = '请选择生成模型。'
+    formError.value = '请选择模型。'
+    return
+  }
+  if (form.promptId && (promptLoading.value || promptError.value || !form.promptVersionId || !selectedPromptVersion.value)) {
+    formError.value = '请确认报告规则及其有效版本。'
     return
   }
   submitting.value = true
   const generation = {
     modelConfigId: form.modelConfigId,
-    instruction: form.instruction.trim() || undefined
+    instruction: form.instruction.trim() || undefined,
+    ...(form.promptId ? { promptId: form.promptId, promptVersionId: form.promptVersionId } : {})
   }
   let reportId = ''
   try {

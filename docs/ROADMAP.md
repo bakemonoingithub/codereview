@@ -1,6 +1,14 @@
 # ROADMAP - 专项审查与 Agent 分析
 
-当前: -
+当前：UPI-06 报告通用规则框架实现及定向工程检查已完成，等待隔离库、真实报告和负责人 PC 正式页面视觉验收。UPI-05 已于 2026-10-25 确认完成。
+
+2026-10-25 负责人确认 UPI-05 PC 正式页面视觉验收完成，UPI-05 标记 done。三类专项、Agent 与四来源报告小样本均成功，共 6 次真实模型调用、10611 输入／3507 输出 token；版本冻结、优先级、复制、引用、下载及旧策略／错用途／缺版本拒绝均核对。详见[业务测试记录](work/agent-redesign/prompt-input-unification/business-smoke-20261025.md)。未执行边界仍按未验证记录，不记作通过；验收总记录见[UPI-05 记录](work/agent-redesign/prompt-input-unification/validation-20261025.md)。
+
+2026-10-25 UPI-06 原型与接口字段稿获负责人确认后完成框架实现：报告生成可选 REPORT 通用规则及固定版本，规则正文与本次补充要求随入队快照冻结，详情显示实际冻结配置；规则置于补充要求字段上方。报告来源冻结与混合来源逻辑未改。工程检查与未执行验收边界见[UPI-06 实施记录](work/agent-redesign/prompt-input-unification/upi-06-implementation-20261025.md)。当前等待负责人 PC 正式页面视觉验收、隔离库 V8 初始化及真实混合来源报告验收，不提前标记 done；后端服务保持停止。
+
+2026-10-25 UPI 审核修复：已修复模型在途引用删除保护、规则首次加载失败重试和规则列表分页，详见[修复记录](work/agent-redesign/prompt-input-unification/review-fixes-20261025.md)。未执行边界沿用验收记录并保持未验证状态。
+
+2026-10-25 负责人确认[专项发起原型](work/agent-redesign/prompt-input-unification/prototype.html)及[接口字段稿](work/agent-redesign/prompt-input-unification/interface.md)，UPI-02 done。UPI-03 后端和 UPI-04 前端改造及定向工程检查已完成。UPI-05 已完成隔离空库 V1–V7 初始化、专项接口联调、真实调用和五类业务小样本；负责人确认 PC 正式页面视觉后，UPI-05 标记 done。未执行矩阵项继续作为未验证边界记录。负责人现已明确启动 UPI-06，业务依据及实施方案见[契约第 9 节](work/agent-redesign/business-contract.md#9-提示词输入统一与策略退出2026-10-25)、[UPI 工作包](work/agent-redesign/prompt-input-unification/README.md)、[前端方案](work/agent-redesign/prompt-input-unification/frontend.md)和[后端方案](work/agent-redesign/prompt-input-unification/backend.md)。P29–P33 保持 done。
 
 2026-10-22 负责人要求开始 P33 剩余开发。P33.3 当日交付并标为 done：Agent 发起接口、模型准入、指导提示词与参考结果冻结、`TEXT／FILES／COMMITS` 范围、多提交第一父比较、version 2 快照、Agent 提示词组装与发起页；后端 765 项、前端 501 项通过，并用真实项目验证文件范围、多提交、`SOURCE_MOVED`、复制参数与取消。P33.4 随后交付并标为 done：Agent 执行循环、提交与结果发布、预算与容量终止、V6 迁移；真实 `deepseek-flash` 完成任务并发布 `ANSWERED` 结果，含一次提交纠错与一份保留的失败样本。P33.5 随后交付并标为 done：进度、调用记录、Agent 结果与来源阅读接口及详情页，真实任务读取核对完成。P33.6 随后完成专项／Agent 混合报告联调并标为 done；P33 父阶段完成，当前无 active。见 [P33.3 记录](work/agent-redesign/p33/p33-3-inputs.md)、[P33.4 记录](work/agent-redesign/p33/p33-4-execution.md)与 [P33.5 记录](work/agent-redesign/p33/p33-5-progress.md)。
 

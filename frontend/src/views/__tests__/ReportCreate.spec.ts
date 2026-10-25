@@ -9,13 +9,14 @@ const context = vi.hoisted(() => ({ push: vi.fn() }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: context.push }) }))
 vi.mock('@/api/v2', () => ({
   agentTasksApi: { result: vi.fn() },
+  promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() },
   projectsApi: { list: vi.fn() },
   modelsApi: { list: vi.fn() },
   reportsApi: { candidates: vi.fn(), freezeInputs: vi.fn(), start: vi.fn() },
   tasksApi: { result: vi.fn() }
 }))
 
-import { agentTasksApi, modelsApi, projectsApi, reportsApi, tasksApi } from '@/api/v2'
+import { agentTasksApi, modelsApi, projectsApi, promptsApi, reportsApi, tasksApi } from '@/api/v2'
 
 const candidate = {
   resultId: 'result-1', taskId: 'task-1', targetId: 'target-1', kind: 'ISSUE' as const,
@@ -50,12 +51,46 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(projectsApi.list).mockResolvedValue({ items: [{ id: 'project-1', name: '订单服务' } as any], nextCursor: null, hasMore: false })
   vi.mocked(modelsApi.list).mockResolvedValue({ items: [{ id: 'model-1', name: '默认', modelName: 'deepseek', contextWindow: 100000, validationStatus: 'PASSED' } as any], nextCursor: null, hasMore: false })
+  vi.mocked(promptsApi.list).mockResolvedValue({ items: [
+    { id: 'prompt-report', name: '报告规则', purpose: 'REPORT' },
+    { id: 'prompt-agent', name: 'Agent 指导', purpose: 'AGENT' }
+  ] as any, nextCursor: null, hasMore: false })
+  vi.mocked(promptsApi.detail).mockResolvedValue({
+    id: 'prompt-report', name: '报告规则', purpose: 'REPORT', description: null, tags: [], revision: 2,
+    currentVersion: { id: 'version-2', versionNo: 2, content: '当前正文', createdAt: '2026-10-25T00:00:00' },
+    createdAt: '', updatedAt: ''
+  } as any)
+  vi.mocked(promptsApi.versions).mockResolvedValue([
+    { id: 'version-2', versionNo: 2, content: '当前正文', createdAt: '2026-10-25T00:00:00' },
+    { id: 'version-1', versionNo: 1, content: '历史正文', createdAt: '2026-10-24T00:00:00' }
+  ] as any)
   vi.mocked(reportsApi.candidates).mockResolvedValue({ items: [candidate], nextCursor: null, hasMore: false })
   vi.mocked(reportsApi.freezeInputs).mockResolvedValue({ reportId: 'report-1', title: '报告', state: 'INPUT_FROZEN', createdAt: '', sourceCount: 1 })
   vi.mocked(reportsApi.start).mockResolvedValue({ id: 'report-1', state: 'QUEUED' } as any)
 })
 
 describe('报告生成表单', () => {
+  it('只列报告用途规则，并提交用户选择的历史版本', async () => {
+    const wrapper = await start()
+    const s = state(wrapper)
+    s.selected.set(candidate.resultId, candidate)
+    s.form.modelConfigId = 'model-1'
+    s.form.promptId = 'prompt-report'
+    await flushPromises()
+    s.form.promptVersionId = 'version-1'
+
+    expect(s.promptOptions).toEqual([{ value: 'prompt-report', label: '报告规则' }])
+    expect(s.selectedPromptVersion.content).toBe('历史正文')
+    await s.submit()
+    await flushPromises()
+
+    expect(reportsApi.start).toHaveBeenCalledWith('report-1', {
+      modelConfigId: 'model-1', instruction: undefined,
+      promptId: 'prompt-report', promptVersionId: 'version-1'
+    })
+    wrapper.unmount()
+  })
+
   it('主表单只保留材料摘要，弹窗确认才回填，取消保留原选择', async () => {
     const wrapper = await start(); const s = state(wrapper)
     expect(reportsApi.candidates).not.toHaveBeenCalled()

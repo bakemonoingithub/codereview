@@ -86,8 +86,11 @@ public class ReportExecutionWorker {
                             .orderByAsc(AgentReportSource::getOrdinal));
             ReportFactsBuilder.ReportFacts facts = factsBuilder.build(sources);
             ModelSnapshot model = model(report);
+            ReportDtos.PromptView promptRule = prompt(report);
             AssembledPrompt prompt = assembly.assemble(new PromptInput(PromptPurpose.REPORT, "1",
-                    null, null, null, null, null, null, null, List.of(), List.of(),
+                    promptRule == null ? null : promptRule.name(),
+                    promptRule == null ? null : promptRule.content(),
+                    null, null, null, null, null, List.of(), List.of(),
                     facts.missingNotes(), facts.facts(), null, report.getTitle(),
                     instruction(report)));
             InvocationResult result = invocation.invoke(new InvocationRequest(model, prompt,
@@ -181,6 +184,21 @@ public class ReportExecutionWorker {
     private String instruction(AgentReport report) {
         JsonNode snapshot = readObject(report.getInstructionSnapshot());
         return snapshot == null ? null : text(snapshot, "text");
+    }
+
+    private ReportDtos.PromptView prompt(AgentReport report) {
+        JsonNode snapshot = readObject(report.getInstructionSnapshot());
+        JsonNode prompt = snapshot == null ? null : snapshot.get("prompt");
+        if (prompt == null || prompt.isNull()) {
+            return null;
+        }
+        if (!prompt.isObject() || text(prompt, "id") == null || text(prompt, "name") == null
+                || text(prompt, "versionId") == null || text(prompt, "content") == null
+                || !prompt.path("versionNo").canConvertToInt()) {
+            throw new ApiException(ErrorCode.REPORT_INPUT_INVALID, "报告通用规则快照不完整");
+        }
+        return new ReportDtos.PromptView(text(prompt, "id"), text(prompt, "name"),
+                text(prompt, "versionId"), prompt.path("versionNo").asInt(), text(prompt, "content"));
     }
 
     private JsonNode readObject(String value) {

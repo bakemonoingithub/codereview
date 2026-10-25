@@ -67,11 +67,13 @@ public class ReportV2Controller {
 
     @GetMapping
     public PageResponse<ReportDtos.ReportSummary> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String state,
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize) {
-        return generationService.list(cursor, limit, pageNum, pageSize);
+        return generationService.list(q, state, cursor, limit, pageNum, pageSize);
     }
 
     /** 受理后返回 202；HTTP 成功只表示进入生成队列，正文状态须继续读取报告。 */

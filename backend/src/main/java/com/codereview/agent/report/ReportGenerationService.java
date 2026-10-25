@@ -9,10 +9,14 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.ReportDtos;
 import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.entity.AgentModelConfig;
+import com.codereview.agent.entity.AgentPrompt;
+import com.codereview.agent.entity.AgentPromptVersion;
 import com.codereview.agent.entity.AgentReport;
 import com.codereview.agent.entity.AgentReportSource;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
+import com.codereview.agent.mapper.AgentPromptMapper;
+import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
 import com.codereview.agent.support.AgentIds;
@@ -65,6 +69,7 @@ public class ReportGenerationService {
             throw new ApiException(ErrorCode.CONFLICT, "报告当前状态不能生成正文",
                     Map.of("state", report.getState()));
         }
+        ObjectNode promptSnapshot = promptSnapshot(request.promptId(), request.promptVersionId());
         String modelId = AgentIds.requireValid(request.modelConfigId(), "模型 ID");
         AgentModelConfig model = db.mapper(AgentModelConfigMapper.class).selectById(modelId);
         if (model == null) {
@@ -75,7 +80,7 @@ public class ReportGenerationService {
         LocalDateTime now = AgentTime.now();
         String instruction = request.instruction() == null ? null : request.instruction().strip();
         ObjectNode modelSnapshot = modelSnapshot(model);
-        ObjectNode instructionSnapshot = instructionSnapshot(instruction);
+        ObjectNode instructionSnapshot = instructionSnapshot(instruction, promptSnapshot);
         int changed = db.mapper(AgentReportMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentReport>()
                         .eq(AgentReport::getId, id)
@@ -99,11 +104,29 @@ public class ReportGenerationService {
     }
 
     public PageResponse<ReportDtos.ReportSummary> list(String cursor, Integer limit) {
-        return list(cursor, limit, null, null);
+        return list(null, cursor, limit, null, null);
     }
 
     public PageResponse<ReportDtos.ReportSummary> list(String cursor, Integer limit, Integer pageNum, Integer pageSize) {
+        return list(null, cursor, limit, pageNum, pageSize);
+    }
+
+    public PageResponse<ReportDtos.ReportSummary> list(String q, String cursor, Integer limit,
+                                                        Integer pageNum, Integer pageSize) {
+        return list(q, null, cursor, limit, pageNum, pageSize);
+    }
+
+    public PageResponse<ReportDtos.ReportSummary> list(String q, String state, String cursor, Integer limit,
+                                                        Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<AgentReport> wrapper = new LambdaQueryWrapper<>();
+        if (q != null && !q.isBlank()) {
+            String keyword = q.strip();
+            wrapper.and(w -> w.like(AgentReport::getTitle, keyword)
+                    .or().like(AgentReport::getId, keyword));
+        }
+        if (state != null && !state.isBlank()) {
+            wrapper.eq(AgentReport::getState, state.strip());
+        }
         PageResponse<AgentReport> page = AgentPaging.query(
                 db.mapper(AgentReportMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentReport::getCreatedAt, AgentReport::getId);
@@ -118,6 +141,7 @@ public class ReportGenerationService {
         ReportDtos.ModelView model = modelView(report.getModelSnapshot());
         return new ReportDtos.ReportDetail(report.getId(), report.getTitle(), report.getState(),
                 report.getBody(), report.getErrorCode(), report.getErrorMessage(), model,
+                promptView(report.getInstructionSnapshot()),
                 instruction(report.getInstructionSnapshot()), sourceCount(frozen, sources.size()),
                 taskCount(frozen), versionCount(frozen), kinds(frozen), sources, calls,
                 report.getCreatedAt(), report.getUpdatedAt(), report.getStartedAt(),
@@ -254,11 +278,67 @@ public class ReportGenerationService {
         return node;
     }
 
-    private ObjectNode instructionSnapshot(String instruction) {
+    private ObjectNode instructionSnapshot(String instruction, ObjectNode promptSnapshot) {
         ObjectNode node = mapper.createObjectNode();
         node.put("version", ReportFactsBuilder.FACTS_VERSION);
         node.put("text", instruction);
+        if (promptSnapshot == null) {
+            node.putNull("prompt");
+        } else {
+            node.set("prompt", promptSnapshot);
+        }
         return node;
+    }
+
+    private ObjectNode promptSnapshot(String promptId, String promptVersionId) {
+        if (promptId == null && promptVersionId == null) {
+            return null;
+        }
+        if (promptId == null || promptVersionId == null || promptId.isBlank() || promptVersionId.isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "报告通用规则和具体版本必须同时选择");
+        }
+        AgentIds.requireValid(promptId, "提示词 ID");
+        AgentIds.requireValid(promptVersionId, "提示词版本 ID");
+        AgentPrompt prompt = db.mapper(AgentPromptMapper.class).selectById(promptId);
+        if (prompt == null) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "报告通用规则不存在：" + promptId);
+        }
+        if (!"REPORT".equals(prompt.getPurpose())) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "所选通用规则不属于报告生成用途");
+        }
+        AgentPromptVersion version = db.mapper(AgentPromptVersionMapper.class).selectById(promptVersionId);
+        if (version == null || !promptId.equals(version.getPromptId())) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "所选提示词版本不属于该报告通用规则");
+        }
+        if (version.getContent() == null || version.getContent().isBlank()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "所选报告通用规则版本正文不能为空");
+        }
+        ObjectNode snapshot = mapper.createObjectNode();
+        snapshot.put("id", prompt.getId());
+        snapshot.put("name", prompt.getName());
+        snapshot.put("versionId", version.getId());
+        snapshot.put("versionNo", version.getVersionNo());
+        snapshot.put("content", version.getContent());
+        return snapshot;
+    }
+
+    private ReportDtos.PromptView promptView(String instructionSnapshot) {
+        JsonNode snapshot = readObject(instructionSnapshot);
+        JsonNode prompt = snapshot == null ? null : snapshot.get("prompt");
+        if (prompt == null || prompt.isNull()) {
+            return null;
+        }
+        if (!prompt.isObject() || text(prompt, "id") == null || text(prompt, "name") == null
+                || text(prompt, "versionId") == null || text(prompt, "content") == null
+                || !prompt.path("versionNo").canConvertToInt()) {
+            throw new ApiException(ErrorCode.REPORT_INPUT_INVALID, "报告通用规则快照不完整");
+        }
+        return new ReportDtos.PromptView(text(prompt, "id"), text(prompt, "name"),
+                text(prompt, "versionId"), prompt.path("versionNo").asInt(), text(prompt, "content"));
     }
 
     private ReportDtos.ModelView modelView(String snapshot) {
