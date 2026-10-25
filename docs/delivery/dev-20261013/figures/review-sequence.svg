@@ -1,142 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2250" viewBox="0 0 2000 2250"><rect width="2000" height="2250" fill="white"/>
-<text x="1000" y="64" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="48" font-weight="700" fill="#263238" text-anchor="middle">全文与单提交变更审查时序</text>
-<text x="1000" y="110" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">全文选分支与范围并尝试固定 SHA ；diff 选具体提交 SHA 与变更文件</text>
-<text x="1000" y="153" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">人工问题标注在结果展示后独立保存  不覆盖模型输出</text>
-<rect x="41" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="145.0" y="279.5" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">浏览器</text>
-<path d="M145,323 L145,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="281" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="385.0" y="254.125" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">后端接口</text>
-<text x="385.0" y="304.875" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#263238" text-anchor="middle">Service</text>
-<path d="M385,323 L385,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="521" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="625.0" y="254.125" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">Review</text>
-<text x="625.0" y="304.875" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#263238" text-anchor="middle">Executor</text>
-<path d="M625,323 L625,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="761" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="865.0" y="254.125" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">LLM / Diff</text>
-<text x="865.0" y="304.875" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#263238" text-anchor="middle">Analyzer</text>
-<path d="M865,323 L865,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="1001" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="1105.0" y="254.125" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">Git 宿主</text>
-<text x="1105.0" y="304.875" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#263238" text-anchor="middle">Registry</text>
-<path d="M1105,323 L1105,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="1241" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="1345.0" y="279.5" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">LlmClient</text>
-<path d="M1345,323 L1345,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="1481" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="1585.0" y="279.5" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">AI 网关</text>
-<path d="M1585,323 L1585,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="1721" y="208" width="208" height="115" rx="13" fill="#F5F6F7" stroke="#65737B" stroke-width="3"/>
-<text x="1825.0" y="279.5" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="700" fill="#263238" text-anchor="middle">MySQL</text>
-<path d="M1825,323 L1825,2100" fill="none" stroke="#B5C0C4" stroke-width="2" stroke-dasharray="5 8"/>
-<rect x="150" y="353" width="1006.484375" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="157" y="387" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">1  ReviewService.trigger：范围 + 策略（diff 含 commitSha）</text>
-<path d="M145,400 L385,400" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="385,400 370.0,392.2 370.0,407.8" fill="#1A703A"/>
-<rect x="390" y="431" width="906.9765625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="397" y="465" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">2  全文尝试解析 HEAD（失败留空）；diff 使用指定 SHA</text>
-<path d="M385,478 L1105,478" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="1105,478 1090.0,470.2 1090.0,485.8" fill="#1A703A"/>
-<rect x="390" y="509" width="830.28125" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="397" y="543" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#245E8D" text-anchor="start">3  保存策略和模型快照、范围、SHA；QUEUED = 0</text>
-<path d="M385,556 L1825,556" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1825,556 1810.0,548.2 1810.0,563.8" fill="#245E8D"/>
-<rect x="390" y="587" width="734.015625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="397" y="621" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">4  execute(recordId)  提交 @Async 审查任务</text>
-<path d="M385,634 L625,634" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="625,634 610.0,626.2 610.0,641.8" fill="#1A703A"/>
-<rect x="150" y="665" width="531.4453125" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="157" y="699" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="start">5  立即返回 recordId 与初始状态</text>
-<path d="M385,712 L145,712" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="145,712 160.0,719.8 160.0,704.2" fill="#65737B"/>
-<rect x="630" y="743" width="855.2578125" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="637" y="777" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#245E8D" text-anchor="start">6  读取记录与快照；更新 RUNNING = 1 / started_at</text>
-<path d="M625,790 L1825,790" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1825,790 1810.0,782.2 1810.0,797.8" fill="#245E8D"/>
-<rect x="630" y="821" width="681.8671875" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="637" y="855" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">7  按 analyzerType 调用 analyze(context)</text>
-<path d="M625,868 L865,868" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="865,868 850.0,860.2 850.0,875.8" fill="#1A703A"/>
-<rect x="870" y="899" width="901.2734375" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="877" y="933" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">8  全文 rawFile@SHA 或分支；diff 取 patch 及必要全文</text>
-<path d="M865,946 L1105,946" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="1105,946 1090.0,938.2 1090.0,953.8" fill="#1A703A"/>
-<rect x="870" y="977" width="553.8125" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="877" y="1011" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="start">9  返回代码或 patch 与提交元数据</text>
-<path d="M1105,1024 L865,1024" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="865,1024 880.0,1031.8 880.0,1016.2" fill="#65737B"/>
-<rect x="870" y="1055" width="795.515625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="877" y="1089" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">10  全文 Chunker；diff DiffUnitBuilder 制备单元</text>
-<path d="M865,1102 L985,1102 L985,1122 L865,1122" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="865,1122 880.0,1129.8 880.0,1114.2" fill="#1A703A"/>
-<rect x="870" y="1133" width="863.6484375" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="877" y="1167" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">11  逐单元 chat / chatJson（并发、重试与截止时间）</text>
-<path d="M865,1180 L1345,1180" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="1345,1180 1330.0,1172.2 1330.0,1187.8" fill="#1A703A"/>
-<rect x="1300.0234375" y="1211" width="656.9765625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="1307.0234375" y="1245" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">12  POST baseUrl + /chat/completions</text>
-<path d="M1345,1258 L1585,1258" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="1585,1258 1570.0,1250.2 1570.0,1265.8" fill="#1A703A"/>
-<rect x="1350" y="1289" width="285.765625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="1357" y="1323" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="start">13  返回模型回复</text>
-<path d="M1585,1336 L1345,1336" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="1345,1336 1360.0,1343.8 1360.0,1328.2" fill="#65737B"/>
-<rect x="870" y="1367" width="730.296875" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="877" y="1401" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="start">14  返回回复内容；由 Analyzer 解析单元结果</text>
-<path d="M1345,1414 L865,1414" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="865,1414 880.0,1421.8 880.0,1406.2" fill="#65737B"/>
-<rect x="630" y="1445" width="686.90625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="637" y="1479" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="start">15  聚合 units 与 AnalyzeOutcome.status</text>
-<path d="M865,1492 L625,1492" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="625,1492 640.0,1499.8 640.0,1484.2" fill="#65737B"/>
-<rect x="630" y="1523" width="839.8046875" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="637" y="1557" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#245E8D" text-anchor="start">16  保存 result_json、最终状态、进度与 finished_at</text>
-<path d="M625,1570 L1825,1570" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1825,1570 1810.0,1562.2 1810.0,1577.8" fill="#245E8D"/>
-<rect x="150" y="1601" width="565.765625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="157" y="1635" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">17  通过同一轮询接口获取最终记录</text>
-<path d="M145,1648 L385,1648" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="385,1648 370.0,1640.2 370.0,1655.8" fill="#1A703A"/>
-<rect x="390" y="1679" width="565.765625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="397" y="1713" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#245E8D" text-anchor="start">18  读取最终状态、结果与错误原因</text>
-<path d="M385,1726 L1825,1726" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1825,1726 1810.0,1718.2 1810.0,1733.8" fill="#245E8D"/>
-<rect x="150" y="1757" width="495.765625" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="157" y="1791" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="start">19  返回并展示审查单元与问题</text>
-<path d="M385,1804 L145,1804" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="145,1804 160.0,1811.8 160.0,1796.2" fill="#65737B"/>
-<path d="M45,1830 L1955,1830" fill="none" stroke="#9B6100" stroke-width="3" stroke-dasharray="14 8"/>
-<rect x="150" y="1835" width="929.1875" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="157" y="1869" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="start">20  结果展示后：IssueMarkController / Service 人工标注</text>
-<path d="M145,1882 L385,1882" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="385,1882 370.0,1874.2 370.0,1889.8" fill="#1A703A"/>
-<rect x="390" y="1913" width="689.5234375" height="44" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="397" y="1947" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#245E8D" text-anchor="start">21  issue_mark 独立持久化；允许取消标注</text>
-<path d="M385,1960 L1825,1960" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="1825,1960 1810.0,1952.2 1810.0,1967.8" fill="#245E8D"/>
-<rect x="42" y="760" width="485" height="790" rx="8" fill="#FFFFFF" stroke="#245E8D" stroke-width="2"/>
-<rect x="156.55859375" y="760" width="254.8828125" height="47" rx="0" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="0"/>
-<text x="284" y="795" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#245E8D" text-anchor="middle">loop  并行轮询</text>
-<text x="284" y="850" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#1A703A" text-anchor="middle">每 2 秒查询记录</text>
-<path d="M145,883 L385,883" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="385,883 370.0,875.2 370.0,890.8" fill="#1A703A"/>
-<text x="284" y="950" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#245E8D" text-anchor="middle">Service 读库后返回</text>
-<path d="M385,985 L145,985" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="145,985 160.0,992.8 160.0,977.2" fill="#65737B"/>
-<text x="284" y="1100" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">与右侧异步任务并行</text>
-<text x="284" y="1170" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">执行中显示进度</text>
-<text x="284" y="1240" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">最终状态显示审查结果</text>
-<text x="284" y="1310" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">连续查询失败可恢复</text>
-<text x="284" y="1450" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">下方 17–19 表示最终轮询</text>
-<path d="M60,2150 L145,2150" fill="none" stroke="#1A703A" stroke-width="4"/>
-<polygon points="145,2150 130.0,2142.2 130.0,2157.8" fill="#1A703A"/>
-<text x="165" y="2160" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="36" font-weight="400" fill="#263238" text-anchor="start">调用 / 控制</text>
-<path d="M425,2150 L510,2150" fill="none" stroke="#245E8D" stroke-width="4" stroke-dasharray="10 7"/>
-<polygon points="510,2150 495.0,2142.2 495.0,2157.8" fill="#245E8D"/>
-<text x="530" y="2160" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="36" font-weight="400" fill="#263238" text-anchor="start">读写 / 持久化</text>
-<path d="M790,2150 L875,2150" fill="none" stroke="#65737B" stroke-width="4" stroke-dasharray="7 7"/>
-<polygon points="875,2150 860.0,2142.2 860.0,2157.8" fill="#65737B"/>
-<text x="895" y="2160" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="36" font-weight="400" fill="#263238" text-anchor="start">返回数据</text>
-<text x="1000" y="2208" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="35" font-weight="400" fill="#65737B" text-anchor="middle">结果可为成功、失败或部分成功 ；全文 HEAD 解析失败时回退分支引用</text>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="980" viewBox="0 0 1100 980">
+  <rect width="100%" height="100%" fill="#FFFFFF"/>
+  <defs>
+    <marker id="arrow-1A703A" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1A703A"/></marker><marker id="arrow-245E8D" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#245E8D"/></marker><marker id="arrow-9B6100" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#9B6100"/></marker><marker id="arrow-65737B" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#65737B"/></marker>
+  </defs>
+  <rect x="180" y="20" width="740" height="64" rx="8" fill="#F5F6F7" stroke="#65737B" stroke-width="2"/>
+<text x="550.0" y="57.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="18" font-weight="600" fill="#263238">浏览器提交范围、策略或调查要求</text>
+<line x1="550" y1="84" x2="550" y2="112" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<rect x="140" y="118" width="820" height="88" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
+<text x="550.0" y="154.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">POST /api/v2/review-tasks 或 /api/v2/agent-tasks</text>
+<text x="550.0" y="178.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">校验项目与模型，冻结输入和配置快照，写入 QUEUED，返回 202</text>
+<line x1="550" y1="206" x2="550" y2="234" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<rect x="140" y="240" width="820" height="64" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
+<text x="550.0" y="277.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="18" font-weight="400" fill="#263238">执行器将任务置为 PREPARING，随后 RUNNING</text>
+<line x1="360" y1="304" x2="250" y2="340" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<line x1="740" y1="304" x2="850" y2="340" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<rect x="36" y="348" width="490" height="280" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
+<text x="281.0" y="432.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">专项审查</text>
+<text x="281.0" y="456.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">按文件或提交差异制备单元</text>
+<text x="281.0" y="480.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">超限则拆分；无法拆分则当前目标失败</text>
+<text x="281.0" y="504.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">JSON 模式调用模型</text>
+<text x="281.0" y="528.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">问题、模式或耦合观察写入结果</text>
+<text x="281.0" y="552.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">反馈在结果发布后单独保存</text>
+<rect x="574" y="348" width="490" height="280" rx="8" fill="#EEF5EF" stroke="#1A703A" stroke-width="2"/>
+<text x="819.0" y="432.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">Agent 分析</text>
+<text x="819.0" y="456.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">历史原样回放，不压缩上下文</text>
+<text x="819.0" y="480.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">只读工具，每轮最多 4 个</text>
+<text x="819.0" y="504.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">只有 submit_result 才发布结果</text>
+<text x="819.0" y="528.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">命中预算即停止，不追加总结</text>
+<text x="819.0" y="552.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">不提供中断后的会话恢复</text>
+<line x1="281" y1="628" x2="420" y2="668" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<line x1="819" y1="628" x2="680" y2="668" stroke="#1A703A" stroke-width="2" marker-end="url(#arrow-1A703A)"/>
+<rect x="140" y="676" width="820" height="110" rx="8" fill="#EFF5FA" stroke="#245E8D" stroke-width="2"/>
+<text x="550.0" y="711.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">浏览器轮询至终态：专项详情约 3 秒，Agent 详情约 2 秒</text>
+<text x="550.0" y="735.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">审查中心列表不自动轮询，需手动刷新</text>
+<text x="550.0" y="759.0" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="16" font-weight="400" fill="#263238">进程重启时，尚未结束的 QUEUED / RUNNING 标为 FAILED，原因 INTERRUPTED</text>
+<text x="550" y="830" text-anchor="middle" font-family="WenQuanYi Micro Hei, sans-serif" font-size="15" fill="#4E5B63">人工反馈、报告冻结与下载发生在任务到达终态之后，不改写模型原始输出。</text>
 </svg>

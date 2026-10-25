@@ -1,48 +1,8 @@
-sequenceDiagram
-  autonumber
-  participant U as PC 浏览器
-  participant S as 后端接口与 Service
-  participant E as ReviewExecutor
-  participant A as LlmReviewAnalyzer / DiffReviewAnalyzer
-  participant G as GitHostClientRegistry 与 Git 宿主
-  participant L as LlmClient
-  participant AI as 内网 AI 网关
-  participant DB as MySQL
-  Note over U,S: 全文选分支和文件范围并尝试固定 SHA；diff 选单提交 SHA 和变更文件
-  U->>S: ReviewService.trigger 范围 + 策略（diff 含 commitSha）
-  alt 全文 llm-review
-    S->>G: 尝试解析分支 HEAD 为 SHA
-    G-->>S: 成功返回 SHA；失败时记录 SHA 留空
-    Note right of S: SHA 缺失时 AnalysisContext.contentRef 回退分支引用
-  else diff-review
-    Note right of S: 使用所选 commitSha，入口拒绝空 SHA
-  end
-  S->>DB: 保存策略和模型快照、范围、SHA；QUEUED=0
-  S->>E: execute(recordId)，@Async
-  S-->>U: 返回 recordId 和初始状态
-  par 异步审查任务
-    E->>DB: 读记录与快照；置 RUNNING=1 和 started_at
-    E->>A: 按 analyzerType 分发 analyze(context)
-    A->>G: rawFile@SHA（缺失则用分支）或 commitDetail/.diff 及必要全文
-    G-->>A: 返回代码、patch、提交元数据
-    A->>A: 全文 Chunker 或 diff DiffUnitBuilder 制备单元
-    loop 单元级并发处理与有限重试
-      A->>L: chat / chatJson
-      L->>AI: POST baseUrl + /chat/completions
-      AI-->>L: 模型回复
-      L-->>A: 内容字符串
-      A->>A: 解析结果与 issues / summary / status
-    end
-    A-->>E: units 与 AnalyzeOutcome.status
-    E->>DB: 写 result_json、最终状态、进度、finished_at
-  and 浏览器并行轮询
-    loop 每 2 秒直至终态；连续失败后可恢复查询
-      U->>S: 查询审查记录
-      S->>DB: 读取进度、状态、结果与错误原因
-      DB-->>S: 当前记录
-      S-->>U: 展示进度或最终单元结果
-    end
-  end
-  Note over U,DB: 人工复核为结果展示后的独立步骤，不覆盖模型原始输出
-  U->>S: IssueMarkController / Service 标注或取消标注
-  S->>DB: issue_mark 独立持久化
+flowchart TB
+  U["浏览器提交范围或调查要求"] --> S["创建任务并冻结快照<br/>QUEUED，返回 202"]
+  S --> R["PREPARING 后 RUNNING"]
+  R --> SP["专项：拆分单元，JSON 调用，写入结果"]
+  R --> AG["Agent：只读工具，submit_result 后发布<br/>不压缩上下文，命中预算即停止"]
+  SP --> P["浏览器轮询至终态"]
+  AG --> P
+  P --> N["重启把尚未结束的 QUEUED/RUNNING 标为 INTERRUPTED"]

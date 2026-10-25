@@ -1,43 +1,7 @@
 flowchart TB
-  subgraph BUILD["开发与 CI 构建区"]
-    CI["GitHub Actions / 构建环境<br/>前端构建产物打入 Spring Boot JAR<br/>导出 linux/amd64 Docker 镜像"]
-  end
-  PKG["离线部署包<br/>应用镜像 MySQL 镜像 配置模板<br/>部署脚本与镜像校验信息"]
-  CI -.->|离线包打包| PKG
-  subgraph INTRA["内网运行区"]
-    PC["内网 PC 浏览器<br/>宿主 IP:APP_PORT"]
-    GT["内网 Gitea<br/>REST / .diff / Git 仓库访问"]
-    AI["内网 AI 模型网关<br/>OpenAI 兼容 /chat/completions"]
-    subgraph HOST["部署宿主 Docker Compose"]
-      LOAD["在宿主加载离线镜像<br/>docker load"]
-      PORT["宿主端口发布<br/>APP_PORT 默认 18080 → app:8080"]
-      APP["app 容器<br/>JRE 17 + app.jar + static 前端<br/>容器端口 8080"]
-      MYSQL[("mysql 容器<br/>内部 mysql:3306<br/>不发布宿主端口")]
-      CFG["config/application.yml<br/>→ /app/config/application.yml:ro"]
-      MIRROR["data/git-mirrors<br/>→ /app/data/git-mirrors<br/>bare 镜像持久化"]
-      DATA["data/mysql<br/>→ /var/lib/mysql"]
-      PC -->|HTTP| PORT
-      PORT --> APP
-      CFG -.->|只读配置| APP
-      APP -.->|JDBC 读写| MYSQL
-      APP <-.->|持久化镜像| MIRROR
-      MYSQL -.->|持久化数据| DATA
-      APP -->|经宿主出站路由 REST/Git| GT
-      APP -->|经宿主出站路由 HTTP| AI
-    end
-  end
-  PKG -.->|离线摆渡| LOAD
-  classDef app fill:#EEF5EF,stroke:#1A703A,color:#263238,stroke-width:2px;
-  classDef ext fill:#F5F6F7,stroke:#65737B,color:#263238,stroke-width:2px;
-  classDef store fill:#EFF5FA,stroke:#245E8D,color:#263238,stroke-width:2px;
-  classDef offline fill:#FFFFFF,stroke:#9B6100,color:#263238,stroke-width:2px;
-  class APP app;
-  class PC,GT,AI,PORT,CI ext;
-  class MYSQL,CFG,MIRROR,DATA store;
-  class PKG,LOAD offline;
-  style BUILD stroke:#65737B,stroke-dasharray:8 5,fill:#F5F6F7;
-  style INTRA stroke:#1A703A,fill:#FFFFFF;
-  style HOST stroke:#65737B,fill:#FFFFFF;
-  linkStyle default stroke:#1A703A,stroke-width:2px;
-  linkStyle 0,9 stroke:#9B6100,stroke-width:2px,stroke-dasharray:8 5;
-  linkStyle 3,4,5,6 stroke:#245E8D,stroke-width:2px,stroke-dasharray:6 4;
+  CI["GitHub Actions<br/>Node 22 + Java 17"] -.-> PKG["离线包"]
+  PKG -.-> HOST["内网 Compose"]
+  HOST --> APP["app：JRE 17 + static<br/>18080 到 8080"]
+  HOST --> MYSQL[("mysql:8.0.36<br/>ai_code_review_agent")]
+  APP -.-> MYSQL
+  APP --> GIT["内网 Gitea 与 AI 网关"]
