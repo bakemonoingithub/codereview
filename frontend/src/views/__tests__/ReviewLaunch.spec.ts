@@ -455,3 +455,47 @@ describe('UPI 审核修复', () => {
     } finally { w.unmount() }
   })
 })
+
+function formItem(wrapper: any, label: string) {
+  return wrapper.findAll('a-form-item-stub').find((item: any) => item.attributes('label') === label)
+}
+
+describe('发起弹窗骨架', () => {
+  it('三分区与页脚统一，星号只来自 required', async () => {
+    const w = await start()
+    expect(w.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('发起专项审查')
+    expect(w.findAll('.launch-section')).toHaveLength(3)
+    expect(w.text()).toContain('1. 审查目标')
+    expect(w.text()).toContain('2. 范围与版本')
+    expect(w.text()).toContain('3. 补充要求')
+    const bar = w.find('.submit-bar')
+    expect(bar.text().indexOf('取消')).toBeGreaterThanOrEqual(0)
+    expect(bar.text().indexOf('取消')).toBeLessThan(bar.text().indexOf('开始审查'))
+    expect(w.html()).not.toContain('class="required"')
+    expect(w.html()).not.toContain('>必填<')
+    for (const label of ['项目', '模型', '分支', '固定版本', '目标文件']) {
+      expect(formItem(w, label)?.attributes('required'), label).toBe('')
+    }
+    expect(formItem(w, '审查名称')?.attributes('required')).toBeUndefined()
+    expect(formItem(w, '规则版本')).toBeUndefined()
+    const s = state(w)
+    s.form.promptId = 'g1'
+    await nextTick()
+    expect(formItem(w, '规则版本')?.attributes('required')).toBe('')
+    s.form.sourceKind = 'DIFF'
+    await nextTick()
+    expect(formItem(w, '审查提交')?.attributes('required')).toBe('')
+    expect(formItem(w, '固定版本')).toBeUndefined()
+    w.unmount()
+  })
+
+  it('复制参数时沿用原标题', async () => {
+    context.route.query = { copyFrom: 'old-task' }
+    vi.mocked(tasksApi.copyInput).mockResolvedValue({ projectId: 'p1', specialistType: 'ISSUE', sourceKind: 'FILES',
+      branch: 'main', targets: [], modelConfigId: 'm1', smartSplit: false, reobserveHead: true } as any)
+    vi.mocked(tasksApi.detail).mockResolvedValue({ headSha: 'old-sha' } as any)
+    const w = await start()
+    expect(w.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('复制参数发起新审查')
+    w.unmount()
+  })
+})

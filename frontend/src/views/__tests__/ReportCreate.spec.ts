@@ -240,3 +240,38 @@ describe('报告生成表单', () => {
   })
 
 })
+
+function formItem(wrapper: any, label: string) {
+  return wrapper.findAll('a-form-item-stub').find((item: any) => item.attributes('label') === label)
+}
+
+describe('发起弹窗骨架', () => {
+  it('三分区与页脚统一，星号只来自 required', async () => {
+    const wrapper = await start()
+    expect(wrapper.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('生成报告')
+    expect(wrapper.text()).toContain('1. 报告信息')
+    expect(wrapper.text()).toContain('2. 审查材料')
+    expect(wrapper.text()).toContain('3. 补充要求')
+    expect(wrapper.text()).toContain('选择审查结果')
+    const bar = wrapper.find('.submit-bar')
+    expect(bar.text().indexOf('取消')).toBeGreaterThanOrEqual(0)
+    expect(bar.text().indexOf('取消')).toBeLessThan(bar.text().indexOf('冻结材料并生成'))
+    expect(wrapper.html()).not.toContain('class="required"')
+    expect(wrapper.html()).not.toContain('>必填<')
+    for (const label of ['报告名称', '模型']) {
+      expect(formItem(wrapper, label)?.attributes('required'), label).toBe('')
+    }
+    expect(formItem(wrapper, '规则版本')).toBeUndefined()
+    const optional = wrapper.findAll('a-form-item-stub').filter((item) => item.text().includes('（可选）'))
+    expect(optional.map((item) => item.text())).toEqual(expect.arrayContaining([
+      expect.stringContaining('通用规则'),
+      expect.stringContaining('补充要求')
+    ]))
+    optional.forEach((item) => expect(item.attributes('required')).toBeUndefined())
+    const s = state(wrapper)
+    s.form.promptId = 'prompt-report'
+    await flushPromises()
+    expect(formItem(wrapper, '规则版本')?.attributes('required')).toBe('')
+    wrapper.unmount()
+  })
+})

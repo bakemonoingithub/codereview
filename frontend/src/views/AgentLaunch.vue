@@ -1,227 +1,216 @@
 <template>
-  <a-modal
+  <LaunchModalShell
     :open="open"
+    :mask-closable="true"
     :title="copyFrom ? '复制参数发起新 Agent 分析' : '发起 Agent 分析'"
-    width="min(1040px, calc(100vw - 32px))"
-    :footer="null"
-    :destroy-on-close="false"
-    wrap-class-name="agent-launch-modal"
     @cancel="close"
   >
-  <div class="agent-launch">
-    <div class="page-head">
-      <div>
-<!--        <p class="muted">描述范围与要求。模型只读调查固定版本，命中限制会保留记录但不发布完整结果。</p>-->
-      </div>
-    </div>
+    <template #alerts>
+      <a-alert
+        v-if="!agentModels.length"
+        type="warning"
+        show-icon
+        message="没有已通过 Agent 工具协议验证的模型"
+        description="请先在模型管理中执行「Agent 验证」。连通性验证不能替代工具协议验证。"
+      />
+      <a-alert
+        v-if="copyFrom"
+        type="info"
+        show-icon
+        message="已带入原任务参数。请核对当前分支版本、范围和模型；确认提交后才会创建新任务。"
+      />
+      <a-alert v-if="error" type="error" show-icon :message="error" />
+    </template>
 
-    <a-alert
-      v-if="!agentModels.length"
-      type="warning"
-      show-icon
-      message="没有已通过 Agent 工具协议验证的模型"
-      description="请先在模型管理中执行「Agent 验证」。连通性验证不能替代工具协议验证。"
-      class="mb12"
-    />
-    <a-alert
-      v-if="copyFrom"
-      type="info"
-      show-icon
-      message="已带入原任务参数。请核对当前分支版本、范围和模型；确认提交后才会创建新任务。"
-      class="mb12"
-    />
-    <a-alert v-if="error" type="error" show-icon :message="error" class="mb12" />
+    <template #body>
+      <LaunchFormSections :titles="{ goal: '审查目标', scope: '审查范围', extra: '补充要求' }">
+        <template #goal>
+          <a-form-item label="任务名称（可选）">
+            <a-input v-model:value="form.name" :maxlength="200" placeholder="例如：支付超时后的重试链路" />
+          </a-form-item>
+          <a-row :gutter="16">
+            <a-col :xs="24" :md="12">
+              <a-form-item label="项目" required>
+                <a-select
+                  :get-popup-container="getPopupContainer"
+                  v-model:value="form.projectId"
+                  show-search
+                  option-filter-prop="label"
+                  :options="projectOptions"
+                  placeholder="选择项目"
+                  @change="onProjectChange"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :md="12">
+              <a-form-item label="模型" required>
+                <a-select
+                  :get-popup-container="getPopupContainer"
+                  v-model:value="form.modelConfigId"
+                  :options="modelOptions"
+                  placeholder="选择模型"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+        </template>
 
-    <a-form layout="vertical">
-        <a-card title="1. 审查目标" class="launch-card mb16">
-        <a-form-item label="任务名称（可选）">
-          <a-input v-model:value="form.name" :maxlength="200" placeholder="例如：支付超时后的重试链路" />
-        </a-form-item>
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="12">
-            <a-form-item label="项目" required>
-              <a-select
-                :get-popup-container="getPopupContainer"
-                v-model:value="form.projectId"
-                show-search
-                option-filter-prop="label"
-                :options="projectOptions"
-                placeholder="选择项目"
-                @change="onProjectChange"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="12">
-            <a-form-item label="模型" required>
-              <a-select
-                :get-popup-container="getPopupContainer"
-                v-model:value="form.modelConfigId"
-                :options="modelOptions"
-                placeholder="选择模型"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
+        <template #scope>
+          <a-form-item label="范围类型" required>
+            <a-radio-group v-model:value="form.kind" button-style="solid" @change="onKindChange">
+              <a-radio-button value="TEXT">文字描述</a-radio-button>
+              <a-radio-button value="FILES">文件／目录</a-radio-button>
+              <a-radio-button value="COMMITS">提交比较</a-radio-button>
+            </a-radio-group>
+          </a-form-item>
 
-        </a-card>
-
-        <a-card title="2. 审查范围" class="launch-card mb16">
-        <a-form-item label="范围类型" required>
-          <a-radio-group v-model:value="form.kind" button-style="solid" @change="onKindChange">
-            <a-radio-button value="TEXT">文字描述</a-radio-button>
-            <a-radio-button value="FILES">文件／目录</a-radio-button>
-            <a-radio-button value="COMMITS">提交比较</a-radio-button>
-          </a-radio-group>
-        </a-form-item>
-
-        <a-form-item v-if="form.kind !== 'COMMITS'" label="分支" required>
-          <a-select
-                :get-popup-container="getPopupContainer"
-            v-model:value="form.branch"
-            :options="branchOptions"
-            :loading="branchLoading"
-            style="max-width: 360px"
-            placeholder="选择分支"
-            @change="loadHead"
-          />
-          <span class="muted head-hint">
-            head：<code>{{ headLoading ? '读取中…' : form.observedSha || '—' }}</code>
-          </span>
-        </a-form-item>
-
-        <a-form-item v-if="form.kind === 'TEXT'" label="范围描述" required>
-          <a-textarea
-            v-model:value="form.description"
-            :rows="3"
-            :maxlength="2000"
-            placeholder="说明要调查的链路、入口或问题范围"
-          />
-        </a-form-item>
-
-        <a-form-item v-if="form.kind === 'FILES'" label="文件与目录" required>
-          <a-space wrap>
-            <a-button :disabled="!form.observedSha" @click="scopeOpen = true">选择文件／目录</a-button>
-            <span class="muted">已选 {{ form.paths.length }} 项，最多 100 项</span>
-          </a-space>
-          <div v-if="form.paths.length" class="selected-paths">
-            <a-tag v-for="path in form.paths" :key="path" closable @close="removePath(path)">
-              {{ path }}
-            </a-tag>
-          </div>
-        </a-form-item>
-
-        <a-form-item v-if="form.kind === 'COMMITS'" label="提交比较" required>
-          <a-space wrap>
+          <a-form-item v-if="form.kind !== 'COMMITS'" label="分支" required>
             <a-select
-                :get-popup-container="getPopupContainer"
+              :get-popup-container="getPopupContainer"
               v-model:value="form.branch"
               :options="branchOptions"
               :loading="branchLoading"
-              style="width: 260px"
-              placeholder="选择分支后加载提交"
-              @change="onBranchChange"
+              style="max-width: 360px"
+              placeholder="选择分支"
+              @change="loadHead"
             />
-            <a-button :disabled="!form.branch" @click="openCommitPicker">
-              选择提交（已选 {{ form.commits.length }}/20）
-            </a-button>
-            <span class="muted">按选择顺序逐项读取，最多 20 个；不合并成首尾净差异</span>
-          </a-space>
-          <div v-if="form.commits.length" class="selected-paths">
-            <a-tag
-              v-for="(sha, index) in form.commits"
-              :key="sha"
-              closable
-              @close="toggleCommit(sha)"
-            >
-              C{{ index + 1 }} · {{ sha.slice(0, 10) }}
-            </a-tag>
-          </div>
-        </a-form-item>
+            <span class="muted head-hint">
+              head：<LaunchVersionPreview :sha="form.observedSha" :loading="headLoading" />
+            </span>
+          </a-form-item>
 
-        </a-card>
+          <a-form-item v-if="form.kind === 'TEXT'" label="范围描述" required>
+            <a-textarea
+              v-model:value="form.description"
+              :rows="3"
+              :maxlength="2000"
+              placeholder="说明要调查的链路、入口或问题范围"
+            />
+          </a-form-item>
 
-        <a-card title="3. 补充要求" class="launch-card mb16">
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="12">
-            <a-form-item>
-              <template #label>指导提示词 <span class="muted small">（可选）</span></template>
-              <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不选则使用内置调查方法" />
-            </a-form-item>
-          </a-col>
-          <a-col v-if="form.guidancePromptId" :xs="24" :md="12">
-            <a-form-item label="提示词版本" required>
-              <PromptVersionSelect
-                v-model:value="form.guidancePromptVersionId"
-                :versions="guidancePromptVersions"
-                :current-version-id="selectedGuidancePrompt?.currentVersion?.id"
-                :loading="guidancePromptLoading"
+          <a-form-item v-if="form.kind === 'FILES'" label="文件与目录" required>
+            <a-space wrap>
+              <a-button :disabled="!form.observedSha" @click="scopeOpen = true">选择文件／目录</a-button>
+              <span class="muted">已选 {{ form.paths.length }} 项，最多 100 项</span>
+            </a-space>
+            <div v-if="form.paths.length" class="selected-paths">
+              <a-tag v-for="path in form.paths" :key="path" closable @close="removePath(path)">
+                {{ path }}
+              </a-tag>
+            </div>
+          </a-form-item>
+
+          <a-form-item v-if="form.kind === 'COMMITS'" label="提交比较" required>
+            <a-space wrap>
+              <a-select
+                :get-popup-container="getPopupContainer"
+                v-model:value="form.branch"
+                :options="branchOptions"
+                :loading="branchLoading"
+                style="width: 260px"
+                placeholder="选择分支后加载提交"
+                @change="onBranchChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <PromptInfoPreview
-          v-if="form.guidancePromptId"
-          class="mb16"
-          title="指导提示词"
-          :prompt="selectedGuidancePrompt"
-          :version="selectedGuidanceVersion"
-          selected
-          :loading="guidancePromptLoading"
-          :error="guidancePromptError"
-          @retry="loadGuidancePrompt()"
-        />
-        <p v-if="form.guidancePromptId" class="muted">任务创建时保存所选版本的正文；覆盖版本会影响之后创建的任务。</p>
-        <a-form-item label="补充要求" required>
-          <a-textarea
-            v-model:value="form.requirements"
-            :rows="6"
-            :maxlength="16000"
-            show-count
-            placeholder="核对重试路径的幂等约定，并说明材料缺口。"
+              <a-button :disabled="!form.branch" @click="openCommitPicker">
+                选择提交（已选 {{ form.commits.length }}/20）
+              </a-button>
+              <span class="muted">按选择顺序逐项读取，最多 20 个；不合并成首尾净差异</span>
+            </a-space>
+            <div v-if="form.commits.length" class="selected-paths">
+              <a-tag
+                v-for="(sha, index) in form.commits"
+                :key="sha"
+                closable
+                @close="toggleCommit(sha)"
+              >
+                C{{ index + 1 }} · {{ sha.slice(0, 10) }}
+              </a-tag>
+            </div>
+          </a-form-item>
+        </template>
+
+        <template #extra>
+          <a-row :gutter="16">
+            <a-col :xs="24" :md="12">
+              <a-form-item>
+                <template #label>指导提示词 <span class="muted small">（可选）</span></template>
+                <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不选则使用内置调查方法" />
+              </a-form-item>
+            </a-col>
+            <a-col v-if="form.guidancePromptId" :xs="24" :md="12">
+              <a-form-item label="提示词版本" required>
+                <PromptVersionSelect
+                  v-model:value="form.guidancePromptVersionId"
+                  :versions="guidancePromptVersions"
+                  :current-version-id="selectedGuidancePrompt?.currentVersion?.id"
+                  :loading="guidancePromptLoading"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <PromptInfoPreview
+            v-if="form.guidancePromptId"
+            class="mb16"
+            title="指导提示词"
+            :prompt="selectedGuidancePrompt"
+            :version="selectedGuidanceVersion"
+            selected
+            :loading="guidancePromptLoading"
+            :error="guidancePromptError"
+            @retry="loadGuidancePrompt()"
           />
-        </a-form-item>
+          <p v-if="form.guidancePromptId" class="muted">任务创建时保存所选版本的正文；覆盖版本会影响之后创建的任务。</p>
+          <a-form-item label="补充要求" required>
+            <a-textarea
+              v-model:value="form.requirements"
+              :rows="6"
+              :maxlength="16000"
+              show-count
+              placeholder="核对重试路径的幂等约定，并说明材料缺口。"
+            />
+          </a-form-item>
+        </template>
+      </LaunchFormSections>
+    </template>
 
-        </a-card>
-        <div class="submit-bar">
-<!--          <span class="muted small">提交后任务在后台执行，可在审查中心查看进度。</span>-->
-          <span class="spacer" />
-          <a-button @click="close">取消</a-button>
-          <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">开始 Agent 分析</a-button>
-        </div>
-      </a-form>
+    <template #footer>
+      <a-button @click="close">取消</a-button>
+      <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">开始 Agent 分析</a-button>
+    </template>
 
-    <ScopePickerModal
-      v-model:open="scopeOpen"
-      :project-id="form.projectId"
-      mode="FILES"
-      :sha="form.observedSha"
-      :branch="form.branch"
-      :selected="form.paths"
-      @confirm="onScopeConfirm"
-    />
-    <CommitPickerModal
-      v-model:open="commitPickerOpen"
-      :branch="form.branch"
-      :commits="commits"
-      multiple
-      :selected-shas="form.commits"
-      :max-selections="20"
-      :has-more="commitsHasMore"
-      :loading="commitLoading"
-      :loading-more="commitLoadingMore"
-      :error="commitsError"
-      :located-commit="locatedCommit"
-      :lookup-loading="commitLookupLoading"
-      :lookup-error="commitLookupError"
-      @confirm-many="confirmCommits"
-      @load-more="loadMoreCommits"
-      @refresh="refreshCommits"
-      @retry="refreshCommits"
-      @lookup="locateCommit"
-      @clear-lookup="clearCommitLookup"
-    />
-  </div>
-  </a-modal>
+    <template #overlay>
+      <ScopePickerModal
+        v-model:open="scopeOpen"
+        :project-id="form.projectId"
+        mode="FILES"
+        :sha="form.observedSha"
+        :branch="form.branch"
+        :selected="form.paths"
+        @confirm="onScopeConfirm"
+      />
+      <CommitPickerModal
+        v-model:open="commitPickerOpen"
+        :branch="form.branch"
+        :commits="commits"
+        multiple
+        :selected-shas="form.commits"
+        :max-selections="20"
+        :has-more="commitsHasMore"
+        :loading="commitLoading"
+        :loading-more="commitLoadingMore"
+        :error="commitsError"
+        :located-commit="locatedCommit"
+        :lookup-loading="commitLookupLoading"
+        :lookup-error="commitLookupError"
+        @confirm-many="confirmCommits"
+        @load-more="loadMoreCommits"
+        @refresh="refreshCommits"
+        @retry="refreshCommits"
+        @lookup="locateCommit"
+        @clear-lookup="clearCommitLookup"
+      />
+    </template>
+  </LaunchModalShell>
 </template>
 
 <script setup lang="ts">
@@ -357,7 +346,7 @@ const canSubmit = computed(() => {
 
 function closeDropdownOnScroll(event: Event) {
   const target = event.target
-  if (!(target instanceof Element) || !target.closest('.agent-launch-modal .ant-modal-body')) return
+  if (!(target instanceof Element) || !target.closest('.launch-modal .ant-modal-body')) return
   const active = document.activeElement
   if (active instanceof HTMLElement && active.closest('.ant-select')) active.blur()
 }
@@ -657,72 +646,14 @@ async function submit() {
 </script>
 
 <style scoped>
-.agent-launch {
-  padding: 0 0 24px;
-}
-.page-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 32px;
-}
-.page-head h1 {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.8px;
-  line-height: 1.4;
-}
-.page-head { margin-bottom: 20px; }
-.page-head p {
-  margin: 8px 0 0;
-  font-size: 15px;
-}
 .mb16 { margin-bottom: 16px; }
-.submit-bar { display: flex; align-items: center; gap: 10px; padding: 14px 0 2px; }
-.submit-bar .spacer { flex: 1; }
-.step {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 22px 0 14px;
-  font-weight: 600;
-}
-.step .num {
-  display: grid;
-  place-items: center;
-  width: 23px;
-  height: 23px;
-  border-radius: 50%;
-  background: var(--blue);
-  color: #fff;
-  font-size: 12px;
-}
-.muted {
-  color: var(--muted);
-}
-.mb12 {
-  margin-bottom: 12px;
-}
-.head-hint {
-  margin-left: 12px;
-}
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.head-hint { margin-left: 12px; }
 .selected-paths {
   margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-</style>
-
-<style lang="less">
-.agent-launch-modal .ant-modal {
-  top: 24px;
-  padding-bottom: 24px;
-}
-.agent-launch-modal .ant-modal-body {
-  max-height: calc(100vh - 120px);
-  overflow: auto;
 }
 </style>
