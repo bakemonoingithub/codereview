@@ -9,7 +9,7 @@
         v-if="copyFrom"
         type="info"
         show-icon
-        message="已复制历史参数。请重新确认当前版本和模型配置；原任务输入与结果保持不变。"
+        message="已带入原任务参数。请核对当前版本、模型和范围；确认后才会创建新任务。"
       />
       <a-alert
         v-if="copyHeadMoved"
@@ -34,7 +34,8 @@
       <LaunchFormSections :titles="{ goal: '审查目标', scope: '范围与版本', extra: '补充要求' }">
         <template #goal>
           <div class="form-grid">
-            <a-form-item class="full" label="审查名称">
+            <a-form-item class="full">
+              <template #label>审查名称 <span class="muted small">（可选）</span></template>
               <a-input
                 v-model:value="form.name"
                 :maxlength="200"
@@ -45,6 +46,8 @@
               <a-select
                 :get-popup-container="getPopupContainer"
                 v-model:value="form.projectId"
+                show-search
+                option-filter-prop="label"
                 style="width: 100%"
                 placeholder="选择项目"
                 :loading="optionsLoading"
@@ -72,7 +75,7 @@
             <a-form-item v-if="form.specialistType === 'ISSUE'" class="source-switch" label="审查范围">
               <a-radio-group v-model:value="form.sourceKind" button-style="solid" @change="onSourceKindChange">
                 <a-radio-button value="FILES">文件内容</a-radio-button>
-                <a-radio-button value="DIFF">提交差异</a-radio-button>
+                <a-radio-button value="DIFF">提交比较</a-radio-button>
               </a-radio-group>
             </a-form-item>
           </div>
@@ -85,7 +88,7 @@
                 :get-popup-container="getPopupContainer"
                 v-model:value="form.branch"
                 style="width: 100%"
-                placeholder="选择该项目的分支"
+                placeholder="选择分支"
                 :loading="branchesLoading"
                 :options="branchOptions"
                 @change="onBranchChange"
@@ -101,7 +104,7 @@
                 @refresh="resolveHead"
               />
             </a-form-item>
-            <a-form-item v-else label="审查提交" required>
+            <a-form-item v-else label="目标提交" required>
               <div class="commit-picker-field">
                 <a-button
                   :loading="commitsLoading && !commits.length"
@@ -198,12 +201,13 @@
             <div v-for="(target, index) in form.targets" :key="target.path" class="file-note">
               <div class="note-head">
                 <strong>{{ target.path }}</strong>
-                <span class="muted small">补充要求（可选）</span>
+                <span>补充要求 <span class="muted small">（可选）</span></span>
               </div>
               <a-textarea
                 v-model:value="form.targets[index].note"
-                :rows="2"
                 :maxlength="4000"
+                show-count
+                :auto-size="{ minRows: 2, maxRows: 4 }"
                 placeholder="填写此文件的背景、约束或关注点"
               />
             </div>

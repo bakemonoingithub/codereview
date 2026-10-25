@@ -262,16 +262,29 @@ describe('发起弹窗骨架', () => {
       expect(formItem(wrapper, label)?.attributes('required'), label).toBe('')
     }
     expect(formItem(wrapper, '规则版本')).toBeUndefined()
+    expect(formItem(wrapper, '报告名称')?.text()).not.toContain('（可选）')
     const optional = wrapper.findAll('a-form-item-stub').filter((item) => item.text().includes('（可选）'))
     expect(optional.map((item) => item.text())).toEqual(expect.arrayContaining([
       expect.stringContaining('通用规则'),
       expect.stringContaining('补充要求')
     ]))
-    optional.forEach((item) => expect(item.attributes('required')).toBeUndefined())
+    optional.forEach((item) => {
+      expect(item.attributes('required')).toBeUndefined()
+      expect(item.attributes('label')).toBeUndefined()
+    })
+    expect(wrapper.html()).toContain('不使用通用规则')
+    expect(wrapper.html()).not.toContain('选择报告规则')
+    const instruction = wrapper.findComponent({ name: 'ATextarea' })
+    expect(instruction.attributes('maxlength')).toBe('4000')
+    expect(instruction.attributes('rows')).toBeUndefined()
+    expect(instruction.attributes('show-count')).toBe('')
+    expect(instruction.vm.$.vnode.props['auto-size']).toEqual({ minRows: 4, maxRows: 8 })
     const s = state(wrapper)
     s.form.promptId = 'prompt-report'
     await flushPromises()
     expect(formItem(wrapper, '规则版本')?.attributes('required')).toBe('')
+    expect(wrapper.text()).toContain('所选版本正文')
+    expect(wrapper.text()).not.toContain('所选报告规则正文')
     wrapper.unmount()
   })
 })
