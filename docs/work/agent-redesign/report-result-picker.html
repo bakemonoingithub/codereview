@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>报告审查结果选择弹窗</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#243047;font:14px/1.6 system-ui}main{max-width:860px;margin:36px auto;padding:24px;background:white;border:1px solid #dde3ed;border-radius:12px}h1{font-size:22px}h2{font-size:17px}label{display:block;color:#526078}input,select{padding:9px;border:1px solid #cbd4e2;border-radius:6px;background:white}input:not([type=checkbox]){width:100%}button{padding:9px 16px;border:1px solid #cbd4e2;border-radius:6px;background:white;color:#243047;cursor:pointer}.primary{background:#2563eb;color:white;border-color:#2563eb}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row input{flex:1}.spacer{flex:1}.muted{color:#64748b}small{font-size:12px}.material{padding:12px;margin:8px 0;border:1px solid #dde3ed;border-radius:8px}.foot{margin-top:16px;display:flex;align-items:center;gap:12px}dialog{border:1px solid #dde3ed;border-radius:12px;width:min(980px,calc(100vw - 40px));padding:24px}dialog::backdrop{background:#1f293766}.results{max-height:350px;overflow:auto;border:1px solid #dde3ed;border-radius:8px;margin-top:12px}.result{display:flex;gap:12px;padding:14px;border-bottom:1px solid #edf1f6;cursor:pointer}.result.selected{background:#eff6ff}.result div{flex:1}.result strong,.result small{display:block}.draft{max-height:74px;overflow:auto;margin:12px 0;display:flex;gap:8px;flex-wrap:wrap}.chip{background:#eff6ff;padding:4px 10px;border-radius:6px}.note{margin:8px 0;color:#64748b;font-size:12px}
+</style>
+<main>
+<h1>生成报告</h1>
+<label>报告名称<input value="订单服务专项审查报告"></label>
+<h2>审查材料</h2><div class="row"><button class="primary" id="open">选择审查结果</button><span id="count" class="muted"></span></div>
+<div id="selected"></div>
+<p class="note">提交后冻结来源、版本和当时反馈。</p>
+<div class="foot"><span class="spacer"></span><button>取消</button><button class="primary">冻结材料并生成</button></div>
+</main>
+<dialog id="picker">
+<h2>选择审查结果</h2>
+<div class="row"><select id="project"><option value="">全部项目</option><option>订单服务</option><option>支付服务</option></select><select id="kind"><option value="">全部类型</option><option>问题审查</option><option>Agent</option></select><span class="spacer"></span><button id="refresh">刷新结果</button></div>
+<p><input id="query" placeholder="筛选已加载结果的任务、项目、路径或版本"></p>
+<p class="note">关键词仅筛选已加载结果；项目与类型筛选用于查找全部候选。</p>
+<div id="draft" class="draft"></div><div id="results" class="results"></div>
+<div class="foot"><span id="draft-count"></span><button id="clear">清空选择</button><span class="spacer"></span><button id="cancel">取消</button><button id="confirm" class="primary">使用所选结果</button></div>
+</dialog>
+<script>
+const rows=[{id:'r1',task:'订单事务与幂等检查',project:'订单服务',kind:'问题审查',path:'src/OrderService.java',version:'8f20d6f',note:'2 个问题 · 未反馈'},{id:'r2',task:'重试链路调查',project:'订单服务',kind:'Agent',path:'Agent 调查结果',version:'8f20d6f',note:'材料不足 · 未解决 2 项'},{id:'r3',task:'支付回调检查',project:'支付服务',kind:'问题审查',path:'src/PaymentCallback.java',version:'7aa123b',note:'1 个问题 · 已有反馈'}];
+let selected=new Map(),draft=new Map();const el=id=>document.getElementById(id);
+function draw(){el('results').replaceChildren();rows.filter(r=>(!el('project').value||r.project===el('project').value)&&(!el('kind').value||r.kind===el('kind').value)&&[r.task,r.project,r.path,r.version].join(' ').toLowerCase().includes(el('query').value.toLowerCase())).forEach(r=>{const row=document.createElement('label');row.className='result'+(draft.has(r.id)?' selected':'');row.innerHTML=`<input type="checkbox" ${draft.has(r.id)?'checked':''}><div><strong>${r.task}</strong><small>${r.project} · ${r.kind} · ${r.path}</small><small class="muted">${r.version} · ${r.note}</small></div>`;row.querySelector('input').onchange=()=>{draft.has(r.id)?draft.delete(r.id):draft.set(r.id,r);draw()};el('results').append(row)});el('draft').replaceChildren();draft.forEach(r=>{const chip=document.createElement('button');chip.className='chip';chip.textContent=r.task+' ×';chip.onclick=()=>{draft.delete(r.id);draw()};el('draft').append(chip)});el('draft-count').textContent=`已选 ${draft.size}/200 个结果`}
+function main(){el('count').textContent=`已选 ${selected.size} 个`;el('selected').replaceChildren();selected.forEach(r=>{const item=document.createElement('div');item.className='material';item.textContent=`${r.task} · ${r.project} · ${r.path} · ${r.version}`;el('selected').append(item)})}
+el('open').onclick=()=>{draft=new Map(selected);el('query').value='';draw();el('picker').showModal()};el('cancel').onclick=()=>el('picker').close();el('confirm').onclick=()=>{selected=new Map(draft);main();el('picker').close()};el('clear').onclick=()=>{draft.clear();draw()};['query','project','kind'].forEach(id=>el(id).oninput=draw);el('refresh').onclick=draw;main();
+</script>
+</html>

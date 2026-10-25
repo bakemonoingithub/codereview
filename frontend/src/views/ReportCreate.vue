@@ -3,12 +3,12 @@
     :open="true"
     title="生成报告"
     :footer="null"
-    width="min(1100px, calc(100vw - 48px))"
+    width="min(920px, calc(100vw - 48px))"
     :mask-closable="false"
     wrap-class-name="report-create-modal"
     @cancel="closeCreate"
   >
-    <p class="muted intro">勾选已完整发布的审查结果；提交后冻结来源、版本和当时反馈。</p>
+    <p class="muted intro">选择已完整发布的审查结果；提交后冻结来源、版本和当时反馈。</p>
 
     <a-alert v-if="formError" type="error" show-icon :message="formError" class="mb16" />
     <a-alert
@@ -50,144 +50,39 @@
       </div>
     </a-card>
 
-    <div class="create-grid">
-      <a-card title="2. 选择审查结果" class="materials-card">
-        <div class="filters">
-          <a-select
-            v-model:value="filterProject"
-            allow-clear
-            placeholder="全部项目"
-            style="width: 190px"
-            :options="projectOptions"
-            @change="resetCandidates"
-          />
-          <a-select
-            v-model:value="filterKind"
-            allow-clear
-            placeholder="全部类型"
-            style="width: 150px"
-            :options="kindOptions"
-            @change="resetCandidates"
-          />
-          <span class="spacer" />
-          <span class="muted small">已选 {{ selected.size }} 个</span>
-          <a-button size="small" :loading="candidatesLoading" @click="resetCandidates">刷新</a-button>
-        </div>
-
-        <a-alert v-if="candidatesError" type="error" show-icon :message="candidatesError" class="mb12">
-          <template #action><a-button size="small" @click="loadCandidates">重试</a-button></template>
-        </a-alert>
-
-        <a-table
-          :data-source="candidates"
-          row-key="resultId"
-          :loading="candidatesLoading"
-          :pagination="false"
-          size="middle"
-          :scroll="{ x: 760 }"
-        >
-          <a-table-column title="选择" key="select" width="64">
-            <template #default="{ record }">
-              <a-checkbox
-                :checked="selected.has(record.resultId)"
-                :aria-label="`选择 ${record.projectName || record.projectId} ${record.path || record.kind}`"
-                @change="toggle(record)"
-              />
-            </template>
-          </a-table-column>
-          <a-table-column title="来源" key="source" width="220">
-            <template #default="{ record }">
-              <div class="source-cell">
-                <strong :title="record.taskId">{{ taskLabel(record.taskName, record.taskId) }}</strong>
-                <span class="muted small">
-                  {{ record.projectName || record.projectId }} · {{ kindText(record.kind) }} · {{ record.taskState }} · {{ record.sourceKind === 'DIFF' ? '提交差异' : '文件内容' }}
-                </span>
-                <a-space v-if="record.kind === 'AGENT'" wrap>
-                  <a-tag :color="record.answerStatus === 'ANSWERED' ? 'green' : 'orange'">
-                    {{ record.answerStatus === 'ANSWERED' ? '已回答' : '材料不足' }}
-                  </a-tag>
-                  <span v-if="record.unresolvedCount" class="muted small">
-                    未解决 {{ record.unresolvedCount }} 项
-                  </span>
-                </a-space>
-              </div>
-            </template>
-          </a-table-column>
-          <a-table-column title="目标" key="path" width="180">
-            <template #default="{ record }">
-              <div class="path-cell">
-                <span class="file-name" :title="pathTitle(record)">{{ fileName(record.path) }}</span>
-                <code class="muted small">{{ shortSha(record.headSha) }}</code>
-              </div>
-            </template>
-          </a-table-column>
-          <a-table-column title="问题" key="issues" width="80">
-            <template #default="{ record }">
-              {{ record.kind === 'ISSUE' ? `${record.issueCount} 个` : '结果级' }}
-            </template>
-          </a-table-column>
-          <a-table-column title="反馈" key="feedback" width="120">
-            <template #default="{ record }">
-              <span class="muted small">{{ feedbackText(record) }}</span>
-            </template>
-          </a-table-column>
-          <a-table-column title="" key="preview" width="96">
-            <template #default="{ record }">
-              <a-button type="link" size="small" :disabled="!record.targetId" @click="openResult(record)">
-                查看结果
-              </a-button>
-            </template>
-          </a-table-column>
-          <template #emptyText>
-            <a-empty description="没有可选的完整审查结果">
-              <a-button type="primary" @click="router.push('/reviews/new')">发起审查</a-button>
-            </a-empty>
-          </template>
-        </a-table>
-        <div v-if="candidatesHasMore" class="more">
-          <a-button :loading="candidatesLoadingMore" @click="loadMoreCandidates">加载更多</a-button>
-        </div>
-      </a-card>
-
-      <aside class="card selected-panel">
-        <div class="section-head">
-          <strong>已选材料</strong>
-          <span class="spacer" />
-          <span class="muted small">{{ selected.size }} 个</span>
-        </div>
-        <p v-if="!selected.size" class="empty muted small">
-          还没有选择审查结果。提交前会冻结所选结果及其代码版本、问题和当时反馈。
-        </p>
-        <div v-else class="selected-list">
-          <div v-for="item in selectedList" :key="item.resultId" class="selected-item">
-            <div>
-              <strong>{{ item.projectName || item.projectId }}</strong>
-              <span class="muted small" :title="pathTitle(item)">
-                {{ kindText(item.kind) }} · {{ fileName(item.path) }}
-              </span>
-              <span class="muted small">{{ shortSha(item.headSha) }}</span>
-            </div>
-            <a-button size="small" type="text" danger @click="remove(item.resultId)">移除</a-button>
+    <a-card title="2. 审查材料" class="mb16">
+      <div class="section-head">
+        <a-button type="primary" :disabled="submitting" @click="pickerOpen = true">选择审查结果</a-button>
+        <span class="muted small">已选 {{ selected.size }} 个结果</span>
+      </div>
+      <p v-if="!selected.size" class="muted small">尚未选择材料。点击「选择审查结果」，可同时选用专项与 Agent 的完整结果。</p>
+      <div v-else class="selected-list">
+        <div v-for="item in selectedList" :key="item.resultId" class="selected-item">
+          <div>
+            <strong :title="item.taskId">{{ taskLabel(item.taskName, item.taskId) }}</strong>
+            <span class="file-name" :title="pathTitle(item)">{{ fileName(item.path) }}</span>
+            <span class="muted small">{{ item.projectName || item.projectId }} · {{ kindText(item.kind) }} · {{ shortSha(item.headSha) }}</span>
+            <span v-if="item.kind === 'AGENT'" class="small" :class="{ 'evidence-warning': item.answerStatus !== 'ANSWERED' }">
+              {{ item.answerStatus === 'ANSWERED' ? '已回答' : '材料不足' }}<template v-if="item.unresolvedCount"> · 未解决 {{ item.unresolvedCount }} 项</template>
+            </span>
           </div>
+          <a-space>
+            <a-button size="small" type="link" :disabled="item.kind !== 'AGENT' && !item.targetId" @click="openResult(item)">查看结果</a-button>
+            <a-button size="small" type="text" danger :disabled="submitting" @click="remove(item.resultId)">移除</a-button>
+          </a-space>
         </div>
-        <a-alert
-          type="info"
-          show-icon
-          class="freeze-note"
-          message="提交后冻结来源、版本和当时反馈；后续修改反馈或源码不改变本报告。"
-        />
-        <a-button
-          type="primary"
-          block
-          :loading="submitting"
-          :disabled="!hasUsableModel"
-          @click="submit"
-        >
-          冻结材料并生成
-        </a-button>
-        <p class="muted small submit-note">生成在后台执行；可在报告详情查看状态、失败原因和实际调用。</p>
-      </aside>
+      </div>
+    </a-card>
+    <a-alert type="info" show-icon class="freeze-note" message="提交后冻结来源、版本和当时反馈；后续修改反馈或源码不改变本报告。" />
+    <div class="form-footer">
+      <span class="muted small">生成在后台执行，可在报告详情查看状态。</span>
+      <span class="spacer" />
+      <a-button @click="closeCreate">取消</a-button>
+      <a-button type="primary" :loading="submitting" :disabled="!hasUsableModel || !selected.size" @click="submit">冻结材料并生成</a-button>
     </div>
+
+    <ReportResultPickerModal v-model:open="pickerOpen" :projects="projects" :selected="selectedList"
+      @confirm="applySelection" @preview="openResult" />
 
     <a-modal
       v-model:open="resultOpen"
@@ -197,7 +92,10 @@
       destroy-on-close
     >
       <a-spin :spinning="resultLoading">
-        <a-alert v-if="resultError" type="error" show-icon :message="resultError" />
+        <a-alert v-if="resultError" type="error" show-icon :message="resultError">
+          <template #action><a-button size="small" @click="previewRecord && openResult(previewRecord)">重试</a-button></template>
+        </a-alert>
+        <AgentResultPanel v-else-if="agentResult" :body="agentResult.body" :show-download="false" @open-code="openCodeReference" />
         <SpecialistResultView
           v-else-if="resultView && resultTaskId"
           :result="resultView"
@@ -205,19 +103,30 @@
         />
       </a-spin>
     </a-modal>
+    <CodeReferenceModal v-if="codePayload" v-model:open="codeOpen" :task-id="resultTaskId" :project-id="resultProjectId"
+      :scope="codePayload.scope" :path="codePayload.path" :sha="codePayload.sha || ''" :side="codePayload.side"
+      :references="codePayload.references" :active-start="codePayload.startLine" :active-end="codePayload.endLine"
+      :initial-mode="codePayload.sha ? 'full' : 'saved'" />
   </a-modal>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import SpecialistResultView from '@/components/SpecialistResultView.vue'
+import AgentResultPanel from '@/components/AgentResultPanel.vue'
+import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
+import ReportResultPickerModal from '@/components/ReportResultPickerModal.vue'
+import { kindText, pathTitle, shortSha } from '@/utils/reportCandidates'
+import type { CodeReferencePayload } from '@/utils/codeReferences'
 import {
+  agentTasksApi,
   modelsApi,
   projectsApi,
   reportsApi,
   tasksApi,
+  type AgentResultView,
   type ModelView,
   type ProjectView,
   type ReportCandidate,
@@ -226,6 +135,13 @@ import {
 import { fileName, taskLabel } from '@/utils/taskLabel'
 
 const router = useRouter()
+const pickerOpen = ref(false)
+const agentResult = ref<AgentResultView | null>(null)
+const previewRecord = ref<ReportCandidate | null>(null)
+const resultProjectId = ref('')
+const codePayload = ref<CodeReferencePayload | null>(null)
+const codeOpen = ref(false)
+let resultEpoch = 0
 const resultOpen = ref(false)
 const resultLoading = ref(false)
 const resultError = ref('')
@@ -238,22 +154,13 @@ const submitting = ref(false)
 const projects = ref<ProjectView[]>([])
 const models = ref<ModelView[]>([])
 const modelsLoading = ref(false)
-const candidates = ref<ReportCandidate[]>([])
 const selected = reactive(new Map<string, ReportCandidate>())
-const filterProject = ref<string | undefined>()
-const filterKind = ref<string | undefined>()
-const candidatesLoading = ref(false)
-const candidatesLoadingMore = ref(false)
-const candidatesError = ref('')
-const nextCursor = ref<string | null>(null)
-const candidatesHasMore = ref(false)
-let candidateEpoch = 0
 let disposed = false
-onBeforeUnmount(() => { disposed = true; candidateEpoch++ })
+onBeforeUnmount(() => { disposed = true; resultEpoch++ })
+watch(resultOpen, open => {
+  if (!open) { resultEpoch++; resultLoading.value = false; codeOpen.value = false }
+}, { flush: 'sync' })
 
-const projectOptions = computed(() =>
-  projects.value.map((project) => ({ value: project.id, label: project.name }))
-)
 const modelOptions = computed(() =>
   models.value.map((model) => ({
     value: model.id,
@@ -264,16 +171,10 @@ const modelOptions = computed(() =>
 const hasUsableModel = computed(() =>
   models.value.some((model) => !!model.contextWindow && model.contextWindow > 0)
 )
-const kindOptions = [
-  { value: 'ISSUE', label: '问题审查' },
-  { value: 'PATTERN', label: '设计模式' },
-  { value: 'COUPLING', label: '耦合度' },
-  { value: 'AGENT', label: 'Agent' }
-]
 const selectedList = computed(() => Array.from(selected.values()))
 
 onMounted(async () => {
-  await Promise.all([loadOptions(), resetCandidates()])
+  await loadOptions()
   if (!form.modelConfigId) {
     form.modelConfigId = defaultModelId()
   }
@@ -295,64 +196,10 @@ async function loadOptions() {
   }
 }
 
-async function resetCandidates() {
-  candidates.value = []
-  nextCursor.value = null
-  candidatesHasMore.value = false
-  await loadCandidates()
-}
-
-async function loadCandidates() {
-  const epoch = ++candidateEpoch
-  candidatesLoadingMore.value = false
-  candidatesLoading.value = true
-  candidatesError.value = ''
-  try {
-    const page = await reportsApi.candidates({
-      projectId: filterProject.value,
-      kind: filterKind.value,
-      limit: 20
-    })
-    if (epoch !== candidateEpoch) return
-    candidates.value = page.items
-    nextCursor.value = page.nextCursor
-    candidatesHasMore.value = page.hasMore
-  } catch (failure) {
-    if (epoch === candidateEpoch) candidatesError.value = (failure as Error).message || '可选结果读取失败'
-  } finally {
-    if (epoch === candidateEpoch) candidatesLoading.value = false
-  }
-}
-
-async function loadMoreCandidates() {
-  if (!nextCursor.value || candidatesLoading.value || candidatesLoadingMore.value) return
-  const epoch = candidateEpoch
-  candidatesLoadingMore.value = true
-  candidatesError.value = ''
-  try {
-    const page = await reportsApi.candidates({
-      projectId: filterProject.value,
-      kind: filterKind.value,
-      cursor: nextCursor.value,
-      limit: 20
-    })
-    if (epoch !== candidateEpoch || nextCursor.value === null) return
-    candidates.value = [...candidates.value, ...page.items]
-    nextCursor.value = page.nextCursor
-    candidatesHasMore.value = page.hasMore
-  } catch (failure) {
-    if (epoch === candidateEpoch) candidatesError.value = (failure as Error).message || '更多可选结果读取失败'
-  } finally {
-    if (epoch === candidateEpoch) candidatesLoadingMore.value = false
-  }
-}
-
-function toggle(candidate: ReportCandidate) {
-  if (selected.has(candidate.resultId)) {
-    selected.delete(candidate.resultId)
-  } else {
-    selected.set(candidate.resultId, candidate)
-  }
+function applySelection(items: ReportCandidate[]) {
+  if (submitting.value) return
+  selected.clear()
+  items.forEach(item => selected.set(item.resultId, item))
 }
 
 function remove(resultId: string) {
@@ -363,32 +210,40 @@ function closeCreate() {
   router.push('/reports')
 }
 
-function pathTitle(record: { path: string | null; oldPath?: string | null }) {
-  if (!record.path) return 'Agent Markdown'
-  return record.oldPath ? `${record.oldPath} → ${record.path}` : record.path
+function openCodeReference(value: CodeReferencePayload) {
+  codePayload.value = value
+  codeOpen.value = true
 }
 
 async function openResult(record: ReportCandidate) {
-  if (!record.targetId) {
-    if (record.kind === 'AGENT') {
-      router.push({ path: `/reviews/${record.taskId}`, query: { from: '/reports/new' } })
-      return
-    }
+  if (record.kind !== 'AGENT' && !record.targetId) {
     message.warning('这条结果没有可查看的文件目标')
     return
   }
-  resultTitle.value = `${taskLabel(record.taskName, record.taskId)} · ${fileName(record.path)}`
+  const epoch = ++resultEpoch
+  previewRecord.value = record
+  resultTitle.value = `${taskLabel(record.taskName, record.taskId)} · ${record.kind === 'AGENT' ? 'Agent 调查结果' : fileName(record.path)}`
   resultTaskId.value = record.taskId
+  resultProjectId.value = record.projectId
   resultView.value = null
+  agentResult.value = null
+  codePayload.value = null
+  codeOpen.value = false
   resultError.value = ''
   resultOpen.value = true
   resultLoading.value = true
   try {
-    resultView.value = await tasksApi.result(record.taskId, record.targetId)
+    if (record.kind === 'AGENT') {
+      const result = await agentTasksApi.result(record.taskId)
+      if (!disposed && epoch === resultEpoch) agentResult.value = result
+    } else {
+      const result = await tasksApi.result(record.taskId, record.targetId!)
+      if (!disposed && epoch === resultEpoch) resultView.value = result
+    }
   } catch (failure) {
-    resultError.value = (failure as Error).message || '审查结果读取失败'
+    if (!disposed && epoch === resultEpoch) resultError.value = (failure as Error).message || '审查结果读取失败'
   } finally {
-    resultLoading.value = false
+    if (epoch === resultEpoch) resultLoading.value = false
   }
 }
 
@@ -433,139 +288,34 @@ async function submit() {
   }
 }
 
-function kindText(kind: string) {
-  return ({ ISSUE: '问题', PATTERN: '模式', COUPLING: '耦合', AGENT: 'Agent' } as Record<string, string>)[kind] || kind
-}
-
 function defaultModelId() {
   return models.value.find((model) => model.contextWindow && model.contextWindow > 0)?.id
     || models.value[0]?.id
 }
 
-function feedbackText(candidate: ReportCandidate) {
-  if (!candidate.feedback || !candidate.feedback.assessment) {
-    return candidate.feedback?.comment ? '未判定（有评论）' : '未反馈'
-  }
-  return ({
-    ACCURATE: '准确', INACCURATE: '不准确', UNKNOWN: '无法判断'
-  } as Record<string, string>)[candidate.feedback.assessment] || candidate.feedback.assessment
-}
-
-function shortSha(sha: string | null) {
-  return sha ? sha.slice(0, 10) : '—'
-}
 </script>
 
 <style scoped lang="less">
-.intro {
-  margin: 0 0 16px;
-}
-.file-name {
-  display: block;
-  overflow-wrap: anywhere;
-}
-.mb16 {
-  margin-bottom: 16px;
-}
-.mb12 {
-  margin-bottom: 12px;
-}
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.field.full {
-  grid-column: 1 / -1;
-}
-.field label {
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--ink);
-}
-.create-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
-  gap: 16px;
-  align-items: start;
-}
-.filters {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.spacer {
-  flex: 1;
-}
-.muted {
-  color: var(--muted);
-}
-.small {
-  font-size: 12px;
-}
-.source-cell,
-.path-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.selected-panel {
-  position: sticky;
-  top: 16px;
-}
-.section-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.selected-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 360px;
-  overflow: auto;
-  margin-bottom: 12px;
-}
-.selected-item {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-}
-.selected-item > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.freeze-note {
-  margin: 12px 0;
-}
-.submit-note {
-  margin: 8px 0 0;
-}
-.more {
-  margin-top: 12px;
-}
-@media (max-width: 1100px) {
-  .create-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .selected-panel {
-    position: static;
-  }
+.intro { margin: 0 0 16px; }
+.mb16 { margin-bottom: 16px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field.full { grid-column: 1 / -1; }
+.field label { font-size: 12px; font-weight: 550; color: var(--ink); }
+.section-head, .form-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.section-head { margin-bottom: 12px; }
+.selected-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow: auto; }
+.selected-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.selected-item > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.selected-item strong, .file-name { overflow-wrap: anywhere; }
+.evidence-warning { color: #ad6800; }
+.freeze-note { margin: 12px 0 16px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.spacer { flex: 1; }
+@media (max-width: 650px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .selected-item { align-items: flex-start; flex-direction: column; }
 }
 </style>
 

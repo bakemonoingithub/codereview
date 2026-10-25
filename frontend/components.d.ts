@@ -69,6 +69,7 @@ declare module 'vue' {
     RawResult: typeof import('./src/components/RawResult.vue')['default']
     ReportMarkdown: typeof import('./src/components/ReportMarkdown.vue')['default']
     ReportPanel: typeof import('./src/components/ReportPanel.vue')['default']
+    ReportResultPickerModal: typeof import('./src/components/ReportResultPickerModal.vue')['default']
     ReportSourceModal: typeof import('./src/components/ReportSourceModal.vue')['default']
     ReviewConfigSnapshot: typeof import('./src/components/ReviewConfigSnapshot.vue')['default']
     ReviewRecordViewer: typeof import('./src/components/ReviewRecordViewer.vue')['default']
