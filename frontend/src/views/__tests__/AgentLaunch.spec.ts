@@ -215,3 +215,53 @@ describe('Agent 发起表单', () => {
   })
 
 })
+
+function formItem(wrapper: any, label: string) {
+  return wrapper.findAll('a-form-item-stub').find((item: any) => item.attributes('label') === label)
+}
+
+describe('发起弹窗骨架', () => {
+  it('三分区与页脚统一，星号只来自 required', async () => {
+    const wrapper = await start()
+    expect(wrapper.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('发起 Agent 分析')
+    expect(wrapper.findComponent({ name: 'LaunchModalShell' }).props('maskClosable')).toBe(true)
+    expect(wrapper.findAll('.launch-section')).toHaveLength(3)
+    expect(wrapper.text()).toContain('1. 审查目标')
+    expect(wrapper.text()).toContain('2. 审查范围')
+    expect(wrapper.text()).toContain('3. 补充要求')
+    const bar = wrapper.find('.submit-bar')
+    expect(bar.text().indexOf('取消')).toBeGreaterThanOrEqual(0)
+    expect(bar.text().indexOf('取消')).toBeLessThan(bar.text().indexOf('开始 Agent 分析'))
+    expect(wrapper.html()).not.toContain('class="required"')
+    expect(wrapper.html()).not.toContain('>必填<')
+    for (const label of ['项目', '模型', '范围类型', '分支', '文件与目录', '补充要求']) {
+      expect(formItem(wrapper, label)?.attributes('required'), label).toBe('')
+    }
+    expect(formItem(wrapper, '任务名称（可选）')?.attributes('required')).toBeUndefined()
+    expect(formItem(wrapper, '提示词版本')).toBeUndefined()
+    const guidance = wrapper.findAll('a-form-item-stub').find((item) => item.text().includes('指导提示词'))
+    expect(guidance?.text()).toContain('（可选）')
+    expect(guidance?.attributes('required')).toBeUndefined()
+    const s = state(wrapper)
+    s.form.guidancePromptId = 'g1'
+    await flushPromises()
+    expect(formItem(wrapper, '提示词版本')?.attributes('required')).toBe('')
+    s.form.kind = 'TEXT'
+    await flushPromises()
+    expect(formItem(wrapper, '范围描述')?.attributes('required')).toBe('')
+    s.form.kind = 'COMMITS'
+    await flushPromises()
+    expect(formItem(wrapper, '提交比较')?.attributes('required')).toBe('')
+    expect(formItem(wrapper, '分支')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('复制参数时沿用原标题', async () => {
+    context.route.query = { copyFrom: 'old-task' }
+    vi.mocked(agentTasksApi.copyInput).mockResolvedValue({ projectId: 'p1', modelConfigId: 'm1',
+      requirements: '原要求', scope: { kind: 'FILES', branch: 'main', paths: ['src/A.java'] } } as any)
+    const wrapper = await start()
+    expect(wrapper.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('复制参数发起新 Agent 分析')
+    wrapper.unmount()
+  })
+})
