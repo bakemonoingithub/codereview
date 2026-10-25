@@ -77,9 +77,16 @@
             <progress :value="progress?.networkAttempts || 0" :max="limitMax('networkAttempts')" />
           </div>
           <div class="agent-meter">
-            <span class="muted small">期限</span>
-            <strong>{{ limitText('deadlineMinutes') }} <small>分钟</small></strong>
-            <span class="muted small">输出上限 {{ limitText('outputTokens') }} tokens</span>
+            <span class="muted small">总耗时</span>
+            <strong>{{ elapsedText }} <small>/ {{ limitText('deadlineMinutes') }} 分钟</small></strong>
+            <span class="muted small meter-note">含排队与准备</span>
+            <progress aria-label="总耗时预算" :value="elapsedSeconds ?? undefined" :max="limitMax('deadlineMinutes') * 60" />
+          </div>
+          <div class="agent-meter">
+            <span class="muted small" title="单次模型回复的已记录输出峰值与单轮输出上限">单轮输出 Token</span>
+            <strong>{{ tokenText(progress?.outputUsage?.peakOutputTokens) }} <small>/ {{ limitText('outputTokens') }} Token</small></strong>
+            <span class="muted small meter-note">{{ outputUsageNote }}</span>
+            <progress aria-label="单轮输出 Token 预算" :value="progress?.outputUsage?.peakOutputTokens ?? undefined" :max="limitMax('outputTokens')" />
           </div>
         </div>
         <p v-if="progressError" class="error-line">{{ progressError }}</p>
@@ -281,6 +288,7 @@ import MarkdownView from '@/components/MarkdownView.vue'
 import CodeViewer from '@/components/CodeViewer.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import { formatSeconds } from '@/utils/duration'
 import {
   agentTasksApi,
   projectsApi,
@@ -310,6 +318,22 @@ const activeTab = ref('result')
 
 const progress = ref<AgentProgress | null>(null)
 const progressError = ref('')
+const elapsedSeconds = computed(() => {
+  const value = progress.value?.elapsedSeconds
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
+})
+const elapsedText = computed(() => elapsedSeconds.value === null ? '—' : formatSeconds(elapsedSeconds.value))
+const outputUsageNote = computed(() => {
+  const usage = progress.value?.outputUsage
+  if (!usage) return '输出用量暂不可用'
+  if (usage.totalOutputTokens === null) return `${usage.unreportedCalls} 次调用未返回输出用量`
+  const total = `累计已记录 ${tokenText(usage.totalOutputTokens)} Token`
+  return usage.unreportedCalls > 0 ? `${total} · ${usage.unreportedCalls} 次用量未返回` : total
+})
+
+function tokenText(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value.toLocaleString() : '—'
+}
 
 const result = ref<AgentResultView | null>(null)
 const resultLoading = ref(false)
@@ -757,11 +781,14 @@ function formatTime(value: string | null | undefined) {
 }
 .agent-meters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin: 0 0 24px;
 }
 .agent-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: #fff;
@@ -770,7 +797,8 @@ function formatTime(value: string | null | undefined) {
 }
 .agent-meter strong { display: block; margin: 7px 0; font-size: 18px; font-weight: 700; }
 .agent-meter small { font-size: 11px; font-weight: 400; color: var(--muted); }
-.agent-meter progress { height: 5px; width: 100%; accent-color: var(--blue); }
+.agent-meter progress { height: 5px; width: 100%; margin-top: auto; accent-color: var(--blue); }
+.agent-meter .meter-note { margin-bottom: 8px; font-size: 11px; }
 .error-line { color: var(--red); font-size: 12px; margin: -12px 0 16px; }
 .tabbar {
   display: flex;
@@ -934,7 +962,7 @@ function formatTime(value: string | null | undefined) {
 .pad-alert { margin: 16px 24px 0; }
 @media (max-width: 1250px) {
   .agent-layout { grid-template-columns: minmax(0, 1fr) minmax(320px, 340px); }
-  .agent-meters { gap: 10px; }
+  .agent-meters { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .agent-meter { padding: 14px; }
   .agent-article { padding: 24px; }
 }

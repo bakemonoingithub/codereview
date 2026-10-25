@@ -10,11 +10,43 @@ axios.defaults.adapter = async (config) => {
   if (failure) throw failure
   return { data: payload, status: 200, statusText: 'OK', headers: {}, config }
 }
-const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, reportsApi, repositoryApi, modelCallsApi } = await import('@/api/v2')
+const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, reportsApi, repositoryApi, modelCallsApi, agentTasksApi } = await import('@/api/v2')
 afterAll(() => { axios.defaults.adapter = originalAdapter })
 beforeEach(() => { failure = undefined })
 
 describe('v2 客户端的真实响应链', () => {
+  it('Agent 进度把后端 Long 字符串转换为用量数字，同时保留任务 ID', async () => {
+    payload = {
+      taskId: '01M5KP4AB5BP9WN66DBQSFFBAW', state: 'SUCCEEDED', turnNo: 29,
+      elapsedSeconds: '164',
+      outputUsage: { totalOutputTokens: '19537', peakOutputTokens: '9962', reportedCalls: 29, unreportedCalls: 0 }
+    }
+    const progress = await agentTasksApi.progress('01M5KP4AB5BP9WN66DBQSFFBAW')
+    expect(sent.url).toBe('/agent-tasks/01M5KP4AB5BP9WN66DBQSFFBAW/progress')
+    expect(progress).toMatchObject({
+      taskId: '01M5KP4AB5BP9WN66DBQSFFBAW', elapsedSeconds: 164,
+      outputUsage: { totalOutputTokens: 19537, peakOutputTokens: 9962, reportedCalls: 29, unreportedCalls: 0 }
+    })
+  })
+
+  it.each([0, '0'])('Agent 进度保留实际零用量：%s', async (zero) => {
+    payload = { elapsedSeconds: zero, outputUsage: {
+      totalOutputTokens: zero, peakOutputTokens: zero, reportedCalls: 0, unreportedCalls: 0
+    } }
+    expect(await agentTasksApi.progress('t1')).toMatchObject({
+      elapsedSeconds: 0, outputUsage: { totalOutputTokens: 0, peakOutputTokens: 0 }
+    })
+  })
+
+  it('Agent 缺失或非法用量保持未知，不转换成零或丢失精度的数字', async () => {
+    payload = { elapsedSeconds: null, outputUsage: {
+      totalOutputTokens: '', peakOutputTokens: '9007199254740993', reportedCalls: 0, unreportedCalls: 2
+    } }
+    expect(await agentTasksApi.progress('t1')).toMatchObject({
+      elapsedSeconds: null, outputUsage: { totalOutputTokens: null, peakOutputTokens: null }
+    })
+  })
+
   it('报告调用读取完整详情端点，保留请求、返回和调用元数据', async () => {
     payload = { id: 'c1', state: 'SUCCEEDED', purpose: 'REPORT', attempt: 1,
       requestBody: '{"messages":[]}', responseBody: '{"choices":[]}', usageJson: '{"total_tokens":12}' }

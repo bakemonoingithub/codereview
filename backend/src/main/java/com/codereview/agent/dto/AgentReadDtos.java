@@ -14,7 +14,13 @@ public final class AgentReadDtos {
     /** 进度：动作、轮次／尝试计数与已查覆盖；{@code limits} 来自任务冻结快照。 */
     public record Progress(String taskId, String state, String stopReason, int turnNo,
                            int toolAttempts, int networkAttempts, String currentAction,
-                           JsonNode covered, JsonNode limits, LocalDateTime updatedAt) {
+                           JsonNode covered, JsonNode limits, LocalDateTime updatedAt,
+                           Long elapsedSeconds, OutputUsage outputUsage) {
+    }
+
+    /** 输出用量只统计提供方实际返回的计数；每轮上限应与峰值比较。 */
+    public record OutputUsage(Long totalOutputTokens, Long peakOutputTokens,
+                              int reportedCalls, int unreportedCalls) {
     }
 
     public record ToolCallSummary(String id, int turnNo, int ordinal, String toolName,

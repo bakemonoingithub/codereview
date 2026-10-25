@@ -115,22 +115,60 @@ describe('Agent 任务详情', () => {
     wrapper.unmount()
   })
 
+  it('耗时和输出各自展示实际用量及上限，输出峰值不与累计量混用', async () => {
+    vi.mocked(agentTasksApi.progress).mockResolvedValue({
+      ...progress('SUCCEEDED'), elapsedSeconds: 310,
+      outputUsage: { totalOutputTokens: 24000, peakOutputTokens: 12000, reportedCalls: 5, unreportedCalls: 0 }
+    } as any)
+    const wrapper = await start()
+    const meters = wrapper.findAll('.agent-meter')
+    expect(meters).toHaveLength(5)
+    expect(meters[3].text()).toContain('总耗时')
+    expect(meters[3].find('strong').text()).toContain('5 分 10 秒')
+    expect(meters[3].find('progress').attributes()).toMatchObject({ value: '310', max: '1200' })
+    expect(meters[4].find('strong').text()).toContain('12,000')
+    expect(meters[4].find('strong').text()).toContain('16,384')
+    expect(meters[4].text()).toContain('累计已记录 24,000 Token')
+    expect(meters[4].find('progress').attributes()).toMatchObject({ value: '12000', max: '16384' })
+    wrapper.unmount()
+  })
+
+  it('未返回的用量和缺失的耗时显示未知，不伪装成零', async () => {
+    vi.mocked(agentTasksApi.progress).mockResolvedValue({
+      ...progress('FAILED'), elapsedSeconds: null,
+      outputUsage: { totalOutputTokens: null, peakOutputTokens: null, reportedCalls: 0, unreportedCalls: 2 }
+    } as any)
+    const wrapper = await start()
+    const meters = wrapper.findAll('.agent-meter')
+    expect(meters[3].find('strong').text()).toContain('—')
+    expect(meters[3].find('progress').attributes('value')).toBeUndefined()
+    expect(meters[4].find('strong').text()).toContain('—')
+    expect(meters[4].find('progress').attributes('value')).toBeUndefined()
+    expect(meters[4].text()).toContain('2 次调用未返回输出用量')
+    wrapper.unmount()
+  })
+
   it('运行中的任务通过轮询转为终态并加载结果', async () => {
     vi.useFakeTimers()
     vi.mocked(tasksApi.detail).mockResolvedValue(task('RUNNING') as any)
-    vi.mocked(agentTasksApi.progress).mockResolvedValue(progress('RUNNING') as any)
+    vi.mocked(agentTasksApi.progress).mockResolvedValue({ ...progress('RUNNING'), elapsedSeconds: 2 } as any)
     const wrapper = mount(AgentTaskDetail, {
       global: { stubs: { ...namedAntStubs, MaterialReaderModal: true, MarkovView: true } }
     })
     await flushPromises()
 
-    vi.mocked(agentTasksApi.progress).mockResolvedValue(progress('SUCCEEDED') as any)
+    vi.mocked(agentTasksApi.progress).mockResolvedValue({ ...progress('SUCCEEDED'), elapsedSeconds: 6 } as any)
     vi.advanceTimersByTime(2000)
     await flushPromises()
 
     const s = state(wrapper)
     expect(s.task.state).toBe('SUCCEEDED')
     expect(s.result.body.title).toBe('任务创建入口')
+    expect(s.elapsedText).toBe('6 秒')
+    const requests = vi.mocked(agentTasksApi.progress).mock.calls.length
+    vi.advanceTimersByTime(4000)
+    await flushPromises()
+    expect(agentTasksApi.progress).toHaveBeenCalledTimes(requests)
     vi.useRealTimers()
     wrapper.unmount()
   })

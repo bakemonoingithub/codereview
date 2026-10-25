@@ -9,26 +9,35 @@ import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentRun;
 import com.codereview.agent.entity.AgentToolCall;
+import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentToolCallMapper;
+import com.codereview.agent.mapper.AgentModelCallMapper;
+import com.codereview.agent.support.AgentTime;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -41,8 +50,10 @@ class AgentReadServiceTest {
     @Mock private AgentRunMapper runMapper;
     @Mock private AgentToolCallMapper toolCallMapper;
     @Mock private AgentReviewResultMapper resultMapper;
+    @Mock private AgentModelCallMapper modelCallMapper;
 
     private AgentReadService service;
+    private AgentReviewTask task;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeEach
@@ -52,12 +63,17 @@ class AgentReadServiceTest {
         when(db.mapper(AgentRunMapper.class)).thenReturn(runMapper);
         when(db.mapper(AgentToolCallMapper.class)).thenReturn(toolCallMapper);
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
-        AgentReviewTask task = new AgentReviewTask();
+        when(db.mapper(AgentModelCallMapper.class)).thenReturn(modelCallMapper);
+        when(modelCallMapper.selectList(any())).thenReturn(List.of());
+        task = new AgentReviewTask();
         task.setId(TASK_ID);
         task.setProjectId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E3");
         task.setRoute("AGENT");
         task.setState("SUCCEEDED");
         task.setConfigSnapshot("{\"limits\":{\"modelTurns\":48,\"toolAttempts\":192}}");
+        task.setCreatedAt(LocalDateTime.of(2026, 10, 25, 1, 0));
+        task.setStartedAt(task.getCreatedAt().plusSeconds(120));
+        task.setFinishedAt(task.getCreatedAt().plusSeconds(310));
         when(taskMapper.selectById(any())).thenReturn(task);
     }
 
@@ -80,6 +96,64 @@ class AgentReadServiceTest {
         assertEquals(5, progress.networkAttempts());
         assertEquals(48, progress.limits().path("modelTurns").asInt());
         assertEquals(5, progress.covered().path("turnNo").asInt());
+        assertEquals(310L, progress.elapsedSeconds());
+        assertEquals(0L, progress.outputUsage().totalOutputTokens());
+    }
+
+    @Test
+    void elapsedTimeIncludesQueueingAndStopsAtThePersistedFinishTime() {
+        try (var time = mockStatic(AgentTime.class)) {
+            time.when(AgentTime::now).thenReturn(task.getCreatedAt().plusSeconds(600));
+            assertEquals(310L, service.progress(TASK_ID).elapsedSeconds());
+
+            task.setState("QUEUED");
+            task.setFinishedAt(null);
+            assertEquals(600L, service.progress(TASK_ID).elapsedSeconds());
+
+            task.setState("FAILED");
+            assertNull(service.progress(TASK_ID).elapsedSeconds());
+        }
+    }
+
+    @Test
+    void outputUsageKeepsCumulativeAndPerCallPeakSeparateAndMarksUnreportedUsage() {
+        when(modelCallMapper.selectList(any())).thenReturn(List.of(
+                modelCall("SUCCEEDED", "{\"completion_tokens\":12000}"),
+                modelCall("SUCCEEDED", "{\"completion_tokens\":9000}"),
+                modelCall("SUCCEEDED", "{\"completion_tokens\":0}"),
+                modelCall("SUCCEEDED", "{\"completion_tokens\":-1,\"output_tokens\":800}"),
+                modelCall("FAILED", "invalid-json"),
+                modelCall("SUCCEEDED", "{\"completion_tokens\":\"500\"}"),
+                modelCall("RUNNING", null)));
+
+        AgentReadDtos.OutputUsage usage = service.progress(TASK_ID).outputUsage();
+        assertEquals(21800L, usage.totalOutputTokens());
+        assertEquals(12000L, usage.peakOutputTokens());
+        assertEquals(4, usage.reportedCalls());
+        assertEquals(2, usage.unreportedCalls());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<QueryWrapper<AgentModelCall>> query = ArgumentCaptor.forClass(QueryWrapper.class);
+        verify(modelCallMapper).selectList(query.capture());
+        assertEquals("usage_json,state", query.getValue().getSqlSelect());
+        assertTrue(query.getValue().getSqlSegment().contains("task_id"));
+        assertTrue(query.getValue().getParamNameValuePairs().containsValue(TASK_ID));
+    }
+
+    @Test
+    void missingOutputUsageIsNotDisplayedAsZero() {
+        when(modelCallMapper.selectList(any())).thenReturn(List.of(modelCall("SUCCEEDED", null)));
+        AgentReadDtos.OutputUsage usage = service.progress(TASK_ID).outputUsage();
+        assertNull(usage.totalOutputTokens());
+        assertNull(usage.peakOutputTokens());
+        assertEquals(1, usage.unreportedCalls());
+    }
+
+    private AgentModelCall modelCall(String state, String usageJson) {
+        AgentModelCall call = new AgentModelCall();
+        call.setState(state);
+        call.setUsageJson(usageJson);
+        return call;
     }
 
     @Test

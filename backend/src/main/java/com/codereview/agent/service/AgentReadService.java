@@ -1,6 +1,7 @@
 package com.codereview.agent.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.api.PageResponse;
@@ -11,11 +12,14 @@ import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentRun;
 import com.codereview.agent.entity.AgentToolCall;
+import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentToolCallMapper;
+import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.support.AgentIds;
+import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,6 +27,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 /**
  * Agent 读取侧：进度、逐次工具调用与已发布结果。
@@ -63,7 +69,48 @@ public class AgentReadService {
         return new AgentReadDtos.Progress(taskId, state, stopReason, turnNo, toolAttempts,
                 networkAttempts, run == null ? null : run.getCurrentAction(),
                 readJson(run == null ? null : run.getCoveredJson()), limits,
-                run == null ? task.getUpdatedAt() : run.getUpdatedAt());
+                run == null ? task.getUpdatedAt() : run.getUpdatedAt(),
+                elapsedSeconds(task), outputUsage(taskId));
+    }
+
+    private Long elapsedSeconds(AgentReviewTask task) {
+        // 总期限从创建时开始，包含排队与准备；终态不得继续用当前时间累计。
+        LocalDateTime end = TaskStates.isTerminal(task.getState()) ? task.getFinishedAt() : AgentTime.now();
+        if (task.getCreatedAt() == null || end == null) {
+            return null;
+        }
+        return Math.max(0L, Duration.between(task.getCreatedAt(), end).getSeconds());
+    }
+
+    private AgentReadDtos.OutputUsage outputUsage(String taskId) {
+        // 轮询只读取用量与状态，避免加载每次调用的大段请求／响应正文。
+        List<AgentModelCall> calls = db.mapper(AgentModelCallMapper.class).selectList(
+                new QueryWrapper<AgentModelCall>().select("usage_json", "state").eq("task_id", taskId));
+        long total = 0;
+        long peak = 0;
+        int reported = 0;
+        int unreported = 0;
+        for (AgentModelCall call : calls) {
+            JsonNode usage = readJson(call.getUsageJson());
+            Long output = tokenCount(usage.path("completion_tokens"));
+            if (output == null) output = tokenCount(usage.path("output_tokens"));
+            if (output != null) {
+                total += output;
+                peak = Math.max(peak, output);
+                reported++;
+            } else if (!"RUNNING".equals(call.getState())) {
+                unreported++;
+            }
+        }
+        boolean unavailable = reported == 0 && unreported > 0;
+        return new AgentReadDtos.OutputUsage(unavailable ? null : total, unavailable ? null : peak,
+                reported, unreported);
+    }
+
+    private Long tokenCount(JsonNode value) {
+        // 单次调用用量是非负整数；不把缺失、负数或格式错误当作零。
+        return value.isIntegralNumber() && value.canConvertToInt() && value.longValue() >= 0
+                ? value.longValue() : null;
     }
 
     public PageResponse<AgentReadDtos.ToolCallSummary> toolCalls(String taskId, Integer pageNum,

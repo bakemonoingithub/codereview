@@ -290,6 +290,30 @@ export interface AgentProgress {
   covered: Record<string, unknown>
   limits: Record<string, unknown>
   updatedAt: string | null
+  elapsedSeconds?: number | null
+  outputUsage?: {
+    totalOutputTokens: number | null
+    peakOutputTokens: number | null
+    reportedCalls: number
+    unreportedCalls: number
+  }
+}
+
+// 后端全局把 Long 序列化为字符串；仅转换用量字段，任务 ID 保留原样。
+type AgentProgressResponse = Omit<AgentProgress, 'elapsedSeconds' | 'outputUsage'> & {
+  elapsedSeconds?: number | string | null
+  outputUsage?: {
+    totalOutputTokens: number | string | null
+    peakOutputTokens: number | string | null
+    reportedCalls: number
+    unreportedCalls: number
+  } | null
+}
+
+function usageCount(value: unknown): number | null {
+  if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+$/.test(value))) return null
+  const count = Number(value)
+  return Number.isSafeInteger(count) && count >= 0 ? count : null
 }
 
 export interface AgentToolCallSummary {
@@ -345,7 +369,15 @@ export const agentTasksApi = {
   copyInput: (id: string) =>
     v2.get<AgentTaskCopyInput>(`/agent-tasks/${id}/copy-input`).then((r) => r.data),
   progress: (id: string) =>
-    v2.get<AgentProgress>(`/agent-tasks/${id}/progress`).then((r) => r.data),
+    v2.get<AgentProgressResponse>(`/agent-tasks/${id}/progress`).then(({ data }): AgentProgress => ({
+      ...data,
+      elapsedSeconds: usageCount(data.elapsedSeconds),
+      outputUsage: data.outputUsage ? {
+        ...data.outputUsage,
+        totalOutputTokens: usageCount(data.outputUsage.totalOutputTokens),
+        peakOutputTokens: usageCount(data.outputUsage.peakOutputTokens)
+      } : undefined
+    })),
   toolCalls: (id: string, params: { pageNum?: number; pageSize?: number } = {}) =>
     v2.get<Page<AgentToolCallSummary>>(`/agent-tasks/${id}/tool-calls`, { params }).then((r) => r.data),
   toolCall: (id: string, callId: string) =>
