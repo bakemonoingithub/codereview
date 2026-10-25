@@ -1,14 +1,10 @@
 <template>
   <ListPageLayout
     title="模型管理"
-    subtitle="维护接入地址、凭据与容量档案。验证记录说明实际检查范围。"
+    subtitle="维护执行审查的大语言模型。"
   >
     <template #actions>
       <a-button type="primary" @click="openCreate">＋ 新建模型</a-button>
-    </template>
-
-    <template #notice>
-      <PageNotice>配置模型后可在审查策略和报告表单中选用。凭据只写入，不回显正文或带入历史输入。</PageNotice>
     </template>
 
     <template #filters>
@@ -23,7 +19,7 @@
 
     <LoadErrorAlert :message="loadError" @retry="retry" />
 
-    <a-table :data-source="records" row-key="id" :loading="loading" :pagination="pagination">
+    <a-table class="model-config-table" :data-source="records" row-key="id" :loading="loading" :pagination="pagination">
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的模型' : '还没有接入模型'"
@@ -52,39 +48,50 @@
           </div>
         </template>
       </a-table-column>
-      <a-table-column title="验证状态" width="170">
+      <a-table-column title="验证状态" width="230">
         <template #default="{ record }">
-          <StatusBadge :tone="validationTone(record.validationStatus)">
-            {{ validationLabel(record.validationStatus) }}
-          </StatusBadge>
-          <div class="cell-sub">可达性与简单 JSON；未验证完整窗口</div>
-          <div class="cell-sub">Agent 工具协议：{{ validationLabel(record.agentValidationStatus) }}</div>
+          <div class="model-validation-list">
+            <div class="model-validation-row">
+              <span class="model-validation-label">专项审查</span>
+              <StatusBadge :tone="validationTone(record.validationStatus)">
+                {{ validationLabel(record.validationStatus) }}
+              </StatusBadge>
+            </div>
+            <div class="model-validation-row">
+              <span class="model-validation-label">Agent 分析</span>
+              <StatusBadge :tone="validationTone(record.agentValidationStatus)">
+                {{ validationLabel(record.agentValidationStatus) }}
+              </StatusBadge>
+            </div>
+          </div>
         </template>
       </a-table-column>
-      <a-table-column title="操作" width="210">
+      <a-table-column title="操作" width="230">
         <template #default="{ record }">
-          <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-          <a-button
-            type="link"
-            size="small"
-            :loading="validatingId === record.id"
-            :disabled="!!validatingId"
-            @click="onValidate(record)"
-          >
-            验证
-          </a-button>
-          <a-button
-            type="link"
-            size="small"
-            :loading="agentValidatingId === record.id"
-            :disabled="!!agentValidatingId"
-            @click="onValidateAgent(record)"
-          >
-            Agent 验证
-          </a-button>
-          <a-popconfirm title="删除后历史调用与任务快照不受影响，确认删除？" @confirm="onDelete(record.id)">
-            <a-button type="link" size="small" danger>删除</a-button>
-          </a-popconfirm>
+          <div class="model-actions">
+            <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button
+              type="link"
+              size="small"
+              :loading="validatingId === record.id"
+              :disabled="!!validatingId"
+              @click="onValidate(record)"
+            >
+              验证
+            </a-button>
+            <a-button
+              type="link"
+              size="small"
+              :loading="agentValidatingId === record.id"
+              :disabled="!!agentValidatingId"
+              @click="onValidateAgent(record)"
+            >
+              Agent 验证
+            </a-button>
+            <a-popconfirm title="确认删除？" @confirm="onDelete(record.id)">
+              <a-button type="link" size="small" danger>删除</a-button>
+            </a-popconfirm>
+          </div>
         </template>
       </a-table-column>
     </a-table>
@@ -145,7 +152,6 @@ import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
-import PageNotice from '@/components/PageNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
 const keyword = ref('')
@@ -316,6 +322,30 @@ onMounted(load)
 </script>
 
 <style scoped lang="less">
+.model-validation-list {
+  display: grid;
+  gap: 8px;
+}
+.model-validation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.model-validation-label {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.model-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+:deep(.model-config-table .ant-table-cell) {
+  vertical-align: middle;
+}
 .field-hint {
   margin-top: 4px;
   color: var(--muted);

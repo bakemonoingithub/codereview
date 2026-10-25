@@ -64,6 +64,7 @@ declare module 'vue' {
     MaterialReaderModal: typeof import('./src/components/MaterialReaderModal.vue')['default']
     PageNotice: typeof import('./src/components/PageNotice.vue')['default']
     PatternResult: typeof import('./src/components/PatternResult.vue')['default']
+    PromptInfoPreview: typeof import('./src/components/PromptInfoPreview.vue')['default']
     RawResult: typeof import('./src/components/RawResult.vue')['default']
     ReportMarkdown: typeof import('./src/components/ReportMarkdown.vue')['default']
     ReportPanel: typeof import('./src/components/ReportPanel.vue')['default']
@@ -77,6 +78,7 @@ declare module 'vue' {
     SpecialistResultView: typeof import('./src/components/SpecialistResultView.vue')['default']
     SplitPane: typeof import('./src/components/SplitPane.vue')['default']
     StatusBadge: typeof import('./src/components/StatusBadge.vue')['default']
+    StrategyAssociationInfo: typeof import('./src/components/StrategyAssociationInfo.vue')['default']
     TaskAccuracySummary: typeof import('./src/components/TaskAccuracySummary.vue')['default']
     TaskDetailMetadata: typeof import('./src/components/TaskDetailMetadata.vue')['default']
   }

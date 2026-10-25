@@ -1,7 +1,7 @@
 <template>
   <ListPageLayout
     title="项目管理"
-    subtitle="维护待审查的代码仓库；仓库地址创建后锁定，令牌只写不读。"
+    subtitle="维护待审查的代码仓库。"
   >
     <template #actions>
       <a-button type="primary" @click="openCreate">＋ 新建项目</a-button>
@@ -16,9 +16,9 @@
         @search="reload"
       />
     </template>
-    <template #filters-extra>
-      <span class="filter-hint">管理可复用配置</span>
-    </template>
+<!--    <template #filters-extra>-->
+<!--      <span class="filter-hint">管理可复用配置</span>-->
+<!--    </template>-->
 
     <LoadErrorAlert :message="loadError" @retry="retry" />
 
@@ -95,14 +95,14 @@
       @ok="confirmDelete"
     >
       <p v-if="pendingDelete">
-        将从项目列表移除「{{ pendingDelete.name }}」。已完成的审查任务仍保留，不能再从该项目发起新审查。进行中的任务会阻止删除。
+        将从项目列表移除「{{ pendingDelete.name }}」。已完成的审查任务仍保留，不能再从该项目发起新审查。无法删除存在进行中任务的项目。
       </p>
       <p v-if="deleteError" class="delete-error">{{ deleteError }}</p>
     </a-modal>
 
-    <template #footer>
-      <PageNotice>新建时填写仓库地址；编辑时仓库地址锁定，令牌留空保留当前值。</PageNotice>
-    </template>
+<!--    <template #footer>-->
+<!--      <PageNotice>新建时填写仓库地址；编辑时仓库地址锁定，令牌留空保留当前值。</PageNotice>-->
+<!--    </template>-->
   </ListPageLayout>
 </template>
 

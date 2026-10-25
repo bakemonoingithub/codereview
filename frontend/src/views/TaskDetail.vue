@@ -314,7 +314,7 @@ onBeforeRouteUpdate((to, from) => to.params.id === from.params.id
 
 const tabs = [
   { key: 'result' as const, label: '审查结果' },
-  { key: 'materials' as const, label: '材料与边界' },
+  { key: 'materials' as const, label: '审查输入' },
   { key: 'calls' as const, label: '实际调用' }
 ]
 

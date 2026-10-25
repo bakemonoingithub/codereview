@@ -1,15 +1,15 @@
 <template>
   <ListPageLayout
     title="策略管理"
-    subtitle="为专项选择模型和可选的通用规则提示词；发起任务时固定当时配置"
+    subtitle="维护专项审查的设置：模型与提示词"
   >
     <template #actions>
       <a-button type="primary" @click="openCreate">＋ 新建策略</a-button>
     </template>
 
-    <template #notice>
-      <PageNotice>策略关联专项类型、模型及可选提示词。文件说明仍由每次任务分别填写，内置任务和输出协议集中管理。</PageNotice>
-    </template>
+<!--    <template #notice>-->
+<!--      <PageNotice>策略关联专项类型、模型及可选提示词。文件说明仍由每次任务分别填写，内置任务和输出协议集中管理。</PageNotice>-->
+<!--    </template>-->
 
     <template #filters>
       <a-input-search
@@ -22,6 +22,7 @@
       <a-select
         v-model:value="specialistFilter"
         style="min-width: 160px"
+        placeholder="选择专项审查类型"
         :options="specialistFilterOptions"
         @change="reload"
       />
@@ -56,7 +57,7 @@
           <span v-else class="muted">{{ modelName(record.modelConfigId) }}</span>
         </template>
       </a-table-column>
-      <a-table-column title="通用规则提示词" width="260">
+      <a-table-column title="关联提示词" width="260">
         <template #default="{ record }">
           <template v-if="record.promptId">
             <div class="association-summary">
@@ -108,7 +109,7 @@
             {{ modelLoadError }}，<router-link to="/models">去模型页重试</router-link>
           </div>
         </a-form-item>
-        <a-form-item label="通用规则提示词（可选）">
+        <a-form-item label="关联提示词（可选）">
           <div class="field-with-link">
             <a-select v-model:value="form.promptId" placeholder="不选提示词" :options="promptOptions" allow-clear @change="onPromptChange">
               <template #notFoundContent>
@@ -226,7 +227,7 @@ const form = ref({
 })
 
 const specialistOptions = [
-  { value: 'ISSUE', label: '问题审查（含提交差异）' },
+  { value: 'ISSUE', label: '问题审查' },
   { value: 'PATTERN', label: '设计模式' },
   { value: 'COUPLING', label: '耦合度' }
 ]

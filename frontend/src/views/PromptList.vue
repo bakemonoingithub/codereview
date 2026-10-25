@@ -1,15 +1,15 @@
 <template>
   <ListPageLayout
     title="提示词管理"
-    subtitle="维护专项通用规则；正文按版本保存，历史版本不可改，实际调用按任务回看"
+    subtitle="维护审查通用规则，可按版本保存。"
   >
     <template #actions>
       <a-button type="primary" @click="openCreate">＋ 新建提示词</a-button>
     </template>
 
-    <template #notice>
-      <PageNotice>专项通过策略选用通用规则；逐文件临时说明仍在发起表单填写。Agent 指导提示词用途在 P33 接入。</PageNotice>
-    </template>
+<!--    <template #notice>-->
+<!--      <PageNotice>专项通过策略选用通用规则；逐文件临时说明仍在发起表单填写。Agent 指导提示词用途在 P33 接入。</PageNotice>-->
+<!--    </template>-->
 
     <template #filters>
       <a-input-search
@@ -56,8 +56,8 @@
         <template #default="{ record }">
           <a-space>
             <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-            <a-button type="link" size="small" @click="openVersions(record)">版本与对比</a-button>
-            <a-popconfirm title="删除后历史任务输入不受影响，确认删除？" @confirm="onDelete(record.id)">
+            <a-button type="link" size="small" @click="openVersions(record)">对比</a-button>
+            <a-popconfirm title="确认删除？" @confirm="onDelete(record.id)">
               <a-button type="link" size="small" danger>删除</a-button>
             </a-popconfirm>
           </a-space>
@@ -104,9 +104,9 @@
         </a-form-item>
         <a-form-item v-if="editingId" class="span-2" label="版本保存方式">
           <a-checkbox v-model:checked="form.createNewVersion">保存为新版本</a-checkbox>
-          <div class="field-hint">
-            勾选会保留当前版本并新增版本；取消勾选会覆盖当前版本正文，不增加版本号。
-          </div>
+<!--          <div class="field-hint">-->
+<!--            勾选会保留当前版本并新增版本；取消勾选会覆盖当前版本正文，不增加版本号。-->
+<!--          </div>-->
         </a-form-item>
       </a-form>
     </a-modal>
@@ -120,7 +120,7 @@
       <template #title>
         <div class="modal-title-block">
           <div>{{ versionPromptName }} · 版本与对比</div>
-          <p>正文版本独立保存；实际调用输入按任务回看</p>
+<!--          <p>正文版本独立保存；实际调用输入按任务回看</p>-->
         </div>
       </template>
       <a-space style="margin-bottom: 12px">
@@ -158,7 +158,6 @@ import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
-import PageNotice from '@/components/PageNotice.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { hasChanges, toUnifiedPatch } from '@/utils/promptDiff'
 import { formatPromptVersion } from '@/utils/promptVersion'
@@ -179,9 +178,9 @@ const form = ref({
   createNewVersion: true
 })
 const purposeOptions = [
-  { value: 'SPECIALIST', label: '专项通用规则' },
+  { value: 'SPECIALIST', label: '专项审查' },
   { value: 'REPORT', label: '报告生成' },
-  { value: 'AGENT', label: 'Agent 指导（P33 接入）' }
+  { value: 'AGENT', label: 'Agent 分析' }
 ]
 
 const versionOpen = ref(false)

@@ -49,7 +49,7 @@
           class="mb16"
           type="info"
           show-icon
-          message="审查结果已固定保存。进一步分析需另建任务；生成报告需另行选材。"
+          message="审查材料、审查结果已固定保存。"
         />
         <a-alert
           v-else
@@ -93,8 +93,8 @@
 
         <div class="tabbar">
           <button type="button" :class="{ active: activeTab === 'result' }" @click="activeTab = 'result'">审查结果</button>
+          <button type="button" :class="{ active: activeTab === 'input' }" @click="activeTab = 'input'">审查输入</button>
           <button type="button" :class="{ active: activeTab === 'calls' }" @click="activeTab = 'calls'">实际调用 · {{ callTotal }}</button>
-          <button type="button" :class="{ active: activeTab === 'input' }" @click="activeTab = 'input'">任务输入</button>
         </div>
 
         <div v-show="activeTab === 'result'">
