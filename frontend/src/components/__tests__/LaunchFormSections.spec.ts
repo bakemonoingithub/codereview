@@ -35,14 +35,18 @@ describe('LaunchFormSections', () => {
       slots: {
         goal: () => [
           h(FormItem, { label: '项目', required: true }, () => h('input')),
-          h(FormItem, { label: '审查名称（可选）' }, () => h('input'))
+          h(FormItem, {}, {
+            label: () => ['审查名称 ', h('span', { class: 'muted small' }, '（可选）')],
+            default: () => h('input')
+          })
         ]
       }
     })
 
     const labels = wrapper.findAll('.ant-form-item-label label')
     const project = labels.find((label) => label.text().includes('项目'))
-    const name = labels.find((label) => label.text().includes('审查名称（可选）'))
+    const name = labels.find((label) => label.text().includes('审查名称'))
+    expect(name?.text()).toContain('（可选）')
     expect(project?.classes()).toContain('ant-form-item-required')
     expect(name?.classes()).not.toContain('ant-form-item-required')
     expect(wrapper.find('.required').exists()).toBe(false)

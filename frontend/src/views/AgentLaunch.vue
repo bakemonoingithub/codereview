@@ -17,7 +17,7 @@
         v-if="copyFrom"
         type="info"
         show-icon
-        message="已带入原任务参数。请核对当前分支版本、范围和模型；确认提交后才会创建新任务。"
+        message="已带入原任务参数。请核对当前分支版本、范围和模型；确认后才会创建新任务。"
       />
       <a-alert v-if="error" type="error" show-icon :message="error" />
     </template>
@@ -25,7 +25,8 @@
     <template #body>
       <LaunchFormSections :titles="{ goal: '审查目标', scope: '审查范围', extra: '补充要求' }">
         <template #goal>
-          <a-form-item label="任务名称（可选）">
+          <a-form-item>
+            <template #label>任务名称 <span class="muted small">（可选）</span></template>
             <a-input v-model:value="form.name" :maxlength="200" placeholder="例如：支付超时后的重试链路" />
           </a-form-item>
           <a-row :gutter="16">
@@ -59,7 +60,7 @@
           <a-form-item label="范围类型" required>
             <a-radio-group v-model:value="form.kind" button-style="solid" @change="onKindChange">
               <a-radio-button value="TEXT">文字描述</a-radio-button>
-              <a-radio-button value="FILES">文件／目录</a-radio-button>
+              <a-radio-button value="FILES">文件/目录</a-radio-button>
               <a-radio-button value="COMMITS">提交比较</a-radio-button>
             </a-radio-group>
           </a-form-item>
@@ -90,7 +91,7 @@
 
           <a-form-item v-if="form.kind === 'FILES'" label="文件与目录" required>
             <a-space wrap>
-              <a-button :disabled="!form.observedSha" @click="scopeOpen = true">选择文件／目录</a-button>
+              <a-button :disabled="!form.observedSha" @click="scopeOpen = true">选择文件/目录</a-button>
               <span class="muted">已选 {{ form.paths.length }} 项，最多 100 项</span>
             </a-space>
             <div v-if="form.paths.length" class="selected-paths">
@@ -100,7 +101,7 @@
             </div>
           </a-form-item>
 
-          <a-form-item v-if="form.kind === 'COMMITS'" label="提交比较" required>
+          <a-form-item v-if="form.kind === 'COMMITS'" label="目标提交" required>
             <a-space wrap>
               <a-select
                 :get-popup-container="getPopupContainer"
@@ -108,7 +109,7 @@
                 :options="branchOptions"
                 :loading="branchLoading"
                 style="width: 260px"
-                placeholder="选择分支后加载提交"
+                placeholder="选择分支"
                 @change="onBranchChange"
               />
               <a-button :disabled="!form.branch" @click="openCommitPicker">
@@ -134,7 +135,7 @@
             <a-col :xs="24" :md="12">
               <a-form-item>
                 <template #label>指导提示词 <span class="muted small">（可选）</span></template>
-                <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不选则使用内置调查方法" />
+                <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不使用指导提示词" />
               </a-form-item>
             </a-col>
             <a-col v-if="form.guidancePromptId" :xs="24" :md="12">
@@ -151,7 +152,7 @@
           <PromptInfoPreview
             v-if="form.guidancePromptId"
             class="mb16"
-            title="指导提示词"
+            title="所选版本正文"
             :prompt="selectedGuidancePrompt"
             :version="selectedGuidanceVersion"
             selected
@@ -163,9 +164,9 @@
           <a-form-item label="补充要求" required>
             <a-textarea
               v-model:value="form.requirements"
-              :rows="6"
               :maxlength="16000"
               show-count
+              :auto-size="{ minRows: 4, maxRows: 8 }"
               placeholder="核对重试路径的幂等约定，并说明材料缺口。"
             />
           </a-form-item>

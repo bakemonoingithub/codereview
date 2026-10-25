@@ -63,7 +63,7 @@
                 v-model:value="form.promptId"
                 allow-clear
                 style="width: 100%"
-                placeholder="选择报告规则"
+                placeholder="不使用通用规则"
                 :loading="promptOptionsLoading"
                 :options="promptOptions"
               />
@@ -78,7 +78,7 @@
             </a-form-item>
             <div v-if="form.promptId" class="full">
               <PromptInfoPreview
-                title="所选报告规则正文"
+                title="所选版本正文"
                 :prompt="selectedPrompt"
                 :version="selectedPromptVersion"
                 selected
@@ -92,7 +92,8 @@
               <a-textarea
                 v-model:value="form.instruction"
                 :maxlength="4000"
-                :auto-size="{ minRows: 2, maxRows: 4 }"
+                show-count
+                :auto-size="{ minRows: 4, maxRows: 8 }"
                 placeholder="例如：优先说明支付重试风险，保留来源引用。"
               />
             </a-form-item>
