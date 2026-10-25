@@ -1,6 +1,7 @@
 package com.codereview.agent.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -22,10 +23,19 @@ public final class TaskDtos {
             @NotBlank @Size(max = 20) String specialistType,
             @NotNull @Valid Source source,
             @NotEmpty @Size(max = 500) List<@Valid Target> targets,
-            @Size(max = 26) String strategyId,
-            @Size(max = 26) String modelConfigId,
+            @NotBlank @Size(max = 26) String modelConfigId,
+            @Size(max = 26) String promptId,
+            @Size(max = 26) String promptVersionId,
             Boolean smartSplit,
             @Size(max = 200) String name) {
+
+        /** Explicitly reject the retired field even when the application mapper ignores unknown fields. */
+        @JsonAnySetter
+        public void rejectRetiredStrategy(String name, JsonNode ignored) {
+            if ("strategyId".equals(name)) {
+                throw new IllegalArgumentException("strategyId 已退出，新任务请直接选择模型和通用规则");
+            }
+        }
     }
 
     /** FILES 需要 branch；DIFF 需要完整 commitSha，baseSha 可空表示第一父提交。 */
@@ -52,8 +62,8 @@ public final class TaskDtos {
     }
 
     public record ConfigView(String modelConfigId, String modelName, Integer modelRevision,
-                             String strategyId, String strategyName, Integer strategyRevision,
-                             String promptId, Integer promptVersionNo) {
+                             String promptId, String promptName, String promptVersionId,
+                             Integer promptVersionNo, String promptContent) {
     }
 
     public record View(String id, String name, String projectId, String route, String specialistType, String state,
@@ -72,7 +82,7 @@ public final class TaskDtos {
     /** 复制参数只给可编辑项；文件任务必须重新观察分支 HEAD，不承诺复用旧 SHA。 */
     public record CopyInput(String projectId, String route, String specialistType, String sourceKind,
                             String branch, String commitSha, String baseSha, List<TargetCopy> targets,
-                            String strategyId, String modelConfigId, boolean smartSplit,
+                            String modelConfigId, String promptId, String promptVersionId, boolean smartSplit,
                             boolean reobserveHead, String name) {
     }
 

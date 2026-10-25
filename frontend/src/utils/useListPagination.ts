@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, ref, type Ref } from 'vue'
 import type { Page } from '@/api/v2'
 
 export const LIST_PAGE_SIZES = [10, 20, 50] as const
-export type ListPageKey = 'reviews' | 'reports' | 'projects' | 'models' | 'prompts' | 'strategies'
+export type ListPageKey = 'reviews' | 'reports' | 'projects' | 'models' | 'prompts'
 export type ListPageParams = { pageNum: number; pageSize: number }
 
 function validSize(value: number) { return LIST_PAGE_SIZES.some(size => size === value) }

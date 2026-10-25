@@ -199,13 +199,13 @@ public class SpecialistTaskWorker implements TaskWorker {
             }
             PreparedTarget enhanced = enhancement.enhance(prepared);
             ModelSnapshot model = model(task);
-            Strategy strategy = strategy(task);
+            GeneralRule generalRule = generalRule(task);
             CouplingFacts facts = facts(task, enhanced);
             boolean smartSplit = read(task.getInputSnapshot()).path("smartSplit").asBoolean(false);
             ModelSnapshot planningModel = model;
             for (int generation = 1; generation <= 3; generation++) {
-                List<SpecialistUnitPlan> units = planner.plan(enhanced, facts, strategy.name(),
-                        strategy.prompt(), planningModel, smartSplit);
+                List<SpecialistUnitPlan> units = planner.plan(enhanced, facts, generalRule.name(),
+                        generalRule.content(), planningModel, smartSplit);
                 updateTarget(target.getId(), TaskStates.RUNNING, null);
                 List<SpecialistUnitExecution> executions = new ArrayList<>();
                 boolean unitFailed = false;
@@ -216,7 +216,7 @@ public class SpecialistTaskWorker implements TaskWorker {
                     AgentExecutionUnit row = createUnit(target.getId(), unit, generation);
                     try {
                         SpecialistUnitExecution execution = executeUnit(task, target, unit, row,
-                                model, facts, strategy, !smartSplit);
+                                model, facts, generalRule, !smartSplit);
                         guard.requireActive(task.getId());
                         updateUnit(row.getId(), TaskStates.SUCCEEDED);
                         executions.add(execution);
@@ -231,8 +231,8 @@ public class SpecialistTaskWorker implements TaskWorker {
                                 throw failure;
                             }
                             var estimate = capacity.estimate(promptAssembly.assemble(
-                                    promptBuilder.build(unit.target(), facts, strategy.name(),
-                                            strategy.prompt())), planningModel);
+                                    promptBuilder.build(unit.target(), facts, generalRule.name(),
+                                            generalRule.content())), planningModel);
                             int window = Math.max(1, Math.min(planningModel.contextWindow() - 1,
                                     (int) (estimate.required() * 0.75)));
                             planningModel = new ModelSnapshot(model.id(), model.name(), model.baseUrl(),
@@ -281,13 +281,13 @@ public class SpecialistTaskWorker implements TaskWorker {
     private SpecialistUnitExecution executeUnit(AgentReviewTask task, AgentTaskTarget target,
                                                 SpecialistUnitPlan unit, AgentExecutionUnit row,
                                                 ModelSnapshot model, CouplingFacts facts,
-                                                Strategy strategy, boolean sendWhole) {
+                                                GeneralRule generalRule, boolean sendWhole) {
         PromptInput.FormatRetry retry = null;
         try {
             for (int attempt = 1; attempt <= SpecialistProtocolPolicy.maxAttempts(); attempt++) {
                 guard.requireActive(task.getId());
-                PromptInput input = promptBuilder.build(unit.target(), facts, strategy.name(),
-                        strategy.prompt(), retry);
+                PromptInput input = promptBuilder.build(unit.target(), facts, generalRule.name(),
+                        generalRule.content(), retry);
                 AssembledPrompt prompt = promptAssembly.assemble(input);
                 if (!sendWhole) {
                     capacity.requireFits(prompt, model);
@@ -371,13 +371,12 @@ public class SpecialistTaskWorker implements TaskWorker {
                 integer(config, "revision", model.getRevision()));
     }
 
-    private Strategy strategy(AgentReviewTask task) {
+    private GeneralRule generalRule(AgentReviewTask task) {
         JsonNode config = read(task.getConfigSnapshot());
-        JsonNode strategy = config.path("strategy");
         JsonNode prompt = config.path("prompt");
-        String name = strategy.path("name").asText(null);
+        String name = prompt.path("name").asText(null);
         String content = prompt.path("content").asText(null);
-        return new Strategy(name, content);
+        return new GeneralRule(name, content);
     }
 
     private AgentExecutionUnit createUnit(String targetId, SpecialistUnitPlan plan, int generation) {
@@ -485,6 +484,6 @@ public class SpecialistTaskWorker implements TaskWorker {
         return value.isNull() ? null : value.isNumber() ? value.asInt() : fallback;
     }
 
-    private record Strategy(String name, String prompt) {
+    private record GeneralRule(String name, String content) {
     }
 }

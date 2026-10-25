@@ -19,7 +19,6 @@ import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
 import com.codereview.agent.mapper.AgentPromptVersionMapper;
-import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
@@ -71,8 +70,6 @@ class TaskServiceTest {
     @Mock
     private AgentModelConfigMapper modelMapper;
     @Mock
-    private AgentReviewStrategyMapper strategyMapper;
-    @Mock
     private AgentPromptMapper promptMapper;
     @Mock
     private AgentPromptVersionMapper promptVersionMapper;
@@ -104,7 +101,6 @@ class TaskServiceTest {
                 new ModelInvocationProperties(), new TaskProperties());
         when(db.mapper(AgentProjectMapper.class)).thenReturn(projectMapper);
         when(db.mapper(AgentModelConfigMapper.class)).thenReturn(modelMapper);
-        when(db.mapper(AgentReviewStrategyMapper.class)).thenReturn(strategyMapper);
         when(db.mapper(AgentPromptMapper.class)).thenReturn(promptMapper);
         when(db.mapper(AgentPromptVersionMapper.class)).thenReturn(promptVersionMapper);
         when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
@@ -147,6 +143,19 @@ class TaskServiceTest {
         assertEquals("审查任务 " + task.getValue().getId(), task.getValue().getName());
         assertEquals(task.getValue().getName(), view.name());
         verify(dispatcher).dispatch(task.getValue().getId());
+    }
+
+    @Test
+    void rejectsRetiredStrategyFieldInCreateRequest() {
+        String json = "{\"projectId\":\"" + PROJECT_ID + "\",\"route\":\"SPECIALIST\","
+                + "\"specialistType\":\"ISSUE\",\"source\":{\"kind\":\"FILES\"},"
+                + "\"targets\":[{\"path\":\"A.java\"}],\"modelConfigId\":\"" + MODEL_ID
+                + "\",\"strategyId\":\"retired\"}";
+
+        var failure = assertThrows(com.fasterxml.jackson.databind.JsonMappingException.class,
+                () -> mapper.readValue(json, TaskDtos.Create.class));
+
+        assertTrue(failure.getMessage().contains("strategyId 已退出"));
     }
 
     @Test
@@ -251,12 +260,13 @@ class TaskServiceTest {
     }
 
     @Test
-    void copyInputReturnsOnlyEditableFieldsAndRequiresReobservation() {
+    void copyInputReturnsNewDirectConfigAndRequiresReobservation() {
         AgentReviewTask task = task(TASK_ID, null);
         task.setInputSnapshot("{\"source\":{\"kind\":\"FILES\",\"branch\":\"main\",\"headSha\":\""
                 + HEAD + "\"},\"targets\":[{\"path\":\"src/Order.java\",\"note\":\"关注并发\"}],"
                 + "\"smartSplit\":false}");
-        task.setConfigSnapshot("{\"model\":{\"id\":\"" + MODEL_ID + "\"},\"strategy\":{\"id\":\"strategy-1\"}}");
+        task.setConfigSnapshot("{\"schemaVersion\":2,\"model\":{\"id\":\"" + MODEL_ID
+                + "\"},\"prompt\":{\"id\":\"prompt-1\",\"versionId\":\"version-1\"}}");
         when(taskMapper.selectById(any())).thenReturn(task);
 
         TaskDtos.CopyInput copy = service.copyInput(TASK_ID);
@@ -264,9 +274,23 @@ class TaskServiceTest {
         assertTrue(copy.reobserveHead());
         assertEquals("main", copy.branch());
         assertEquals("src/Order.java", copy.targets().get(0).path());
-        assertEquals("strategy-1", copy.strategyId());
         assertEquals(MODEL_ID, copy.modelConfigId());
+        assertEquals("prompt-1", copy.promptId());
+        assertEquals("version-1", copy.promptVersionId());
         assertEquals("审查任务 " + TASK_ID, copy.name());
+    }
+
+    @Test
+    void copyInputRejectsTrialSnapshotWithoutTheNewConfigShape() {
+        AgentReviewTask task = task(TASK_ID, null);
+        task.setConfigSnapshot("{\"model\":{\"id\":\"" + MODEL_ID
+                + "\"},\"strategy\":{\"id\":\"legacy-strategy\"}}");
+        when(taskMapper.selectById(any())).thenReturn(task);
+
+        ApiException error = assertThrows(ApiException.class, () -> service.copyInput(TASK_ID));
+
+        assertEquals(ErrorCode.CONFIG_INCOMPLETE, error.errorCode());
+        assertTrue(error.getMessage().contains("重新创建"));
     }
 
     @Test
@@ -302,15 +326,10 @@ class TaskServiceTest {
     }
 
     @Test
-    void specialistUsesPinnedVersionAndLegacyStrategyUsesCurrentVersion() throws Exception {
-        var strategy = new com.codereview.agent.entity.AgentReviewStrategy();
-        strategy.setId(com.codereview.agent.support.AgentIds.next());
-        strategy.setName("固定策略");
-        strategy.setRevision(1);
-        strategy.setModelConfigId(MODEL_ID);
-        strategy.setSpecialistType("ISSUE");
+    void specialistUsesAndFreezesTheDirectlySelectedRuleVersion() throws Exception {
         var prompt = new com.codereview.agent.entity.AgentPrompt();
         prompt.setId(com.codereview.agent.support.AgentIds.next());
+        prompt.setName("服务端通用规则");
         prompt.setPurpose("SPECIALIST");
         prompt.setCurrentVersionId(com.codereview.agent.support.AgentIds.next());
         var old = new com.codereview.agent.entity.AgentPromptVersion();
@@ -323,29 +342,30 @@ class TaskServiceTest {
         current.setPromptId(prompt.getId());
         current.setVersionNo(2);
         current.setContent("当前规则");
-        strategy.setPromptId(prompt.getId());
-        strategy.setPromptVersionId(old.getId());
-        when(strategyMapper.selectById(strategy.getId())).thenReturn(strategy);
         when(promptMapper.selectById(prompt.getId())).thenReturn(prompt);
         when(promptVersionMapper.selectById(old.getId())).thenReturn(old);
         when(promptVersionMapper.selectById(current.getId())).thenReturn(current);
         var base = request(null);
         var req = new TaskDtos.Create(base.projectId(), base.route(), base.specialistType(), base.source(),
-                base.targets(), strategy.getId(), null, base.smartSplit(), base.name());
+                base.targets(), MODEL_ID, prompt.getId(), old.getId(), base.smartSplit(), base.name());
         service.create(req, null);
-        strategy.setPromptVersionId(null);
-        service.create(req, null);
+        var currentReq = new TaskDtos.Create(base.projectId(), base.route(), base.specialistType(), base.source(),
+                base.targets(), MODEL_ID, prompt.getId(), current.getId(), base.smartSplit(), base.name());
+        service.create(currentReq, null);
         var tasks = ArgumentCaptor.forClass(AgentReviewTask.class);
         verify(taskMapper, org.mockito.Mockito.times(2)).insert(tasks.capture());
         var pinnedSnapshot = mapper.readTree(tasks.getAllValues().get(0).getConfigSnapshot()).path("prompt");
         assertEquals(old.getId(), pinnedSnapshot.path("versionId").asText());
         assertEquals("旧版规则", pinnedSnapshot.path("content").asText());
+        assertEquals(2, mapper.readTree(tasks.getAllValues().get(0).getConfigSnapshot())
+                .path("schemaVersion").asInt());
         assertEquals("当前规则", mapper.readTree(tasks.getAllValues().get(1).getConfigSnapshot())
                 .path("prompt").path("content").asText());
         old.setContent("被覆盖");
         assertEquals("旧版规则", pinnedSnapshot.path("content").asText());
-        strategy.setPromptVersionId(com.codereview.agent.support.AgentIds.next());
-        assertThrows(ApiException.class, () -> service.create(req, null));
+        assertThrows(ApiException.class, () -> service.create(new TaskDtos.Create(base.projectId(), base.route(),
+                base.specialistType(), base.source(), base.targets(), MODEL_ID, prompt.getId(),
+                com.codereview.agent.support.AgentIds.next(), base.smartSplit(), base.name()), null));
     }
 
     private TaskDtos.Create request(String unused) {
@@ -356,7 +376,7 @@ class TaskServiceTest {
         return new TaskDtos.Create(PROJECT_ID, "SPECIALIST", "ISSUE",
                 new TaskDtos.Source("FILES", "main", HEAD, null, null),
                 List.of(new TaskDtos.Target("src/Order.java", null, "关注并发")),
-                null, MODEL_ID, false, name);
+                MODEL_ID, null, null, false, name);
     }
 
     private AgentReviewTask task(String id, String hash) {

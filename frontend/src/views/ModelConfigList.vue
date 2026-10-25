@@ -23,7 +23,7 @@
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的模型' : '还没有接入模型'"
-          :hint="keyword ? '换个关键词，或清空搜索看全部' : '填入模型网关地址、模型名与凭据后，才能在策略里选用'"
+          :hint="keyword ? '换个关键词，或清空搜索看全部' : '维护可用的模型接入配置，发起审查时直接选择。'"
           :action-text="keyword ? '' : '新建模型'"
           @action="openCreate"
         />

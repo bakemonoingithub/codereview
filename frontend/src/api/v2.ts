@@ -133,18 +133,6 @@ export interface PromptDiffRow {
   newLine: number | null
 }
 
-export interface StrategyView {
-  id: string
-  name: string
-  specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
-  modelConfigId: string | null
-  promptId: string | null
-  promptVersionId?: string | null
-  revision: number
-  createdAt: string
-  updatedAt: string
-}
-
 export interface RepositoryPath {
   path: string
   type: string
@@ -400,8 +388,9 @@ export interface TaskCreateInput {  projectId: string
     baseSha?: string
   }
   targets: TaskTargetInput[]
-  strategyId?: string
-  modelConfigId?: string
+  modelConfigId: string
+  promptId?: string
+  promptVersionId?: string
   smartSplit?: boolean
   name?: string
 }
@@ -446,11 +435,11 @@ export interface TaskView {
     modelConfigId: string | null
     modelName: string | null
     modelRevision: number | null
-    strategyId: string | null
-    strategyName: string | null
-    strategyRevision: number | null
     promptId: string | null
+    promptName: string | null
+    promptVersionId: string | null
     promptVersionNo: number | null
+    promptContent: string | null
   }
 }
 
@@ -496,8 +485,9 @@ export interface TaskCopyInput {  projectId: string
   commitSha: string | null
   baseSha: string | null
   targets: { path: string; oldPath: string | null; note: string | null }[]
-  strategyId: string | null
   modelConfigId: string | null
+  promptId: string | null
+  promptVersionId: string | null
   smartSplit: boolean
   reobserveHead: boolean
   name: string | null
@@ -669,7 +659,7 @@ export const tasksApi = {
 }
 
 export const projectsApi = {
-  list: (params: ListPaginationParams & { q?: string; cursor?: string; limit?: number } = {}) =>
+  list: (params: ListPaginationParams & { q?: string; state?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ProjectView>>('/projects', { params }).then((r) => r.data),
   detail: (id: string) => v2.get<ProjectView>(`/projects/${id}`).then((r) => r.data),
   create: (body: {
@@ -750,30 +740,6 @@ export const promptsApi = {
   remove: (id: string) => v2.delete(`/prompts/${id}`).then((r) => r.data)
 }
 
-export const strategiesApi = {
-  list: ({ specialistType, ...params }: ListPaginationParams & { q?: string; specialistType?: string; cursor?: string; limit?: number } = {}) =>
-    v2.get<Page<StrategyView>>('/strategies', { params: { ...params, type: specialistType } }).then((r) => r.data),
-  create: (body: {
-    name: string
-    specialistType: string
-    modelConfigId?: string
-    promptId?: string
-    promptVersionId?: string
-  }) => v2.post<StrategyView>('/strategies', body).then((r) => r.data),
-  update: (
-    id: string,
-    body: {
-      name: string
-      specialistType: string
-      modelConfigId?: string
-      promptId?: string
-      promptVersionId?: string
-      expectedRevision: number
-    }
-  ) => v2.put<StrategyView>(`/strategies/${id}`, body).then((r) => r.data),
-  remove: (id: string) => v2.delete(`/strategies/${id}`).then((r) => r.data)
-}
-
 export interface ReportCandidate {
   resultId: string
   taskId: string
@@ -833,6 +799,14 @@ export interface ReportModelView {
   revision: number
 }
 
+export interface ReportPromptView {
+  id: string
+  name: string
+  versionId: string
+  versionNo: number
+  content: string
+}
+
 export interface ReportCallSummary {
   id: string
   purpose: string
@@ -865,6 +839,7 @@ export interface ReportSummary {
 export interface ReportDetail extends ReportSummary {
   body: string | null
   model: ReportModelView | null
+  prompt: ReportPromptView | null
   instruction: string | null
   sources: ReportSourceSummary[]
   calls: ReportCallSummary[]
@@ -889,9 +864,14 @@ export const reportsApi = {
       '/reports/inputs', body
     ).then((r) => r.data),
   inputs: (id: string) => v2.get(`/reports/${id}/inputs`).then((r) => r.data),
-  list: (params: ListPaginationParams & { cursor?: string; limit?: number } = {}) =>
+  list: (params: ListPaginationParams & { q?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ReportSummary>>('/reports', { params }).then((r) => r.data),
-  start: (id: string, body: { modelConfigId: string; instruction?: string }) =>
+  start: (id: string, body: {
+    modelConfigId: string
+    instruction?: string
+    promptId?: string
+    promptVersionId?: string
+  }) =>
     v2.post<ReportDetail>(`/reports/${id}/generate`, body).then((r) => r.data),
   detail: (id: string) => v2.get<ReportDetail>(`/reports/${id}`).then((r) => r.data),
   source: (id: string, ordinal: number) =>

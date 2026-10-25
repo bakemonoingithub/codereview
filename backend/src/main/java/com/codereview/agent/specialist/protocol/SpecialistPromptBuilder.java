@@ -16,7 +16,7 @@ import java.util.Set;
 import static com.codereview.agent.specialist.material.SpecialistMaterials.PreparedTarget;
 
 /**
- * 把准备好的材料、策略与依赖事实转成统一组装输入。
+ * 把准备好的材料、通用规则与依赖事实转成统一组装输入。
  *
  * <p>用途由专项类型和来源决定（问题审查分文件/差异），协议版本固定；
  * 目标与辅助材料不混列，缺失说明只来自实际准备结果。
@@ -25,13 +25,13 @@ import static com.codereview.agent.specialist.material.SpecialistMaterials.Prepa
 public class SpecialistPromptBuilder {
 
     public PromptInput build(PreparedTarget target, CouplingFacts facts,
-                             String strategyName, String strategyPrompt) {
-        return build(target, facts, strategyName, strategyPrompt, null);
+                             String generalRuleName, String generalRuleContent) {
+        return build(target, facts, generalRuleName, generalRuleContent, null);
     }
 
     /** 格式重试时把上一次实际错误和返回片段带回组装，仍走同一入口。 */
     public PromptInput build(PreparedTarget target, CouplingFacts facts,
-                             String strategyName, String strategyPrompt,
+                             String generalRuleName, String generalRuleContent,
                              PromptInput.FormatRetry formatRetry) {
         List<PromptMaterial> targets = target.targets().stream()
                 .map(SpecialistMaterials.Material::toPromptMaterial).toList();
@@ -42,8 +42,8 @@ public class SpecialistPromptBuilder {
         if (facts != null) {
             missingNotes.addAll(facts.limitations());
         }
-        return new PromptInput(purpose(target), SpecialistProtocol.VERSION, strategyName,
-                strategyPrompt, target.note(), target.sourceKind(), target.branch(),
+        return new PromptInput(purpose(target), SpecialistProtocol.VERSION, generalRuleName,
+                generalRuleContent, target.note(), target.sourceKind(), target.branch(),
                 target.headSha(), target.baseSha(), targets, auxiliary, List.copyOf(missingNotes),
                 promptFacts, formatRetry);
     }

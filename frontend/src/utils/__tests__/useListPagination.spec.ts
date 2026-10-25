@@ -17,7 +17,7 @@ function start(key: ListPageKey = 'projects', loader = vi.fn().mockResolvedValue
   return { state, loader }
 }
 beforeEach(() => {
-  for (const key of ['reviews', 'reports', 'projects', 'models', 'prompts', 'strategies']) {
+  for (const key of ['reviews', 'reports', 'projects', 'models', 'prompts']) {
     document.cookie = `ai-review-page-size-${key}=; Max-Age=0; Path=/`
   }
 })
@@ -37,8 +37,8 @@ describe('列表分页与 Cookie 偏好', () => {
     expect(state.pagination.value.showQuickJumper).toBe(true)
   })
 
-  it('六页 Cookie 独立保存，重新挂载恢复对应大小', async () => {
-    const keys: ListPageKey[] = ['reviews', 'reports', 'projects', 'models', 'prompts', 'strategies']
+  it('五类列表 Cookie 独立保存，重新挂载恢复对应大小', async () => {
+    const keys: ListPageKey[] = ['reviews', 'reports', 'projects', 'models', 'prompts']
     for (const [index, key] of keys.entries()) {
       const size = [10, 20, 50][index % 3]
       const { state, loader } = start(key)

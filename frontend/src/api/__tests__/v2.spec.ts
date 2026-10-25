@@ -10,7 +10,7 @@ axios.defaults.adapter = async (config) => {
   if (failure) throw failure
   return { data: payload, status: 200, statusText: 'OK', headers: {}, config }
 }
-const { projectsApi, modelsApi, promptsApi, strategiesApi, tasksApi, reportsApi, repositoryApi, modelCallsApi, agentTasksApi } = await import('@/api/v2')
+const { projectsApi, modelsApi, promptsApi, tasksApi, reportsApi, repositoryApi, modelCallsApi, agentTasksApi } = await import('@/api/v2')
 afterAll(() => { axios.defaults.adapter = originalAdapter })
 beforeEach(() => { failure = undefined })
 
@@ -56,7 +56,7 @@ describe('v2 客户端的真实响应链', () => {
   })
   it.each([
     ['项目', projectsApi.list], ['模型', modelsApi.list], ['提示词', promptsApi.list],
-    ['策略', strategiesApi.list], ['审查中心', tasksApi.list], ['报告', reportsApi.list]
+    ['审查中心', tasksApi.list], ['报告', reportsApi.list]
   ] as const)('%s传递页码和条数，保留服务端总数', async (_name, list) => {
     payload = { items: [{ id: 'one' }], total: 65, pageNum: 2, pageSize: 10, nextCursor: null, hasMore: true }
     expect(await list({ pageNum: 2, pageSize: 10 })).toEqual(payload)
@@ -67,7 +67,7 @@ describe('v2 客户端的真实响应链', () => {
 
   it.each([
     ['项目', projectsApi.list], ['模型', modelsApi.list],
-    ['提示词', promptsApi.list], ['策略', strategiesApi.list]
+    ['提示词', promptsApi.list]
   ] as const)('%s列表保留分页正文', async (_name, list) => {
     payload = { items: [{ id: 'one', name: '配置' }], nextCursor: 'next', hasMore: true }
     expect(await list()).toEqual(payload)
@@ -91,17 +91,14 @@ describe('v2 客户端的真实响应链', () => {
     expect(await modelsApi.validate('m1')).toEqual(payload)
   })
 
-  it('策略筛选使用服务端的 type 参数并保留其他查询条件', async () => {
-    payload = { items: [], nextCursor: null, hasMore: false }
-    await strategiesApi.list({ specialistType: 'PATTERN', q: '规则', cursor: 'next', limit: 20 })
-    expect(sent.params).toEqual({ type: 'PATTERN', q: '规则', cursor: 'next', limit: 20 })
-  })
-
   it('创建任务把幂等键放在请求头，并保留固定版本参数', async () => {
     payload = { id: 't1', state: 'QUEUED' }
     const body = {
       projectId: 'p1',
       specialistType: 'ISSUE' as const,
+      modelConfigId: 'm1',
+      promptId: 'rule-1',
+      promptVersionId: 'version-2',
       source: { kind: 'FILES' as const, branch: 'main', observedSha: 'a'.repeat(40) },
       targets: [{ path: 'src/A.java', note: '说明' }],
       smartSplit: true

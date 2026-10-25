@@ -8,7 +8,8 @@ import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentModelValidation;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentModelValidationMapper;
-import com.codereview.agent.mapper.AgentReviewStrategyMapper;
+import com.codereview.agent.mapper.AgentReviewTaskMapper;
+import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.invocation.ModelInvocationService;
 import com.codereview.agent.support.AgentIds;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,7 +44,9 @@ class AgentModelServiceTest {
     @Mock
     private AgentModelValidationMapper validationMapper;
     @Mock
-    private AgentReviewStrategyMapper strategyMapper;
+    private AgentReviewTaskMapper taskMapper;
+    @Mock
+    private AgentReportMapper reportMapper;
     @Mock
     private ModelInvocationService invocation;
 
@@ -57,7 +60,8 @@ class AgentModelServiceTest {
         service = new AgentModelService(db, invocation, new ObjectMapper());
         when(db.mapper(AgentModelConfigMapper.class)).thenReturn(mapper);
         when(db.mapper(AgentModelValidationMapper.class)).thenReturn(validationMapper);
-        when(db.mapper(AgentReviewStrategyMapper.class)).thenReturn(strategyMapper);
+        when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
+        when(db.mapper(AgentReportMapper.class)).thenReturn(reportMapper);
     }
 
     @Test
@@ -129,15 +133,33 @@ class AgentModelServiceTest {
     }
 
     @Test
-    void deleteRefusesWhenStrategiesStillReferenceTheModel() {
+    void modelDeletionDoesNotDependOnRetiredStrategyAssociations() {
         AgentModelConfig model = model(0);
         when(mapper.selectById(any())).thenReturn(model);
-        when(strategyMapper.selectCount(any())).thenReturn(2L);
 
+        service.delete(model.getId());
+
+        verify(mapper).deleteById(model.getId());
+    }
+
+    @Test
+    void refusesDeletionWhileReviewTasksStillNeedTheModel() {
+        AgentModelConfig model = model(0);
+        when(mapper.selectById(any())).thenReturn(model);
+        when(taskMapper.selectCount(any())).thenReturn(1L);
         ApiException error = assertThrows(ApiException.class, () -> service.delete(model.getId()));
-
         assertEquals(ErrorCode.CONFIG_IN_USE, error.errorCode());
-        verify(mapper, never()).deleteById("never-called");
+        verify(mapper, never()).deleteById(model.getId());
+    }
+
+    @Test
+    void refusesDeletionWhileReportsStillNeedTheModel() {
+        AgentModelConfig model = model(0);
+        when(mapper.selectById(any())).thenReturn(model);
+        when(reportMapper.selectCount(any())).thenReturn(1L);
+        ApiException error = assertThrows(ApiException.class, () -> service.delete(model.getId()));
+        assertEquals(ErrorCode.CONFIG_IN_USE, error.errorCode());
+        verify(mapper, never()).deleteById(model.getId());
     }
 
     @Test

@@ -3,6 +3,8 @@ package com.codereview.agent.api;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -39,5 +41,17 @@ class V2ExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertFalse(response.getBody().retryable());
         assertEquals("VALIDATION_FAILED", response.getBody().code());
+    }
+
+    @Test
+    void retiredStrategyInputGetsSpecificMigrationHint() {
+        var exception = new HttpMessageNotReadableException("invalid request",
+                new IllegalArgumentException("strategyId 已退出，新任务请直接选择模型和通用规则"),
+                new MockHttpInputMessage(new byte[0]));
+
+        ResponseEntity<ApiErrorBody> response = new V2ExceptionHandler().handleUnreadable(exception);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(response.getBody().message().contains("modelConfigId"));
     }
 }

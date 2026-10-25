@@ -14,7 +14,6 @@ import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
-import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentToolCallMapper;
@@ -37,7 +36,6 @@ public class AgentDataSourceConfig {
             AgentModelValidationMapper.class,
             AgentPromptMapper.class,
             AgentPromptVersionMapper.class,
-            AgentReviewStrategyMapper.class,
             AgentReviewTaskMapper.class,
             AgentTaskTargetMapper.class,
             AgentTaskQuotaMapper.class,

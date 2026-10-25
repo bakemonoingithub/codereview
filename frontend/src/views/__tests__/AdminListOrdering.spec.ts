@@ -4,14 +4,13 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import ProjectList from '@/views/ProjectList.vue'
 import ModelConfigList from '@/views/ModelConfigList.vue'
 import PromptList from '@/views/PromptList.vue'
-import StrategyList from '@/views/StrategyList.vue'
 import { attrsStub, namedAntStubs } from '@/testUtils/antStubs'
 
 vi.mock('@/api/v2', () => ({
   projectsApi: { list: vi.fn() }, modelsApi: { list: vi.fn() },
-  promptsApi: { list: vi.fn() }, strategiesApi: { list: vi.fn() }
+  promptsApi: { list: vi.fn() }
 }))
-import { projectsApi, modelsApi, promptsApi, strategiesApi } from '@/api/v2'
+import { projectsApi, modelsApi, promptsApi } from '@/api/v2'
 
 const options = { global: { stubs: {
   ...namedAntStubs,
@@ -26,7 +25,7 @@ const page = (name: string, nextCursor: string | null = null) => ({
 let wrapper: VueWrapper
 beforeEach(() => {
   vi.resetAllMocks()
-  for (const api of [projectsApi, modelsApi, promptsApi, strategiesApi]) {
+  for (const api of [projectsApi, modelsApi, promptsApi]) {
     vi.mocked(api.list).mockResolvedValue({ items: [], nextCursor: null, hasMore: false })
   }
 })
@@ -41,7 +40,7 @@ async function search() {
 
 describe.each([
   ['项目', ProjectList, projectsApi], ['模型', ModelConfigList, modelsApi],
-  ['提示词', PromptList, promptsApi], ['策略', StrategyList, strategiesApi]
+  ['提示词', PromptList, promptsApi]
 ] as const)('%s列表请求顺序', (_name, component, api) => {
   it('旧响应不能覆盖新筛选的结果和分页状态', async () => {
     let resolveOld!: (value: unknown) => void

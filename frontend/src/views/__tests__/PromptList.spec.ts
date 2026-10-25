@@ -158,7 +158,7 @@ describe('PromptList 编辑与版本', () => {
     const wrapper = mount(PromptList, options)
     await flush()
 
-    await button(wrapper, '版本与对比').trigger('click')
+    await button(wrapper, '对比').trigger('click')
     await flush()
     expect(wrapper.find('diff-viewer-stub').exists()).toBe(true)
 

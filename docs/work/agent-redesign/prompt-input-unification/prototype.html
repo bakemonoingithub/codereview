@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>专项审查配置 · UPI-02 原型</title>
+  <style>
+    :root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#182230;background:#f3f5f8;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0;font-size:14px;line-height:1.55}button,select,input,textarea{font:inherit}button{cursor:pointer}
+    .top{height:64px;background:#fff;border-bottom:1px solid #e4e8ee;display:flex;align-items:center;padding:0 32px;gap:14px}.brand{font-weight:700;font-size:16px}.crumb{color:#8490a0}.topright{margin-left:auto;color:#657184}
+    main{max-width:1120px;margin:30px auto 64px;padding:0 24px}.heading{display:flex;align-items:flex-start;margin-bottom:22px}.heading h1{font-size:23px;margin:0 0 5px}.heading p{margin:0;color:#667386}.tag{margin-left:auto;border:1px solid #d8e2f0;background:#eef4ff;color:#325ea8;border-radius:20px;padding:4px 11px;font-size:12px}
+    .layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}.card{background:#fff;border:1px solid #e2e7ee;border-radius:10px;margin-bottom:16px;box-shadow:0 2px 8px #26344908}.cardhead{padding:17px 20px 12px;border-bottom:1px solid #edf0f4;display:flex;align-items:center;gap:10px}.num{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:#285cb0;font-weight:700;font-size:12px}.cardhead h2{font-size:15px;margin:0}.cardbody{padding:18px 20px 20px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.field.full{grid-column:1/-1}label{display:block;color:#465366;font-weight:600;margin-bottom:6px}.req{color:#c63d47}.control{width:100%;height:39px;border:1px solid #d6dce5;border-radius:6px;background:#fff;padding:0 11px;color:#202b3b}.help{color:#7b8797;font-size:12px;margin:6px 0 0}.row{display:flex;align-items:center;gap:10px}.seg{display:inline-flex;border:1px solid #d9dfe8;border-radius:7px;padding:3px;background:#f7f8fa;gap:3px}.seg button{border:0;background:transparent;border-radius:5px;padding:6px 12px;color:#536174}.seg button.on{background:#fff;color:#2459aa;box-shadow:0 1px 3px #18223020;font-weight:600}.version-line{display:grid;grid-template-columns:1fr 150px;gap:12px}.preview{margin-top:13px;background:#f8fafc;border:1px solid #e6eaf0;border-radius:7px;overflow:hidden}.previewhead{padding:9px 12px;border-bottom:1px solid #e6eaf0;display:flex;align-items:center;color:#445269;font-weight:600;font-size:12px}.previewhead span:last-child{margin-left:auto;color:#7c8797;font-weight:400}.preview pre{margin:0;padding:13px;max-height:154px;overflow:auto;white-space:pre-wrap;color:#344258;font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}.pill{font-size:11px;color:#497254;background:#edf7ef;border-radius:12px;padding:2px 8px;margin-left:auto}.rule-empty{padding:13px;background:#f5f8fc;border:1px dashed #cbd5e1;border-radius:7px;color:#627087}.file{border:1px solid #e5e9ef;border-radius:7px;padding:13px;margin-top:10px}.filetop{display:flex;align-items:center;gap:8px;margin-bottom:9px}.filetop code{font-size:12px;color:#334d70}.filetop span{margin-left:auto;color:#8290a1;font-size:12px}textarea{width:100%;min-height:68px;resize:vertical;border:1px solid #d6dce5;border-radius:6px;padding:9px 10px;color:#263347}.split{display:flex;align-items:flex-start;gap:10px;border-top:1px solid #edf0f4;margin-top:16px;padding-top:15px}.split input{margin-top:4px}.split strong{display:block}.split small{color:#778395}.aside{position:sticky;top:18px}.summary{padding:17px}.summary h3{font-size:14px;margin:0 0 14px}.summary dl{margin:0}.summary dt{font-size:11px;color:#8792a2;margin-top:12px}.summary dd{margin:2px 0 0;color:#354257}.line{border:0;border-top:1px solid #edf0f4;margin:15px 0}.notice{font-size:12px;color:#657287;background:#f6f8fb;border-radius:6px;padding:10px 11px}.foot{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#fff;border:1px solid #e2e7ee;border-radius:9px;position:sticky;bottom:10px;box-shadow:0 5px 18px #26344912}.footnote{font-size:12px;color:#788496}.spacer{flex:1}.btn{border:1px solid #d5dce5;color:#465366;background:#fff;border-radius:6px;padding:8px 15px}.btn.primary{background:#2865c5;border-color:#2865c5;color:white}.btn:disabled{opacity:.45;cursor:not-allowed}.state{margin-top:12px;color:#2e7043;font-size:12px;min-height:18px}.disabled{opacity:.55}.hidden{display:none!important}
+    @media(max-width:800px){main{margin-top:20px}.layout{grid-template-columns:1fr}.aside{position:static;grid-row:1}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.foot{flex-wrap:wrap}.footnote{width:100%}}
+  </style>
+</head>
+<body>
+  <header class="top"><span class="brand">Code Review</span><span class="crumb">/</span><span>专项审查</span><span class="topright">工作区　　帮助</span></header>
+  <main>
+    <div class="heading"><div><h1>发起专项审查</h1><p>选择审查目标和模型；通用规则按需添加，创建后配置按本次内容固定。</p></div><span class="tag">UPI-02 · 交互原型</span></div>
+    <div class="layout">
+      <section>
+        <article class="card"><div class="cardhead"><span class="num">1</span><h2>审查目标</h2></div><div class="cardbody">
+          <div class="grid"><div class="field full"><label>审查名称</label><input class="control" value="订单服务重试逻辑检查"></div>
+            <div class="field"><label>项目 <i class="req">*</i></label><select class="control"><option>交易平台</option><option>代码治理服务</option></select></div>
+            <div class="field"><label>专项类型 <i class="req">*</i></label><div class="seg"><button class="on">问题审查</button><button>设计模式</button><button>耦合度</button></div></div>
+          </div>
+        </div></article>
+        <article class="card"><div class="cardhead"><span class="num">2</span><h2>范围与版本</h2></div><div class="cardbody">
+          <div class="grid"><div class="field"><label>分支 <i class="req">*</i></label><select class="control"><option>dev</option><option>main</option></select></div>
+            <div class="field"><label>固定版本</label><div class="row"><input class="control" value="a81df5020f · 当前分支 HEAD" readonly><button class="btn">重新读取</button></div></div>
+            <div class="field full"><label>目标文件 <i class="req">*</i></label><button class="btn">调整文件范围</button><span class="help" style="display:inline;margin-left:10px">已选 2 个文件 · 发起时会重新核对分支版本</span>
+              <div class="file"><div class="filetop"><code>src/main/java/com/acme/OrderService.java</code><span>文件补充说明 · 可选</span></div><textarea>重点关注重试与幂等处理，核对失败后的订单状态。</textarea></div>
+              <div class="file"><div class="filetop"><code>src/main/java/com/acme/RetryPolicy.java</code><span>文件补充说明 · 可选</span></div><textarea placeholder="填写此文件的背景、约束或关注点"></textarea></div>
+            </div>
+          </div>
+          <label class="split"><input type="checkbox"><span><strong>智能拆分文件</strong><small>默认关闭。开启后，仅在容量不足时拆分，并保留原始位置。</small></span></label>
+        </div></article>
+        <article class="card"><div class="cardhead"><span class="num">3</span><h2>模型与通用规则</h2></div><div class="cardbody">
+          <div class="grid"><div class="field"><label>模型 <i class="req">*</i></label><select class="control" id="model"><option value="m1">DeepSeek Flash · 可用</option><option value="m2">Qwen Coder · 可用</option></select><p class="help">模型独立选择；无可用模型时需先到模型管理完成配置。</p></div>
+            <div class="field"><label>通用规则 <span style="font-weight:400;color:#7a8798">· 可选</span></label><select class="control" id="prompt"><option value="">不使用通用规则</option><option value="p1">Java 服务端审查规范</option><option value="p2">可靠性检查要点</option></select><p class="help">只列出 SPECIALIST 用途规则；模型与规则可分别选择。</p></div>
+            <div class="field full hidden" id="versionField"><label>规则版本 <i class="req">*</i></label><div class="version-line"><select class="control" id="version"><option value="v4">v4 · 当前版本</option><option value="v3">v3 · 2026-10-18</option><option value="v2">v2 · 2026-10-12</option></select><button class="btn" id="togglePreview">收起正文</button></div>
+              <div class="preview" id="preview"><div class="previewhead">Java 服务端审查规范 <span>固定版本 v4 · 2026-10-24</span></div><pre id="promptContent">核对输入边界、状态转换、并发控制和错误处理。
+只报告能由当前代码证据支持的问题，说明影响和触发条件。
+给出文件路径与行号；不确定的结论应明确标注。</pre></div>
+              <p class="help" id="promptHelp">任务创建时冻结此版本正文；之后编辑规则不会改变已创建任务。</p>
+            </div>
+          </div>
+          <div class="rule-empty hidden" id="noRule">未选择通用规则。仍将使用内置审查边界和输出协议。</div>
+        </div></article>
+      </section>
+      <aside class="aside"><article class="card summary"><h3>本次配置</h3><dl><dt>专项类型</dt><dd>问题审查</dd><dt>模型</dt><dd id="sumModel">DeepSeek Flash</dd><dt>通用规则</dt><dd id="sumPrompt">未选择</dd><dt>规则版本</dt><dd id="sumVersion">—</dd><dt>固定代码版本</dt><dd>a81df5020f</dd></dl><hr class="line"><div class="notice">每个文件的补充说明仅作用于该文件；拆分片段继承所属文件说明。</div><div class="state" id="state" aria-live="polite"></div></article></aside>
+    </div>
+    <div class="foot"><span class="footnote">将模型配置、规则版本正文、范围及逐文件说明固定在新任务中。</span><span class="spacer"></span><button class="btn">取消</button><button class="btn primary" id="submit">开始审查</button></div>
+  </main>
+  <script>
+    const prompt=document.querySelector('#prompt'),version=document.querySelector('#version'),versionField=document.querySelector('#versionField'),preview=document.querySelector('#preview'),state=document.querySelector('#state');
+    const bodies={p1:{v4:'核对输入边界、状态转换、并发控制和错误处理。\n只报告能由当前代码证据支持的问题，说明影响和触发条件。\n给出文件路径与行号；不确定的结论应明确标注。',v3:'检查业务规则、异常处理和数据一致性。\n结论应指向具体代码位置，并说明复现条件。',v2:'先梳理请求到持久化的调用链，再检查边界和失败分支。'},p2:{v4:'检查超时、重试、幂等、降级与恢复路径。\n说明失败是否可能造成重复写入或状态不一致。',v3:'重点分析依赖故障时的行为，列出有证据支持的风险。',v2:'逐项核对重试次数、退避策略和最终错误处理。'}};
+    const sync=()=>{const selected=prompt.value;versionField.classList.toggle('hidden',!selected);document.querySelector('#noRule').classList.toggle('hidden',!!selected);document.querySelector('#sumPrompt').textContent=selected?prompt.selectedOptions[0].text:'未选择';document.querySelector('#sumVersion').textContent=selected?version.selectedOptions[0].text:'—';document.querySelector('#sumModel').textContent=document.querySelector('#model').selectedOptions[0].text.split(' · ')[0];if(selected){document.querySelector('.previewhead').childNodes[0].textContent=prompt.selectedOptions[0].text+' ';document.querySelector('.previewhead span').textContent='固定版本 '+version.selectedOptions[0].text+' · 2026-10-24';document.querySelector('#promptContent').textContent=bodies[selected][version.value];}state.textContent='';};
+    prompt.addEventListener('change',()=>{version.selectedIndex=0;sync()});version.addEventListener('change',sync);document.querySelector('#model').addEventListener('change',sync);
+    document.querySelector('#togglePreview').addEventListener('click',e=>{preview.classList.toggle('hidden');e.currentTarget.textContent=preview.classList.contains('hidden')?'查看正文':'收起正文'});
+    document.querySelector('#submit').addEventListener('click',()=>{state.textContent='原型演示：已固定模型、范围与所选规则版本；此页面不会发送请求。'});sync();
+  </script>
+</body>
+</html>

@@ -34,7 +34,7 @@
           </a-button>
           <span class="spacer" />
           <a-checkbox v-model:checked="wrapLines">自动换行</a-checkbox>
-          <span class="muted small">保存的是当时实际发送内容，修改策略不会改变此处</span>
+          <span class="muted small">保存的是当时实际发送的内容，后续配置调整不会改变此处</span>
         </div>
         <div class="code" tabindex="0" role="region" aria-label="实际调用内容">
           <pre class="call-content" :class="{ 'wrap-lines': wrapLines }"><code v-html="highlightedCurrent"></code></pre>

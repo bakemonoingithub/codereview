@@ -38,10 +38,10 @@
             </a-menu-item>
           </a-menu-item-group>
         </a-menu>
-        <div v-if="!collapsed" class="sider-foot">
-          <strong>专项与 Agent 工作台</strong>
-          <span>固定版本 · 只读调查</span>
-        </div>
+<!--        <div v-if="!collapsed" class="sider-foot">-->
+<!--          <strong>专项与 Agent 工作台</strong>-->
+<!--          <span>固定版本 · 只读调查</span>-->
+<!--        </div>-->
       </div>
     </a-layout-sider>
     <a-layout class="app-main">

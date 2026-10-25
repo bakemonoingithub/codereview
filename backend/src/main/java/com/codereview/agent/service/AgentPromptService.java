@@ -9,10 +9,8 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.PromptDtos;
 import com.codereview.agent.entity.AgentPrompt;
 import com.codereview.agent.entity.AgentPromptVersion;
-import com.codereview.agent.entity.AgentReviewStrategy;
 import com.codereview.agent.mapper.AgentPromptMapper;
 import com.codereview.agent.mapper.AgentPromptVersionMapper;
-import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
@@ -241,12 +239,6 @@ public class AgentPromptService {
 
     public void delete(String id) {
         AgentPrompt prompt = require(id);
-        Long used = db.mapper(AgentReviewStrategyMapper.class).selectCount(
-                new LambdaQueryWrapper<AgentReviewStrategy>().eq(AgentReviewStrategy::getPromptId, prompt.getId()));
-        if (used != null && used > 0) {
-            throw new ApiException(ErrorCode.CONFIG_IN_USE,
-                    "该提示词仍被 " + used + " 个策略引用，请先调整关联", Map.of("strategies", used));
-        }
         db.mapper(AgentPromptMapper.class).deleteById(prompt.getId());
     }
 

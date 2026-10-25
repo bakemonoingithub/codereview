@@ -37,7 +37,7 @@ class AgentListPaginationTest {
     @BeforeEach
     void setUp() {
         for (Class<?> entity : List.of(AgentProject.class, AgentModelConfig.class, AgentModelValidation.class,
-                AgentPrompt.class, AgentReviewStrategy.class, AgentReviewTask.class,
+                AgentPrompt.class, AgentReviewTask.class,
                 AgentTaskTarget.class, AgentReport.class)) {
             TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), entity);
         }
@@ -46,13 +46,12 @@ class AgentListPaginationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"projects,10", "models,20", "prompts,50", "strategies,10", "tasks,20", "reports,50"})
-    void sixListsCountTheFilteredRowsAndPreservePagingMetadataAfterMapping(String kind, int size) throws Exception {
+    @CsvSource({"projects,10", "models,20", "prompts,50", "tasks,20", "reports,50"})
+    void listsCountTheFilteredRowsAndPreservePagingMetadataAfterMapping(String kind, int size) throws Exception {
         Class<?> entityType = switch (kind) {
             case "projects" -> AgentProject.class;
             case "models" -> AgentModelConfig.class;
             case "prompts" -> AgentPrompt.class;
-            case "strategies" -> AgentReviewStrategy.class;
             case "tasks" -> AgentReviewTask.class;
             default -> AgentReport.class;
         };
@@ -60,7 +59,6 @@ class AgentListPaginationTest {
             case "projects" -> AgentProjectMapper.class;
             case "models" -> AgentModelConfigMapper.class;
             case "prompts" -> AgentPromptMapper.class;
-            case "strategies" -> AgentReviewStrategyMapper.class;
             case "tasks" -> AgentReviewTaskMapper.class;
             default -> AgentReportMapper.class;
         };
@@ -95,7 +93,6 @@ class AgentListPaginationTest {
             case "projects" -> new AgentProjectService(db, null).list("订单", null, null, 2, size);
             case "models" -> new AgentModelService(db, null, new ObjectMapper()).list("订单", null, null, 2, size);
             case "prompts" -> new AgentPromptService(db).list("订单", null, null, 2, size);
-            case "strategies" -> new AgentStrategyService(db).list("订单", "ISSUE", null, null, 2, size);
             case "tasks" -> new TaskService(db, new ObjectMapper(), null, null,
                     new ModelInvocationProperties(), new TaskProperties())
                     .list("project-id", "SPECIALIST", "ISSUE", "SUCCEEDED", "订单", null, null, 2, size);

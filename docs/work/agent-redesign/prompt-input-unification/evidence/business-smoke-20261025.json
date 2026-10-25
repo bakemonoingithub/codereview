@@ -1,0 +1,846 @@
+{
+  "totals": {
+    "modelCalls": 6,
+    "inputTokens": 10611,
+    "outputTokens": 3507,
+    "totalTokens": 14118
+  },
+  "negativeChecks": [
+    {
+      "body": "\r\n{\r\n  \"code\": \"VALIDATION_FAILED\",\r\n  \"message\": \"\\u65E7\\u4EFB\\u52A1\\u5B57\\u6BB5\\u5DF2\\u505C\\u7528\\uFF0C\\u8BF7\\u4F7F\\u7528 modelConfigId\\u3001promptId \\u548C promptVersionId\",\r\n  \"retryable\": false,\r\n  \"requestId\": \"899525c241bb4666\"\r\n}",
+      "name": "retired strategyId",
+      "status": 400
+    },
+    {
+      "body": "\r\n{\r\n  \"code\": \"VALIDATION_FAILED\",\r\n  \"message\": \"\\u6240\\u9009\\u901A\\u7528\\u89C4\\u5219\\u4E0D\\u5C5E\\u4E8E\\u4E13\\u9879\\u7528\\u9014\",\r\n  \"retryable\": false,\r\n  \"requestId\": \"4961a4e040d1482c\"\r\n}",
+      "name": "wrong purpose",
+      "status": 400
+    },
+    {
+      "body": "\r\n{\r\n  \"code\": \"VALIDATION_FAILED\",\r\n  \"message\": \"\\u9009\\u62E9\\u901A\\u7528\\u89C4\\u5219\\u65F6\\u5FC5\\u987B\\u540C\\u65F6\\u6307\\u5B9A\\u89C4\\u5219 ID \\u548C\\u5177\\u4F53\\u7248\\u672C\",\r\n  \"retryable\": false,\r\n  \"requestId\": \"f3830a0c9e474609\"\r\n}",
+      "name": "missing version",
+      "status": 400
+    }
+  ],
+  "reportUsage": {
+    "total_tokens": 4788,
+    "prompt_tokens": 1949,
+    "completion_tokens": 2839,
+    "prompt_tokens_details": {
+      "cached_tokens": 128
+    },
+    "prompt_cache_hit_tokens": 128,
+    "prompt_cache_miss_tokens": 1821,
+    "completion_tokens_details": {
+      "reasoning_tokens": 2635
+    }
+  },
+  "state": {
+    "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+    "guidancePromptId": "01M5S87XRRYV5VZG7A4RM696AC",
+    "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+    "modelId": "01M23AKQZRG40082QFECKMC36N",
+    "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+    "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+    "tasks": [
+      {
+        "kind": "ISSUE",
+        "id": "01M5S87Y6A0JGF61VKFAE05ZTM"
+      },
+      {
+        "kind": "COUPLING",
+        "id": "01M5S87YJS0ZANREK3ZSYEFK34"
+      },
+      {
+        "kind": "PATTERN",
+        "id": "01M5S87YXXRKAR59X51TCBB0KM"
+      },
+      {
+        "kind": "AGENT",
+        "id": "01M5S87ZA8HN3QMK7GS8XCTMKZ"
+      }
+    ],
+    "requests": [
+      {
+        "body": {
+          "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+          "route": "SPECIALIST",
+          "specialistType": "ISSUE",
+          "smartSplit": false,
+          "targets": [
+            {
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "note": "本次只审这个文件，最多一项发现，无可靠发现则对应数组为空。summary 必须以 UPI-ISSUE 开头，不使用 UPI-RULE；其余遵守内置协议，简短输出。"
+            }
+          ],
+          "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+          "name": "UPI-SMOKE-20261025-ISSUE",
+          "source": {
+            "observedSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+            "branch": "dev",
+            "kind": "FILES"
+          },
+          "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+          "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB"
+        },
+        "route": "review-tasks"
+      },
+      {
+        "body": {
+          "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+          "route": "SPECIALIST",
+          "specialistType": "COUPLING",
+          "smartSplit": false,
+          "targets": [
+            {
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "note": "本次只审这个文件，最多一项发现，无可靠发现则对应数组为空。summary 必须以 UPI-COUPLING 开头，不使用 UPI-RULE；其余遵守内置协议，简短输出。"
+            }
+          ],
+          "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+          "name": "UPI-SMOKE-20261025-COUPLING",
+          "source": {
+            "observedSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+            "branch": "dev",
+            "kind": "FILES"
+          },
+          "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+          "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB"
+        },
+        "route": "review-tasks"
+      },
+      {
+        "body": {
+          "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+          "route": "SPECIALIST",
+          "specialistType": "PATTERN",
+          "smartSplit": false,
+          "targets": [
+            {
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "note": "本次只审这个文件，最多一项发现，无可靠发现则对应数组为空。summary 必须以 UPI-PATTERN 开头，不使用 UPI-RULE；其余遵守内置协议，简短输出。"
+            }
+          ],
+          "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+          "name": "UPI-SMOKE-20261025-PATTERN",
+          "source": {
+            "observedSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+            "branch": "dev",
+            "kind": "FILES"
+          },
+          "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+          "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB"
+        },
+        "route": "review-tasks"
+      },
+      {
+        "body": {
+          "guidancePromptId": "01M5S87XRRYV5VZG7A4RM696AC",
+          "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+          "scope": {
+            "paths": [
+              "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java"
+            ],
+            "observedSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+            "description": "仅核对指定文件构造器的空值检查。",
+            "branch": "dev",
+            "kind": "FILES"
+          },
+          "name": "UPI-SMOKE-20261025-AGENT",
+          "requirements": "本次要求优先：正文以 UPI-AGENT 开头。仅回答 PromptFact 构造器是否拒绝空或空白的 id、text。先 read_code 读取 V1 的指定文件第9至19行，得到证据后立即 submit_result，正文不超过100字，至多1条有效引用；不要搜索其他文件。",
+          "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+          "guidancePromptVersionId": "01M5S87XRR4ZYAV71Z0AZ97W59"
+        },
+        "route": "agent-tasks"
+      }
+    ],
+    "currentVersionId": "01M5S87XRBP5T9BTSMSG371KGJ",
+    "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB",
+    "reportId": "01M5S88QNT3TRMQSKT0ERNG7JY",
+    "reportInstruction": "正文以 UPI-REPORT 开头，全文不超过250个汉字。仅用冻结事实概括三类专项与Agent对参数校验的结论；保留来源引用和限制，无需逐段复述代码，不新增问题。"
+  },
+  "frozenUnchangedAfterVersion3": true,
+  "citationMaterial": {
+    "id": "01M5S880E29CKBY3X9RS9Y8BQ6",
+    "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+    "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+    "side": "FILE",
+    "startLine": 9,
+    "endLine": 19,
+    "role": "TOOL",
+    "disposition": "SENT",
+    "completeness": "COMPLETE",
+    "contentHash": "456ed1af93c0bb3de8be4969af8170b3092d3aaa039772b3413e0840a4432511",
+    "byteSize": 345,
+    "sent": true
+  },
+  "results": [
+    {
+      "calls": [
+        {
+          "hasGeneralRule": true,
+          "hasFileNote": true,
+          "usage": {
+            "total_tokens": 1035,
+            "prompt_tokens": 973,
+            "completion_tokens": 62,
+            "prompt_tokens_details": {
+              "cached_tokens": 256
+            },
+            "prompt_cache_hit_tokens": 256,
+            "prompt_cache_miss_tokens": 717
+          },
+          "messageCount": 2,
+          "hasAgentGuidance": false,
+          "usesV1": true,
+          "id": "01M5S87YD872ZF83H2K0KW1QW7",
+          "state": "SUCCEEDED",
+          "usesV2": false
+        }
+      ],
+      "config": {
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "modelName": "DeepSeek(默认)",
+        "modelRevision": 2,
+        "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+        "promptName": "UPI-SMOKE-20261025 专项短规则",
+        "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB",
+        "promptVersionNo": 1,
+        "promptContent": "UPI-SMOKE-R1。只依据目标文件，最多输出一项有证据的发现；没有发现可为空。summary 以 UPI-RULE 开头，结论不超过40字，其他字段遵守内置协议。"
+      },
+      "id": "01M5S87Y6A0JGF61VKFAE05ZTM",
+      "state": "SUCCEEDED",
+      "copy": {
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "route": "SPECIALIST",
+        "specialistType": "ISSUE",
+        "sourceKind": "FILES",
+        "branch": "dev",
+        "targets": [
+          {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+            "note": "本次只审这个文件，最多一项发现，无可靠发现则对应数组为空。summary 必须以 UPI-ISSUE 开头，不使用 UPI-RULE；其余遵守内置协议，简短输出。"
+          }
+        ],
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+        "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB",
+        "smartSplit": false,
+        "reobserveHead": true,
+        "name": "UPI-SMOKE-20261025-ISSUE"
+      },
+      "result": {
+        "id": "01M5S87ZQXWZCMWG9W8WE5XPGP",
+        "targetId": "01M5S87Y6JV0BZ5EG1RKP3W0NV",
+        "kind": "ISSUE",
+        "schemaVersion": "1",
+        "completeness": "COMPLETE",
+        "createdAt": "2026-10-25 10:03:35",
+        "body": {
+          "summary": "UPI-ISSUE PromptFact 记录构造校验完整，未发现可证问题",
+          "issues": [],
+          "limitations": [
+            "仅审查该 19 行文件，未提供调用方与格式化逻辑，无法判断 id 唯一性及 text 内容正确性"
+          ]
+        },
+        "issues": [],
+        "provenance": {
+          "calls": [
+            {
+              "callId": "01M5S87YD872ZF83H2K0KW1QW7",
+              "unitId": "01M5S87YCMRASSM71CRKT6HWGG"
+            }
+          ],
+          "units": [
+            {
+              "id": "01M5S87YCMRASSM71CRKT6HWGG",
+              "notes": [],
+              "ranges": [
+                {
+                  "endLine": 19,
+                  "startLine": 1
+                }
+              ],
+              "ordinal": 1
+            }
+          ],
+          "versions": {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+            "headSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05"
+          },
+          "materials": [
+            {
+              "id": "01M5S87YBPJHQJHSTYVB1KR8GQ",
+              "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "role": "TARGET",
+              "side": "FILE",
+              "endLine": 19,
+              "startLine": 1,
+              "completeness": "COMPLETE"
+            }
+          ],
+          "materialGaps": []
+        }
+      },
+      "kind": "ISSUE"
+    },
+    {
+      "calls": [
+        {
+          "hasGeneralRule": true,
+          "hasFileNote": true,
+          "usage": {
+            "total_tokens": 1160,
+            "prompt_tokens": 1054,
+            "completion_tokens": 106,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 1054
+          },
+          "messageCount": 2,
+          "hasAgentGuidance": false,
+          "usesV1": true,
+          "id": "01M5S87YMHW3CDRZNG0AH1J556",
+          "state": "SUCCEEDED",
+          "usesV2": false
+        }
+      ],
+      "config": {
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "modelName": "DeepSeek(默认)",
+        "modelRevision": 2,
+        "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+        "promptName": "UPI-SMOKE-20261025 专项短规则",
+        "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB",
+        "promptVersionNo": 1,
+        "promptContent": "UPI-SMOKE-R1。只依据目标文件，最多输出一项有证据的发现；没有发现可为空。summary 以 UPI-RULE 开头，结论不超过40字，其他字段遵守内置协议。"
+      },
+      "id": "01M5S87YJS0ZANREK3ZSYEFK34",
+      "state": "SUCCEEDED",
+      "copy": {
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "route": "SPECIALIST",
+        "specialistType": "COUPLING",
+        "sourceKind": "FILES",
+        "branch": "dev",
+        "targets": [
+          {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+            "note": "本次只审这个文件，最多一项发现，无可靠发现则对应数组为空。summary 必须以 UPI-COUPLING 开头，不使用 UPI-RULE；其余遵守内置协议，简短输出。"
+          }
+        ],
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+        "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB",
+        "smartSplit": false,
+        "reobserveHead": true,
+        "name": "UPI-SMOKE-20261025-COUPLING"
+      },
+      "result": {
+        "id": "01M5S87ZWCSSWJQ42TE55NEVGE",
+        "targetId": "01M5S87YJX1AZVHK45EHQ7FHQN",
+        "kind": "COUPLING",
+        "schemaVersion": "1",
+        "completeness": "COMPLETE",
+        "createdAt": "2026-10-25 10:03:35",
+        "body": {
+          "summary": "UPI-COUPLING 该文件无已解析出向依赖，仅1个未定位类型，耦合风险无法判定",
+          "observations": [],
+          "limitations": [
+            "程序未生成任何可引用的 dependencyId，故 observations 为空",
+            "resolvedOutgoingCount=0 且 coverage=0.0，不能据此判定为零依赖",
+            "IllegalArgumentException 未能定位（NOT_AVAILABLE），可能为第三方依赖或未提交文件，指标未覆盖全部出向依赖"
+          ]
+        },
+        "issues": [],
+        "provenance": {
+          "calls": [
+            {
+              "callId": "01M5S87YMHW3CDRZNG0AH1J556",
+              "unitId": "01M5S87YM6PGPNSRY6G5FYT5RX"
+            }
+          ],
+          "units": [
+            {
+              "id": "01M5S87YM6PGPNSRY6G5FYT5RX",
+              "notes": [],
+              "ranges": [
+                {
+                  "endLine": 19,
+                  "startLine": 1
+                }
+              ],
+              "ordinal": 1
+            }
+          ],
+          "versions": {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+            "headSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05"
+          },
+          "materials": [
+            {
+              "id": "01M5S87YBPJHQJHSTYVB1KR8GQ",
+              "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "role": "TARGET",
+              "side": "FILE",
+              "endLine": 19,
+              "startLine": 1,
+              "completeness": "COMPLETE"
+            }
+          ],
+          "materialGaps": [],
+          "couplingFacts": {
+            "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+            "side": "FILE",
+            "edges": [],
+            "coverage": 0.0,
+            "limitations": [
+              "1 个类型未能可靠定位（IllegalArgumentException=NOT_AVAILABLE：仓库路径清单没有可对应的源码，可能为第三方依赖或未提交文件），指标未覆盖全部出向依赖",
+              "没有生成仓库内已解析依赖边，不能把本结果解释为零依赖"
+            ],
+            "unresolvedTypeCount": 1,
+            "resolvedOutgoingCount": 0,
+            "declarationRelationCounts": {}
+          }
+        }
+      },
+      "kind": "COUPLING"
+    },
+    {
+      "calls": [
+        {
+          "hasGeneralRule": true,
+          "hasFileNote": true,
+          "usage": {
+            "total_tokens": 1062,
+            "prompt_tokens": 894,
+            "completion_tokens": 168,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 894
+          },
+          "messageCount": 2,
+          "hasAgentGuidance": false,
+          "usesV1": true,
+          "id": "01M5S87YZ8CKB7XBKKN1S5T7HC",
+          "state": "SUCCEEDED",
+          "usesV2": false
+        }
+      ],
+      "config": {
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "modelName": "DeepSeek(默认)",
+        "modelRevision": 2,
+        "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+        "promptName": "UPI-SMOKE-20261025 专项短规则",
+        "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB",
+        "promptVersionNo": 1,
+        "promptContent": "UPI-SMOKE-R1。只依据目标文件，最多输出一项有证据的发现；没有发现可为空。summary 以 UPI-RULE 开头，结论不超过40字，其他字段遵守内置协议。"
+      },
+      "id": "01M5S87YXXRKAR59X51TCBB0KM",
+      "state": "SUCCEEDED",
+      "copy": {
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "route": "SPECIALIST",
+        "specialistType": "PATTERN",
+        "sourceKind": "FILES",
+        "branch": "dev",
+        "targets": [
+          {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+            "note": "本次只审这个文件，最多一项发现，无可靠发现则对应数组为空。summary 必须以 UPI-PATTERN 开头，不使用 UPI-RULE；其余遵守内置协议，简短输出。"
+          }
+        ],
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "promptId": "01M5S87XQ1V1K0P989GT3RNHXH",
+        "promptVersionId": "01M5S87XQ7XB1ECB8J2P8CKQFB",
+        "smartSplit": false,
+        "reobserveHead": true,
+        "name": "UPI-SMOKE-20261025-PATTERN"
+      },
+      "result": {
+        "id": "01M5S880JH6ECQE2D9JCAPMBZY",
+        "targetId": "01M5S87YY04NG44KC6ERB2VHXQ",
+        "kind": "PATTERN",
+        "schemaVersion": "1",
+        "completeness": "COMPLETE",
+        "createdAt": "2026-10-25 10:03:36",
+        "body": {
+          "summary": "UPI-PATTERN 目标为不可变只读事实值对象，未见经典设计模式结构",
+          "patterns": [
+            {
+              "name": "OTHER",
+              "family": "OTHER",
+              "role": "不可变值对象（只读事实载体）",
+              "explanation": "record 声明两个组件并在紧凑构造器中校验非空，无协作对象、继承或分派结构，仅承担数据承载与不变量校验，不构成经典创建型/结构型/行为型模式",
+              "evidence": [
+                {
+                  "materialId": "01M5S87YBPJHQJHSTYVB1KR8GQ",
+                  "startLine": 9,
+                  "endLine": 18
+                }
+              ]
+            }
+          ],
+          "limitations": [
+            "仅19行单文件，缺少调用方与格式化逻辑，无法判断是否存在其他模式角色",
+            "未提供仓库版本或运行状态信息"
+          ]
+        },
+        "issues": [],
+        "provenance": {
+          "calls": [
+            {
+              "callId": "01M5S87YZ8CKB7XBKKN1S5T7HC",
+              "unitId": "01M5S87YYY35E5P7RRF5GVCMNA"
+            }
+          ],
+          "units": [
+            {
+              "id": "01M5S87YYY35E5P7RRF5GVCMNA",
+              "notes": [],
+              "ranges": [
+                {
+                  "endLine": 19,
+                  "startLine": 1
+                }
+              ],
+              "ordinal": 1
+            }
+          ],
+          "versions": {
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+            "headSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05"
+          },
+          "materials": [
+            {
+              "id": "01M5S87YBPJHQJHSTYVB1KR8GQ",
+              "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "role": "TARGET",
+              "side": "FILE",
+              "endLine": 19,
+              "startLine": 1,
+              "completeness": "COMPLETE"
+            }
+          ],
+          "materialGaps": []
+        }
+      },
+      "kind": "PATTERN"
+    },
+    {
+      "calls": [
+        {
+          "hasGeneralRule": false,
+          "hasFileNote": true,
+          "usage": {
+            "total_tokens": 3359,
+            "prompt_tokens": 3130,
+            "completion_tokens": 229,
+            "prompt_tokens_details": {
+              "cached_tokens": 2688
+            },
+            "prompt_cache_hit_tokens": 2688,
+            "prompt_cache_miss_tokens": 442,
+            "completion_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          },
+          "messageCount": 4,
+          "hasAgentGuidance": true,
+          "usesV1": false,
+          "id": "01M5S880F0XW9XZ1EJ1TH6E8KF",
+          "state": "SUCCEEDED",
+          "usesV2": false
+        },
+        {
+          "hasGeneralRule": false,
+          "hasFileNote": true,
+          "usage": {
+            "total_tokens": 2714,
+            "prompt_tokens": 2611,
+            "completion_tokens": 103,
+            "prompt_tokens_details": {
+              "cached_tokens": 512
+            },
+            "prompt_cache_hit_tokens": 512,
+            "prompt_cache_miss_tokens": 2099,
+            "completion_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          },
+          "messageCount": 2,
+          "hasAgentGuidance": true,
+          "usesV1": false,
+          "id": "01M5S87ZBK8EW76MQ54NV1M2R1",
+          "state": "SUCCEEDED",
+          "usesV2": false
+        }
+      ],
+      "config": {
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "modelName": "DeepSeek(默认)",
+        "modelRevision": 2,
+        "promptId": "01M5S87XRRYV5VZG7A4RM696AC",
+        "promptName": "UPI-SMOKE-20261025 Agent短规则",
+        "promptVersionId": "01M5S87XRR4ZYAV71Z0AZ97W59",
+        "promptVersionNo": 1,
+        "promptContent": "UPI-AGENT-GUIDE。只调查指定目标，材料充足后立即 submit_result；不搜索关联代码。正文默认以 UPI-GUIDE 开头，其他要求服从本次任务。"
+      },
+      "id": "01M5S87ZA8HN3QMK7GS8XCTMKZ",
+      "state": "SUCCEEDED",
+      "copy": {
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "name": "UPI-SMOKE-20261025-AGENT",
+        "modelConfigId": "01M23AKQZRG40082QFECKMC36N",
+        "guidancePromptId": "01M5S87XRRYV5VZG7A4RM696AC",
+        "guidancePromptVersionId": "01M5S87XRR4ZYAV71Z0AZ97W59",
+        "scope": {
+          "kind": "FILES",
+          "branch": "dev",
+          "observedSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+          "paths": [
+            "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java"
+          ],
+          "commits": [],
+          "description": "仅核对指定文件构造器的空值检查。"
+        },
+        "requirements": "本次要求优先：正文以 UPI-AGENT 开头。仅回答 PromptFact 构造器是否拒绝空或空白的 id、text。先 read_code 读取 V1 的指定文件第9至19行，得到证据后立即 submit_result，正文不超过100字，至多1条有效引用；不要搜索其他文件。",
+        "reobserveHead": true
+      },
+      "result": {
+        "id": "01M5S882MA1487K6V6XZNMGJ5G",
+        "schemaVersion": "1",
+        "completeness": "COMPLETE",
+        "createdAt": "2026-10-25 10:03:38",
+        "body": {
+          "title": "PromptFact 构造器拒绝空/空白 id 与 text",
+          "summary": "V1 中 PromptFact 紧凑构造器对 id 与 text 均做 null 与 isBlank 检查，命中即抛 IllegalArgumentException。",
+          "answerStatus": "ANSWERED",
+          "markdown": "UPI-AGENT 是。构造器对 id 和 text 都检查 `null || isBlank()`，任一为空或空白即抛出 IllegalArgumentException [E1]。",
+          "citations": [
+            {
+              "id": "E1",
+              "materialId": "01M5S880E29CKBY3X9RS9Y8BQ6",
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "side": "FILE",
+              "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+              "startLine": 11,
+              "endLine": 17
+            }
+          ],
+          "unresolved": []
+        },
+        "provenance": {
+          "materials": [
+            {
+              "id": "01M5S880E29CKBY3X9RS9Y8BQ6",
+              "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+              "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+              "side": "FILE",
+              "endLine": 19,
+              "startLine": 9,
+              "contentHash": "456ed1af93c0bb3de8be4969af8170b3092d3aaa039772b3413e0840a4432511"
+            }
+          ],
+          "toolCalls": 1,
+          "comparisons": [],
+          "schemaVersion": "1"
+        }
+      },
+      "kind": "AGENT"
+    }
+  ],
+  "downloadMatches": true,
+  "reportHanCount": 180,
+  "tools": [
+    {
+      "id": "01M5S880E78S85SH1FM4YWAMQ0",
+      "turnNo": 1,
+      "ordinal": 1,
+      "toolName": "read_code",
+      "providerToolCallId": "call_00_ET_FYgfybujgqIBF2ZSwqAb4582",
+      "arguments": "{\"version\": \"V1\", \"path\": \"backend/src/main/java/com/codereview/agent/prompt/PromptFact.java\", \"start\": 9, \"end\": 19}",
+      "envelope": {
+        "toolCallId": "call_00_ET_FYgfybujgqIBF2ZSwqAb4582",
+        "status": "OK",
+        "versionRefs": [
+          {
+            "version": "V1",
+            "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05"
+          }
+        ],
+        "materials": [
+          {
+            "materialId": "01M5S880E29CKBY3X9RS9Y8BQ6",
+            "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+            "side": "FILE",
+            "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+            "startLine": 9,
+            "endLine": 19,
+            "contentHash": "456ed1af93c0bb3de8be4969af8170b3092d3aaa039772b3413e0840a4432511",
+            "completeness": "COMPLETE",
+            "content": "public record PromptFact(String id, String text) {\n\n    public PromptFact {\n        if (id == null || id.isBlank()) {\n            throw new IllegalArgumentException(\"事实缺少稳定编号\");\n        }\n        if (text == null || text.isBlank()) {\n            throw new IllegalArgumentException(\"事实缺少说明：\" + id);\n        }\n    }\n}"
+          }
+        ],
+        "data": {
+          "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+          "sha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+          "totalLines": 19,
+          "startLine": 9,
+          "endLine": 19,
+          "contentHash": "456ed1af93c0bb3de8be4969af8170b3092d3aaa039772b3413e0840a4432511"
+        },
+        "completeness": "COMPLETE"
+      },
+      "materialIds": [
+        "01M5S880E29CKBY3X9RS9Y8BQ6"
+      ],
+      "status": "OK",
+      "startedAt": "2026-10-25 10:03:36",
+      "finishedAt": "2026-10-25 10:03:36"
+    },
+    {
+      "id": "01M5S882M7V3EECGDYWGR0FJ6Q",
+      "turnNo": 2,
+      "ordinal": 1,
+      "toolName": "submit_result",
+      "providerToolCallId": "call_00_ET_KkZuO0lUIDaKXGDKJWa11623",
+      "arguments": "{\"title\": \"PromptFact 构造器拒绝空/空白 id 与 text\", \"summary\": \"V1 中 PromptFact 紧凑构造器对 id 与 text 均做 null 与 isBlank 检查，命中即抛 IllegalArgumentException。\", \"answerStatus\": \"ANSWERED\", \"markdown\": \"UPI-AGENT 是。构造器对 id 和 text 都检查 `null || isBlank()`，任一为空或空白即抛出 IllegalArgumentException [E1]。\", \"citations\": [{\"id\": \"E1\", \"materialId\": \"01M5S880E29CKBY3X9RS9Y8BQ6\", \"startLine\": 11, \"endLine\": 17}]}",
+      "envelope": {
+        "toolCallId": "call_00_ET_KkZuO0lUIDaKXGDKJWa11623",
+        "status": "OK",
+        "completeness": "UNKNOWN",
+        "diagnostic": "提交结果：ANSWERED"
+      },
+      "materialIds": [],
+      "status": "OK",
+      "startedAt": "2026-10-25 10:03:38",
+      "finishedAt": "2026-10-25 10:03:38"
+    }
+  ],
+  "strategyEndpointStatus": 404,
+  "reportActualInstructionPresent": true,
+  "report": {
+    "id": "01M5S88QNT3TRMQSKT0ERNG7JY",
+    "title": "UPI-SMOKE-20261025 五路线小样本报告",
+    "state": "SUCCEEDED",
+    "body": "UPI-REPORT\n\n本报告仅覆盖4个冻结来源、4个任务、0个问题；对应仓库版本28eb23c。[S1][S2][S3][S4]\n\n问题审查[S1]：PromptFact 构造校验完整，未发现可证问题；限制为仅审19行、缺调用方与格式化逻辑，无法判断 id 唯一性及 text 内容正确性。\n\n耦合度[S2]：已解析出向依赖0个、未解析类型1个、覆盖0.0，耦合风险无法判定，不能据此判为零依赖。\n\n设计模式[S3]：目标为不可变只读事实值对象，未见经典设计模式结构；单文件缺调用方，无法判断其他模式角色。\n\nAgent[S4]：ANSWERED，未解决0项；确认紧凑构造器对 id 与 text 均做 null/isBlank 检查，命中抛 IllegalArgumentException。结果级人工反馈未反馈3项。",
+    "model": {
+      "id": "01M23AKQZRG40082QFECKMC36N",
+      "name": "DeepSeek(默认)",
+      "modelName": "deepseek-flash",
+      "contextWindow": 1048576,
+      "maxOutput": 393216,
+      "protocol": "OPENAI_CHAT",
+      "revision": 2
+    },
+    "instruction": "正文以 UPI-REPORT 开头，全文不超过250个汉字。仅用冻结事实概括三类专项与Agent对参数校验的结论；保留来源引用和限制，无需逐段复述代码，不新增问题。",
+    "sourceCount": 4,
+    "taskCount": 4,
+    "versionCount": 1,
+    "kindCounts": {
+      "ISSUE": 1,
+      "COUPLING": 1,
+      "PATTERN": 1,
+      "AGENT": 1
+    },
+    "sources": [
+      {
+        "ordinal": 1,
+        "resultId": "01M5S87ZQXWZCMWG9W8WE5XPGP",
+        "kind": "ISSUE",
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "projectName": "codereview",
+        "taskId": "01M5S87Y6A0JGF61VKFAE05ZTM",
+        "taskRoute": "SPECIALIST",
+        "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+        "headSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+        "baseSha": "",
+        "summary": "UPI-ISSUE PromptFact 记录构造校验完整，未发现可证问题",
+        "issueCount": 0,
+        "accurate": 0,
+        "inaccurate": 0,
+        "unknown": 0,
+        "unassessed": 0
+      },
+      {
+        "ordinal": 2,
+        "resultId": "01M5S87ZWCSSWJQ42TE55NEVGE",
+        "kind": "COUPLING",
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "projectName": "codereview",
+        "taskId": "01M5S87YJS0ZANREK3ZSYEFK34",
+        "taskRoute": "SPECIALIST",
+        "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+        "headSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+        "baseSha": "",
+        "summary": "UPI-COUPLING 该文件无已解析出向依赖，仅1个未定位类型，耦合风险无法判定",
+        "issueCount": 0,
+        "accurate": 0,
+        "inaccurate": 0,
+        "unknown": 0,
+        "unassessed": 1
+      },
+      {
+        "ordinal": 3,
+        "resultId": "01M5S880JH6ECQE2D9JCAPMBZY",
+        "kind": "PATTERN",
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "projectName": "codereview",
+        "taskId": "01M5S87YXXRKAR59X51TCBB0KM",
+        "taskRoute": "SPECIALIST",
+        "path": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java",
+        "headSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+        "baseSha": "",
+        "summary": "UPI-PATTERN 目标为不可变只读事实值对象，未见经典设计模式结构",
+        "issueCount": 0,
+        "accurate": 0,
+        "inaccurate": 0,
+        "unknown": 0,
+        "unassessed": 1
+      },
+      {
+        "ordinal": 4,
+        "resultId": "01M5S882MA1487K6V6XZNMGJ5G",
+        "kind": "AGENT",
+        "projectId": "01M2FZ8HA8H6CVXRTKA15JV7GQ",
+        "projectName": "codereview",
+        "taskId": "01M5S87ZA8HN3QMK7GS8XCTMKZ",
+        "taskRoute": "AGENT",
+        "headSha": "28eb23cc684b9dcc0964b4157c6e358158bccf05",
+        "baseSha": "",
+        "summary": "V1 中 PromptFact 紧凑构造器对 id 与 text 均做 null 与 isBlank 检查，命中即抛 IllegalArgumentException。（ANSWERED，未解决 0 项）",
+        "issueCount": 0,
+        "accurate": 0,
+        "inaccurate": 0,
+        "unknown": 0,
+        "unassessed": 1
+      }
+    ],
+    "calls": [
+      {
+        "id": "01M5S88QQKE90MF28YFVYCXB4P",
+        "purpose": "REPORT",
+        "attempt": 1,
+        "state": "SUCCEEDED",
+        "createdAt": "2026-10-25 10:04:00",
+        "startedAt": "2026-10-25 10:04:00",
+        "finishedAt": "2026-10-25 10:04:14"
+      }
+    ],
+    "createdAt": "2026-10-25 10:04:00",
+    "updatedAt": "2026-10-25 10:04:14",
+    "startedAt": "2026-10-25 10:04:00",
+    "finishedAt": "2026-10-25 10:04:14"
+  },
+  "baseUrl": "http://127.0.0.1:8081/api/v2",
+  "date": "2026-10-25"
+}

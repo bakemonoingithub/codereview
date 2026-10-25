@@ -62,6 +62,14 @@ public class V2ExceptionHandler {
     /** 请求体不是合法 JSON、字段类型不符或未知枚举值，同样是 400。 */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiErrorBody> handleUnreadable(HttpMessageNotReadableException e) {
+        for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof IllegalArgumentException
+                    && cause.getMessage() != null
+                    && cause.getMessage().contains("strategyId 已退出")) {
+                return response(ErrorCode.VALIDATION_FAILED,
+                        "旧任务字段已停用，请使用 modelConfigId、promptId 和 promptVersionId", null);
+            }
+        }
         return response(ErrorCode.VALIDATION_FAILED, "请求体不是合法 JSON 或字段类型不符", null);
     }
 

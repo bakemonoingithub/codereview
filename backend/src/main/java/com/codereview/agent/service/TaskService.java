@@ -17,7 +17,6 @@ import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentProject;
 import com.codereview.agent.entity.AgentPrompt;
 import com.codereview.agent.entity.AgentPromptVersion;
-import com.codereview.agent.entity.AgentReviewStrategy;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentTaskQuota;
 import com.codereview.agent.entity.AgentTaskTarget;
@@ -34,7 +33,6 @@ import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
-import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
@@ -68,7 +66,7 @@ import java.util.stream.Collectors;
 /**
  * 任务 v2 服务：幂等创建、固定来源快照、目标记录、取消和读取。
  *
- * <p>创建时固定模型、策略、提示词版本和来源 SHA，后续配置修改只影响新任务。
+ * <p>创建时固定模型、通用规则版本和来源 SHA，后续配置修改只影响新任务。
  * 凭据不进入输入或配置快照；复制参数只返回可编辑项。
  */
 @Service
@@ -106,7 +104,7 @@ public class TaskService {
 
         String specialistType = normalizeSpecialist(req.specialistType());
         String route = normalizeRoute(req.route());
-        ResolvedConfig config = resolveConfig(req, specialistType);
+        ResolvedConfig config = resolveConfig(req);
         ResolvedSource source = resolveSource(req.source(), project);
         List<NormalizedTarget> targets = normalizeTargets(req.targets());
 
@@ -235,12 +233,17 @@ public class TaskService {
                     textOrNull(target, "oldPath"), textOrNull(target, "note")));
         }
         JsonNode config = readJson(task.getConfigSnapshot());
-        String strategyId = textOrNull(config.path("strategy"), "id");
+        if (config.path("schemaVersion").asInt(0) != 2) {
+            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,
+                    "该试运行任务不支持复制，请重新创建");
+        }
         String modelId = textOrNull(config.path("model"), "id");
+        JsonNode prompt = config.path("prompt");
         String kind = source.path("kind").asText("FILES");
         return new TaskDtos.CopyInput(task.getProjectId(), task.getRoute(), task.getSpecialistType(),
                 kind, textOrNull(source, "branch"), textOrNull(source, "commitSha"),
-                textOrNull(source, "baseSha"), targets, strategyId, modelId,
+                textOrNull(source, "baseSha"), targets, modelId,
+                textOrNull(prompt, "id"), textOrNull(prompt, "versionId"),
                 input.path("smartSplit").asBoolean(false), "FILES".equals(kind),
                 TaskNames.display(task.getName(), task.getId()));
     }
@@ -483,31 +486,11 @@ public class TaskService {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private ResolvedConfig resolveConfig(TaskDtos.Create req, String specialistType) {
-        AgentReviewStrategy strategy = null;
-        if (req.strategyId() != null && !req.strategyId().isBlank()) {
-            strategy = db.mapper(AgentReviewStrategyMapper.class)
-                    .selectById(AgentIds.requireValid(req.strategyId(), "策略 ID"));
-            if (strategy == null) {
-                throw new ApiException(ErrorCode.NOT_FOUND, "策略不存在：" + req.strategyId());
-            }
-            if (!specialistType.equals(strategy.getSpecialistType())) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                        "策略类型与本次专项不一致：策略为 " + strategy.getSpecialistType(),
-                        Map.of("expected", specialistType, "actual", strategy.getSpecialistType()));
-            }
-        }
-        String requestedModel = req.modelConfigId() == null || req.modelConfigId().isBlank()
+    private ResolvedConfig resolveConfig(TaskDtos.Create req) {
+        String modelId = req.modelConfigId() == null || req.modelConfigId().isBlank()
                 ? null : req.modelConfigId().trim();
-        String strategyModel = strategy == null ? null : strategy.getModelConfigId();
-        if (requestedModel != null && strategyModel != null && !requestedModel.equals(strategyModel)) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "选择策略时由策略带入模型，不能再指定另一个模型",
-                    Map.of("strategyModelId", strategyModel, "modelConfigId", requestedModel));
-        }
-        String modelId = requestedModel != null ? requestedModel : strategyModel;
         if (modelId == null) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "未选择策略时必须指定模型");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "必须指定模型");
         }
         AgentModelConfig model = db.mapper(AgentModelConfigMapper.class)
                 .selectById(AgentIds.requireValid(modelId, "模型 ID"));
@@ -516,17 +499,25 @@ public class TaskService {
         }
         AgentPrompt prompt = null;
         AgentPromptVersion promptVersion = null;
-        if (strategy != null && strategy.getPromptId() != null) {
-            prompt = db.mapper(AgentPromptMapper.class).selectById(strategy.getPromptId());
+        boolean hasPromptId = req.promptId() != null && !req.promptId().isBlank();
+        boolean hasVersionId = req.promptVersionId() != null && !req.promptVersionId().isBlank();
+        if (hasPromptId != hasVersionId) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "选择通用规则时必须同时指定规则 ID 和具体版本");
+        }
+        if (hasPromptId) {
+            prompt = db.mapper(AgentPromptMapper.class)
+                    .selectById(AgentIds.requireValid(req.promptId(), "通用规则 ID"));
             if (prompt == null) {
-                throw new ApiException(ErrorCode.NOT_FOUND, "策略引用的提示词不存在");
+                throw new ApiException(ErrorCode.NOT_FOUND, "通用规则不存在：" + req.promptId());
             }
             if (!"SPECIALIST".equals(prompt.getPurpose())) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED, "策略引用的提示词不再属于专项用途");
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "所选通用规则不属于专项用途");
             }
-            promptVersion = PromptVersionResolver.resolve(db, prompt, strategy.getPromptVersionId());
+            promptVersion = PromptVersionResolver.resolve(db, prompt,
+                    AgentIds.requireValid(req.promptVersionId(), "通用规则版本 ID"));
         }
-        return new ResolvedConfig(model, strategy, prompt, promptVersion);
+        return new ResolvedConfig(model, prompt, promptVersion);
     }
 
     private ResolvedSource resolveSource(TaskDtos.Source source, AgentProject project) {
@@ -643,6 +634,7 @@ public class TaskService {
 
     private String configSnapshot(ResolvedConfig config) {
         ObjectNode root = mapper.createObjectNode();
+        root.put("schemaVersion", 2);
         AgentModelConfig model = config.model();
         ObjectNode modelNode = root.putObject("model");
         modelNode.put("id", model.getId());
@@ -654,14 +646,6 @@ public class TaskService {
         putNullable(modelNode, "tokenizer", model.getTokenizer());
         modelNode.put("protocol", model.getProtocol());
         modelNode.put("revision", model.getRevision());
-        if (config.strategy() != null) {
-            ObjectNode strategyNode = root.putObject("strategy");
-            strategyNode.put("id", config.strategy().getId());
-            strategyNode.put("name", config.strategy().getName());
-            strategyNode.put("revision", config.strategy().getRevision());
-            putNullable(strategyNode, "promptId", config.strategy().getPromptId());
-            putNullable(strategyNode, "promptVersionId", config.strategy().getPromptVersionId());
-        }
         if (config.prompt() != null) {
             ObjectNode promptNode = root.putObject("prompt");
             promptNode.put("id", config.prompt().getId());
@@ -684,13 +668,12 @@ public class TaskService {
         JsonNode source = input.path("source");
         JsonNode config = readJson(task.getConfigSnapshot());
         JsonNode model = config.path("model");
-        JsonNode strategy = config.path("strategy");
         JsonNode prompt = config.path("prompt");
         TaskDtos.ConfigView configView = new TaskDtos.ConfigView(
                 textOrNull(model, "id"), textOrNull(model, "name"), integerOrNull(model, "revision"),
-                textOrNull(strategy, "id"), textOrNull(strategy, "name"),
-                integerOrNull(strategy, "revision"), textOrNull(prompt, "id"),
-                integerOrNull(prompt, "versionNo"));
+                textOrNull(prompt, "id"), textOrNull(prompt, "name"),
+                textOrNull(prompt, "versionId"), integerOrNull(prompt, "versionNo"),
+                textOrNull(prompt, "content"));
         List<TaskDtos.TargetView> targetViews = targets.stream()
                 .map(target -> new TaskDtos.TargetView(target.getId(), target.getOrdinal(),
                         target.getPath(), target.getOldPath(), target.getBaseSha(), target.getHeadSha(),
@@ -862,8 +845,8 @@ public class TaskService {
         }
     }
 
-    private record ResolvedConfig(AgentModelConfig model, AgentReviewStrategy strategy,
-                                  AgentPrompt prompt, AgentPromptVersion promptVersion) {
+    private record ResolvedConfig(AgentModelConfig model, AgentPrompt prompt,
+                                  AgentPromptVersion promptVersion) {
     }
 
     private record ResolvedSource(String kind, String branch, String headSha, String baseSha) {

@@ -11,7 +11,7 @@
   <div class="agent-launch">
     <div class="page-head">
       <div>
-        <p class="muted">描述范围与要求。模型只读调查固定版本，命中限制会保留记录但不发布完整结果。</p>
+<!--        <p class="muted">描述范围与要求。模型只读调查固定版本，命中限制会保留记录但不发布完整结果。</p>-->
       </div>
     </div>
 
@@ -34,6 +34,9 @@
 
     <a-form layout="vertical">
         <a-card title="1. 审查目标" class="launch-card mb16">
+        <a-form-item label="任务名称（可选）">
+          <a-input v-model:value="form.name" :maxlength="200" placeholder="例如：支付超时后的重试链路" />
+        </a-form-item>
         <a-row :gutter="16">
           <a-col :xs="24" :md="12">
             <a-form-item label="项目" required>
@@ -49,7 +52,7 @@
             </a-form-item>
           </a-col>
           <a-col :xs="24" :md="12">
-            <a-form-item label="模型（仅已通过 Agent 工具协议验证）" required>
+            <a-form-item label="模型" required>
               <a-select
                 :get-popup-container="getPopupContainer"
                 v-model:value="form.modelConfigId"
@@ -60,33 +63,16 @@
           </a-col>
         </a-row>
 
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="12">
-            <a-form-item label="参考结果 ID（可选，只能是完整结果）">
-              <a-input v-model:value="form.referenceResultId" placeholder="旧结论只作线索，代码需重新读取" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-
         </a-card>
 
         <a-card title="2. 审查范围" class="launch-card mb16">
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="10">
-            <a-form-item label="任务名称（可选）">
-              <a-input v-model:value="form.name" :maxlength="200" placeholder="例如：支付超时后的重试链路" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="14">
-            <a-form-item label="范围类型" required>
-              <a-radio-group v-model:value="form.kind" button-style="solid" @change="onKindChange">
-                <a-radio-button value="TEXT">文字描述</a-radio-button>
-                <a-radio-button value="FILES">文件／目录</a-radio-button>
-                <a-radio-button value="COMMITS">提交比较</a-radio-button>
-              </a-radio-group>
-            </a-form-item>
-          </a-col>
-        </a-row>
+        <a-form-item label="范围类型" required>
+          <a-radio-group v-model:value="form.kind" button-style="solid" @change="onKindChange">
+            <a-radio-button value="TEXT">文字描述</a-radio-button>
+            <a-radio-button value="FILES">文件／目录</a-radio-button>
+            <a-radio-button value="COMMITS">提交比较</a-radio-button>
+          </a-radio-group>
+        </a-form-item>
 
         <a-form-item v-if="form.kind !== 'COMMITS'" label="分支" required>
           <a-select
@@ -157,7 +143,8 @@
         <a-card title="3. 补充要求" class="launch-card mb16">
         <a-row :gutter="16">
           <a-col :xs="24" :md="12">
-            <a-form-item label="指导提示词（可选，仅 AGENT 用途）">
+            <a-form-item>
+              <template #label>指导提示词 <span class="muted small">（可选）</span></template>
               <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不选则使用内置调查方法" />
             </a-form-item>
           </a-col>
@@ -184,7 +171,7 @@
           @retry="loadGuidancePrompt()"
         />
         <p v-if="form.guidancePromptId" class="muted">任务创建时保存所选版本的正文；覆盖版本会影响之后创建的任务。</p>
-        <a-form-item label="本次要求" required>
+        <a-form-item label="补充要求" required>
           <a-textarea
             v-model:value="form.requirements"
             :rows="6"
@@ -196,7 +183,7 @@
 
         </a-card>
         <div class="submit-bar">
-          <span class="muted small">提交后任务在后台执行，可在审查中心查看进度。</span>
+<!--          <span class="muted small">提交后任务在后台执行，可在审查中心查看进度。</span>-->
           <span class="spacer" />
           <a-button @click="close">取消</a-button>
           <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">开始 Agent 分析</a-button>
@@ -303,7 +290,6 @@ const form = reactive({
   modelConfigId: '',
   guidancePromptId: undefined as string | undefined,
   guidancePromptVersionId: undefined as string | undefined,
-  referenceResultId: '',
   kind: 'FILES' as 'TEXT' | 'FILES' | 'COMMITS',
   branch: '' as string,
   observedSha: '',
@@ -421,7 +407,6 @@ async function loadCopyInput() {
     form.guidancePromptId = copy.guidancePromptId || undefined
     form.guidancePromptVersionId = copy.guidancePromptVersionId || undefined
     if (form.guidancePromptId) await loadGuidancePrompt()
-    form.referenceResultId = copy.referenceResultId || ''
     form.kind = copy.scope.kind
     form.description = copy.scope.description || ''
     form.requirements = copy.requirements
@@ -649,7 +634,6 @@ async function submit() {
     modelConfigId: form.modelConfigId,
     guidancePromptId: form.guidancePromptId || undefined,
     guidancePromptVersionId: form.guidancePromptId ? form.guidancePromptVersionId : undefined,
-    referenceResultId: form.referenceResultId.trim() || undefined,
     requirements: form.requirements.trim(),
     scope: {
       kind: form.kind,

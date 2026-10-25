@@ -8,7 +8,6 @@ import {
   FileTextOutlined,
   FolderOutlined,
   RobotOutlined,
-  SettingOutlined
 } from '@ant-design/icons-vue'
 
 const APP_TITLE = '智能代码分析工具'
@@ -29,7 +28,7 @@ export interface MenuItem {
 }
 
 /** 侧栏展示顺序：工作台在前，管理在后。路径本身不因排序改变。 */
-const menuOrder = ['/reviews', '/browser', '/reports', '/projects', '/models', '/prompts', '/strategies']
+const menuOrder = ['/reviews', '/browser', '/reports', '/projects', '/models', '/prompts']
 
 const appRoutes: RouteRecordRaw[] = [
   {
@@ -100,9 +99,9 @@ const appRoutes: RouteRecordRaw[] = [
   },
   {
     path: 'strategies',
-    name: 'strategies',
-    component: () => import('@/views/StrategyList.vue'),
-    meta: { title: '策略管理', icon: SettingOutlined, group: 'manage' }
+    name: 'strategies-retired',
+    component: () => import('@/views/RetiredStrategyRoute.vue'),
+    meta: { title: '页面已停用', hideMenu: true }
   },
   {
     path: 'prompts',

@@ -345,8 +345,8 @@ class SpecialistTaskWorkerTest {
         task.setSpecialistType("ISSUE");
         task.setInputSnapshot("{\"source\":{\"kind\":\"FILES\",\"branch\":\"main\"},"
                 + "\"smartSplit\":false}");
-        task.setConfigSnapshot("{\"model\":{\"id\":\"m1\"},\"strategy\":{\"name\":\"策略\"},"
-                + "\"prompt\":{\"content\":\"规则\"}}");
+        task.setConfigSnapshot("{\"schemaVersion\":2,\"model\":{\"id\":\"m1\"},"
+                + "\"prompt\":{\"name\":\"通用规则\",\"content\":\"规则\"}}");
         task.setDeadlineAt(com.codereview.agent.support.AgentTime.now().plusMinutes(5));
         return task;
     }

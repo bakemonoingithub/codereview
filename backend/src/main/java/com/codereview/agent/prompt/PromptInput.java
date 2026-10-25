@@ -5,14 +5,14 @@ import java.util.List;
 /**
  * 一次组装的类型化输入。
  *
- * <p>策略、文件说明、材料与缺失信息都由这里进入；调用方不直接拼提示词。
+ * <p>通用规则、文件说明、材料与缺失信息都由这里进入；调用方不直接拼提示词。
  * {@code formatRetry} 只携带实际错误和有界返回片段，长度由组装服务再次裁剪。
- * 报告用途另带标题与补充要求，避免把报告伪装成专项策略或目标材料。
+ * 报告用途另带标题与补充要求，避免把报告要求伪装成通用规则或目标材料。
  */
 public record PromptInput(PromptPurpose purpose,
                           String protocolVersion,
-                          String strategyName,
-                          String strategyPrompt,
+                          String generalRuleName,
+                          String generalRuleContent,
                           String targetNote,
                           String sourceKind,
                           String branch,
@@ -27,12 +27,12 @@ public record PromptInput(PromptPurpose purpose,
                           String reportInstruction) {
 
     /** 既有专项／验证调用保持原构造方式；报告用途再显式传入标题与要求。 */
-    public PromptInput(PromptPurpose purpose, String protocolVersion, String strategyName,
-                       String strategyPrompt, String targetNote, String sourceKind, String branch,
+    public PromptInput(PromptPurpose purpose, String protocolVersion, String generalRuleName,
+                       String generalRuleContent, String targetNote, String sourceKind, String branch,
                        String headSha, String baseSha, List<PromptMaterial> targets,
                        List<PromptMaterial> auxiliary, List<String> missingNotes,
                        List<PromptFact> facts, FormatRetry formatRetry) {
-        this(purpose, protocolVersion, strategyName, strategyPrompt, targetNote, sourceKind, branch,
+        this(purpose, protocolVersion, generalRuleName, generalRuleContent, targetNote, sourceKind, branch,
                 headSha, baseSha, targets, auxiliary, missingNotes, facts, formatRetry, null, null);
     }
 

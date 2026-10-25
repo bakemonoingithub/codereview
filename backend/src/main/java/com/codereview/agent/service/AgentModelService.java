@@ -9,10 +9,14 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.ModelDtos;
 import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentModelValidation;
-import com.codereview.agent.entity.AgentReviewStrategy;
+import com.codereview.agent.entity.AgentReviewTask;
+import com.codereview.agent.entity.AgentReport;
+import com.codereview.agent.mapper.AgentReviewTaskMapper;
+import com.codereview.agent.mapper.AgentReportMapper;
+import com.codereview.agent.execution.TaskStates;
+import com.codereview.agent.report.ReportStates;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentModelValidationMapper;
-import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.agent.invocation.ModelInvocationService;
 import com.codereview.agent.invocation.ModelSnapshot;
 import com.codereview.agent.prompt.PromptAssemblyService;
@@ -32,7 +36,7 @@ import java.util.Map;
  * 模型 v2 服务。
  *
  * <p>验证记录绑定 {@code revision}：配置一改，旧验证自动变成 EXPIRED，不需要额外清理任务；
- * 删除被策略引用的模型返回 409，不级联破坏引用。
+ * 删除规则由配置自身和历史任务快照约束，不维护策略关联。
  */
 @Service
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")
@@ -125,12 +129,18 @@ public class AgentModelService {
 
     public void delete(String id) {
         AgentModelConfig model = require(id);
-        Long used = db.mapper(AgentReviewStrategyMapper.class).selectCount(
-                new LambdaQueryWrapper<AgentReviewStrategy>()
-                        .eq(AgentReviewStrategy::getModelConfigId, model.getId()));
-        if (used != null && used > 0) {
+        long tasks = db.mapper(AgentReviewTaskMapper.class).selectCount(
+                new LambdaQueryWrapper<AgentReviewTask>()
+                        .in(AgentReviewTask::getState, TaskStates.QUEUED, TaskStates.PREPARING, TaskStates.RUNNING)
+                        .apply("JSON_UNQUOTE(JSON_EXTRACT(config_snapshot, '$.model.id')) = {0}", model.getId()));
+        long reports = db.mapper(AgentReportMapper.class).selectCount(
+                new LambdaQueryWrapper<AgentReport>()
+                        .in(AgentReport::getState, ReportStates.QUEUED, ReportStates.RUNNING)
+                        .apply("JSON_UNQUOTE(JSON_EXTRACT(model_snapshot, '$.id')) = {0}", model.getId()));
+        if (tasks > 0 || reports > 0) {
             throw new ApiException(ErrorCode.CONFIG_IN_USE,
-                    "该模型仍被 " + used + " 个策略引用，请先调整关联", Map.of("strategies", used));
+                    "该模型仍有未完成的审查任务或报告，请等待执行结束后再删除",
+                    Map.of("tasks", tasks, "reports", reports));
         }
         db.mapper(AgentModelConfigMapper.class).deleteById(model.getId());
     }

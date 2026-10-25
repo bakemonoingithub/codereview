@@ -8,7 +8,7 @@
     wrap-class-name="launch-review-modal"
     @cancel="closeLaunch"
   >
-    <p class="muted intro">按文件独立分析，完成后在同一任务中阅读结果。</p>
+<!--    <p class="muted intro">按文件独立分析，完成后在同一任务中阅读结果。</p>-->
 
     <a-alert
       v-if="copyFrom"
@@ -59,6 +59,18 @@
             @change="onProjectChange"
           />
         </div>
+        <div class="field">
+          <label>模型 <span class="required">*</span></label>
+          <a-select
+            :get-popup-container="getPopupContainer"
+            v-model:value="form.modelConfigId"
+            style="width: 100%"
+            placeholder="选择模型"
+            :loading="optionsLoading"
+            :options="modelOptions"
+          />
+<!--          <p class="muted small">模型配置独立选择；创建任务时会冻结当前配置。</p>-->
+        </div>
         <div class="field type-switch">
           <label>专项类型</label>
           <a-radio-group v-model:value="form.specialistType" button-style="solid" @change="onTypeChange">
@@ -73,7 +85,7 @@
             <a-radio-button value="FILES">文件内容</a-radio-button>
             <a-radio-button value="DIFF">提交差异</a-radio-button>
           </a-radio-group>
-          <p class="muted small">提交差异归在问题审查下；其他专项只接受文件内容。</p>
+<!--          <p class="muted small">提交差异归在问题审查下；其他专项只接受文件内容。</p>-->
         </div>
       </div>
     </a-card>
@@ -98,7 +110,7 @@
             <code>{{ form.observedSha || '读取中…' }}</code>
             <a-button size="small" :loading="headLoading" @click="resolveHead">重新读取</a-button>
           </div>
-          <p class="muted small">发起时重新核对分支 HEAD；确认后移动的分支会被拒绝。</p>
+<!--          <p class="muted small">发起时重新核对分支 HEAD；确认后移动的分支会被拒绝。</p>-->
         </div>
         <div v-else class="field">
           <label>审查提交</label>
@@ -158,50 +170,50 @@
     <a-card title="3. 补充要求" class="mb16">
       <div class="form-grid">
         <div class="field">
-          <label>审查策略（可选，包含模型与通用规则）</label>
+          <label>通用规则 <span class="muted small">（可选）</span></label>
           <a-select
                 :get-popup-container="getPopupContainer"
-            v-model:value="form.strategyId"
+            v-model:value="form.promptId"
             allow-clear
             style="width: 100%"
-            placeholder="不选策略时手动选择模型"
+            placeholder="不使用通用规则"
             :loading="optionsLoading"
-            :options="strategyOptions"
-            @change="onStrategyChange"
+            :options="promptOptions"
           />
+<!--          <p class="muted small">只显示专项用途规则；不选时仍使用内置审查边界和输出协议。</p>-->
         </div>
-        <div class="field">
-          <label>模型</label>
-          <a-select
-                :get-popup-container="getPopupContainer"
-            v-model:value="form.modelConfigId"
-            style="width: 100%"
-            placeholder="选择模型"
-            :disabled="!!selectedStrategy"
-            :loading="optionsLoading"
-            :options="modelOptions"
+        <div v-if="form.promptId" class="field">
+          <label>规则版本 <span class="required">*</span></label>
+          <PromptVersionSelect
+            v-model:value="form.promptVersionId"
+            :versions="promptVersions"
+            :current-version-id="selectedPrompt?.currentVersion?.id"
+            :loading="promptLoading"
           />
-          <p v-if="selectedStrategy" class="muted small">选择策略时由策略带入模型，不能再单独指定。</p>
+          <a-alert v-if="promptError" type="error" show-icon :message="promptError" class="mt8">
+            <template #action>
+              <a-button size="small" :loading="promptLoading" @click="loadPromptSelection(form.promptId, form.promptVersionId)">重试</a-button>
+            </template>
+          </a-alert>
+        </div>
+        <div v-if="form.promptId" class="field full">
+          <PromptInfoPreview
+            class="mt8"
+            title="所选版本正文"
+            :prompt="selectedPrompt"
+            :version="selectedPromptVersion"
+            :selected="true"
+            :loading="promptLoading"
+            :error="''"
+          />
         </div>
       </div>
-
-      <StrategyAssociationInfo
-        v-if="selectedStrategy"
-        :model="selectedStrategyModel"
-        :prompt="selectedStrategyPrompt"
-        :prompt-version="selectedStrategyPromptVersion"
-        :model-selected="!!selectedStrategy.modelConfigId"
-        :prompt-selected="!!selectedStrategy.promptId"
-        :loading="strategyAssociationLoading"
-        :prompt-loading="strategyAssociationLoading && !!selectedStrategy.promptId"
-        :error="strategyAssociationError"
-      />
 
       <div v-if="form.targets.length" class="notes">
         <div v-for="(target, index) in form.targets" :key="target.path" class="file-note">
           <div class="note-head">
             <strong>{{ target.path }}</strong>
-            <span class="muted small">文件补充说明 · 可选</span>
+            <span class="muted small">补充要求（可选）</span>
           </div>
           <a-textarea
             v-model:value="form.targets[index].note"
@@ -217,14 +229,14 @@
         <span>
           <strong>智能拆分文件</strong>
           <span class="muted small">
-            默认关闭。未开启时整文件提交，上下文超限直接失败；开启后才允许容量不足时拆分，并保留原始位置。
+            默认关闭。未开启时整文件提交，上下文超限直接失败；开启后允许容量不足时拆分。
           </span>
         </span>
       </label>
     </a-card>
 
     <div class="submit-bar">
-      <span class="muted small">将固定版本和本次输入保存在新任务中；不会自动带入未发送材料。</span>
+<!--      <span class="muted small">将固定版本和本次输入保存在新任务中；不会自动带入未发送材料。</span>-->
       <span class="spacer" />
       <a-button @click="closeLaunch">取消</a-button>
       <a-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="submit">
@@ -267,26 +279,27 @@
 </template>
 
 <script setup lang="ts">
-import { readPromptSelection } from '@/utils/promptSelection'
+import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
-import StrategyAssociationInfo from '@/components/StrategyAssociationInfo.vue'
+import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
+import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
 import {
   modelsApi,
   projectsApi,
+  promptsApi,
   repositoryApi,
-  strategiesApi,
   tasksApi,
   type CommitDetail,
   type CommitInfo,
   type ModelView,
   type ProjectView,
+  type PromptSummary,
   type PromptVersion,
-  type PromptView,
-  type StrategyView
+  type PromptView
 } from '@/api/v2'
 
 type SpecialistType = 'ISSUE' | 'PATTERN' | 'COUPLING'
@@ -303,14 +316,14 @@ const getPopupContainer = (trigger: HTMLElement) => trigger.closest('.ant-modal-
 const router = useRouter()
 const copyFrom = computed(() => String(route.query.copyFrom || ''))
 const projects = ref<ProjectView[]>([])
-const strategies = ref<StrategyView[]>([])
 const models = ref<ModelView[]>([])
-const selectedStrategyModel = ref<ModelView | null>(null)
-const selectedStrategyPromptVersion = ref<PromptVersion | null>(null)
-const selectedStrategyPrompt = ref<PromptView | null>(null)
-const strategyAssociationLoading = ref(false)
-const strategyAssociationError = ref('')
-let strategyAssociationEpoch = 0
+const prompts = ref<PromptSummary[]>([])
+const selectedPrompt = ref<PromptView | null>(null)
+const selectedPromptVersion = ref<PromptVersion | null>(null)
+const promptVersions = ref<PromptVersion[]>([])
+const promptLoading = ref(false)
+const promptError = ref('')
+let promptEpoch = 0
 let lastObservedSha = ''
 let headEpoch = 0
 let commitsEpoch = 0
@@ -353,8 +366,9 @@ const form = reactive({
   commitSha: '',
   baseSha: '',
   targets: [] as TargetRow[],
-  strategyId: '',
   modelConfigId: '',
+  promptId: '',
+  promptVersionId: '',
   smartSplit: false
 })
 
@@ -362,14 +376,10 @@ const projectOptions = computed(() =>
   projects.value.map((project) => ({ value: project.id, label: `${project.name} · ${project.repoUrl}` }))
 )
 const branchOptions = computed(() => branches.value.map((item) => ({ value: item, label: item })))
-const strategyOptions = computed(() =>
-  strategies.value
-    .filter((strategy) => strategy.specialistType === form.specialistType)
-    .map((strategy) => ({ value: strategy.id, label: strategy.name }))
-)
 const modelOptions = computed(() => models.value.map((model) => ({ value: model.id, label: model.name })))
-const selectedStrategy = computed(() =>
-  strategies.value.find((strategy) => strategy.id === form.strategyId) || null
+const promptOptions = computed(() => prompts.value
+  .filter((prompt) => prompt.purpose === 'SPECIALIST')
+  .map((prompt) => ({ value: prompt.id, label: prompt.name }))
 )
 const selectedCommitSubject = computed(() => {
   const selected = commits.value.find((commit) => commit.sha === form.commitSha)
@@ -384,18 +394,27 @@ const scopeReady = computed(() =>
 const canSubmit = computed(
   () =>
     scopeReady.value && !optionsLoading.value && !sourceMoved.value &&
-    (!form.strategyId || (!strategyAssociationLoading.value && !strategyAssociationError.value)) &&
+    (!form.promptId || (!promptLoading.value && !promptError.value &&
+      !!form.promptVersionId && !!selectedPromptVersion.value)) &&
     form.targets.length > 0 &&
-    (!!form.strategyId || !!form.modelConfigId) &&
+    !!form.modelConfigId &&
     (form.sourceKind === 'FILES' ? !!form.observedSha : !!form.commitSha) &&
     !submitting.value
 )
 
-const strategyModel = computed(() => selectedStrategy.value?.modelConfigId || '')
+watch(() => form.promptId, (promptId) => {
+  if (restoring.value) return
+  void loadPromptSelection(promptId)
+}, { flush: 'sync' })
 
-watch(selectedStrategy, (strategy) => {
-  void loadStrategyAssociationInfo(strategy)
-}, { immediate: true })
+watch(() => form.promptVersionId, (versionId) => {
+  selectedPromptVersion.value = promptVersions.value.find((version) => version.id === versionId) || null
+  if (form.promptId && versionId && !selectedPromptVersion.value && !promptLoading.value) {
+    promptError.value = unavailablePromptVersion
+  } else if (selectedPromptVersion.value) {
+    promptError.value = ''
+  }
+}, { flush: 'sync' })
 
 function closeDropdownOnScroll(event: Event) {
   const target = event.target
@@ -410,7 +429,7 @@ onBeforeUnmount(() => {
   commitsEpoch++
   commitLookupEpoch++
   detailEpoch++
-  strategyAssociationEpoch++
+  promptEpoch++
 })
 
 watch(commitPickerOpen, (open, wasOpen) => {
@@ -531,12 +550,6 @@ watch(
     if (restoring.value) {
       return
     }
-    if (form.strategyId) {
-      const strategy = strategies.value.find((item) => item.id === form.strategyId)
-      if (!strategy || strategy.specialistType !== type) {
-        form.strategyId = ''
-      }
-    }
     if (type !== 'ISSUE' && form.sourceKind === 'DIFF') {
       form.sourceKind = 'FILES'
       form.targets = []
@@ -566,19 +579,35 @@ watch(
 async function loadOptions() {
   optionsLoading.value = true
   try {
-    const [projectPage, strategyPage, modelPage] = await Promise.all([
+    const [projectPage, modelPage, allPrompts] = await Promise.all([
       projectsApi.list({ limit: 100 }),
-      strategiesApi.list({ limit: 100 }),
-      modelsApi.list({ limit: 100 })
+      modelsApi.list({ limit: 100 }),
+      loadAllPrompts()
     ])
     projects.value = projectPage.items
-    strategies.value = strategyPage.items
     models.value = modelPage.items
+    prompts.value = allPrompts
   } catch (failure) {
     formError.value = (failure as Error).message || '配置加载失败，请稍后重试'
   } finally {
     optionsLoading.value = false
   }
+}
+
+async function loadAllPrompts(): Promise<PromptSummary[]> {
+  const items = new Map<string, PromptSummary>()
+  const cursors = new Set<string>()
+  let cursor: string | undefined
+  do {
+    const page = await promptsApi.list({ limit: 100, ...(cursor ? { cursor } : {}) })
+    for (const item of page.items) items.set(item.id, item)
+    if (!page.hasMore) return [...items.values()]
+    if (!page.nextCursor || cursors.has(page.nextCursor)) {
+      throw new Error('通用规则分页异常，请重新加载')
+    }
+    cursor = page.nextCursor
+    cursors.add(cursor)
+  } while (true)
 }
 
 async function loadCopy() {
@@ -604,10 +633,11 @@ async function loadCopy() {
       oldPath: target.oldPath,
       note: target.note || ''
     }))
-    form.strategyId = copy.strategyId || ''
     form.modelConfigId = copy.modelConfigId || ''
+    form.promptId = copy.promptId || ''
+    form.promptVersionId = copy.promptVersionId || ''
     form.smartSplit = copy.smartSplit
-    onStrategyChange()
+    await loadPromptSelection(copy.promptId || '', copy.promptVersionId)
     await refreshBranchOptions()
     if (copy.sourceKind === 'FILES' && copy.reobserveHead) {
       await resolveHead()
@@ -845,46 +875,42 @@ async function loadCommitDetail(sha: string) {
   }
 }
 
-function onStrategyChange() {
-  if (strategyModel.value) {
-    form.modelConfigId = strategyModel.value
-  }
-}
-
-async function loadStrategyAssociationInfo(strategy: StrategyView | null) {
-  const epoch = ++strategyAssociationEpoch
-  strategyAssociationError.value = ''
-  selectedStrategyModel.value = null
-  selectedStrategyPrompt.value = null
-  selectedStrategyPromptVersion.value = null
-  if (!strategy) {
-    strategyAssociationLoading.value = false
+async function loadPromptSelection(promptId: string, preferredVersionId?: string | null) {
+  const epoch = ++promptEpoch
+  promptError.value = ''
+  selectedPrompt.value = null
+  selectedPromptVersion.value = null
+  promptVersions.value = []
+  form.promptVersionId = preferredVersionId || ''
+  if (!promptId) {
+    promptLoading.value = false
     return
   }
 
-  selectedStrategyModel.value = models.value.find((model) => model.id === strategy.modelConfigId) || null
-  strategyAssociationLoading.value = true
-  const failures: string[] = []
-  const modelRequest = selectedStrategyModel.value || !strategy.modelConfigId
-    ? Promise.resolve(selectedStrategyModel.value)
-    : modelsApi.detail(strategy.modelConfigId).catch((failure: unknown) => {
-      failures.push((failure as Error).message || '读取策略关联模型失败')
-      return null
-    })
-  const promptRequest = strategy.promptId
-    ? readPromptSelection(strategy.promptId, strategy.promptVersionId).catch((failure: unknown) => {
-      failures.push((failure as Error).message || '读取策略关联提示词失败')
-      return null
-    })
-    : Promise.resolve(null)
-
-  const [model, prompt] = await Promise.all([modelRequest, promptRequest])
-  if (epoch !== strategyAssociationEpoch) return
-  selectedStrategyModel.value = model
-  selectedStrategyPrompt.value = prompt?.prompt || null
-  selectedStrategyPromptVersion.value = prompt?.version || null
-  strategyAssociationError.value = failures.join('；')
-  strategyAssociationLoading.value = false
+  promptLoading.value = true
+  try {
+    const selection = await readPromptSelection(promptId, preferredVersionId || undefined, true)
+    if (epoch !== promptEpoch) return
+    if (selection.prompt.purpose !== 'SPECIALIST') {
+      throw new Error('所选提示词不属于专项用途，请重新选择')
+    }
+    selectedPrompt.value = selection.prompt
+    promptVersions.value = selection.versions
+    if (selection.version) {
+      form.promptVersionId = selection.version.id
+      selectedPromptVersion.value = selection.version
+    } else if (preferredVersionId) {
+      form.promptVersionId = preferredVersionId
+      promptError.value = unavailablePromptVersion
+    } else {
+      promptError.value = '该通用规则没有可用的正文版本，请先到提示词管理补充版本'
+    }
+  } catch (failure) {
+    if (epoch !== promptEpoch) return
+    promptError.value = (failure as Error).message || '读取通用规则失败，请重试'
+  } finally {
+    if (epoch === promptEpoch) promptLoading.value = false
+  }
 }
 
 function onScopeConfirm(selection: { path: string; oldPath: string | null }[]) {
@@ -911,7 +937,7 @@ async function refreshMovedSource() {
 
 async function submit() {
   if (!canSubmit.value) {
-    formError.value = '请补全项目、目标文件、策略或模型以及固定版本'
+    formError.value = '请补全项目、目标文件、模型及固定版本；所选通用规则须有可用版本'
     return
   }
   submitting.value = true
@@ -936,8 +962,8 @@ async function submit() {
       targets: form.targets.map((target) => ({
         path: target.path, oldPath: target.oldPath, note: target.note || undefined
       })),
-      strategyId: form.strategyId || undefined,
-      modelConfigId: form.strategyId ? undefined : form.modelConfigId || undefined,
+      modelConfigId: form.modelConfigId,
+      ...(form.promptId ? { promptId: form.promptId, promptVersionId: form.promptVersionId } : {}),
       smartSplit: form.smartSplit
     }
     const fingerprint = JSON.stringify(body)

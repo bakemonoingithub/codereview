@@ -9,12 +9,11 @@ import { namedAntStubs } from '@/testUtils/antStubs'
 const context = vi.hoisted(() => ({ route: { query: {} as Record<string, string> }, push: vi.fn() }))
 vi.mock('vue-router', () => ({ useRoute: () => context.route, useRouter: () => ({ push: context.push }) }))
 vi.mock('@/api/v2', () => ({
-  projectsApi: { list: vi.fn() }, modelsApi: { list: vi.fn() }, strategiesApi: { list: vi.fn() },
-  promptsApi: { detail: vi.fn(), versions: vi.fn() },
+  projectsApi: { list: vi.fn() }, modelsApi: { list: vi.fn() }, promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() },
   repositoryApi: { head: vi.fn(), commits: vi.fn(), commit: vi.fn(), branches: vi.fn() },
   tasksApi: { create: vi.fn(), copyInput: vi.fn(), detail: vi.fn() }
 }))
-import { projectsApi, modelsApi, strategiesApi, repositoryApi, tasksApi, promptsApi } from '@/api/v2'
+import { projectsApi, modelsApi, repositoryApi, tasksApi, promptsApi } from '@/api/v2'
 
 function deferred<T>() { let resolve!: (v: T) => void; let reject!: (v: Error) => void
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject }
@@ -37,7 +36,7 @@ beforeEach(() => {
   vi.resetAllMocks(); sessionStorage.clear(); context.route.query = {}
   vi.mocked(projectsApi.list).mockResolvedValue(page([{ id: 'p1', name: '项目', repoUrl: 'repo', currentBranch: 'main' }]) as any)
   vi.mocked(modelsApi.list).mockResolvedValue(page([{ id: 'm1', name: '模型' }]) as any)
-  vi.mocked(strategiesApi.list).mockResolvedValue(page([]) as any)
+  vi.mocked(promptsApi.list).mockResolvedValue(page([]) as any)
   vi.mocked(repositoryApi.branches).mockResolvedValue(['main'])
   vi.mocked(repositoryApi.head).mockResolvedValue('sha-main')
   vi.mocked(repositoryApi.commits).mockResolvedValue({ commits: [], hasMore: false } as any)
@@ -392,23 +391,67 @@ describe('专项发起来源和提交保护', () => {
     w.unmount()
   })
 
-  it('策略固定历史版本时专项发起页预览同一正文，失效时阻止提交', async () => {
+  it('固定历史通用规则版本时预览同一正文，版本失效时阻止提交', async () => {
     const current = { id: 'v2', versionNo: 2, content: '新版规则', createdAt: '2026-10-25' }
     const old = { id: 'v1', versionNo: 1, content: '历史规则', createdAt: '2026-10-24' }
-    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '规则', tags: [], currentVersion: current } as any)
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '规则', purpose: 'SPECIALIST', tags: [], currentVersion: current } as any)
     vi.mocked(promptsApi.versions).mockResolvedValue([current, old])
     const wrapper = await start(); const s = state(wrapper)
-    const strategy = { id: 's1', modelConfigId: 'm1', promptId: 'g1', promptVersionId: 'v1' }
-    s.form.strategyId = 's1'; s.form.targets = [{ path: 'A.java' }]
-    await s.loadStrategyAssociationInfo(strategy)
-    expect(s.selectedStrategyPromptVersion.content).toBe('历史规则')
-    expect(s.strategyAssociationError).toBe('')
+    s.form.modelConfigId = 'm1'; s.form.promptId = 'g1'; s.form.targets = [{ path: 'A.java' }]
+    await s.loadPromptSelection('g1', 'v1')
+    expect(s.selectedPromptVersion.content).toBe('历史规则')
+    expect(s.promptError).toBe('')
     vi.mocked(promptsApi.versions).mockResolvedValue([current])
-    await s.loadStrategyAssociationInfo(strategy)
-    expect(s.strategyAssociationError).toContain('不可用')
-    expect(s.selectedStrategyPromptVersion).toBeNull()
+    await s.loadPromptSelection('g1', 'v1')
+    expect(s.promptError).toContain('不可用')
+    expect(s.selectedPromptVersion).toBeNull()
     expect(s.canSubmit).toBe(false)
     wrapper.unmount()
   })
 
+})
+
+describe('UPI 审核修复', () => {
+  it('首次加载失败后重试选中当前版本', async () => {
+    const w = await start(); const s = state(w)
+    try {
+      vi.mocked(promptsApi.detail).mockRejectedValueOnce(new Error('临时失败'))
+      vi.mocked(promptsApi.versions).mockResolvedValue([])
+      s.form.promptId = 'g1'; await flushPromises()
+      const version = { id: 'v1', versionNo: 1, content: '规则', createdAt: '2026-10-25' }
+      vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '规则', purpose: 'SPECIALIST', tags: [], currentVersion: version } as any)
+      vi.mocked(promptsApi.versions).mockResolvedValue([version])
+      await s.loadPromptSelection(s.form.promptId, s.form.promptVersionId)
+      expect(s.promptError).toBe('')
+      expect(s.form.promptVersionId).toBe('v1')
+      expect(s.selectedPromptVersion.content).toBe('规则')
+    } finally { w.unmount() }
+  })
+  it('前一页全部为 Agent 规则时继续读取专项规则并去重', async () => {
+    vi.mocked(promptsApi.list).mockResolvedValueOnce({ items: Array.from({ length: 100 }, (_, i) => ({ id: `a${i}`, name: 'Agent', purpose: 'AGENT' })), nextCursor: 'next', hasMore: true } as any)
+      .mockResolvedValueOnce(page([{ id: 'a0', name: 'Agent', purpose: 'AGENT' }, { id: 'g1', name: '专项规则', purpose: 'SPECIALIST' }]) as any)
+    const w = await start()
+    try {
+      expect(promptsApi.list).toHaveBeenNthCalledWith(2, { limit: 100, cursor: 'next' })
+      expect(state(w).promptOptions).toEqual([{ value: 'g1', label: '专项规则' }])
+      expect(state(w).prompts).toHaveLength(101)
+    } finally { w.unmount() }
+  })
+  it('后续分页失败不展示不完整规则列表', async () => {
+    vi.mocked(promptsApi.list).mockResolvedValueOnce({ items: [{ id: 'g1', purpose: 'SPECIALIST' }], nextCursor: 'next', hasMore: true } as any)
+      .mockRejectedValueOnce(new Error('后续分页失败'))
+    const w = await start()
+    try {
+      expect(state(w).formError).toBe('后续分页失败')
+      expect(state(w).promptOptions).toEqual([])
+    } finally { w.unmount() }
+  })
+  it('重复分页游标停止加载并报告异常', async () => {
+    vi.mocked(promptsApi.list).mockResolvedValue({ items: [], nextCursor: 'same', hasMore: true } as any)
+    const w = await start()
+    try {
+      expect(promptsApi.list).toHaveBeenCalledTimes(2)
+      expect(state(w).formError).toContain('分页异常')
+    } finally { w.unmount() }
+  })
 })

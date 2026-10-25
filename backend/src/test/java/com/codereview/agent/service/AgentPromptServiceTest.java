@@ -8,7 +8,6 @@ import com.codereview.agent.entity.AgentPrompt;
 import com.codereview.agent.entity.AgentPromptVersion;
 import com.codereview.agent.mapper.AgentPromptMapper;
 import com.codereview.agent.mapper.AgentPromptVersionMapper;
-import com.codereview.agent.mapper.AgentReviewStrategyMapper;
 import com.codereview.common.TextDiff;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,8 +39,6 @@ class AgentPromptServiceTest {
     private AgentPromptMapper promptMapper;
     @Mock
     private AgentPromptVersionMapper versionMapper;
-    @Mock
-    private AgentReviewStrategyMapper strategyMapper;
 
     private AgentPromptService service;
 
@@ -53,7 +50,6 @@ class AgentPromptServiceTest {
         service = new AgentPromptService(db);
         when(db.mapper(AgentPromptMapper.class)).thenReturn(promptMapper);
         when(db.mapper(AgentPromptVersionMapper.class)).thenReturn(versionMapper);
-        when(db.mapper(AgentReviewStrategyMapper.class)).thenReturn(strategyMapper);
         when(db.inTransaction(any())).thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
     }
 
@@ -144,15 +140,13 @@ class AgentPromptServiceTest {
     }
 
     @Test
-    void deleteRefusesWhenStrategyReferencesThePrompt() {
+    void promptDeletionDoesNotDependOnRetiredStrategyAssociations() {
         AgentPrompt prompt = prompt(0);
         when(promptMapper.selectById(any())).thenReturn(prompt);
-        when(strategyMapper.selectCount(any())).thenReturn(1L);
 
-        ApiException error = assertThrows(ApiException.class, () -> service.delete(prompt.getId()));
+        service.delete(prompt.getId());
 
-        assertEquals(ErrorCode.CONFIG_IN_USE, error.errorCode());
-        verify(promptMapper, never()).deleteById("never-called");
+        verify(promptMapper).deleteById(prompt.getId());
     }
 
     private static AgentPrompt prompt(int revision) {

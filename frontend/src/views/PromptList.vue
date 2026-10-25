@@ -7,10 +7,6 @@
       <a-button type="primary" @click="openCreate">＋ 新建提示词</a-button>
     </template>
 
-<!--    <template #notice>-->
-<!--      <PageNotice>专项通过策略选用通用规则；逐文件临时说明仍在发起表单填写。Agent 指导提示词用途在 P33 接入。</PageNotice>-->
-<!--    </template>-->
-
     <template #filters>
       <a-input-search
         v-model:value="keyword"
@@ -27,7 +23,7 @@
       <template #emptyText>
         <EmptyGuide
           :title="keyword ? '没有匹配的提示词' : '还没有提示词'"
-          :hint="keyword ? '换个关键词，或清空搜索看全部' : '提示词保存可复用的审查规则；建好后在策略里选用'"
+          :hint="keyword ? '换个关键词，或清空搜索看全部' : '保存可复用的审查规则；发起任务时可直接选择。'"
           :action-text="keyword ? '' : '新建提示词'"
           @action="openCreate"
         />
@@ -92,7 +88,7 @@
         </a-form-item>
         <a-form-item label="用途">
           <a-select v-model:value="form.purpose" :options="purposeOptions" />
-          <div class="field-hint">专项通用规则在策略里选用；Agent 指导提示词在 P33 接入。</div>
+          <div class="field-hint">专项审查可选通用规则；Agent 任务使用指导提示词。</div>
         </a-form-item>
         <a-form-item class="span-2" label="正文" required>
           <a-textarea
