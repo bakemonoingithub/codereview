@@ -90,7 +90,7 @@
       <a-table-column title="操作" key="actions" width="200">
         <template #default="{ record }">
           <a-button type="link" size="small" @click="openTask(record.id)">查看详情 →</a-button>
-          <a-button type="link" size="small" @click="copyTask(record.id)">复制参数</a-button>
+          <a-button type="link" size="small" @click="copyTask(record)">复制参数</a-button>
         </template>
       </a-table-column>
       <template #emptyText>
@@ -240,8 +240,12 @@ function openTask(id: string) {
   router.push({ path: `/reviews/${id}`, query: { from: '/reviews' } })
 }
 
-function copyTask(id: string) {
-  openReviewLaunch(id)
+function copyTask(task: TaskSummary) {
+  if (task.route === 'AGENT') {
+    router.push({ path: '/agents/new', query: { copyFrom: task.id } })
+  } else {
+    openReviewLaunch(task.id)
+  }
 }
 
 function typeText(task: TaskSummary): string {
