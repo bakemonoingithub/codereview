@@ -143,7 +143,7 @@
 import { computed } from 'vue'
 import type { ResultView } from '@/api/v2'
 import FeedbackEditor from '@/components/FeedbackEditor.vue'
-import { dedupeReferences, sameFileSide, type CodeReference, type CodeReferencePayload } from '@/utils/codeReferences'
+import { buildCodeReferencePayload, type CodeReference, type CodeReferencePayload } from '@/utils/codeReferences'
 
 interface ModelLocation {
   materialId: string
@@ -205,26 +205,14 @@ function openReference(
   const target = resolveReference(location)
   if (!target) return
 
-  const references = dedupeReferences(all
+  const references = all
     .map(resolveReference)
     .filter((ref): ref is CodeReference => !!ref)
-    .filter((ref) => sameFileSide(ref, target)))
-  // 同范围可能来自另一个材料片段；保留去重后的一行，但必须用点击处
-  // 的材料上下文，保存片段和发送范围才不会指到别的单元。
-  const existing = references.findIndex((ref) => ref.startLine === target.startLine && ref.endLine === target.endLine)
-  if (existing >= 0) {
-    references[existing] = target
-  } else {
-    references.push(target)
-    references.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine)
-  }
-
-  const evidenceCount = dedupeReferences(evidence
+  const evidenceReferences = evidence
     .map(resolveReference)
     .filter((ref): ref is CodeReference => !!ref)
-    .filter((ref) => sameFileSide(ref, target))).length
 
-  emit('open-code', { ...target, references, evidenceCount, scope })
+  emit('open-code', buildCodeReferencePayload(target, references, scope, evidenceReferences))
 }
 
 function openIssueLocation(issue: BodyIssue, location: ModelLocation) {

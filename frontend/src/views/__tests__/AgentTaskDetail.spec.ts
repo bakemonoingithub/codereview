@@ -2,6 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import AgentTaskDetail from '@/views/AgentTaskDetail.vue'
+import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
+import MarkdownView from '@/components/MarkdownView.vue'
 import { namedAntStubs } from '@/testUtils/antStubs'
 
 const context = vi.hoisted(() => ({ id: 'task-1', push: vi.fn() }))
@@ -69,7 +71,7 @@ async function start() {
     global: {
       stubs: {
         ...namedAntStubs,
-        MaterialReaderModal: true,
+        CodeReferenceModal: true,
         MarkovView: true
       }
     }
@@ -115,6 +117,56 @@ describe('Agent 任务详情', () => {
     wrapper.unmount()
   })
 
+  it('证据列表和正文引用共用专项代码阅读组件，并隔离文件、版本和前后侧', async () => {
+    const data = result()
+    const citation = { ...data.body.citations[0], sha: 'a'.repeat(40) }
+    data.body.citations = [
+      citation,
+      { ...citation, id: 'E2', materialId: 'm2', startLine: 120, endLine: 125 },
+      { ...citation, id: 'E3', materialId: 'm3', side: 'BEFORE' },
+      { ...citation, id: 'E4', materialId: 'm4', sha: 'b'.repeat(40) },
+      { ...citation, id: 'E5', materialId: 'm5', path: 'Other.java' },
+      { ...citation, id: 'E6', materialId: 'm6' }
+    ]
+    vi.mocked(agentTasksApi.result).mockResolvedValue(data as any)
+    const wrapper = await start()
+    const evidence = wrapper.findAll('.agent-evidence').find((item) => item.find('span').text() === 'E6')!
+    await evidence.find('button').trigger('click')
+
+    const s = state(wrapper)
+    expect(s.codeOpen).toBe(true)
+    expect(s.codePayload.scope).toBe('result')
+    expect(s.codePayload.references).toEqual([
+      { label: 'E6', materialId: 'm6', path: 'TaskService.java', sha: 'a'.repeat(40), side: 'FILE', startLine: 96, endLine: 100 },
+      { label: 'E2', materialId: 'm2', path: 'TaskService.java', sha: 'a'.repeat(40), side: 'FILE', startLine: 120, endLine: 125 }
+    ])
+    const reader = wrapper.findComponent(CodeReferenceModal)
+    expect(reader.props()).toMatchObject({ open: true, scope: 'result', activeStart: 96, activeEnd: 100, initialMode: 'full' })
+
+    wrapper.findComponent(MarkdownView).vm.$emit('citation-click', 'E2')
+    await flushPromises()
+    expect(reader.props()).toMatchObject({ activeStart: 120, activeEnd: 125 })
+    expect(state(wrapper).codePayload.label).toBe('E2')
+    wrapper.unmount()
+  })
+
+  it('证据缺少固定版本时阅读保存材料，不以任务 HEAD 替换证据版本', async () => {
+    const data = result()
+    const citation = { ...data.body.citations[0], sha: null }
+    vi.mocked(agentTasksApi.result).mockResolvedValue({ ...data, body: { ...data.body, citations: [
+      citation, { ...citation, id: 'E2', materialId: 'other-material', startLine: 120, endLine: 125 }
+    ] } } as any)
+    const wrapper = await start()
+    await wrapper.find('.agent-evidence button').trigger('click')
+    await flushPromises()
+
+    const reader = wrapper.findComponent(CodeReferenceModal)
+    expect(reader.props()).toMatchObject({ sha: '', initialMode: 'saved' })
+    expect(reader.props('references')).toHaveLength(1)
+    expect(state(wrapper).codePayload.materialId).toBe('m1')
+    wrapper.unmount()
+  })
+
   it('耗时和输出各自展示实际用量及上限，输出峰值不与累计量混用', async () => {
     vi.mocked(agentTasksApi.progress).mockResolvedValue({
       ...progress('SUCCEEDED'), elapsedSeconds: 310,
@@ -153,7 +205,7 @@ describe('Agent 任务详情', () => {
     vi.mocked(tasksApi.detail).mockResolvedValue(task('RUNNING') as any)
     vi.mocked(agentTasksApi.progress).mockResolvedValue({ ...progress('RUNNING'), elapsedSeconds: 2 } as any)
     const wrapper = mount(AgentTaskDetail, {
-      global: { stubs: { ...namedAntStubs, MaterialReaderModal: true, MarkovView: true } }
+      global: { stubs: { ...namedAntStubs, CodeReferenceModal: true, MarkovView: true } }
     })
     await flushPromises()
 

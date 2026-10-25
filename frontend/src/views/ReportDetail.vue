@@ -206,7 +206,7 @@
       </p>
     </a-modal>
 
-    <ReportSourceDrawer
+    <ReportSourceModal
       :open="sourceOpen"
       :report-id="id"
       :ordinal="sourceOrdinal"
@@ -223,7 +223,7 @@ import { modelsApi, reportsApi, type ModelView, type ReportDetail } from '@/api/
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
 import ReportMarkdown from '@/components/ReportMarkdown.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import ReportSourceDrawer from '@/components/ReportSourceDrawer.vue'
+import ReportSourceModal from '@/components/ReportSourceModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
 
 const route = useRoute()

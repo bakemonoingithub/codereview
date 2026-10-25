@@ -11,6 +11,8 @@ export interface CodeRange {
 
 export interface CodeReference extends CodeRange {
   materialId?: string
+  /** 可选引用标识，例如 Agent 正文中的 E1。 */
+  label?: string
   path: string
   sha?: string
   side: string
@@ -54,6 +56,25 @@ export function dedupeReferences(references: CodeReference[]): CodeReference[] {
     result.push(ref)
   }
   return result.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine)
+}
+
+/** 统一构建同一文件、同一固定版本侧的阅读上下文，保留点击处的材料。 */
+export function buildCodeReferencePayload(
+  target: CodeReference,
+  all: CodeReference[],
+  scope: CodeReferencePayload['scope'],
+  evidence: CodeReference[] = []
+): CodeReferencePayload {
+  const selected = normalizeRange(target)
+  const references = dedupeReferences(all.filter((ref) => sameFileSide(ref, selected)))
+  const index = references.findIndex((ref) => ref.startLine === selected.startLine && ref.endLine === selected.endLine)
+  if (index >= 0) references[index] = selected
+  else {
+    references.push(selected)
+    references.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine)
+  }
+  const evidenceCount = dedupeReferences(evidence.filter((ref) => sameFileSide(ref, selected))).length
+  return { ...selected, references, evidenceCount, scope }
 }
 
 /** 当前行是否落在某个范围内（首尾包含）。 */

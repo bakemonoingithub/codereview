@@ -42,7 +42,7 @@ const stubs = {
   ...namedAntStubs,
   'a-card': silentStub('a-card-stub'),
   'a-modal': silentStub('a-modal-stub'),
-  ReportSourceDrawer: { props: ['open', 'reportId', 'ordinal'], template: '<div class="drawer-stub" />' },
+  ReportSourceModal: { props: ['open', 'reportId', 'ordinal'], template: '<div class="source-modal-stub" />' },
   CallReaderModal: { props: ['open', 'callId'], template: '<div class="call-stub" />' }
 }
 

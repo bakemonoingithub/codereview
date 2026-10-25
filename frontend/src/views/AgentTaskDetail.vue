@@ -99,59 +99,13 @@
 
         <div v-show="activeTab === 'result'">
           <a-spin :spinning="resultLoading">
-            <div v-if="result" class="agent-layout">
-              <article class="card agent-article">
-                <div class="row wrap result-head">
-                  <StatusBadge :tone="result.body.answerStatus === 'ANSWERED' ? 'green' : 'amber'">
-                    {{ result.body.answerStatus === 'ANSWERED' ? '已回答' : '材料不足' }}
-                  </StatusBadge>
-                  <span class="spacer" />
-                  <a-button size="small" :loading="downloadingMarkdown" @click="downloadMarkdown">下载 Markdown</a-button>
-                </div>
-                <h2>{{ result.body.title }}</h2>
-                <p class="muted">{{ result.body.summary }}</p>
-                <a-alert
-                  v-if="result.body.answerStatus !== 'ANSWERED'"
-                  class="mb16"
-                  type="warning"
-                  show-icon
-                  message="本次调查材料不足；报告选材时会保留该限制，不视为全部问题已回答。"
-                />
-                <div v-if="result.body.unresolved.length" class="unresolved">
-                  <strong>未解决事项</strong>
-                  <ul>
-                    <li v-for="(item, index) in result.body.unresolved" :key="index">{{ item }}</li>
-                  </ul>
-                </div>
-                <MarkdownView
-                  :text="result.body.markdown"
-                  :citation-ids="citationIds"
-                  @citation-click="openCitation"
-                />
-              </article>
-              <aside class="agent-side">
-                <section class="card">
-                  <div class="section-top"><h3>代码证据</h3><span class="spacer" /><span class="muted small">固定版本</span></div>
-                  <div class="pad">
-                    <p v-if="!result.body.citations.length" class="muted small">没有引用。</p>
-                    <div v-for="item in result.body.citations" :key="item.id" class="agent-evidence">
-                      <span class="muted small">{{ item.id }}</span>
-                      <button
-                        type="button"
-                        class="source-link"
-                        @click="openMaterial(item.materialId, item.startLine, item.endLine, item.id)"
-                      >
-                        {{ item.path }} : {{ item.startLine }}–{{ item.endLine }} ↗
-                      </button>
-                      <p class="muted small">
-                        <code>{{ item.sha?.slice(0, 7) || '—' }}</code>
-                        <template v-if="item.side && item.side !== 'FILE'"> · {{ item.side === 'BEFORE' ? '变更前' : '变更后' }}</template>
-                      </p>
-                    </div>
-                  </div>
-                </section>
-              </aside>
-            </div>
+            <AgentResultPanel
+              v-if="result"
+              :body="result.body"
+              :downloading="downloadingMarkdown"
+              @download="downloadMarkdown"
+              @open-code="openCodeReference"
+            />
             <div v-else-if="resultError" class="card pad">
               <a-alert type="warning" show-icon :message="resultError" description="任务已终止，但只保留调查过程与调用记录；这类结果不进入报告候选。" />
             </div>
@@ -265,16 +219,19 @@
       </a-spin>
     </a-modal>
 
-    <MaterialReaderModal
-      v-if="task"
-      v-model:open="materialOpen"
+    <CodeReferenceModal
+      v-if="task && codePayload"
+      v-model:open="codeOpen"
       :task-id="task.id"
       :project-id="task.projectId"
-      :head-sha="task.headSha || ''"
-      :material-id="materialId"
-      :focus-start="materialFocusStart"
-      :focus-end="materialFocusEnd"
-      :focus-label="materialFocusLabel"
+      :scope="codePayload.scope"
+      :path="codePayload.path"
+      :sha="codePayload.sha || ''"
+      :side="codePayload.side"
+      :references="codePayload.references"
+      :active-start="codePayload.startLine"
+      :active-end="codePayload.endLine"
+      :initial-mode="codePayload.sha ? 'full' : 'saved'"
     />
   </div>
 </template>
@@ -284,11 +241,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
-import MarkdownView from '@/components/MarkdownView.vue'
+import AgentResultPanel from '@/components/AgentResultPanel.vue'
 import CodeViewer from '@/components/CodeViewer.vue'
-import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
+import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { formatSeconds } from '@/utils/duration'
+import type { CodeReferencePayload } from '@/utils/codeReferences'
 import {
   agentTasksApi,
   projectsApi,
@@ -353,11 +311,8 @@ const selectedCallPosition = computed(() => {
   return index >= 0 ? index + 1 : 0
 })
 
-const materialOpen = ref(false)
-const materialId = ref('')
-const materialFocusStart = ref<number | null>(null)
-const materialFocusEnd = ref<number | null>(null)
-const materialFocusLabel = ref('')
+const codeOpen = ref(false)
+const codePayload = ref<CodeReferencePayload | null>(null)
 const targetPreviewOpen = ref(false)
 const targetPreviewPath = ref('')
 const targetPreviewSha = ref('')
@@ -379,7 +334,6 @@ const stateTone = computed(() => {
   if (state === 'FAILED' || state === 'CANCELLED') return 'red'
   return 'blue'
 })
-const citationIds = computed(() => result.value?.body.citations.map((item) => item.id) || [])
 
 onMounted(() => {
   void loadTask()
@@ -592,17 +546,9 @@ async function openCall(callId: string) {
   }
 }
 
-function openMaterial(id: string, startLine?: number, endLine?: number, label?: string) {
-  materialId.value = id
-  materialFocusStart.value = startLine ?? null
-  materialFocusEnd.value = endLine ?? null
-  materialFocusLabel.value = label ? `${label} 引用` : ''
-  materialOpen.value = true
-}
-
-function openCitation(id: string) {
-  const citation = result.value?.body.citations.find((item) => item.id === id)
-  if (citation) openMaterial(citation.materialId, citation.startLine, citation.endLine, citation.id)
+function openCodeReference(value: CodeReferencePayload) {
+  codePayload.value = value
+  codeOpen.value = true
 }
 
 async function openTargetFile(path: string) {
@@ -833,23 +779,6 @@ function formatTime(value: string | null | undefined) {
 .input-readonly { background: #f8fafc; }
 .input-readonly .pad { color: #475569; }
 .input-readonly code { color: #64748b; }
-.agent-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 380px);
-  gap: 24px;
-  align-items: start;
-}
-.agent-article, .agent-side { min-width: 0; }
-.agent-side .pad {
-  box-sizing: border-box;
-  height: min(70vh, 720px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.agent-article { padding: 28px 32px; line-height: 1.95; }
-.agent-article h2 { margin: 4px 0 14px; font-size: 20px; }
-.result-head { margin-bottom: 16px; }
-.unresolved ul { margin: 6px 0 0 18px; padding: 0; font-size: 13px; }
 .section-top {
   display: flex;
   align-items: center;
@@ -860,14 +789,6 @@ function formatTime(value: string | null | undefined) {
 .section-top h2, .section-top h3 { margin: 0; }
 .section-top.flat { border-bottom: 0; padding-bottom: 8px; }
 .pad { padding: 18px 22px; }
-.agent-evidence {
-  display: block;
-  min-width: 0;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 12px;
-}
-.agent-evidence:last-child { border-bottom: 0; }
 .source-link {
   display: inline-block;
   max-width: 100%;
@@ -961,22 +882,17 @@ function formatTime(value: string | null | undefined) {
 .empty { text-align: center; padding: 48px 25px; color: var(--muted); }
 .pad-alert { margin: 16px 24px 0; }
 @media (max-width: 1250px) {
-  .agent-layout { grid-template-columns: minmax(0, 1fr) minmax(320px, 340px); }
   .agent-meters { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .agent-meter { padding: 14px; }
-  .agent-article { padding: 24px; }
 }
 @media (max-width: 1000px) {
-  .agent-layout { grid-template-columns: 1fr; }
   .agent-meters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .agent-side .pad { height: min(60vh, 560px); }
 }
 @media (max-width: 760px) {
   .heading { flex-wrap: wrap; align-items: flex-start; }
   .heading h1 { font-size: 26px; }
   .actions { flex-wrap: wrap; }
-  .agent-meters, .agent-layout { grid-template-columns: 1fr; }
-  .agent-article { padding: 20px; }
+  .agent-meters { grid-template-columns: 1fr; }
   .agent-meter strong { font-size: 16px; }
   .tabbar { gap: 18px; }
 }

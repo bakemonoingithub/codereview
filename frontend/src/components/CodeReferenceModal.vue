@@ -16,6 +16,8 @@
           <div class="title-line">
             <h2>{{ fileName }}</h2>
             <span class="pill">{{ scope === 'issue' ? '问题引用' : '结果引用' }}</span>
+            <span v-if="isFrozen" class="pill">报告冻结</span>
+            <span v-if="active?.label" class="pill">{{ active.label }}</span>
             <span v-if="active" class="pill blue">定位 第 {{ activeLabel }} 行</span>
           </div>
           <div class="sub-line">
@@ -34,7 +36,7 @@
 
       <div class="toolbar">
         <a-radio-group v-model:value="mode" size="small" button-style="solid">
-          <a-radio-button value="saved">保存片段</a-radio-button>
+          <a-radio-button value="saved">{{ savedLabel }}</a-radio-button>
           <a-radio-button value="full">固定版本全文</a-radio-button>
         </a-radio-group>
         <span class="source-note">{{ mode === 'saved' ? savedRangeText : fullRangeText }}</span>
@@ -57,15 +59,15 @@
       <div ref="scroller" class="code-wrap" tabindex="0" aria-label="代码内容">
         <div v-if="busy" class="state">
           <a-spin />
-          <p>正在读取{{ mode === 'saved' ? '保存片段' : '固定版本全文' }}…</p>
+          <p>正在读取{{ mode === 'saved' ? savedLabel : '固定版本全文' }}…</p>
         </div>
         <div v-else-if="loadError" class="state error">
           <span class="state-icon" aria-hidden="true">!</span>
-          <strong>{{ mode === 'saved' ? '保存片段' : '固定版本全文' }}读取失败</strong>
+          <strong>{{ mode === 'saved' ? savedLabel : '固定版本全文' }}读取失败</strong>
           <p>{{ loadError }}</p>
           <div class="state-actions">
             <a-button type="primary" size="small" @click="retry">重试</a-button>
-            <a-button v-if="mode === 'full' && active && active.materialId" size="small" @click="mode = 'saved'">返回保存片段</a-button>
+            <a-button v-if="mode === 'full' && active && active.materialId" size="small" @click="mode = 'saved'">返回{{ savedLabel }}</a-button>
             <a-button v-else-if="mode === 'saved'" size="small" @click="mode = 'full'">查看固定版本全文</a-button>
           </div>
         </div>
@@ -117,11 +119,17 @@ const props = withDefaults(defineProps<{
   activeStart: number
   activeEnd: number
   evidenceCount?: number
+  initialMode?: 'saved' | 'full'
+  /** 传入后，片段只来自报告快照，缺失时不回查当前任务材料。 */
+  frozenMaterials?: MaterialDetail[]
 }>(), {
-  evidenceCount: 0
+  evidenceCount: 0,
+  initialMode: 'full'
 })
 
 const emit = defineEmits<{ (event: 'update:open', value: boolean): void }>()
+const isFrozen = computed(() => props.frozenMaterials !== undefined)
+const savedLabel = computed(() => isFrozen.value ? '冻结片段' : '保存片段')
 
 const mode = ref<'saved' | 'full'>('full')
 const fullText = ref('')
@@ -170,7 +178,9 @@ const savedError = computed(() => {
   const id = active.value?.materialId
   if (!id) return '该引用没有关联的保存片段，无法查看实际发送内容。'
   if (savedById.value[id]) return ''
-  return materialState.value[id] === 'error' ? '保存片段读取失败。' : ''
+  return materialState.value[id] === 'error'
+    ? isFrozen.value ? '报告快照未保存该材料的可用正文，无法读取冻结片段。' : '保存片段读取失败。'
+    : ''
 })
 const busy = computed(() => mode.value === 'full' ? fullLoading.value : savedLoading.value)
 const loadError = computed(() => mode.value === 'full' ? fullError.value : savedError.value)
@@ -187,26 +197,27 @@ const outsideCount = computed(() => mode.value === 'saved' && savedView.value
   : 0)
 
 const fullRangeText = computed(() => {
-  if (!fullLoaded.value) return '全文件 · 扩展阅读，不改变发送内容'
+  const note = `扩展阅读，不改变${isFrozen.value ? '冻结' : '发送'}内容`
+  if (!fullLoaded.value) return `全文件 · ${note}`
   return fullLineCount.value
-    ? `全文件 1–${fullLineCount.value} 行 · 扩展阅读，不改变发送内容`
-    : '空文件 · 扩展阅读，不改变发送内容'
+    ? `全文件 1–${fullLineCount.value} 行 · ${note}`
+    : `空文件 · ${note}`
 })
 const savedRangeText = computed(() => savedView.value
-  ? `实际发送 · 第 ${savedView.value.start}–${savedView.value.end} 行`
-  : '实际发送的片段')
+  ? `${isFrozen.value ? '报告冻结' : '实际发送'} · 第 ${savedView.value.start}–${savedView.value.end} 行`
+  : isFrozen.value ? '报告保存的冻结片段' : '实际发送的片段')
 const sentText = computed(() => {
   if (!active.value?.materialId) return '未关联材料'
   const detail = activeMaterial.value
-  if (detail) return `本次发送第 ${detail.metadata.startLine}–${detail.metadata.endLine} 行`
+  if (detail) return `${isFrozen.value ? '报告冻结' : '本次发送'}第 ${detail.metadata.startLine}–${detail.metadata.endLine} 行`
   return materialState.value[active.value.materialId] === 'error'
-    ? '本次发送范围未知'
-    : '本次发送范围读取中'
+    ? `${isFrozen.value ? '冻结' : '本次发送'}范围未知`
+    : `${isFrozen.value ? '冻结' : '本次发送'}范围读取中`
 })
 const scopeText = computed(() => props.scope === 'issue' ? '本问题' : '本结果')
 const footerHint = computed(() => {
   const parts: string[] = []
-  if (outsideCount.value) parts.push(`${outsideCount.value} 处引用不在发送片段内`)
+  if (outsideCount.value) parts.push(`${outsideCount.value} 处引用不在${isFrozen.value ? '冻结' : '发送'}片段内`)
   parts.push(props.scope === 'issue' ? '同一审查的其他问题引用不标记' : '其他结果的引用不标记')
   return parts.join(' · ')
 })
@@ -216,7 +227,7 @@ const bannerText = computed(() => {
     return `引用行号超出固定版本范围（文件共 ${fullLineCount.value} 行）。`
   }
   if (mode.value === 'saved' && savedView.value && !activeInView.value) {
-    return `当前引用第 ${fmtRange(active.value)} 行不在本次发送的片段（第 ${savedView.value.start}–${savedView.value.end} 行）内。`
+    return `当前引用第 ${fmtRange(active.value)} 行不在${isFrozen.value ? '报告冻结' : '本次发送'}的片段（第 ${savedView.value.start}–${savedView.value.end} 行）内。`
   }
   return ''
 })
@@ -241,7 +252,7 @@ function findActiveIndex(): number {
 
 function resetState() {
   generation += 1
-  mode.value = 'full'
+  mode.value = isFrozen.value ? 'saved' : props.initialMode
   activeIndex.value = findActiveIndex()
   fullText.value = ''
   fullLoaded.value = false
@@ -254,7 +265,7 @@ function resetState() {
 function start() {
   resetState()
   if (!references.value.length) return
-  void loadFull()
+  if (mode.value === 'full') void loadFull()
   const ref = active.value
   if (ref?.materialId) void ensureMaterial(ref.materialId)
 }
@@ -286,8 +297,11 @@ async function ensureMaterial(id?: string) {
   const run = generation
   materialState.value = { ...materialState.value, [id]: 'loading' }
   try {
-    const detail = await tasksApi.material(props.taskId, id)
+    const detail = isFrozen.value
+      ? props.frozenMaterials?.find((material) => material.metadata.id === id)
+      : await tasksApi.material(props.taskId, id)
     if (run !== generation) return
+    if (!detail || (isFrozen.value && !detail.complete)) throw new Error('冻结材料正文不可用')
     savedById.value = { ...savedById.value, [id]: detail }
     materialState.value = { ...materialState.value, [id]: 'done' }
     if (mode.value === 'saved' && active.value?.materialId === id) await scrollSaved(true)
@@ -365,11 +379,15 @@ watch(() => props.open, (open) => {
 }, { immediate: true })
 
 watch(
-  () => [props.taskId, props.projectId, props.path, props.sha, props.side, props.activeStart, props.activeEnd, JSON.stringify(props.references)].join('|'),
+  () => [props.taskId, props.projectId, props.path, props.sha, props.side, props.activeStart, props.activeEnd, props.initialMode, JSON.stringify(props.references)].join('|'),
   () => {
     if (props.open) start()
   }
 )
+
+watch(() => props.frozenMaterials, () => {
+  if (props.open) start()
+})
 
 watch(mode, (next) => {
   if (!props.open) return

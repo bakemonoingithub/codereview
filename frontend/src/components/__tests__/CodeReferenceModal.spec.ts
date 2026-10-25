@@ -114,6 +114,63 @@ describe('代码引用阅读', () => {
     wrapper.unmount()
   })
 
+  it('结果引用保留 Agent 引用标识，并随导航切换', async () => {
+    const wrapper = await start({
+      scope: 'result',
+      references: refs.slice(0, 3).map((ref, index) => ({ ...ref, label: `E${index + 1}` })),
+      activeStart: 20,
+      activeEnd: 20
+    })
+    expect(wrapper.find('.reader-head').text()).toContain('E2')
+    expect(wrapper.text()).toContain('本结果在此文件的 3 处引用')
+    await button(wrapper, '下一处').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.reader-head').text()).toContain('E3')
+    expect(wrapper.text()).toContain('定位 第 30–31 行')
+    wrapper.unmount()
+  })
+
+  it('未记录 SHA 的 Agent 证据可直接阅读保存片段', async () => {
+    const wrapper = await start({
+      scope: 'result', sha: '', initialMode: 'saved',
+      references: [{ ...refs[0], sha: undefined, label: 'E1' }]
+    })
+    expect(repositoryApi.file).not.toHaveBeenCalled()
+    expect(tasksApi.material).toHaveBeenCalledWith('t1', 'm1')
+    expect(wrapper.find('.reader-head').text()).toContain('E1')
+    expect(wrapper.find('pre').text()).toContain('line 10')
+    expect(wrapper.text()).toContain('实际发送 · 第 8–35 行')
+    wrapper.unmount()
+  })
+
+  it('报告模式默认阅读冻结正文，不回查当前任务材料或仓库', async () => {
+    const frozen = { ...saved(), content: '冻结的正文' }
+    const wrapper = await start({ frozenMaterials: [frozen] })
+    expect(wrapper.find('pre').text()).toBe('冻结的正文')
+    expect(wrapper.text()).toContain('报告冻结')
+    expect(tasksApi.material).not.toHaveBeenCalled()
+    expect(repositoryApi.file).not.toHaveBeenCalled()
+    await wrapper.setProps({ frozenMaterials: [{ ...frozen, content: '另一来源的冻结正文' }] })
+    await flushPromises()
+    expect(wrapper.find('pre').text()).toBe('另一来源的冻结正文')
+    state(wrapper).mode = 'full'
+    await flushPromises()
+    expect(repositoryApi.file).toHaveBeenCalledWith('p1', sha, 'src/A.java')
+    state(wrapper).mode = 'saved'
+    await flushPromises()
+    expect(wrapper.find('pre').text()).toBe('另一来源的冻结正文')
+    expect(tasksApi.material).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('报告缺失冻结正文时显示缺失，不以当前材料补齐', async () => {
+    const wrapper = await start({ frozenMaterials: [] })
+    expect(wrapper.text()).toContain('报告快照未保存该材料的可用正文')
+    expect(tasksApi.material).not.toHaveBeenCalled()
+    expect(repositoryApi.file).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('保存片段使用材料原始行号，并可切回全文', async () => {
     const wrapper = await start()
     state(wrapper).mode = 'saved'
