@@ -44,7 +44,7 @@ public final class PromptDtos {
     }
 
     public record Summary(String id, String name, String purpose, List<String> tags, int revision,
-                          LocalDateTime updatedAt) {
+                          Integer currentVersionNo, LocalDateTime updatedAt) {
     }
 
     public record View(

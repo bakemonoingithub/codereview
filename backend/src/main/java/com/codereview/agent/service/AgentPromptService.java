@@ -57,9 +57,21 @@ public class AgentPromptService {
         PageResponse<AgentPrompt> page = AgentPaging.query(
                 db.mapper(AgentPromptMapper.class), wrapper, cursor, limit, pageNum, pageSize,
                 AgentPrompt::getCreatedAt, AgentPrompt::getId);
+        List<String> currentVersionIds = page.items().stream()
+                .map(AgentPrompt::getCurrentVersionId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<String, Integer> versionNoById = currentVersionIds.isEmpty()
+                ? Map.of()
+                : db.mapper(AgentPromptVersionMapper.class).selectBatchIds(currentVersionIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                AgentPromptVersion::getId, AgentPromptVersion::getVersionNo));
         return page.withItems(page.items().stream()
                 .map(p -> new PromptDtos.Summary(p.getId(), p.getName(), p.getPurpose(),
-                        splitTags(p.getTags()), p.getRevision(), p.getUpdatedAt()))
+                        splitTags(p.getTags()), p.getRevision(), p.getCurrentVersionId() == null
+                                ? null : versionNoById.get(p.getCurrentVersionId()),
+                        p.getUpdatedAt()))
                 .toList());
     }
 

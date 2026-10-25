@@ -47,7 +47,7 @@
         </template>
       </a-table-column>
       <a-table-column title="版本" width="100">
-        <template #default="{ record }"><code>r{{ record.revision }}</code></template>
+        <template #default="{ record }"><code>{{ formatPromptVersion(record.currentVersionNo) }}</code></template>
       </a-table-column>
       <a-table-column title="更新时间" width="170">
         <template #default="{ record }">{{ formatWhen(record.updatedAt) }}</template>
@@ -161,6 +161,7 @@ import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import PageNotice from '@/components/PageNotice.vue'
 import DiffViewer from '@/components/DiffViewer.vue'
 import { hasChanges, toUnifiedPatch } from '@/utils/promptDiff'
+import { formatPromptVersion } from '@/utils/promptVersion'
 
 const keyword = ref('')
 const modalOpen = ref(false)
@@ -344,7 +345,7 @@ async function openVersions(record: PromptSummary) {
   try {
     const versions: PromptVersion[] = await promptsApi.versions(record.id)
     if (versionPromptId.value !== record.id) return
-    versionOptions.value = versions.map((v) => ({ value: v.id, label: `v${v.versionNo}` }))
+    versionOptions.value = versions.map((v) => ({ value: v.id, label: formatPromptVersion(v.versionNo) }))
     if (versionOptions.value.length >= 2) {
       fromVersion.value = versionOptions.value[versionOptions.value.length - 2].value
       toVersion.value = versionOptions.value[versionOptions.value.length - 1].value

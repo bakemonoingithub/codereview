@@ -103,6 +103,7 @@ export interface PromptSummary {
   purpose: string
   tags: string[]
   revision: number
+  currentVersionNo?: number | null
   updatedAt: string
 }
 
@@ -652,6 +653,7 @@ export const projectsApi = {
 export const modelsApi = {
   list: (params: ListPaginationParams & { q?: string; cursor?: string; limit?: number } = {}) =>
     v2.get<Page<ModelView>>('/models', { params }).then((r) => r.data),
+  detail: (id: string) => v2.get<ModelView>(`/models/${id}`).then((r) => r.data),
   create: (body: {
     name: string
     baseUrl: string

@@ -162,6 +162,16 @@
             </a-form-item>
           </a-col>
         </a-row>
+        <PromptInfoPreview
+          v-if="form.guidancePromptId"
+          class="mb16"
+          title="指导提示词"
+          :prompt="selectedGuidancePrompt"
+          selected
+          :loading="guidancePromptLoading"
+          :error="guidancePromptError"
+          @retry="loadGuidancePrompt"
+        />
         <a-form-item label="本次要求" required>
           <a-textarea
             v-model:value="form.requirements"
@@ -216,11 +226,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
+import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
 import {
   agentTasksApi,
   modelsApi,
@@ -230,7 +241,8 @@ import {
   type CommitInfo,
   type ModelView,
   type ProjectView,
-  type PromptSummary
+  type PromptSummary,
+  type PromptView
 } from '@/api/v2'
 
 withDefaults(defineProps<{ open?: boolean }>(), { open: true })
@@ -244,6 +256,10 @@ const projectOptions = ref<Array<{ label: string; value: string }>>([])
 const projects = ref<ProjectView[]>([])
 const agentModels = ref<ModelView[]>([])
 const prompts = ref<PromptSummary[]>([])
+const selectedGuidancePrompt = ref<PromptView | null>(null)
+const guidancePromptLoading = ref(false)
+const guidancePromptError = ref('')
+let guidancePromptEpoch = 0
 const branches = ref<string[]>([])
 const commits = ref<CommitInfo[]>([])
 const headLoading = ref(false)
@@ -288,6 +304,29 @@ const promptOptions = computed(() =>
   prompts.value.map((prompt) => ({ label: prompt.name, value: prompt.id }))
 )
 const branchOptions = computed(() => branches.value.map((branch) => ({ label: branch, value: branch })))
+watch(() => form.guidancePromptId, () => { void loadGuidancePrompt() }, { flush: 'sync' })
+
+async function loadGuidancePrompt() {
+  const id = form.guidancePromptId
+  const epoch = ++guidancePromptEpoch
+  selectedGuidancePrompt.value = null
+  guidancePromptError.value = ''
+  guidancePromptLoading.value = false
+  if (!id) return
+
+  guidancePromptLoading.value = true
+  try {
+    const prompt = await promptsApi.detail(id)
+    if (epoch === guidancePromptEpoch) selectedGuidancePrompt.value = prompt
+  } catch (failure) {
+    if (epoch === guidancePromptEpoch) {
+      guidancePromptError.value = (failure as Error)?.message || '读取指导提示词失败，请重试。'
+    }
+  } finally {
+    if (epoch === guidancePromptEpoch) guidancePromptLoading.value = false
+  }
+}
+
 const canSubmit = computed(() => {
   if (!form.projectId || !form.modelConfigId || !form.requirements.trim()) return false
   if (form.kind === 'TEXT') return Boolean(form.description.trim() && form.observedSha)
@@ -303,7 +342,10 @@ function closeDropdownOnScroll(event: Event) {
 }
 
 onMounted(() => window.addEventListener('scroll', closeDropdownOnScroll, true))
-onBeforeUnmount(() => window.removeEventListener('scroll', closeDropdownOnScroll, true))
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', closeDropdownOnScroll, true)
+  guidancePromptEpoch++
+})
 
 onMounted(async () => {
   try {

@@ -185,6 +185,17 @@
         </div>
       </div>
 
+      <StrategyAssociationInfo
+        v-if="selectedStrategy"
+        :model="selectedStrategyModel"
+        :prompt="selectedStrategyPrompt"
+        :model-selected="!!selectedStrategy.modelConfigId"
+        :prompt-selected="!!selectedStrategy.promptId"
+        :loading="strategyAssociationLoading"
+        :prompt-loading="strategyAssociationLoading && !!selectedStrategy.promptId"
+        :error="strategyAssociationError"
+      />
+
       <div v-if="form.targets.length" class="notes">
         <div v-for="(target, index) in form.targets" :key="target.path" class="file-note">
           <div class="note-head">
@@ -260,15 +271,19 @@ import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import CommitPickerModal from '@/components/CommitPickerModal.vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
+import StrategyAssociationInfo from '@/components/StrategyAssociationInfo.vue'
 import {
   modelsApi,
   projectsApi,
+  promptsApi,
   repositoryApi,
   strategiesApi,
   tasksApi,
   type CommitDetail,
   type CommitInfo,
+  type ModelView,
   type ProjectView,
+  type PromptView,
   type StrategyView
 } from '@/api/v2'
 
@@ -287,7 +302,12 @@ const router = useRouter()
 const copyFrom = computed(() => String(route.query.copyFrom || ''))
 const projects = ref<ProjectView[]>([])
 const strategies = ref<StrategyView[]>([])
-const models = ref<{ id: string; name: string }[]>([])
+const models = ref<ModelView[]>([])
+const selectedStrategyModel = ref<ModelView | null>(null)
+const selectedStrategyPrompt = ref<PromptView | null>(null)
+const strategyAssociationLoading = ref(false)
+const strategyAssociationError = ref('')
+let strategyAssociationEpoch = 0
 let lastObservedSha = ''
 let headEpoch = 0
 let commitsEpoch = 0
@@ -369,6 +389,10 @@ const canSubmit = computed(
 
 const strategyModel = computed(() => selectedStrategy.value?.modelConfigId || '')
 
+watch(selectedStrategy, (strategy) => {
+  void loadStrategyAssociationInfo(strategy)
+}, { immediate: true })
+
 function closeDropdownOnScroll(event: Event) {
   const target = event.target
   if (!(target instanceof Element) || !target.closest('.launch-review-modal .ant-modal-body')) return
@@ -382,6 +406,7 @@ onBeforeUnmount(() => {
   commitsEpoch++
   commitLookupEpoch++
   detailEpoch++
+  strategyAssociationEpoch++
 })
 
 watch(commitPickerOpen, (open, wasOpen) => {
@@ -544,7 +569,7 @@ async function loadOptions() {
     ])
     projects.value = projectPage.items
     strategies.value = strategyPage.items
-    models.value = modelPage.items.map((model) => ({ id: model.id, name: model.name }))
+    models.value = modelPage.items
   } catch (failure) {
     formError.value = (failure as Error).message || '配置加载失败，请稍后重试'
   } finally {
@@ -820,6 +845,40 @@ function onStrategyChange() {
   if (strategyModel.value) {
     form.modelConfigId = strategyModel.value
   }
+}
+
+async function loadStrategyAssociationInfo(strategy: StrategyView | null) {
+  const epoch = ++strategyAssociationEpoch
+  strategyAssociationError.value = ''
+  selectedStrategyModel.value = null
+  selectedStrategyPrompt.value = null
+  if (!strategy) {
+    strategyAssociationLoading.value = false
+    return
+  }
+
+  selectedStrategyModel.value = models.value.find((model) => model.id === strategy.modelConfigId) || null
+  strategyAssociationLoading.value = true
+  const failures: string[] = []
+  const modelRequest = selectedStrategyModel.value || !strategy.modelConfigId
+    ? Promise.resolve(selectedStrategyModel.value)
+    : modelsApi.detail(strategy.modelConfigId).catch((failure: unknown) => {
+      failures.push((failure as Error).message || '读取策略关联模型失败')
+      return null
+    })
+  const promptRequest = strategy.promptId
+    ? promptsApi.detail(strategy.promptId).catch((failure: unknown) => {
+      failures.push((failure as Error).message || '读取策略关联提示词失败')
+      return null
+    })
+    : Promise.resolve(null)
+
+  const [model, prompt] = await Promise.all([modelRequest, promptRequest])
+  if (epoch !== strategyAssociationEpoch) return
+  selectedStrategyModel.value = model
+  selectedStrategyPrompt.value = prompt
+  strategyAssociationError.value = failures.join('；')
+  strategyAssociationLoading.value = false
 }
 
 function onScopeConfirm(selection: { path: string; oldPath: string | null }[]) {
