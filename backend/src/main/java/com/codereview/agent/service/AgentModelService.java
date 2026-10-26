@@ -222,12 +222,18 @@ public class AgentModelService {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private static String validationStatus(AgentModelConfig model, AgentModelValidation latest) {
+    private String validationStatus(AgentModelConfig model, AgentModelValidation latest) {
         if (latest == null) {
             return "NONE";
         }
         if (!latest.getConfigRevision().equals(model.getRevision())) {
             return "EXPIRED";
+        }
+        if (AgentToolLoopValidator.SCOPE.equals(latest.getScope()) && "PASSED".equals(latest.getResult())) {
+            try {
+                String hash = objectMapper.readTree(latest.getDetailJson()).path("optionsHash").asText("");
+                if (!toolLoopValidator.currentOptionsHash(ModelSnapshot.from(model)).equals(hash)) return "EXPIRED";
+            } catch (Exception e) { return "EXPIRED"; }
         }
         return latest.getResult();
     }

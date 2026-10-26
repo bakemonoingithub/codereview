@@ -51,7 +51,7 @@ class AgentToolLoopValidatorTest {
 
         assertTrue(outcome.passed(), outcome.detail());
         assertEquals(List.of("call-1", "call-2"), outcome.callIds());
-        assertEquals(AgentToolNames.SCHEMA_VERSION, outcome.toolSchemaVersion());
+        assertEquals(AgentToolSchema.version(new ToolLimitProperties()), outcome.toolSchemaVersion());
         assertEquals(64, outcome.optionsHash().length());
         assertTrue(outcome.detail().contains("read_code"));
         verify(invocation, org.mockito.Mockito.times(2)).invoke(any());

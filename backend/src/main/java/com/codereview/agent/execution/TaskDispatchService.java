@@ -46,8 +46,10 @@ public class TaskDispatchService {
                                TaskProperties properties) {
         this.db = db;
         this.workers = workers;
-        this.pool = Executors.newFixedThreadPool(Math.max(1, properties.getDispatchConcurrency()),
-                new NamedThreadFactory());
+        this.pool = new java.util.concurrent.ThreadPoolExecutor(properties.getDispatchConcurrency(),
+                properties.getDispatchConcurrency(), 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
+                new java.util.concurrent.ArrayBlockingQueue<>(properties.getDispatchQueueCapacity()),
+                new NamedThreadFactory(), new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
     }
 
     public void dispatch(String taskId) {

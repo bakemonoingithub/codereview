@@ -1,8 +1,9 @@
+import { runtimeConfig, businessApiBase } from '@/runtime/config'
 import axios from 'axios'
 
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 30000,
+  baseURL: businessApiBase().replace(/\/v2$/, ''),
+  timeout: runtimeConfig().requestTimeoutMillis,
   withCredentials: true
 })
 

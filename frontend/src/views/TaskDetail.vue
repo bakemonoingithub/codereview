@@ -243,6 +243,7 @@
 </template>
 
 <script setup lang="ts">
+import { runtimeConfig } from '@/runtime/config'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
@@ -547,7 +548,7 @@ async function loadTarget() {  const epoch = ++loadEpoch
 function schedulePoll() {
   stopPoll()
   if (disposed || !task.value || !['QUEUED', 'RUNNING'].includes(task.value.state)) return
-  pollTimer = setTimeout(() => { void loadTask() }, 3000)
+  pollTimer = setTimeout(() => { void loadTask() }, runtimeConfig().specialistPollMillis)
 }
 
 function stopPoll() {

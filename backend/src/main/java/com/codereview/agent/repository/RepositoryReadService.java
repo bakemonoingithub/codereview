@@ -51,29 +51,37 @@ public class RepositoryReadService {
 
     /** 目标文件读取上限；超过即失败，不静默截断后当作完整内容。 */
     static final int MAX_TARGET_BYTES = 4 * 1024 * 1024;
-    private static final long CACHE_MAX_WEIGHT_BYTES = 128L * 1024 * 1024;
 
     private final AgentDatabase db;
     private final GitHostClientRegistry registry;
     private final Cache<String, RepositorySnapshots.FileSnapshot> fileCache;
     private final Cache<String, RepositorySnapshots.PathList> treeCache;
 
+    private final RepositoryProperties properties;
     public RepositoryReadService(AgentDatabase db, GitHostClientRegistry registry) {
+        this(db, registry, new RepositoryProperties());
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public RepositoryReadService(AgentDatabase db, GitHostClientRegistry registry, RepositoryProperties properties) {
+        this.properties = properties;
         this.db = db;
         this.registry = registry;
         this.fileCache = Caffeine.newBuilder()
-                .maximumWeight(CACHE_MAX_WEIGHT_BYTES)
+                .maximumWeight(properties.getFileCacheWeightBytes())
                 .weigher((String key, RepositorySnapshots.FileSnapshot snapshot) ->
                         Math.max(1, snapshot.byteSize()))
-                .expireAfterWrite(Duration.ofMinutes(30))
+                .expireAfterWrite(Duration.ofMinutes(properties.getFileCacheMinutes()))
                 .build();
         this.treeCache = Caffeine.newBuilder()
-                .maximumSize(256)
-                .expireAfterWrite(Duration.ofMinutes(10))
+                .maximumSize(properties.getTreeCacheSize())
+                .expireAfterWrite(Duration.ofMinutes(properties.getTreeCacheMinutes()))
                 .build();
     }
 
-    public RepositorySnapshots.PathList listPaths(String projectId, String sha) {        ProjectContext context = context(projectId);
+    private boolean isReviewable(String path) { return properties.getAllowedExtensions().contains(ReviewableFiles.extensionOf(path)); }
+
+    public RepositorySnapshots.PathList listPaths(String projectId, String sha) {
+        ProjectContext context = context(projectId);
         String fixedSha = RepositoryPaths.requireFixedSha(sha);
         String key = context.namespace + "|tree|" + fixedSha;
         return treeCache.get(key, ignored -> {
@@ -83,7 +91,7 @@ public class RepositoryReadService {
             List<RepositorySnapshots.PathEntry> paths = new ArrayList<>();
             for (GitTreeEntry entry : tree.entries()) {
                 paths.add(new RepositorySnapshots.PathEntry(entry.path(), entry.type(),
-                        "blob".equals(entry.type()) && ReviewableFiles.isReviewable(entry.path())));
+                        "blob".equals(entry.type()) && isReviewable(entry.path())));
             }
             paths.sort(Comparator.comparing(RepositorySnapshots.PathEntry::path));
             return new RepositorySnapshots.PathList(paths, fixedSha, tree.truncated());
@@ -130,6 +138,19 @@ public class RepositoryReadService {
                         context.ref, fixedSha)).withoutPatches();
     }
 
+    /** 公开选材视图与文件树共用运行白名单；不修改共享 Git 缓存中的宿主详情。 */
+    public RepositorySnapshots.CommitView commitView(String projectId, String sha) {
+        CommitDetail detail = commit(projectId, sha);
+        List<RepositorySnapshots.ChangedFileView> files = detail.files().stream()
+                .map(file -> new RepositorySnapshots.ChangedFileView(file.path(), file.previousPath(),
+                        file.status(), file.additions(), file.deletions(), file.changes(), null,
+                        isReviewable(file.path())))
+                .toList();
+        return new RepositorySnapshots.CommitView(detail.sha(), detail.parents(), detail.message(),
+                detail.author(), detail.date(), detail.additions(), detail.deletions(), detail.totalChanges(),
+                detail.truncated(), files);
+    }
+
     /**
      * 共享镜像所需的仓库身份与凭据。
      *
@@ -142,7 +163,8 @@ public class RepositoryReadService {
                 context.credential(), context.credentialType(), context.namespace());
     }
 
-    public RepositorySnapshots.FileSnapshot readFile(String projectId, String sha, String path) {        ProjectContext context = context(projectId);
+    public RepositorySnapshots.FileSnapshot readFile(String projectId, String sha, String path) {
+        ProjectContext context = context(projectId);
         String fixedSha = RepositoryPaths.requireFixedSha(sha);
         String safePath = RepositoryPaths.requireSafePath(path);
         return fileCache.get(context.namespace + "|" + fixedSha + "|" + safePath,
@@ -253,9 +275,9 @@ public class RepositoryReadService {
             throw new ApiException(ErrorCode.FILE_NOT_READABLE, "二进制文件不可作为审查材料：" + path,
                     Map.of("reason", "BINARY"));
         }
-        if (bytes > MAX_TARGET_BYTES) {
+        if (bytes > properties.getMaxFileBytes()) {
             throw new ApiException(ErrorCode.FILE_NOT_READABLE,
-                    "文件超过目标读取上限 " + (MAX_TARGET_BYTES / 1024 / 1024) + " MiB：" + path,
+                    "文件超过目标读取上限 " + (properties.getMaxFileBytes() / 1024 / 1024) + " MiB：" + path,
                     Map.of("reason", "TOO_LARGE", "byteSize", bytes));
         }
         return new RepositorySnapshots.FileSnapshot(sha, path, content, sha256(content), bytes,

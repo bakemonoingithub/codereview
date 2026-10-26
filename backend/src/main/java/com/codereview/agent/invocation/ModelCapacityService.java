@@ -45,7 +45,7 @@ public class ModelCapacityService {
                     outputReserve, 0, Integer.MAX_VALUE,
                     prompt.estimateMethod());
         }
-        int safetyReserve = safetyReserve(model.contextWindow());
+        int safetyReserve = configuredSafetyReserve(model.contextWindow());
         return new CapacityEstimate(prompt.inputEstimate(), outputReserve, safetyReserve,
                 model.contextWindow(), prompt.estimateMethod());
     }
@@ -81,6 +81,9 @@ public class ModelCapacityService {
         return configured;
     }
 
+    public int configuredSafetyReserve(int contextWindow) {
+        return Math.max(properties.getSafetyReserveMinTokens(), (int) Math.ceil(contextWindow * properties.getSafetyReserveRatio()));
+    }
     static int safetyReserve(int contextWindow) {
         return Math.max(1024, (int) Math.ceil(contextWindow * 0.10));
     }

@@ -39,17 +39,24 @@ public class GitHubClient implements GitHostClient {
     private final RestClient restClient;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private final GitHubHostProperties hostProperties;
     public GitHubClient(GitHubProperties properties, GitProperties gitProperties, GitCache cache) {
+        this(properties, gitProperties, cache, new GitHttpProperties(), new GitHubHostProperties());
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public GitHubClient(GitHubProperties properties, GitProperties gitProperties, GitCache cache,
+                        GitHttpProperties http, GitHubHostProperties hosts) {
+        this.hostProperties = hosts;
         this.properties = properties;
         this.apiBase = gitProperties.normalizedApiBase();
         this.rawBase = gitProperties.normalizedRawBase();
         this.cache = cache;
-        this.restClient = restClient();
+        this.restClient = restClient(http);
     }
 
     @Override
     public Set<String> hosts() {
-        return Set.of("github.com");
+        return Set.copyOf(hostProperties.getHosts());
     }
 
     @Override
@@ -283,10 +290,10 @@ public class GitHubClient implements GitHostClient {
         return (fallback == null || fallback.isBlank()) ? null : "Bearer " + fallback;
     }
 
-    private static RestClient restClient() {
+    private static RestClient restClient(GitHttpProperties http) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10_000);
-        factory.setReadTimeout(60_000);
+        factory.setConnectTimeout(java.time.Duration.ofSeconds(http.getConnectTimeoutSeconds()));
+        factory.setReadTimeout(java.time.Duration.ofSeconds(http.getReadTimeoutSeconds()));
         return RestClient.builder().requestFactory(factory).build();
     }
 

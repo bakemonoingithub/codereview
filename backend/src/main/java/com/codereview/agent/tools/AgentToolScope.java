@@ -13,7 +13,10 @@ import java.util.Map;
  * 原始 SHA 不进入工具参数。未列出的标识一律拒绝，读取范围因此不会扩展到其他版本或其他项目。
  */
 public record AgentToolScope(String projectId, Map<String, String> versions,
-                             Map<String, Comparison> comparisons) {
+                             Map<String, Comparison> comparisons, ToolLimitProperties limits) {
+    public AgentToolScope(String projectId, Map<String, String> versions, Map<String, Comparison> comparisons) {
+        this(projectId, versions, comparisons, new ToolLimitProperties());
+    }
 
     public AgentToolScope {
         if (projectId == null || projectId.isBlank()) {

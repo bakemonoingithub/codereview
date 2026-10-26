@@ -119,6 +119,45 @@ class AgentTaskWorkerTest {
     }
 
     @Test
+    void frozenCustomBudgetControlsLoopAndInvocation() throws Exception {
+        var config = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(task.getConfigSnapshot());
+        config.put("version", 3);
+        AgentBudgetProperties budget = new AgentBudgetProperties(); budget.setModelTurns(1); budget.setOutputTokens(2048);
+        config.set("limits", mapper.valueToTree(budget));
+        var toolsConfig = new com.codereview.agent.tools.ToolLimitProperties(); toolsConfig.setReadMaxLines(250);
+        config.set("toolLimits", mapper.valueToTree(toolsConfig));
+        var policy = new com.codereview.agent.invocation.InvocationPolicy(0, 5, 30, 512, 0.05);
+        config.set("invocationPolicy", mapper.valueToTree(policy));
+        task.setConfigSnapshot(mapper.writeValueAsString(config));
+        when(invocation.invoke(any())).thenReturn(toolCallResult("call-1", "read_code",
+                "{\"version\":\"V1\",\"path\":\"src/A.java\"}"));
+        var outcome = worker.execute(task);
+        assertEquals(TaskStates.STOP_TURN_LIMIT, outcome.stopReason());
+        ArgumentCaptor<InvocationRequest> request = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation).invoke(request.capture());
+        assertEquals(2048, request.getValue().outputReserve());
+        assertEquals(policy, request.getValue().policy());
+        var scope = ArgumentCaptor.forClass(com.codereview.agent.tools.AgentToolScope.class);
+        verify(tools).execute(anyString(), anyString(), anyString(), scope.capture());
+        assertEquals(250, scope.getValue().limits().getReadMaxLines());
+    }
+
+    @Test
+    void singleRemainingNetworkAttemptDisablesRetryWithoutSkippingTheCall() throws Exception {
+        var config = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(task.getConfigSnapshot());
+        var limits = config.withObject("limits");
+        limits.put("networkAttempts", 1);
+        task.setConfigSnapshot(mapper.writeValueAsString(config));
+        when(invocation.invoke(any())).thenReturn(toolCallResult("call-1", "read_code",
+                "{\"version\":\"V1\",\"path\":\"src/A.java\"}"));
+        var outcome = worker.execute(task);
+        assertEquals(TaskStates.STOP_NETWORK_LIMIT, outcome.stopReason());
+        ArgumentCaptor<InvocationRequest> request = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation).invoke(request.capture());
+        assertEquals(0, request.getValue().policy().transportRetries());
+    }
+
+    @Test
     void validSubmitPublishesTheResult() {
         when(invocation.invoke(any()))
                 .thenReturn(toolCallResult("call-1", "read_code",

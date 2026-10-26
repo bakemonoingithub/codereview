@@ -39,6 +39,9 @@ public class GitGrepRunner {
     }
 
     public Result search(File mirrorDir, String sha, String query, String pathPrefix, Duration timeout) {
+        return search(mirrorDir, sha, query, pathPrefix, timeout, MAX_OUTPUT_BYTES);
+    }
+    public Result search(File mirrorDir, String sha, String query, String pathPrefix, Duration timeout, int maxOutputBytes) {
         // 查询内容写入临时文件，经 -f 传入：用户输入不进入命令行，
         // 也避免 Windows 上 Java ProcessBuilder 对参数内引号／反斜杠的转义差异。
         File patternFile;
@@ -69,7 +72,7 @@ public class GitGrepRunner {
         }
 
         try {
-            return run(command, sha, timeout);
+            return run(command, sha, timeout, maxOutputBytes);
         } finally {
             try {
                 Files.deleteIfExists(patternFile.toPath());
@@ -79,7 +82,7 @@ public class GitGrepRunner {
         }
     }
 
-    private Result run(List<String> command, String sha, Duration timeout) {
+    private Result run(List<String> command, String sha, Duration timeout, int maxOutputBytes) {
         ProcessBuilder builder = new ProcessBuilder(command);
         Map<String, String> environment = builder.environment();
         environment.put("GIT_TERMINAL_PROMPT", "0");
@@ -93,7 +96,7 @@ public class GitGrepRunner {
             return Result.failure("GIT_UNAVAILABLE", "无法启动 git：" + e.getMessage());
         }
 
-        BoundedStream stdout = new BoundedStream(process.getInputStream(), MAX_OUTPUT_BYTES);
+        BoundedStream stdout = new BoundedStream(process.getInputStream(), maxOutputBytes);
         BoundedStream stderr = new BoundedStream(process.getErrorStream(), MAX_DIAGNOSTIC_BYTES);
         Thread outThread = new Thread(stdout, "git-grep-stdout");
         Thread errThread = new Thread(stderr, "git-grep-stderr");

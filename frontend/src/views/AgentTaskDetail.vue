@@ -237,6 +237,7 @@
 </template>
 
 <script setup lang="ts">
+import { runtimeConfig } from '@/runtime/config'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -417,7 +418,7 @@ function startPolling() {
       await loadResult()
       await loadCalls()
     }
-  }, 2000)
+  }, runtimeConfig().agentPollMillis)
 }
 
 async function loadProgress() {

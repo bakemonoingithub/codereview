@@ -47,6 +47,14 @@ public class AgentToolLoopValidator {
     private final PromptAssemblyService assembly;
     private final ObjectMapper mapper;
 
+    private ToolLimitProperties limits = new ToolLimitProperties();
+    private com.codereview.agent.execution.AgentBudgetProperties budget = new com.codereview.agent.execution.AgentBudgetProperties();
+    @org.springframework.beans.factory.annotation.Autowired
+    public AgentToolLoopValidator(ModelInvocationService invocation, PromptAssemblyService assembly,
+                                  ObjectMapper mapper, ToolLimitProperties limits,
+                                  com.codereview.agent.execution.AgentBudgetProperties budget) {
+        this(invocation, assembly, mapper); this.limits = limits; this.budget = budget;
+    }
     public AgentToolLoopValidator(ModelInvocationService invocation,
                                   PromptAssemblyService assembly, ObjectMapper mapper) {
         this.invocation = invocation;
@@ -54,16 +62,18 @@ public class AgentToolLoopValidator {
         this.mapper = mapper;
     }
 
+    public String currentOptionsHash(ModelSnapshot model) { return optionsHash(model, limits, budget); }
+
     public Outcome validate(ModelSnapshot model) {
-        List<Map<String, Object>> tools = AgentToolSchema.definitions();
+        List<Map<String, Object>> tools = AgentToolSchema.definitions(limits);
         List<String> callIds = new ArrayList<>();
         try {
             InvocationResult first = invoke(model, assembly.assembleToolCheck(tools), callIds);
             if (first.toolCalls().isEmpty()) {
                 return failure("第 1 轮没有返回工具调用", callIds, model);
             }
-            if (first.toolCalls().size() > 4) {
-                return failure("第 1 轮工具调用超过 4 个", callIds, model);
+            if (first.toolCalls().size() > budget.getMaxToolsPerTurn()) {
+                return failure("第 1 轮工具调用超过 " + budget.getMaxToolsPerTurn() + " 个", callIds, model);
             }
             ToolCall primary = first.toolCalls().get(0);
             if (!AgentToolNames.isReadOnly(primary.name())) {
@@ -72,7 +82,7 @@ public class AgentToolLoopValidator {
             ToolInvocation invocation;
             try {
                 invocation = new ToolArgumentParser(mapper).parse(primary.name(), primary.arguments(),
-                        AgentToolScope.single("fixture", FIXTURE_SHA));
+                        new AgentToolScope("fixture", Map.of("V1", FIXTURE_SHA), Map.of(), limits));
             } catch (ToolFailure e) {
                 return failure("工具参数未通过校验：" + e.getMessage(), callIds, model);
             }
@@ -86,7 +96,7 @@ public class AgentToolLoopValidator {
             String detail = "双轮工具协议通过：第 1 轮调用 " + primary.name()
                     + "，第 2 轮返回 " + second.content().strip().length() + " 字符";
             return new Outcome(true, detail, callIds, PromptAssemblyService.ADAPTER_VERSION,
-                    AgentToolSchema.version(), optionsHash(model));
+                    AgentToolSchema.version(limits), optionsHash(model, limits, budget));
         } catch (ApiException e) {
             return failure("调用失败：" + e.getMessage(), callIds, model);
         }
@@ -117,17 +127,22 @@ public class AgentToolLoopValidator {
         return ToolEnvelopes.writeString(mapper, envelope);
     }
 
-    private static Outcome failure(String detail, List<String> callIds, ModelSnapshot model) {
+    private Outcome failure(String detail, List<String> callIds, ModelSnapshot model) {
         return new Outcome(false, detail, List.copyOf(callIds),
-                PromptAssemblyService.ADAPTER_VERSION, AgentToolSchema.version(), optionsHash(model));
+                PromptAssemblyService.ADAPTER_VERSION, AgentToolSchema.version(limits), optionsHash(model, limits, budget));
     }
 
     /** 绑定模型修订、适配器、工具 schema 与本次选项；任一变化都应重新验证。 */
     public static String optionsHash(ModelSnapshot model) {
+        return optionsHash(model, new ToolLimitProperties(), new com.codereview.agent.execution.AgentBudgetProperties());
+    }
+    public static String optionsHash(ModelSnapshot model, ToolLimitProperties limits,
+                                     com.codereview.agent.execution.AgentBudgetProperties budget) {
         return sha256("revision=" + model.revision()
                 + "|model=" + model.modelName()
                 + "|adapter=" + PromptAssemblyService.ADAPTER_VERSION
-                + "|tools=" + AgentToolSchema.version()
+                + "|tools=" + AgentToolSchema.version(limits)
+                + "|maxTools=" + budget.getMaxToolsPerTurn() + "|protocolErrors=" + budget.getMaxProtocolErrors()
                 + "|reasoning_effort=none|tool_choice=auto");
     }
 

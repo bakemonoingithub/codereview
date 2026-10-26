@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>启动状态原型</title>
+<style>body{margin:0;background:#f5f7fa;color:#242c3c;font:15px system-ui,"Microsoft YaHei",sans-serif}nav{padding:20px;display:flex;gap:12px}button{border:1px solid #d9dfe8;border-radius:6px;background:white;padding:9px 18px;cursor:pointer}main{margin:12vh auto;max-width:460px;background:white;border:1px solid #e4e8ef;border-radius:12px;padding:40px;text-align:center}h1{font-size:22px}p{color:#626d7e;line-height:1.8}.primary{background:#1677ff;color:white;border-color:#1677ff}.icon{font-size:32px;color:#d48806}</style>
+<nav aria-label="原型状态"><button onclick="show(false)">加载中</button><button onclick="show(true)">加载失败</button></nav>
+<main aria-live="polite"><div class="icon" id="icon">!</div><h1 id="title">暂时无法打开应用</h1><p id="body">无法读取应用配置，请确认服务可用后重试。</p><button class="primary" id="retry" onclick="show(false);setTimeout(()=>show(true),1200)">重新加载</button></main>
+<script>function show(error){document.getElementById('icon').textContent=error?'!':'…';document.getElementById('title').textContent=error?'暂时无法打开应用':'正在准备应用';document.getElementById('body').textContent=error?'无法读取应用配置，请确认服务可用后重试。':'正在读取应用配置，请稍候。';document.getElementById('retry').hidden=!error}</script>
+</html>

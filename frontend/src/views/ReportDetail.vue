@@ -262,6 +262,7 @@
 </template>
 
 <script setup lang="ts">
+import { runtimeConfig } from '@/runtime/config'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { modelsApi, promptsApi, reportsApi, type ModelView, type PromptSummary, type PromptVersion, type PromptView, type ReportDetail } from '@/api/v2'
@@ -386,7 +387,7 @@ async function load() {
     if (disposed || epoch !== loadEpoch) return
     report.value = loaded
     if (loaded.state === 'QUEUED' || loaded.state === 'RUNNING') {
-      pollTimer = setTimeout(() => void load(), 2000)
+      pollTimer = setTimeout(() => void load(), runtimeConfig().reportPollMillis)
     }
   } catch (failure) {
     if (disposed || epoch !== loadEpoch) return

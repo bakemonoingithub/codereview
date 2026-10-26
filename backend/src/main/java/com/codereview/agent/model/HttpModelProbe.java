@@ -24,12 +24,17 @@ import java.util.Map;
 @Component
 public class HttpModelProbe implements ModelProbe {
 
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+    private final HttpClient http;
     private final ObjectMapper mapper;
     private final Duration readTimeout;
 
-    public HttpModelProbe(ObjectMapper mapper,
-                          @Value("${agent.model.probe-timeout-seconds:15}") long timeoutSeconds) {
+    @org.springframework.beans.factory.annotation.Autowired
+    public HttpModelProbe(ObjectMapper mapper, com.codereview.agent.invocation.ModelInvocationProperties properties) {
+        this(mapper, properties.getProbeTimeoutSeconds(), properties.getProbeConnectTimeoutSeconds());
+    }
+    public HttpModelProbe(ObjectMapper mapper, long timeoutSeconds) { this(mapper, timeoutSeconds, 5); }
+    private HttpModelProbe(ObjectMapper mapper, long timeoutSeconds, long connectSeconds) {
+        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(connectSeconds)).build();
         this.mapper = mapper;
         this.readTimeout = Duration.ofSeconds(Math.max(1, timeoutSeconds));
     }

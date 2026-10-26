@@ -45,9 +45,9 @@ public class RepositoryV2Controller {
     }
 
     @GetMapping("/commit")
-    public com.codereview.git.CommitDetail commit(@PathVariable String projectId,
+    public RepositorySnapshots.CommitView commit(@PathVariable String projectId,
                                                   @RequestParam String sha) {
-        return service.commit(projectId, sha);
+        return service.commitView(projectId, sha);
     }
 
     @GetMapping("/paths")

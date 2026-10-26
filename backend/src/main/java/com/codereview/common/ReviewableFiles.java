@@ -40,6 +40,8 @@ public final class ReviewableFiles {
             "md", "txt", "html", "htm", "css", "less", "scss", "sass", "styl", "jsp", "ftl",
             "rst", "adoc", "csv", "log");
 
+    public static Set<String> extensions() { return ALLOWED_EXTENSIONS; }
+
     private ReviewableFiles() {
     }
 

@@ -72,6 +72,31 @@ class TaskDispatchServiceTest {
     }
 
     @Test
+    void boundedQueueRejectsOverflowInsteadOfLeavingQueuedTasks() throws Exception {
+        dispatcher.shutdown();
+        TaskProperties properties = new TaskProperties(); properties.setDispatchConcurrency(1); properties.setDispatchQueueCapacity(1);
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        dispatcher = new TaskDispatchService(db, workers, properties) {
+            @Override void run(String id) {
+                entered.countDown();
+                try { release.await(5, java.util.concurrent.TimeUnit.SECONDS); }
+                catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }
+        };
+        try {
+            dispatcher.dispatch("running");
+            assertTrue(entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            dispatcher.dispatch("waiting"); dispatcher.dispatch("overflow");
+            ArgumentCaptor<LambdaUpdateWrapper<AgentReviewTask>> update = ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
+            verify(taskMapper).update(org.mockito.ArgumentMatchers.isNull(), update.capture());
+            update.getValue().getSqlSegment();
+            assertTrue(update.getValue().getParamNameValuePairs().containsValue("overflow"));
+            assertTrue(update.getValue().getParamNameValuePairs().containsValue("DISPATCH_REJECTED"));
+        } finally { release.countDown(); }
+    }
+
+    @Test
     void missingWorkerFailsTheTaskExplicitly() {
         when(workers.orderedStream()).thenReturn(java.util.stream.Stream.empty());
         doReturn(true).when(dispatcher).finish(any(), any(), any());

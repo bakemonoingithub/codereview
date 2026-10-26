@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "agent.specialist")
 public class SpecialistProperties {
+    private com.codereview.agent.execution.SpecialistExecutionProperties execution = new com.codereview.agent.execution.SpecialistExecutionProperties();
 
     /** 继承查找最大深度；直接父类型算第 1 层。 */
     private int maxInheritanceDepth = 6;

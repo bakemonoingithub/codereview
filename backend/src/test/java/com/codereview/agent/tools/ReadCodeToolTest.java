@@ -49,6 +49,21 @@ class ReadCodeToolTest {
     }
 
     @Test
+    void frozenCustomReadLimitsChangeActualReturnedRangeAndContinuation() {
+        stubFile(20);
+        ToolLimitProperties limits = new ToolLimitProperties();
+        limits.setReadDefaultLines(3); limits.setReadMaxLines(4);
+        var custom = new AgentToolScope("p1", Map.of("V1", SHA), Map.of(), limits);
+        var first = tool.execute("c1", invocation(1, null, null), custom);
+        assertEquals(3, first.materials().get(0).endLine());
+        assertEquals(4, ((Map<?, ?>) first.data()).get("nextStartLine"));
+        var capped = tool.execute("c2", invocation(1, 4, 20), custom);
+        assertEquals(7, capped.materials().get(0).endLine());
+        assertEquals(8, ((Map<?, ?>) capped.data()).get("nextStartLine"));
+        assertEquals(ToolEnvelope.PARTIAL, capped.completeness());
+    }
+
+    @Test
     void defaultsToTwoHundredLinesAndPointsAtTheNextLine() {
         stubFile(250);
 

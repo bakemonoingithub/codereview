@@ -56,7 +56,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Agent 任务发起：校验模型准入、范围与版本、指导提示词和参考结果，冻结 version 2 快照。
+ * Agent 任务发起：校验模型准入、范围与版本、指导提示词和参考结果，冻结输入 v2 与配置 v3 快照。
  *
  * <p>文件与文字任务重新核对分支 HEAD，移动即 {@code SOURCE_MOVED}，不自动改用新版本；
  * 多提交逐项保存「提交 + 第一父提交」比较关系，合并提交取第一父提交，根提交的 base 为空。
@@ -74,7 +74,16 @@ public class AgentTaskService {
     private final ModelInvocationProperties modelProperties;
     private final TaskDispatchService dispatcher;
 
+    private com.codereview.agent.execution.AgentBudgetProperties budget = new com.codereview.agent.execution.AgentBudgetProperties();
+    private com.codereview.agent.tools.ToolLimitProperties toolLimits = new com.codereview.agent.tools.ToolLimitProperties();
     @org.springframework.beans.factory.annotation.Autowired
+    public AgentTaskService(AgentDatabase db, ObjectMapper mapper, RepositoryReadService repository,
+                            ModelInvocationProperties modelProperties, TaskDispatchService dispatcher,
+                            com.codereview.agent.execution.AgentBudgetProperties budget,
+                            com.codereview.agent.tools.ToolLimitProperties toolLimits) {
+        this(db, mapper, repository, modelProperties, dispatcher);
+        this.budget = budget; this.toolLimits = toolLimits;
+    }
     public AgentTaskService(AgentDatabase db, ObjectMapper mapper,
                             RepositoryReadService repository,
                             ModelInvocationProperties modelProperties,
@@ -128,7 +137,7 @@ public class AgentTaskService {
         LocalDateTime now = AgentTime.now();
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
-        task.setDeadlineAt(now.plusMinutes(AgentBudget.DEADLINE_MINUTES));
+        task.setDeadlineAt(now.plusMinutes(budget.getDeadlineMinutes()));
 
         try {
             db.inTransaction(() -> {
@@ -320,6 +329,12 @@ public class AgentTaskService {
             throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,
                     "模型缺少上下文窗口或最大输出，不能发起 Agent 任务", Map.of("modelId", model.getId()));
         }
+        int safety = new com.codereview.agent.invocation.ModelCapacityService(modelProperties)
+                .configuredSafetyReserve(model.getContextWindow());
+        if ((long) Math.min(budget.getOutputTokens(), model.getMaxOutput()) + safety >= model.getContextWindow()) {
+            throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,
+                    "Agent 输出预留与安全余量已占满模型窗口，请调整模型或运行配置");
+        }
         List<AgentModelValidation> rows = db.mapper(AgentModelValidationMapper.class).selectList(
                 new LambdaQueryWrapper<AgentModelValidation>()
                         .eq(AgentModelValidation::getModelConfigId, model.getId())
@@ -337,7 +352,7 @@ public class AgentTaskService {
                     "模型的 Agent 工具协议验证已过期或未通过，请重新验证",
                     Map.of("modelId", model.getId(), "revision", model.getRevision()));
         }
-        String expected = AgentToolLoopValidator.optionsHash(ModelSnapshot.from(model));
+        String expected = AgentToolLoopValidator.optionsHash(ModelSnapshot.from(model), toolLimits, budget);
         String actual = readJson(validation.getDetailJson()).path("optionsHash").asText("");
         if (!expected.equals(actual)) {
             throw new ApiException(ErrorCode.CONFIG_INCOMPLETE,
@@ -460,7 +475,7 @@ public class AgentTaskService {
 
     private String configSnapshot(AgentModelConfig model, FrozenPrompt guidance) {
         ObjectNode root = mapper.createObjectNode();
-        root.put("version", 2);
+        root.put("version", 3);
         ObjectNode modelNode = root.putObject("model");
         modelNode.put("id", model.getId());
         modelNode.put("name", model.getName());
@@ -470,8 +485,8 @@ public class AgentTaskService {
         putNullable(modelNode, "contextWindow", model.getContextWindow());
         putNullable(modelNode, "maxOutput", model.getMaxOutput());
         modelNode.put("adapterVersion", PromptAssemblyService.ADAPTER_VERSION);
-        modelNode.put("toolSchemaVersion", AgentToolSchema.version());
-        modelNode.put("optionsHash", AgentToolLoopValidator.optionsHash(ModelSnapshot.from(model)));
+        modelNode.put("toolSchemaVersion", AgentToolSchema.version(toolLimits));
+        modelNode.put("optionsHash", AgentToolLoopValidator.optionsHash(ModelSnapshot.from(model), toolLimits, budget));
         if (guidance != null) {
             ObjectNode prompt = root.putObject("prompt");
             prompt.put("id", guidance.promptId());
@@ -481,15 +496,22 @@ public class AgentTaskService {
             prompt.put("content", guidance.content());
         }
         ObjectNode limits = root.putObject("limits");
-        limits.put("modelTurns", AgentBudget.MODEL_TURNS);
-        limits.put("networkAttempts", AgentBudget.NETWORK_ATTEMPTS);
-        limits.put("toolAttempts", AgentBudget.TOOL_ATTEMPTS);
-        limits.put("deadlineMinutes", AgentBudget.DEADLINE_MINUTES);
-        limits.put("modelTimeoutSeconds", AgentBudget.MODEL_TIMEOUT_SECONDS);
-        limits.put("outputTokens", AgentBudget.OUTPUT_TOKENS);
-        limits.put("contextStopRatio", AgentBudget.CONTEXT_STOP_RATIO);
-        limits.put("noProgressTurns", AgentBudget.NO_PROGRESS_TURNS);
-        limits.put("toolSchemaVersion", AgentToolSchema.version());
+        limits.put("modelTurns", budget.getModelTurns());
+        limits.put("networkAttempts", budget.getNetworkAttempts());
+        limits.put("toolAttempts", budget.getToolAttempts());
+        limits.put("deadlineMinutes", budget.getDeadlineMinutes());
+        limits.put("modelTimeoutSeconds", budget.getModelTimeoutSeconds());
+        limits.put("outputTokens", budget.getOutputTokens());
+        limits.put("contextStopRatio", budget.getContextStopRatio());
+        limits.put("noProgressTurns", budget.getNoProgressTurns());
+        long estimatedPerRequest = (long) Math.floor(model.getContextWindow() * budget.getContextStopRatio())
+                + Math.min(budget.getOutputTokens(), model.getMaxOutput());
+        limits.put("maxEstimatedTokenUnits", estimatedPerRequest * budget.getNetworkAttempts());
+        limits.put("maxToolsPerTurn", budget.getMaxToolsPerTurn());
+        limits.put("maxProtocolErrors", budget.getMaxProtocolErrors());
+        root.set("toolLimits", mapper.valueToTree(toolLimits));
+        root.set("invocationPolicy", mapper.valueToTree(com.codereview.agent.invocation.InvocationPolicy.from(modelProperties)));
+        limits.put("toolSchemaVersion", AgentToolSchema.version(toolLimits));
         ObjectNode instructions = root.putObject("instructions");
         instructions.put("builtinVersion", "1");
         instructions.put("priority", "BUILTIN_THEN_REQUIREMENTS_THEN_GUIDANCE");
@@ -501,7 +523,7 @@ public class AgentTaskService {
         LocalDateTime now = AgentTime.now();
         AgentTaskQuota quota = new AgentTaskQuota();
         quota.setTaskId(taskId);
-        quota.setHardLimit(modelProperties.getTaskCallLimit());
+        quota.setHardLimit(budget.getNetworkAttempts());
         quota.setReserved(0);
         quota.setCreatedAt(now);
         quota.setUpdatedAt(now);

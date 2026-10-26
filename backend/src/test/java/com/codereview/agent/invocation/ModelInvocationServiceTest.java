@@ -99,6 +99,29 @@ class ModelInvocationServiceTest {
     }
 
     @Test
+    void frozenPolicyControlsReadTimeoutIndependentlyOfProcessDefaults() {
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("{}"));
+        var base = request(prompt(100), model(100000, 8000));
+        service.invoke(new InvocationRequest(base.model(), base.prompt(), base.scope(), false, null,
+                2048, 1, 120, new InvocationPolicy(0, 5, 30, 512, 0.05)));
+        var timeout = ArgumentCaptor.forClass(Duration.class);
+        verify(transport).post(any(), any(), any(), timeout.capture());
+        assertEquals(Duration.ofSeconds(30), timeout.getValue());
+    }
+
+    @Test
+    void missingFrozenQuotaFailsWithoutCreatingAnExpandedQuotaOrSending() {
+        when(quotaMapper.update(isNull(), any())).thenReturn(0);
+        when(quotaMapper.selectById(TASK_ID)).thenReturn(null);
+        var base = request(prompt(100), model(100000, 8000));
+        var failure = assertThrows(ApiException.class, () -> service.invoke(new InvocationRequest(
+                base.model(), base.prompt(), base.scope(), false, null, 2048, 1, 30, InvocationPolicy.defaults())));
+        assertEquals(ErrorCode.CONFIG_INCOMPLETE, failure.errorCode());
+        verify(quotaMapper, never()).insert(any(AgentTaskQuota.class));
+        verify(transport, never()).post(any(), any(), any(), any());
+    }
+
+    @Test
     void wholeSpecialistRequestCanExceedTheConservativeEstimate() {
         when(transport.post(any(), any(), any(), any())).thenReturn(ok("{}"));
         var base = request(prompt(20_000), model(10_000, 4096));

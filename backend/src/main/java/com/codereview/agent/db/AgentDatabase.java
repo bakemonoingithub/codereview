@@ -73,8 +73,8 @@ public class AgentDatabase implements DisposableBean {
             config.setDriverClassName(props.getDriverClassName());
         }
         config.setMaximumPoolSize(props.getMaximumPoolSize());
-        config.setMinimumIdle(1);
-        config.setConnectionTimeout(10_000);
+        config.setMinimumIdle(props.getMinimumIdle());
+        config.setConnectionTimeout(props.getConnectionTimeoutMillis());
         return new HikariDataSource(config);
     }
 

@@ -21,6 +21,12 @@ public class AgentDataSourceProperties {
     private String historyTable = "agent_schema_history";
 
     private int maximumPoolSize = 10;
+    private int minimumIdle = 1;
+    private long connectionTimeoutMillis = 10000;
+    public int getMinimumIdle() { return minimumIdle; }
+    public void setMinimumIdle(int value) { minimumIdle = value; }
+    public long getConnectionTimeoutMillis() { return connectionTimeoutMillis; }
+    public void setConnectionTimeoutMillis(long value) { connectionTimeoutMillis = value; }
 
     public String getUrl() {
         return url;

@@ -14,6 +14,12 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "agent.model")
 public class ModelInvocationProperties {
+    private int connectTimeoutSeconds = 10;
+    private int probeTimeoutSeconds = 15;
+    private int probeConnectTimeoutSeconds = 5;
+    private int safetyReserveMinTokens = 1024;
+    private double safetyReserveRatio = 0.1;
+
 
     /** 暂态传输重试次数（不含首次）。契约固定为最多额外 1 次。 */
     private int transportRetries = 1;

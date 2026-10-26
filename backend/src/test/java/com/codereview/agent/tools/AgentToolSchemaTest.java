@@ -70,7 +70,7 @@ class AgentToolSchemaTest {
 
     @Test
     void schemaVersionIsBoundToTheCacheAndValidationKeys() {
-        assertEquals("agent-tools-v1", AgentToolSchema.version());
+        assertTrue(AgentToolSchema.version().startsWith("agent-tools-v2-"));
         assertTrue(AgentToolNames.SCHEMA_VERSION.startsWith("agent-tools-"));
     }
 

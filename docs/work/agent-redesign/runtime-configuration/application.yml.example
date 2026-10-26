@@ -1,0 +1,125 @@
+# CFG-02–05 参数参考；尚未接入正式部署流程。
+# 数据库值由 DB_URL / DB_USER / DB_PASSWORD 提供，不填写真实凭据到版本库。
+# Gitea hosts 沿用当前代码缺省作对照，部署时必须按目标环境覆盖。
+server:
+  port: 8080
+agent:
+  datasource:
+    url: "${DB_URL}"
+    username: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    driver-class-name: "com.mysql.cj.jdbc.Driver"
+    expected-database: "ai_code_review_agent"
+    migration-location: "classpath:db/agent-migration"
+    history-table: "agent_schema_history"
+    maximum-pool-size: 10
+    minimum-idle: 1
+    connection-timeout-millis: 10000
+  tools:
+    git-executable: "git"
+    mirror-timeout-seconds: 120
+    search-total-seconds: 10
+    search-global-concurrency: 2
+    search-cache-weight-bytes: 33554432
+    search-cache-minutes: 5
+    limits:
+      envelope-max-bytes: 32768
+      material-max-bytes: 24576
+      tree-default-depth: 2
+      tree-max-depth: 3
+      tree-default-limit: 100
+      tree-max-limit: 200
+      find-default-limit: 50
+      find-max-limit: 100
+      search-default-limit: 50
+      search-max-limit: 100
+      search-context-lines: 2
+      search-grep-max-hits: 200
+      read-default-lines: 200
+      read-max-lines: 400
+      diff-max-items: 20
+      diff-max-hunks: 10
+      grep-output-max-bytes: 2097152
+  repository:
+    max-file-bytes: 4194304
+    file-cache-weight-bytes: 134217728
+    file-cache-minutes: 30
+    tree-cache-size: 256
+    tree-cache-minutes: 10
+    allowed-extensions: ["java", "kt", "kts", "scala", "js", "ts", "jsx", "tsx", "vue", "py", "go", "cs", "cpp", "c", "h", "rb", "php", "sql", "sh", "bat", "ps1", "r", "swift", "dart", "lua", "pl", "m", "mm", "asm", "s", "xml", "yml", "yaml", "properties", "json", "toml", "ini", "conf", "gradle", "env", "md", "txt", "html", "htm", "css", "less", "scss", "sass", "styl", "jsp", "ftl", "rst", "adoc", "csv", "log"]
+  model:
+    connect-timeout-seconds: 10
+    probe-timeout-seconds: 15
+    probe-connect-timeout-seconds: 5
+    safety-reserve-min-tokens: 1024
+    safety-reserve-ratio: 0.1
+    transport-retries: 1
+    retry-base-millis: 500
+    max-read-timeout-seconds: 180
+    output-reserve-tokens: 4096
+    validation-output-tokens: 64
+    task-call-limit: 200
+    global-concurrency: 4
+    per-task-concurrency: 2
+  task:
+    dispatch-queue-capacity: 64
+    deadline-minutes: 30
+    dispatch-concurrency: 4
+    recover-on-start: true
+    sweep-millis: 30000
+  specialist:
+    max-inheritance-depth: 6
+    max-auxiliary-files: 12
+    max-auxiliary-bytes: 262144
+    include-direct-declarations: true
+    max-units-per-file: 32
+    max-block-lines: 200
+    execution:
+      parallel-targets: 4
+  report:
+    max-body-chars: 1000000
+    generation-timeout-minutes: 10
+    dispatch-concurrency: 2
+    dispatch-queue-capacity: 100
+    output-tokens: 16384
+  budget:
+    model-turns: 48
+    network-attempts: 96
+    tool-attempts: 192
+    deadline-minutes: 20
+    output-tokens: 16384
+    model-timeout-seconds: 120
+    context-stop-ratio: 0.8
+    no-progress-turns: 3
+    max-tools-per-turn: 4
+    max-protocol-errors: 2
+git:
+  api-base: "https://api.github.com"
+  raw-base: "https://raw.githubusercontent.com"
+  http:
+    connect-timeout-seconds: 10
+    read-timeout-seconds: 60
+  github:
+    hosts: ["github.com"]
+  gitea:
+    hosts: ["localhost:3000", "192.104.224.172"]
+    api-base: ""
+    token: "${GITEA_TOKEN:}"
+    work-dir: ""
+    local-clone-enabled: true
+    mirror-timeout-seconds: 120
+    diff-max-bytes: 5242880
+  cache:
+    commit-detail-max-size: 200
+    raw-file-max-size: 500
+    expire-minutes: 30
+github:
+  token: "${GITHUB_TOKEN:}"
+app:
+  ui:
+    title: "智能代码分析工具"
+    api-base: "api/v2"
+    request-timeout-millis: 30000
+    agent-poll-millis: 2000
+    report-poll-millis: 2000
+    specialist-poll-millis: 3000

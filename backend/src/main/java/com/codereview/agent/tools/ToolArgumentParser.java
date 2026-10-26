@@ -50,8 +50,8 @@ public class ToolArgumentParser {
         String versionRef = args.require("version").text(16);
         String sha = requireVersion(scope, versionRef);
         String path = args.optional("path").path();
-        int depth = args.optional("depth").integer(ToolLimits.TREE_DEFAULT_DEPTH, 1, ToolLimits.TREE_MAX_DEPTH);
-        int limit = args.optional("limit").integer(ToolLimits.TREE_DEFAULT_LIMIT, 1, ToolLimits.TREE_MAX_LIMIT);
+        int depth = args.optional("depth").integer(scope.limits().getTreeDefaultDepth(), 1, scope.limits().getTreeMaxDepth());
+        int limit = args.optional("limit").integer(scope.limits().getTreeDefaultLimit(), 1, scope.limits().getTreeMaxLimit());
         String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
         args.requireNoUnknown();
         return new ToolInvocation(AgentToolNames.TREE, versionRef, sha, null, path, depth, limit,
@@ -64,7 +64,7 @@ public class ToolArgumentParser {
         String sha = requireVersion(scope, versionRef);
         String glob = args.require("glob").glob();
         String path = args.optional("path").path();
-        int limit = args.optional("limit").integer(ToolLimits.FIND_DEFAULT_LIMIT, 1, ToolLimits.FIND_MAX_LIMIT);
+        int limit = args.optional("limit").integer(scope.limits().getFindDefaultLimit(), 1, scope.limits().getFindMaxLimit());
         String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
         args.requireNoUnknown();
         return new ToolInvocation(AgentToolNames.FIND_FILES, versionRef, sha, null, path, null, limit,
@@ -85,7 +85,7 @@ public class ToolArgumentParser {
         String path = args.optional("path").path();
         List<String> extensions = args.optional("extensions").textArray(
                 ToolLimits.SEARCH_MAX_EXTENSIONS, "^[.A-Za-z0-9_+-]{1,20}$");
-        int limit = args.optional("limit").integer(ToolLimits.SEARCH_DEFAULT_LIMIT, 1, ToolLimits.SEARCH_MAX_LIMIT);
+        int limit = args.optional("limit").integer(scope.limits().getSearchDefaultLimit(), 1, scope.limits().getSearchMaxLimit());
         String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
         args.requireNoUnknown();
         return new ToolInvocation(AgentToolNames.SEARCH_CODE, versionRef, sha, null, path, null, limit,
@@ -104,7 +104,7 @@ public class ToolArgumentParser {
         }
         args.requireNoUnknown();
         return new ToolInvocation(AgentToolNames.READ_CODE, versionRef, sha, null, path, null,
-                ToolLimits.READ_MAX_LINES, null, null, null, List.of(), start, end);
+                scope.limits().getReadMaxLines(), null, null, null, List.of(), start, end);
     }
 
     private ToolInvocation parseDiff(StrictObject args, AgentToolScope scope) {
@@ -117,7 +117,7 @@ public class ToolArgumentParser {
         String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
         args.requireNoUnknown();
         return new ToolInvocation(AgentToolNames.READ_DIFF, null, null, comparisonId, path, null,
-                ToolLimits.DIFF_MAX_HUNKS, cursor, null, null, List.of(), null, null);
+                scope.limits().getDiffMaxHunks(), cursor, null, null, List.of(), null, null);
     }
 
     private static String requireVersion(AgentToolScope scope, String versionRef) {

@@ -18,10 +18,21 @@ public final class AgentToolSchema {
     }
 
     public static String version() {
-        return AgentToolNames.SCHEMA_VERSION;
+        return version(new ToolLimitProperties());
     }
 
-    public static List<Map<String, Object>> definitions() {
+    public static List<Map<String, Object>> definitions() { return definitions(new ToolLimitProperties()); }
+    public static String version(ToolLimitProperties limits) {
+        try {
+            String json = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .configure(com.fasterxml.jackson.databind.MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+                    .writeValueAsString(limits);
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return "agent-tools-v2-" + java.util.HexFormat.of().formatHex(digest).substring(0, 24);
+        } catch (Exception e) { throw new IllegalStateException("工具配置指纹失败", e); }
+    }
+    public static List<Map<String, Object>> definitions(ToolLimitProperties limits) {
         List<Map<String, Object>> tools = new ArrayList<>();
         tools.add(function(AgentToolNames.TREE,
                 "列出固定版本下某一目录的直接条目（路径、类型、下级计数）。"
@@ -29,10 +40,10 @@ public final class AgentToolSchema {
                 params(Map.of(
                                 "version", opaqueVersion("固定版本标识，只能使用作用域给出的 V1…Vm"),
                                 "path", relativePath("仓库内目录，默认仓库根"),
-                                "depth", integer("展开层数，默认 2", ToolLimits.TREE_DEFAULT_DEPTH,
-                                        1, ToolLimits.TREE_MAX_DEPTH),
-                                "limit", integer("最多返回条目数，默认 100", ToolLimits.TREE_DEFAULT_LIMIT,
-                                        1, ToolLimits.TREE_MAX_LIMIT),
+                                "depth", integer("展开层数，默认 " + limits.getTreeDefaultDepth(), limits.getTreeDefaultDepth(),
+                                        1, limits.getTreeMaxDepth()),
+                                "limit", integer("最多返回条目数，默认 " + limits.getTreeDefaultLimit(), limits.getTreeDefaultLimit(),
+                                        1, limits.getTreeMaxLimit()),
                                 "cursor", cursor()),
                         List.of("version"))));
         tools.add(function(AgentToolNames.FIND_FILES,
@@ -42,12 +53,12 @@ public final class AgentToolSchema {
                                 "glob", Map.of("type", "string", "maxLength", ToolLimits.GLOB_MAX_CHARS,
                                         "description", "仓库内相对 glob，例如 src/**/*.java"),
                                 "path", relativePath("限定目录前缀，可选"),
-                                "limit", integer("最多返回路径数，默认 50", ToolLimits.FIND_DEFAULT_LIMIT,
-                                        1, ToolLimits.FIND_MAX_LIMIT),
+                                "limit", integer("最多返回路径数，默认 " + limits.getFindDefaultLimit(), limits.getFindDefaultLimit(),
+                                        1, limits.getFindMaxLimit()),
                                 "cursor", cursor()),
                         List.of("version", "glob"))));
         tools.add(function(AgentToolNames.SEARCH_CODE,
-                "在固定版本中按字面量搜索代码（不解释正则），返回路径、原始行号、命中行及前后各 2 行。"
+                "在固定版本中按字面量搜索代码（不解释正则），返回路径、原始行号、命中行及前后各 " + limits.getSearchContextLines() + " 行。"
                         + "每个片段有独立材料 ID；零命中只有在完整性为 COMPLETE 时才说明确实不存在。",
                 params(Map.of(
                                 "version", opaqueVersion("固定版本标识"),
@@ -60,22 +71,23 @@ public final class AgentToolSchema {
                                         "items", Map.of("type", "string",
                                                 "pattern", "^[.A-Za-z0-9_+-]{1,20}$"),
                                         "description", "至多 10 个后缀过滤，例如 .java"),
-                                "limit", integer("最多返回命中数，默认 50", ToolLimits.SEARCH_DEFAULT_LIMIT,
-                                        1, ToolLimits.SEARCH_MAX_LIMIT),
+                                "limit", integer("最多返回命中数，默认 " + limits.getSearchDefaultLimit(), limits.getSearchDefaultLimit(),
+                                        1, limits.getSearchMaxLimit()),
                                 "cursor", cursor()),
                         List.of("version", "query"))));
         tools.add(function(AgentToolNames.READ_CODE,
                 "按原始行号读取固定版本的一段文件内容，返回内容哈希、总行数与下一页起点。"
-                        + "一次最多 400 行且正文最多 24 KiB；从实际返回的末行+1 继续读。",
+                        + "一次最多 " + limits.getReadMaxLines() + " 行且正文最多 " + (limits.getMaterialMaxBytes() % 1024 == 0 ? (limits.getMaterialMaxBytes() / 1024) + " KiB" : limits.getMaterialMaxBytes() + " 字节") + "；从实际返回的末行+1 继续读。",
                 params(Map.of(
                                 "version", opaqueVersion("固定版本标识"),
                                 "path", relativePath("仓库内文件路径"),
                                 "start", integer("起始行，默认 1", 1, 1, 10_000_000),
-                                "end", integer("结束行，默认 start+199", 1, 1, 10_000_000)),
+                                "end", Map.of("type", "integer", "minimum", 1, "maximum", 10_000_000,
+                                        "description", "结束行，省略时为 start+" + (limits.getReadDefaultLines() - 1))),
                         List.of("version", "path"))));
         tools.add(function(AgentToolNames.READ_DIFF,
                 "读取一个冻结比较关系的变更清单，或指定路径的逐 hunk 前后侧内容。"
-                        + "一次最多 20 个变更项或 10 个 hunk；分页不合并其他提交，前后侧均可引用。",
+                        + "一次最多 " + limits.getDiffMaxItems() + " 个变更项或 " + limits.getDiffMaxHunks() + " 个 hunk；分页不合并其他提交，前后侧均可引用。",
                 params(Map.of(
                                 "comparisonId", opaqueVersion("比较关系标识，只能使用 C1…Cn"),
                                 "path", relativePath("规范新路径；省略时返回变更清单"),
@@ -90,8 +102,9 @@ public final class AgentToolSchema {
      * <p>{@code submit_result} 只在执行循环里暴露，不进入只读工具参数解析；
      * 它与其他工具同批出现时整批不执行。
      */
-    public static List<Map<String, Object>> agentTools() {
-        List<Map<String, Object>> tools = new ArrayList<>(definitions());
+    public static List<Map<String, Object>> agentTools() { return agentTools(new ToolLimitProperties()); }
+    public static List<Map<String, Object>> agentTools(ToolLimitProperties limits) {
+        List<Map<String, Object>> tools = new ArrayList<>(definitions(limits));
         tools.add(submitResult());
         return List.copyOf(tools);
     }

@@ -4,7 +4,11 @@
 
 ## 当前状态
 
-当前：UPI-06 报告通用规则框架实现及定向工程检查已完成，等待隔离库、真实报告和负责人 PC 正式页面视觉验收。UPI-05 已于 2026-10-25 确认完成。
+2026-10-26 CFG 审查修复：提交差异选材与文件树统一使用运行后缀白名单，空白 `expected-database` 在业务组件创建前拒绝；11 个后端套件、132 项通过。详见[实施记录第 6 节](work/agent-redesign/runtime-configuration/implementation-20261026.md#6-审查修复2026-10-26)。
+
+当前：CFG-02–05 配置规范、后端参数外置、Agent 冻结预算及前端运行配置已完成，并通过定向工程检查。后端 533 项、前端 40 项及隔离构建通过；既有计量断言、类型错误和旧菜单断言已在改造前基线复现，不记为通过。详见[运行配置实施记录](work/agent-redesign/runtime-configuration/implementation-20261026.md)及[配置规范](work/agent-redesign/runtime-configuration/specification.md)。CFG-06／07 保持 todo，未操作真实数据库或启停现有服务；UPI-06 待验收状态不变。
+
+UPI 状态：UPI-06 报告通用规则框架实现及定向工程检查已完成，等待隔离库、真实报告和负责人 PC 正式页面视觉验收。UPI-05 已于 2026-10-25 确认完成。
 
 2026-10-25 负责人确认 UPI-05 PC 正式页面视觉验收完成，UPI-05 标记 done。三类专项、Agent 与四来源报告小样本均成功，共 6 次真实模型调用、10611 输入／3507 输出 token；版本冻结、优先级、复制、引用、下载及旧策略／错用途／缺版本拒绝均核对。详见[业务测试记录](work/agent-redesign/prompt-input-unification/business-smoke-20261025.md)。未执行边界仍按未验证记录，不记作通过；验收总记录见[UPI-05 记录](work/agent-redesign/prompt-input-unification/validation-20261025.md)。
 

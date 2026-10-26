@@ -76,9 +76,9 @@ public class ReadOnlyToolService {
         }
 
         int size = ToolEnvelopes.size(mapper, envelope);
-        if (size > ToolLimits.ENVELOPE_MAX_BYTES) {
+        if (size > scope.limits().getEnvelopeMaxBytes()) {
             return failure(toolCallId, ToolEnvelope.ERROR, scope,
-                    "工具返回超过 " + ToolLimits.ENVELOPE_MAX_BYTES + " 字节上限（" + size + "），已拒绝发送");
+                    "工具返回超过 " + scope.limits().getEnvelopeMaxBytes() + " 字节上限（" + size + "），已拒绝发送");
         }
         return envelope;
     }
@@ -111,7 +111,7 @@ public class ReadOnlyToolService {
         ToolCursor cursor = ToolCursor.decode(invocation.cursor(), invocation);
         int offset = Math.min(cursor.offset(), candidates.size());
         List<Map<String, Object>> entries = new ArrayList<>();
-        int budget = ToolLimits.ENVELOPE_MAX_BYTES - 512;
+        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
         int index = offset;
         while (index < candidates.size() && entries.size() < invocation.limit()) {
             RepositorySnapshots.PathEntry entry = candidates.get(index);
@@ -165,7 +165,7 @@ public class ReadOnlyToolService {
         ToolCursor cursor = ToolCursor.decode(invocation.cursor(), invocation);
         int offset = Math.min(cursor.offset(), matches.size());
         List<String> page = new ArrayList<>();
-        int budget = ToolLimits.ENVELOPE_MAX_BYTES - 512;
+        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
         int index = offset;
         while (index < matches.size() && page.size() < invocation.limit()) {
             String path = matches.get(index).path();

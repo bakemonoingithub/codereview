@@ -140,14 +140,17 @@ class AgentTaskServiceTest {
                 task.getCreatedAt(), task.getDeadlineAt()).toMinutes());
 
         JsonNode config = read(task.getConfigSnapshot());
-        assertEquals(2, config.path("version").asInt());
+        assertEquals(3, config.path("version").asInt());
         assertEquals(MODEL_ID, config.path("model").path("id").asText());
         assertEquals(2, config.path("model").path("revision").asInt());
-        assertEquals("agent-tools-v1", config.path("model").path("toolSchemaVersion").asText());
+        assertEquals(com.codereview.agent.tools.AgentToolSchema.version(new com.codereview.agent.tools.ToolLimitProperties()), config.path("model").path("toolSchemaVersion").asText());
         assertEquals(48, config.path("limits").path("modelTurns").asInt());
         assertEquals(192, config.path("limits").path("toolAttempts").asInt());
         assertEquals(16384, config.path("limits").path("outputTokens").asInt());
         assertFalse(config.path("model").path("optionsHash").asText().isBlank());
+        var quota = ArgumentCaptor.forClass(com.codereview.agent.entity.AgentTaskQuota.class);
+        verify(quotaMapper).insert(quota.capture());
+        assertEquals(config.path("limits").path("networkAttempts").asInt(), quota.getValue().getHardLimit());
     }
 
     @Test

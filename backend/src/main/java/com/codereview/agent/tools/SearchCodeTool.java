@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>命中缓存按项目修订、SHA、完整查询、路径、后缀与 schema 版本隔离；
  * 失败与超时不写进缓存，避免把一次网络或进程问题记成"零命中"。
- * 搜索槽位等待与执行合计受 {@link ToolProperties#getSearchTotalSeconds()} 限制，镜像准备另计。
+ * 镜像准备、搜索槽位等待与执行共用 {@link ToolProperties#getSearchTotalSeconds()} 总时限。
  */
 @Component
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")
@@ -67,7 +67,7 @@ public class SearchCodeTool {
         RepositoryReadService.MirrorTarget target = repository.mirrorTarget(scope.projectId());
         List<String> extensions = normalizeExtensions(invocation.extensions());
         String key = target.namespace() + "|search|" + invocation.sha() + "|" + invocation.query()
-                + "|" + invocation.path() + "|" + extensions + "|" + AgentToolNames.SCHEMA_VERSION;
+                + "|" + invocation.path() + "|" + extensions + "|" + AgentToolSchema.version(scope.limits());
 
         CachedSearch search = cache.getIfPresent(key);
         if (search == null) {
@@ -104,7 +104,7 @@ public class SearchCodeTool {
                 GitGrepRunner.Result result = mirror.using(target.cloneUrl(), target.credential(),
                         target.credentialType(), List.of(invocation.sha()), Duration.ofSeconds(5),
                         (File dir) -> grep.search(dir, invocation.sha(), invocation.query(),
-                                invocation.path(), Duration.ofMillis(left)));
+                                invocation.path(), Duration.ofMillis(left), scope.limits().getGrepOutputMaxBytes()));
                 if (result.timedOut()) {
                     return failure(toolCallId, scope, ToolEnvelope.TIMEOUT,
                             result.diagnostic() == null ? "搜索超时" : result.diagnostic());
@@ -114,8 +114,8 @@ public class SearchCodeTool {
                 }
                 List<GitGrepRunner.Hit> hits = result.hits();
                 boolean truncated = result.truncated();
-                if (hits.size() > ToolLimits.SEARCH_GREP_MAX_HITS) {
-                    hits = hits.subList(0, ToolLimits.SEARCH_GREP_MAX_HITS);
+                if (hits.size() > scope.limits().getSearchGrepMaxHits()) {
+                    hits = hits.subList(0, scope.limits().getSearchGrepMaxHits());
                     truncated = true;
                 }
                 search = new CachedSearch(hits, truncated, null, weight(hits));
@@ -137,7 +137,7 @@ public class SearchCodeTool {
 
         List<Map<String, Object>> hits = new ArrayList<>();
         List<ToolEnvelope.ToolMaterial> materialsOut = new ArrayList<>();
-        int budget = ToolLimits.ENVELOPE_MAX_BYTES - 512;
+        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
         int index = offset;
         int unreadable = 0;
         while (index < filtered.size() && hits.size() < limit) {
@@ -176,7 +176,7 @@ public class SearchCodeTool {
 
         List<String> notes = new ArrayList<>();
         if (unknownBeyond) {
-            notes.add("grep 输出达到上限，只保留了前 " + ToolLimits.SEARCH_GREP_MAX_HITS + " 条原始命中");
+            notes.add("grep 输出达到上限，只保留了前 " + scope.limits().getSearchGrepMaxHits() + " 条原始命中");
         }
         if (unreadable > 0) {
             notes.add(unreadable + " 个命中文件无法读取上下文，只保留命中行");
@@ -197,11 +197,11 @@ public class SearchCodeTool {
             if (hit.lineNumber() < 1 || hit.lineNumber() > lines.length) {
                 return new MaterialResult(unreadableMaterial(sha, hit, lineText), false);
             }
-            int start = Math.max(1, hit.lineNumber() - ToolLimits.SEARCH_CONTEXT_LINES);
-            int end = Math.min(lines.length, hit.lineNumber() + ToolLimits.SEARCH_CONTEXT_LINES);
+            int start = Math.max(1, hit.lineNumber() - scope.limits().getSearchContextLines());
+            int end = Math.min(lines.length, hit.lineNumber() + scope.limits().getSearchContextLines());
             String content = ToolTexts.joinLines(lines, start, end);
             // 先按行缩小窗口，使声明的行号与实际保存的正文一致；只有命中行本身超过字节上限时才截短。
-            while (ToolTexts.utf8Bytes(content) > ToolLimits.MATERIAL_MAX_BYTES && end > start) {
+            while (ToolTexts.utf8Bytes(content) > scope.limits().getMaterialMaxBytes() && end > start) {
                 if (end > hit.lineNumber()) {
                     end--;
                 } else if (start < hit.lineNumber()) {
@@ -212,8 +212,8 @@ public class SearchCodeTool {
                 content = ToolTexts.joinLines(lines, start, end);
             }
             String completeness = ToolEnvelope.COMPLETE;
-            if (ToolTexts.utf8Bytes(content) > ToolLimits.MATERIAL_MAX_BYTES) {
-                content = ToolTexts.clampToBytes(content, ToolLimits.MATERIAL_MAX_BYTES);
+            if (ToolTexts.utf8Bytes(content) > scope.limits().getMaterialMaxBytes()) {
+                content = ToolTexts.clampToBytes(content, scope.limits().getMaterialMaxBytes());
                 completeness = ToolEnvelope.PARTIAL;
             }
             return new MaterialResult(new ToolEnvelope.ToolMaterial(null, hit.path(), "FILE", sha,

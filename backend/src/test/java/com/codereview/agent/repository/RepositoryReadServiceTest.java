@@ -72,6 +72,56 @@ class RepositoryReadServiceTest {
     }
 
     @Test
+    void runtimeRepositoryLimitsControlFileSizeAndReviewableClassification() {
+        RepositoryProperties properties = new RepositoryProperties();
+        properties.setMaxFileBytes(4); properties.setAllowedExtensions(java.util.Set.of("py"));
+        service = new RepositoryReadService(db, registry, properties);
+        when(client.rawFile(any(), any(), any(), eq(HEAD), eq("A.py"))).thenReturn("12345");
+        assertEquals(ErrorCode.FILE_NOT_READABLE, assertThrows(ApiException.class,
+                () -> service.readFile(PROJECT_ID, HEAD, "A.py")).errorCode());
+        when(client.treeWithMeta(any(), any(), any(), eq(HEAD))).thenReturn(GitTree.complete(List.of(
+                new GitTreeEntry("A.java", "blob"), new GitTreeEntry("B.py", "blob"))));
+        var paths = service.listPaths(PROJECT_ID, HEAD).entries();
+        assertFalse(paths.get(0).reviewable()); assertTrue(paths.get(1).reviewable());
+    }
+
+    @Test
+    void publicCommitSelectionUsesTheSameExtensionsAsTheFileTree() {
+        RepositoryProperties properties = new RepositoryProperties();
+        properties.setAllowedExtensions(java.util.Set.of("xyz"));
+        service = new RepositoryReadService(db, registry, properties);
+        when(client.treeWithMeta(any(), any(), any(), eq(HEAD))).thenReturn(GitTree.complete(List.of(
+                new GitTreeEntry("A.xyz", "blob"), new GitTreeEntry("B.java", "blob"))));
+        CommitDetail upstream = new CommitDetail(HEAD, List.of(PARENT), "消息", "作者", "date",
+                1, 2, 3, true, List.of(
+                new ChangedFile("A.xyz", "old/A.xyz", "renamed", 1, 2, 3, "patch"),
+                new ChangedFile("B.java", null, "modified", 0, 0, 0, null)));
+        when(client.commitDetail(any(), any(), any(), eq(HEAD))).thenReturn(upstream);
+
+        var detail = new com.codereview.agent.api.RepositoryV2Controller(service).commit(PROJECT_ID, HEAD);
+        var paths = service.listPaths(PROJECT_ID, HEAD).entries();
+        assertTrue(detail.files().get(0).reviewable());
+        assertFalse(detail.files().get(1).reviewable());
+        assertEquals(paths.stream().map(RepositorySnapshots.PathEntry::reviewable).toList(),
+                detail.files().stream().map(file -> file.reviewable()).toList());
+        assertEquals(HEAD, detail.sha());
+        assertEquals(List.of(PARENT), detail.parents());
+        assertTrue(detail.truncated());
+        assertEquals("old/A.xyz", detail.files().get(0).previousPath());
+        assertEquals("renamed", detail.files().get(0).status());
+        assertEquals(3, detail.files().get(0).changes());
+        assertEquals(null, detail.files().get(0).patch());
+        assertEquals("patch", upstream.files().get(0).patch());
+        assertFalse(upstream.files().get(0).reviewable());
+
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        var expected = mapper.valueToTree(upstream.withoutPatches());
+        ((com.fasterxml.jackson.databind.node.ObjectNode) expected.path("files").get(0)).put("reviewable", true);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) expected.path("files").get(1)).put("reviewable", false);
+        assertEquals(expected, mapper.valueToTree(detail));
+    }
+
+    @Test
     void cachesWithinTheSameProjectRevisionAndCommit() {
         when(client.rawFile(any(), any(), any(), eq(HEAD), eq("src/Order.java")))
                 .thenReturn("class Order {}\n");

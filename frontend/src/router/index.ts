@@ -1,3 +1,4 @@
+import { runtimeConfig } from '@/runtime/config'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import type { Component } from 'vue'
@@ -10,7 +11,7 @@ import {
   RobotOutlined,
 } from '@ant-design/icons-vue'
 
-const APP_TITLE = '智能代码分析工具'
+const APP_TITLE = runtimeConfig().title
 
 /** 侧边栏菜单项：由路由表生成，`meta.hideMenu` 的项不出现（如项目详情） */
 export interface MenuItem {

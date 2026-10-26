@@ -70,8 +70,6 @@ import java.util.Set;
 public class AgentTaskWorker implements TaskWorker {
 
     private static final Logger log = LoggerFactory.getLogger(AgentTaskWorker.class);
-    private static final int MAX_TOOLS_PER_TURN = 4;
-    private static final int MAX_PROTOCOL_ERRORS = 2;
 
     private final AgentDatabase db;
     private final ObjectMapper mapper;
@@ -138,33 +136,42 @@ public class AgentTaskWorker implements TaskWorker {
     }
 
     private TaskOutcome loop(AgentReviewTask task, AgentExecution execution, AgentRun run) {
-        while (run.getTurnNo() < AgentBudget.MODEL_TURNS) {
+        while (run.getTurnNo() < execution.budget.getModelTurns()) {
             guard.requireActive(task.getId());
             int turn = run.getTurnNo() + 1;
-            if (run.getNetworkAttempts() + 2 > AgentBudget.NETWORK_ATTEMPTS) {
+            if (run.getNetworkAttempts() >= execution.budget.getNetworkAttempts()) {
                 return limit(execution, run, TaskStates.STOP_NETWORK_LIMIT);
             }
             AssembledPrompt prompt = assembly.assembleAgent(execution.input,
-                    execution.history, AgentToolSchema.agentTools());
-            if (!withinContext(execution.model, prompt)) {
+                    execution.history, AgentToolSchema.agentTools(execution.scope.limits()));
+            if (!withinContext(execution, prompt)) {
                 return limit(execution, run, TaskStates.STOP_CONTEXT_LIMIT);
             }
 
             InvocationResult result;
             try {
+                int remainingRetries = Math.min(execution.policy.transportRetries(),
+                        execution.budget.getNetworkAttempts() - run.getNetworkAttempts() - 1);
+                var roundPolicy = new com.codereview.agent.invocation.InvocationPolicy(remainingRetries,
+                        execution.policy.retryBaseMillis(), execution.policy.maxReadTimeoutSeconds(),
+                        execution.policy.safetyReserveMinTokens(), execution.policy.safetyReserveRatio());
                 result = invocation.invoke(new InvocationRequest(execution.model, prompt,
                         new InvocationScope(task.getId(), null, null, task.getDeadlineAt()),
-                        false, null, AgentBudget.OUTPUT_TOKENS, turn, AgentBudget.MODEL_TIMEOUT_SECONDS));
+                        false, null, execution.budget.getOutputTokens(), turn, execution.budget.getModelTimeoutSeconds(), roundPolicy));
             } catch (ApiException e) {
                 if (e.errorCode() == ErrorCode.MODEL_OUTPUT_INVALID) {
+                    int attempts = e.details() instanceof Map<?, ?> details
+                            && details.get("attempt") instanceof Number number ? Math.max(1, number.intValue()) : 1;
+                    run.setTurnNo(turn);
+                    run.setNetworkAttempts(run.getNetworkAttempts() + attempts);
                     execution.protocolErrors++;
-                    if (execution.protocolErrors > MAX_PROTOCOL_ERRORS) {
+                    if (execution.protocolErrors > execution.budget.getMaxProtocolErrors()) {
                         return limit(execution, run, TaskStates.STOP_MODEL_OUTPUT_INVALID);
                     }
                     execution.history.add(new PromptMessage("user",
                             "上一轮输出不可用（" + e.getMessage() + "）。请重新给出工具调用或提交结果。"));
                     updateRun(run, turn, run.getToolAttempts(),
-                            run.getNetworkAttempts() + 1, "PROTOCOL_RETRY");
+                            run.getNetworkAttempts(), "PROTOCOL_RETRY");
                     continue;
                 }
                 throw e;
@@ -176,7 +183,7 @@ public class AgentTaskWorker implements TaskWorker {
             List<ToolCall> calls = result.toolCalls();
             if (calls.isEmpty()) {
                 execution.protocolErrors++;
-                if (execution.protocolErrors > MAX_PROTOCOL_ERRORS) {
+                if (execution.protocolErrors > execution.budget.getMaxProtocolErrors()) {
                     return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);
                 }
                 execution.history.add(new PromptMessage("assistant", result.content()));
@@ -190,13 +197,13 @@ public class AgentTaskWorker implements TaskWorker {
                 continue;
             }
             boolean submit = calls.stream().anyMatch(call -> AgentToolNames.isSubmit(call.name()));
-            if (calls.size() > MAX_TOOLS_PER_TURN || (submit && calls.size() > 1)) {
+            if (calls.size() > execution.budget.getMaxToolsPerTurn() || (submit && calls.size() > 1)) {
                 execution.protocolErrors++;
-                if (execution.protocolErrors > MAX_PROTOCOL_ERRORS) {
+                if (execution.protocolErrors > execution.budget.getMaxProtocolErrors()) {
                     return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);
                 }
                 execution.history.add(PromptMessage.assistantToolCalls(calls, result.content()));
-                String batchError = "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，"
+                String batchError = "上一轮工具批次不合法：单轮最多 " + execution.budget.getMaxToolsPerTurn() + " 个工具；submit_result 必须单独调用，"
                         + "不能与其他工具同批。本批工具没有执行。";
                 for (int index = 0; index < calls.size(); index++) {
                     ToolCall call = calls.get(index);
@@ -207,9 +214,7 @@ public class AgentTaskWorker implements TaskWorker {
                             rejected, envelopeJson, "REJECTED_BATCH");
                     execution.history.add(PromptMessage.toolResult(call.id(), envelopeJson));
                 }
-                execution.history.add(new PromptMessage("user", """
-                        上一轮工具批次不合法，已为其中每个调用返回拒绝结果；本批工具没有执行。
-                        请减少为每轮最多 4 个工具，且 submit_result 必须单独调用，然后重新发起。"""));
+                execution.history.add(new PromptMessage("user", batchError));
                 updateRun(run, turn, run.getToolAttempts(), run.getNetworkAttempts(),
                         "PROTOCOL_RETRY");
                 continue;
@@ -228,7 +233,7 @@ public class AgentTaskWorker implements TaskWorker {
             StringBuilder signature = new StringBuilder();
             for (int index = 0; index < calls.size(); index++) {
                 guard.requireActive(task.getId());
-                if (run.getToolAttempts() >= AgentBudget.TOOL_ATTEMPTS) {
+                if (run.getToolAttempts() >= execution.budget.getToolAttempts()) {
                     return limit(execution, run, TaskStates.STOP_TOOL_LIMIT);
                 }
                 run.setToolAttempts(run.getToolAttempts() + 1);
@@ -254,7 +259,7 @@ public class AgentTaskWorker implements TaskWorker {
                             上一轮工具调用与返回完全相同，且没有新增材料。请换查询、翻页或结束调查；
                             重复同一请求不会得到更多信息。"""));
                 }
-                if (execution.repeats >= AgentBudget.NO_PROGRESS_TURNS - 1) {
+                if (execution.repeats >= execution.budget.getNoProgressTurns() - 1) {
                     return limit(execution, run, TaskStates.STOP_NO_PROGRESS_LIMIT);
                 }
             } else {
@@ -278,7 +283,7 @@ public class AgentTaskWorker implements TaskWorker {
             persistSubmitCall(task.getId(), result.callId(), turn, call,
                     ToolEnvelope.INVALID_ARGUMENT, e.getMessage());
             execution.protocolErrors++;
-            if (execution.protocolErrors > MAX_PROTOCOL_ERRORS) {
+            if (execution.protocolErrors > execution.budget.getMaxProtocolErrors()) {
                 return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);
             }
             execution.history.add(PromptMessage.assistantToolCalls(List.of(call), result.content()));
@@ -321,15 +326,16 @@ public class AgentTaskWorker implements TaskWorker {
         return investigated ? TaskOutcome.partial(reason) : TaskOutcome.failed(reason);
     }
 
-    private boolean withinContext(ModelSnapshot model, AssembledPrompt prompt) {
+    private boolean withinContext(AgentExecution execution, AssembledPrompt prompt) {
+        ModelSnapshot model = execution.model;
         Integer window = model.contextWindow();
         if (window == null || window <= 0) {
             return false;
         }
         int estimate = prompt.inputEstimate();
-        int safety = Math.max(1024, window / 10);
-        return estimate <= window * AgentBudget.CONTEXT_STOP_RATIO
-                && (long) estimate + AgentBudget.OUTPUT_TOKENS + safety <= window;
+        int safety = new com.codereview.agent.invocation.ModelCapacityService(execution.policy.properties()).configuredSafetyReserve(window);
+        return estimate <= window * execution.budget.getContextStopRatio()
+                && (long) estimate + Math.min(execution.budget.getOutputTokens(), model.maxOutput() == null ? execution.budget.getOutputTokens() : model.maxOutput()) + safety <= window;
     }
 
     private void markSent(AgentExecution execution, String callId) {
@@ -480,6 +486,7 @@ public class AgentTaskWorker implements TaskWorker {
     private AgentExecution load(AgentReviewTask task) {
         JsonNode input = readJson(task.getInputSnapshot());
         JsonNode config = readJson(task.getConfigSnapshot());
+        if (config.path("version").asInt(2) > 3) throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, "不支持的任务配置版本");
         String modelId = config.path("model").path("id").asText(null);
         Integer revision = config.path("model").path("revision").isInt()
                 ? config.path("model").path("revision").asInt() : null;
@@ -534,10 +541,32 @@ public class AgentTaskWorker implements TaskWorker {
                 input.path("reference").path("body").isMissingNode() ? null
                         : input.path("reference").path("body").asText());
         return new AgentExecution(task, promptInput,
-                new AgentToolScope(task.getProjectId(), versions, comparisons),
-                ModelSnapshot.from(model), comparisonList);
+                new AgentToolScope(task.getProjectId(), versions, comparisons,
+                        snapshotValue(config, "toolLimits", com.codereview.agent.tools.ToolLimitProperties.class,
+                                new com.codereview.agent.tools.ToolLimitProperties())),
+                ModelSnapshot.from(model), comparisonList,
+                snapshotValue(config, "limits", AgentBudgetProperties.class, new AgentBudgetProperties()),
+                snapshotValue(config, "invocationPolicy", com.codereview.agent.invocation.InvocationPolicy.class,
+                        com.codereview.agent.invocation.InvocationPolicy.defaults()));
     }
 
+    private <T> T snapshotValue(JsonNode config, String key, Class<T> type, T legacy) {
+        if (!config.has(key)) {
+            if (config.path("version").asInt(2) >= 3) throw new IllegalStateException("任务配置缺少 " + key);
+            return legacy;
+        }
+        try {
+            T value = mapper.copy().configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                    .treeToValue(config.get(key), type);
+            if (value instanceof AgentBudgetProperties budget) {
+                com.codereview.agent.config.RuntimeConfigurationValidation.validateBudget(budget);
+            } else if (value instanceof com.codereview.agent.tools.ToolLimitProperties limits) {
+                com.codereview.agent.config.RuntimeConfigurationValidation.validateTools(limits);
+            }
+            if (value == null) throw new IllegalArgumentException("任务配置为空");
+            return value;
+        } catch (Exception e) { throw new IllegalStateException("任务配置无效：" + key, e); }
+    }
     private JsonNode readJson(String value) {
         try {
             return value == null || value.isBlank() ? mapper.createObjectNode()
@@ -558,6 +587,8 @@ public class AgentTaskWorker implements TaskWorker {
     /** 一轮执行的可变状态；只存在于本次执行内，重启后不恢复原会话。 */
     private static final class AgentExecution {
 
+        private final AgentBudgetProperties budget;
+        private final com.codereview.agent.invocation.InvocationPolicy policy;
         private final AgentReviewTask task;
         private final AgentPromptInput input;
         private final AgentToolScope scope;
@@ -572,7 +603,9 @@ public class AgentTaskWorker implements TaskWorker {
         private String lastSignature;
 
         private AgentExecution(AgentReviewTask task, AgentPromptInput input, AgentToolScope scope,
-                               ModelSnapshot model, List<Map<String, Object>> comparisons) {
+                               ModelSnapshot model, List<Map<String, Object>> comparisons, AgentBudgetProperties budget,
+                               com.codereview.agent.invocation.InvocationPolicy policy) {
+            this.budget = budget; this.policy = policy;
             this.task = task;
             this.input = input;
             this.scope = scope;

@@ -12,7 +12,12 @@ import com.codereview.agent.prompt.AssembledPrompt;
  */
 public record InvocationRequest(ModelSnapshot model, AssembledPrompt prompt, InvocationScope scope,
                                 boolean sendWholeSpecialist, String reportId, Integer outputReserve,
-                                Integer turnNo, Integer timeoutSeconds) {
+                                Integer turnNo, Integer timeoutSeconds, InvocationPolicy policy) {
+    public InvocationRequest(ModelSnapshot model, AssembledPrompt prompt, InvocationScope scope,
+                             boolean sendWholeSpecialist, String reportId, Integer outputReserve,
+                             Integer turnNo, Integer timeoutSeconds) {
+        this(model, prompt, scope, sendWholeSpecialist, reportId, outputReserve, turnNo, timeoutSeconds, null);
+    }
 
     public InvocationRequest(ModelSnapshot model, AssembledPrompt prompt, InvocationScope scope) {
         this(model, prompt, scope, false, null, null, null, null);

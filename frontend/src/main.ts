@@ -1,12 +1,10 @@
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import App from './App.vue'
-import router from './router'
-import 'ant-design-vue/dist/reset.css'
+import StartupGate from './runtime/StartupGate.vue'
 import './styles/tokens.css'
 import './styles/global.less'
-
-const app = createApp(App)
-app.use(createPinia())
-app.use(router)
-app.mount('#app')
+const gate = createApp(StartupGate, { ready: async () => {
+  const { startApplication } = await import('./bootstrap')
+  gate.unmount()
+  startApplication()
+} })
+gate.mount('#app')

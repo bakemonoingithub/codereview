@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "agent.task")
 public class TaskProperties {
+    private int dispatchQueueCapacity = 64;
+
 
     /** 单任务期限（分钟）。 */
     private int deadlineMinutes = 30;

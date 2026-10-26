@@ -1,3 +1,4 @@
+import { runtimeConfig, businessApiBase } from '@/runtime/config'
 import axios from 'axios'
 import { toReadableError } from '@/utils/request'
 
@@ -9,8 +10,8 @@ import { toReadableError } from '@/utils/request'
  * 不复用旧 `request` 的响应拦截器，避免把 v2 的正文当成旧信封解包。
  */
 const v2 = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL_V2 || '/api/v2',
-  timeout: 30000,
+  baseURL: businessApiBase(),
+  timeout: runtimeConfig().requestTimeoutMillis,
   withCredentials: true
 })
 

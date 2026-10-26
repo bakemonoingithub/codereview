@@ -5,6 +5,7 @@
 
 # backend（backend/ 内另有更细的 .gitignore）
 backend/target/
+backend/target-cfg/
 
 # frontend
 frontend/node_modules/

@@ -72,31 +72,33 @@ public class ModelInvocationService {
         AssembledPrompt prompt = request.prompt();
         InvocationScope scope = request.scope();
         requireModel(model);
+        ModelInvocationProperties effective = request.policy() == null ? properties : request.policy().properties();
+        ModelCapacityService capacity = request.policy() == null ? this.capacity : new ModelCapacityService(effective);
 
         CapacityEstimate estimate = request.sendWholeSpecialist()
                 ? capacity.estimate(prompt, model, request.outputReserve())
                 : capacity.requireFits(prompt, model, request.outputReserve());
         String body = requestBody(model, prompt, estimate.outputReserve());
-        int attempts = 1 + Math.max(0, properties.getTransportRetries());
+        int attempts = 1 + Math.max(0, effective.getTransportRetries());
         ApiException lastFailure = null;
 
         for (int attempt = 1; attempt <= attempts; attempt++) {
             boolean last = attempt == attempts;
             scope = activeScope(scope);
-            timeoutFor(scope, request.timeoutSeconds());
+            timeoutFor(scope, request.timeoutSeconds(), effective);
             ModelCallConcurrencyLimiter.Permit permit = limiter.acquire(scope.taskId(), scope.deadlineAt());
             try {
                 scope = activeScope(scope);
-                timeoutFor(scope, request.timeoutSeconds());
+                timeoutFor(scope, request.timeoutSeconds(), effective);
                 if (scope.taskId() != null) {
-                    reserveQuota(scope.taskId());
+                    reserveQuota(scope.taskId(), request.policy() != null);
                 }
                 AgentModelCall call = startCall(scope, request.reportId(), request.turnNo(), prompt, body, attempt, estimate);
                 Duration timeout;
                 try {
                     // 等待许可和请求落盘都可能跨过取消或期限；以真正发送前的状态为准。
                     scope = activeScope(scope);
-                    timeout = timeoutFor(scope, request.timeoutSeconds());
+                    timeout = timeoutFor(scope, request.timeoutSeconds(), effective);
                 } catch (ApiException stopped) {
                     finishFailure(call, stopped, null);
                     throw stopped;
@@ -105,7 +107,16 @@ public class ModelInvocationService {
                     ModelTransport.TransportResponse response = transport.post(endpoint(model),
                             model.credential(), body, timeout);
                     if (response.status() >= 200 && response.status() < 300) {
-                        return succeed(call, response, estimate, attempt);
+                        try {
+                            return succeed(call, response, estimate, attempt);
+                        } catch (ApiException failure) {
+                            java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();
+                            if (failure.details() instanceof java.util.Map<?, ?> existing) {
+                                existing.forEach((key, value) -> details.put(String.valueOf(key), value));
+                            }
+                            details.put("attempt", attempt);
+                            throw new ApiException(failure.errorCode(), failure.getMessage(), details);
+                        }
                     }
                     ApiException failure = classify(response);
                     finishFailure(call, failure, response.body());
@@ -127,7 +138,7 @@ public class ModelInvocationService {
                 permit.close();
             }
             scope = activeScope(scope);
-            waitBeforeRetry(failureRetryAfter(lastFailure), scope);
+            waitBeforeRetry(failureRetryAfter(lastFailure), scope, effective);
         }
         throw lastFailure == null
                 ? new ApiException(ErrorCode.INTERNAL_ERROR, "模型调用结束但没有结果")
@@ -374,8 +385,8 @@ public class ModelInvocationService {
         return new InvocationScope(scope.taskId(), scope.targetId(), scope.unitId(), deadline);
     }
 
-    private Duration timeoutFor(InvocationScope scope, Integer requestedTimeoutSeconds) {
-        Duration limit = Duration.ofSeconds(properties.getMaxReadTimeoutSeconds());
+    private Duration timeoutFor(InvocationScope scope, Integer requestedTimeoutSeconds, ModelInvocationProperties effective) {
+        Duration limit = Duration.ofSeconds(effective.getMaxReadTimeoutSeconds());
         if (requestedTimeoutSeconds != null) {
             limit = Duration.ofSeconds(Math.min(limit.getSeconds(), requestedTimeoutSeconds));
         }
@@ -393,10 +404,10 @@ public class ModelInvocationService {
         return capped.compareTo(limit) < 0 ? capped : limit;
     }
 
-    private void waitBeforeRetry(Long retryAfterSeconds, InvocationScope scope) {
+    private void waitBeforeRetry(Long retryAfterSeconds, InvocationScope scope, ModelInvocationProperties effective) {
         long wait = retryAfterSeconds != null
                 ? Math.min(retryAfterSeconds * 1000, 3000)
-                : properties.getRetryBaseMillis();
+                : effective.getRetryBaseMillis();
         if (wait <= 0) {
             wait = 1;
         }
@@ -434,7 +445,7 @@ public class ModelInvocationService {
         }
     }
 
-    private void reserveQuota(String taskId) {
+    private void reserveQuota(String taskId, boolean requireFrozenQuota) {
         AgentTaskQuotaMapper quotaMapper = db.mapper(AgentTaskQuotaMapper.class);
         int updated = quotaMapper.update(null, new LambdaUpdateWrapper<AgentTaskQuota>()
                 .eq(AgentTaskQuota::getTaskId, taskId)
@@ -444,7 +455,11 @@ public class ModelInvocationService {
         if (updated > 0) {
             return;
         }
-        if (quotaMapper.selectById(taskId) == null) {
+        AgentTaskQuota existing = quotaMapper.selectById(taskId);
+        if (existing == null) {
+            if (requireFrozenQuota) {
+                throw new ApiException(ErrorCode.CONFIG_INCOMPLETE, "任务缺少冻结调用额度，未发送模型请求");
+            }
             LocalDateTime now = AgentTime.now();
             AgentTaskQuota quota = new AgentTaskQuota();
             quota.setTaskId(taskId);
@@ -466,7 +481,7 @@ public class ModelInvocationService {
             }
         }
         throw new ApiException(ErrorCode.QUOTA_EXCEEDED,
-                "任务请求额度已用尽（上限 " + properties.getTaskCallLimit() + " 次）",
+                "任务请求额度已用尽（上限 " + (existing == null ? properties.getTaskCallLimit() : existing.getHardLimit()) + " 次）",
                 Map.of("taskId", taskId));
     }
 

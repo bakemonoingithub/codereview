@@ -21,9 +21,9 @@
         -->
         <div class="logo">
           <span class="logo-badge">
-            <img class="logo-mark" src="/favicon.svg" alt="智能代码分析" />
+            <img class="logo-mark" :src="logoUrl" :alt="runtimeConfig().title" />
           </span>
-          <span v-if="!collapsed" class="logo-text">智能代码分析</span>
+          <span v-if="!collapsed" class="logo-text">{{ runtimeConfig().title === '智能代码分析工具' ? '智能代码分析' : runtimeConfig().title }}</span>
         </div>
         <a-menu theme="light" mode="inline" :selected-keys="selectedKeys">
           <a-menu-item-group v-for="group in menuGroups" :key="group.key">
@@ -70,6 +70,8 @@
 </template>
 
 <script setup lang="ts">
+import { runtimeConfig } from '@/runtime/config'
+const logoUrl = new URL('favicon.svg', document.baseURI).href
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { activeMenuKey, menuGroups, menuItems } from '@/router'

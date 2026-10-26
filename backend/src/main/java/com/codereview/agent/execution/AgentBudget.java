@@ -3,14 +3,15 @@ package com.codereview.agent.execution;
 /**
  * Agent 首版运行预算（P33.1 实验确定）。
  *
- * <p>数值集中在这里，发起任务时冻结进 {@code configSnapshot.limits}；执行层只读快照，
+ * <p>这里只保留历史版本的缺省值；新任务由 AgentBudgetProperties 读取可覆盖配置，
+ * 发起任务时冻结进 {@code configSnapshot.limits}；执行层只读快照，
  * 不在运行中重新取配置。改值属于行为变更，需要同步设计文档与验证。
  */
 public final class AgentBudget {
 
     /** 模型轮次上限。 */
     public static final int MODEL_TURNS = 48;
-    /** 全部网络尝试上限，且不超过公共 200 次。 */
+    /** 历史网络尝试缺省上限；新任务还校验公共 task-call-limit（默认 200 次）。 */
     public static final int NETWORK_ATTEMPTS = 96;
     /** 工具执行尝试上限；错误参数也计数。 */
     public static final int TOOL_ATTEMPTS = 192;

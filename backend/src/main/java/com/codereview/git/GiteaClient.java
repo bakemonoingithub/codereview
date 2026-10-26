@@ -65,10 +65,14 @@ public class GiteaClient implements GitHostClient {
     private final ObjectMapper mapper = new ObjectMapper();
 
     public GiteaClient(GiteaProperties properties, GitCache cache, GiteaGitMirror mirror) {
+        this(properties, cache, mirror, new GitHttpProperties());
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public GiteaClient(GiteaProperties properties, GitCache cache, GiteaGitMirror mirror, GitHttpProperties http) {
         this.properties = properties;
         this.cache = cache;
         this.mirror = mirror;
-        this.restClient = restClient();
+        this.restClient = restClient(http);
     }
 
     @Override
@@ -478,10 +482,10 @@ public class GiteaClient implements GitHostClient {
         return fallback == null ? null : "token " + fallback;
     }
 
-    private static RestClient restClient() {
+    private static RestClient restClient(GitHttpProperties http) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10_000);
-        factory.setReadTimeout(60_000);
+        factory.setConnectTimeout(java.time.Duration.ofSeconds(http.getConnectTimeoutSeconds()));
+        factory.setReadTimeout(java.time.Duration.ofSeconds(http.getReadTimeoutSeconds()));
         return RestClient.builder().requestFactory(factory).build();
     }
 

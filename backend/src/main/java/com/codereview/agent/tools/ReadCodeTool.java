@@ -34,7 +34,7 @@ public class ReadCodeTool {
         String[] lines = ToolTexts.splitLines(file.content());
         int total = lines.length;
         int start = invocation.start() == null ? 1 : invocation.start();
-        int requestedEnd = invocation.end() == null ? start + ToolLimits.READ_DEFAULT_LINES - 1
+        int requestedEnd = invocation.end() == null ? start + scope.limits().getReadDefaultLines() - 1
                 : invocation.end();
 
         Map<String, Object> data = new LinkedHashMap<>();
@@ -53,18 +53,18 @@ public class ReadCodeTool {
                     List.of(), data, ToolEnvelope.COMPLETE, null, diagnostic);
         }
 
-        int lineCap = start + ToolLimits.READ_MAX_LINES - 1;
+        int lineCap = start + scope.limits().getReadMaxLines() - 1;
         boolean cappedByLineLimit = requestedEnd > lineCap;
         int desiredEnd = Math.min(requestedEnd, total);
         int end = Math.min(desiredEnd, lineCap);
         String content = ToolTexts.joinLines(lines, start, end);
-        while (ToolTexts.utf8Bytes(content) > ToolLimits.MATERIAL_MAX_BYTES && end > start) {
+        while (ToolTexts.utf8Bytes(content) > scope.limits().getMaterialMaxBytes() && end > start) {
             end--;
             content = ToolTexts.joinLines(lines, start, end);
         }
-        boolean clampedSingleLine = ToolTexts.utf8Bytes(content) > ToolLimits.MATERIAL_MAX_BYTES;
+        boolean clampedSingleLine = ToolTexts.utf8Bytes(content) > scope.limits().getMaterialMaxBytes();
         if (clampedSingleLine) {
-            content = ToolTexts.clampToBytes(content, ToolLimits.MATERIAL_MAX_BYTES);
+            content = ToolTexts.clampToBytes(content, scope.limits().getMaterialMaxBytes());
         }
         boolean partial = end < desiredEnd || cappedByLineLimit || clampedSingleLine;
         Integer nextStartLine = end < total ? end + 1 : null;
@@ -81,7 +81,7 @@ public class ReadCodeTool {
         data.put("nextStartLine", nextStartLine);
         List<String> notes = new ArrayList<>();
         if (cappedByLineLimit) {
-            notes.add("请求范围超过单次 " + ToolLimits.READ_MAX_LINES + " 行上限，已返回前 "
+            notes.add("请求范围超过单次 " + scope.limits().getReadMaxLines() + " 行上限，已返回前 "
                     + (end - start + 1) + " 行");
         }
         if (clampedSingleLine) {

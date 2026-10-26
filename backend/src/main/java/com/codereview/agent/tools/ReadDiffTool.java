@@ -45,9 +45,9 @@ public class ReadDiffTool {
         List<ChangedFile> files = detail.files() == null ? List.of() : detail.files();
         int offset = Math.min(cursor.offset(), files.size());
         List<Map<String, Object>> items = new ArrayList<>();
-        int budget = ToolLimits.ENVELOPE_MAX_BYTES - 512;
+        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
         int index = offset;
-        while (index < files.size() && items.size() < ToolLimits.DIFF_MAX_ITEMS) {
+        while (index < files.size() && items.size() < scope.limits().getDiffMaxItems()) {
             ChangedFile file = files.get(index);
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("path", file.path());
@@ -120,12 +120,12 @@ public class ReadDiffTool {
         List<Map<String, Object>> items = new ArrayList<>();
         List<ToolEnvelope.ToolMaterial> materialsOut = new ArrayList<>();
         List<String> notes = new ArrayList<>();
-        int budget = ToolLimits.ENVELOPE_MAX_BYTES - 768;
+        int budget = scope.limits().getEnvelopeMaxBytes() - 768;
         int index = offset;
-        while (index < hunks.size() && items.size() < ToolLimits.DIFF_MAX_HUNKS) {
+        while (index < hunks.size() && items.size() < scope.limits().getDiffMaxHunks()) {
             ToolPatch.Hunk hunk = hunks.get(index);
-            SideSlice before = slice(sides, true, hunk);
-            SideSlice after = slice(sides, false, hunk);
+            SideSlice before = slice(scope, sides, true, hunk);
+            SideSlice after = slice(scope, sides, false, hunk);
             boolean oversized = before.oversized() || after.oversized();
             int cost = 240 + hunk.header().length()
                     + before.cost() + after.cost();
@@ -181,7 +181,7 @@ public class ReadDiffTool {
      * <p>该侧不存在、该侧无内容或切片超过单条材料上限时返回 {@code content=null}：
      * 不把半个 hunk 当作可引用材料，模型应改用 {@code read_code} 精确读取。
      */
-    private static SideSlice slice(RepositorySnapshots.DiffSides sides, boolean before,
+    private static SideSlice slice(AgentToolScope scope, RepositorySnapshots.DiffSides sides, boolean before,
                                    ToolPatch.Hunk hunk) {
         int count = before ? hunk.beforeCount() : hunk.afterCount();
         if (count <= 0) {
@@ -200,7 +200,7 @@ public class ReadDiffTool {
         }
         String content = ToolTexts.joinLines(lines, start, end);
         String path = before && sides.oldPath() != null ? sides.oldPath() : sides.path();
-        if (ToolTexts.utf8Bytes(content) > ToolLimits.MATERIAL_MAX_BYTES) {
+        if (ToolTexts.utf8Bytes(content) > scope.limits().getMaterialMaxBytes()) {
             return new SideSlice(path, before ? "BEFORE" : "AFTER", sha, start, end, null, true);
         }
         return new SideSlice(path, before ? "BEFORE" : "AFTER", sha, start, end, content, false);

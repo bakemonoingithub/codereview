@@ -11,6 +11,18 @@ public final class RepositorySnapshots {
     public record PathEntry(String path, String type, boolean reviewable) {
     }
 
+    /** v2 提交选材视图；reviewable 由当前仓库配置计算，不沿用宿主客户端的固定白名单。 */
+    public record CommitView(String sha, List<String> parents, String message, String author, String date,
+                             Integer additions, Integer deletions, Integer totalChanges, boolean truncated,
+                             List<ChangedFileView> files) {
+    }
+
+    /** 与提交接口原有文件字段一致；列表不携带 patch。 */
+    public record ChangedFileView(String path, String previousPath, String status,
+                                  Integer additions, Integer deletions, Integer changes,
+                                  String patch, boolean reviewable) {
+    }
+
     /** 固定版本文件：正文、哈希与体积一起返回，调用方不自行猜测完整性。 */
     public record FileSnapshot(String sha, String path, String content, String contentHash,
                                int byteSize, int lineCount) {
