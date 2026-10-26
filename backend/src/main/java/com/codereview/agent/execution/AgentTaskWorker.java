@@ -150,6 +150,7 @@ public class AgentTaskWorker implements TaskWorker {
 
             InvocationResult result;
             try {
+                updateRun(run, run.getTurnNo(), run.getToolAttempts(), run.getNetworkAttempts(), "MODEL_CALL");
                 int remainingRetries = Math.min(execution.policy.transportRetries(),
                         execution.budget.getNetworkAttempts() - run.getNetworkAttempts() - 1);
                 var roundPolicy = new com.codereview.agent.invocation.InvocationPolicy(remainingRetries,
@@ -238,11 +239,10 @@ public class AgentTaskWorker implements TaskWorker {
                 }
                 run.setToolAttempts(run.getToolAttempts() + 1);
                 ToolCall call = calls.get(index);
-                ToolEnvelope envelope = tools.execute(call.id(), call.name(), call.arguments(),
-                        execution.scope);
+                updateRun(run, turn, run.getToolAttempts(), run.getNetworkAttempts(), "TOOL_CALL:" + call.name());
+                ToolEnvelope envelope = executeToolCall(task.getId(), result.callId(), turn, index + 1,
+                        call, execution.scope);
                 String envelopeJson = ToolEnvelopes.writeString(mapper, envelope);
-                persistToolCall(task.getId(), result.callId(), turn, index + 1, call, envelope,
-                        envelopeJson);
                 collectMaterials(execution, envelope);
                 execution.toolCalls++;
                 execution.history.add(PromptMessage.toolResult(call.id(), envelopeJson));
@@ -388,7 +388,52 @@ public class AgentTaskWorker implements TaskWorker {
     private void persistToolCall(String taskId, String callId, int turn, int ordinal,
                                  ToolCall call, ToolEnvelope envelope, String envelopeJson,
                                  String recordStatus) {
-        LocalDateTime now = AgentTime.now();
+        AgentToolCall row = newToolCall(taskId, callId, turn, ordinal, call);
+        setToolResult(row, envelope, envelopeJson, recordStatus);
+        db.mapper(AgentToolCallMapper.class).insert(row);
+    }
+
+    /** 先保存请求，再等待工具返回；慢请求及失败请求均能在运行期间被读取。 */
+    private ToolEnvelope executeToolCall(String taskId, String callId, int turn, int ordinal,
+                                         ToolCall call, AgentToolScope scope) {
+        AgentToolCall row = newToolCall(taskId, callId, turn, ordinal, call);
+        row.setStatus("RUNNING");
+        row.setMaterialIds("[]");
+        db.mapper(AgentToolCallMapper.class).insert(row);
+        ToolEnvelope envelope;
+        try {
+            envelope = tools.execute(call.id(), call.name(), call.arguments(), scope);
+        } catch (RuntimeException failure) {
+            String code = failure instanceof ApiException api ? api.errorCode().code() : "EXECUTION_ERROR";
+            ToolEnvelope stopped = new ToolEnvelope(call.id(), ToolEnvelope.ERROR, scope.versionRefs(),
+                    null, List.of(), null, ToolEnvelope.UNKNOWN, null, "工具调用未完成：" + code);
+            try {
+                finishToolCall(row, stopped);
+            } catch (RuntimeException recordingFailure) {
+                failure.addSuppressed(recordingFailure);
+            }
+            throw failure;
+        }
+        finishToolCall(row, envelope);
+        return envelope;
+    }
+
+    private void finishToolCall(AgentToolCall row, ToolEnvelope envelope) {
+        setToolResult(row, envelope, ToolEnvelopes.writeString(mapper, envelope), envelope.status());
+        if (db.mapper(AgentToolCallMapper.class).updateById(row) != 1) {
+            throw new IllegalStateException("工具调用记录未能完成：" + row.getId());
+        }
+    }
+
+    private void setToolResult(AgentToolCall row, ToolEnvelope envelope, String envelopeJson, String status) {
+        row.setEnvelope(envelopeJson);
+        row.setMaterialIds(toJson(envelope.materials().stream()
+                .map(ToolEnvelope.ToolMaterial::materialId).toList()));
+        row.setStatus(status);
+        row.setFinishedAt(AgentTime.now());
+    }
+
+    private AgentToolCall newToolCall(String taskId, String callId, int turn, int ordinal, ToolCall call) {
         AgentToolCall row = new AgentToolCall();
         row.setId(AgentIds.next());
         row.setTaskId(taskId);
@@ -398,13 +443,8 @@ public class AgentTaskWorker implements TaskWorker {
         row.setProviderToolCallId(call.id());
         row.setToolName(call.name());
         row.setArguments(call.arguments());
-        row.setEnvelope(envelopeJson);
-        row.setMaterialIds(toJson(envelope.materials().stream()
-                .map(ToolEnvelope.ToolMaterial::materialId).toList()));
-        row.setStatus(recordStatus);
-        row.setStartedAt(now);
-        row.setFinishedAt(now);
-        db.mapper(AgentToolCallMapper.class).insert(row);
+        row.setStartedAt(AgentTime.now());
+        return row;
     }
 
     private String turnSignature(ToolCall call, ToolEnvelope envelope) {

@@ -1,5 +1,6 @@
 package com.codereview.agent.tools;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -72,6 +73,23 @@ class AgentToolSchemaTest {
     void schemaVersionIsBoundToTheCacheAndValidationKeys() {
         assertTrue(AgentToolSchema.version().startsWith("agent-tools-v2-"));
         assertTrue(AgentToolNames.SCHEMA_VERSION.startsWith("agent-tools-"));
+    }
+
+    @Test
+    void submissionExamplesPassTheActualParserAndEvidenceValidator() {
+        ObjectMapper mapper = new ObjectMapper();
+        AgentSubmission answered = AgentSubmission.parse(mapper,
+                AgentToolSchema.ANSWERED_EXAMPLE.replace("<实际materialId>", "m1"));
+        var sent = Map.of("m1", new AgentSubmission.SentMaterial("m1", "src/A.java", "FILE",
+                "a".repeat(40), 10, 20, "hash"));
+        AgentSubmission checked = AgentSubmission.validate(answered, sent);
+        assertTrue(checked.answered());
+        assertEquals(1, checked.citations().size());
+
+        AgentSubmission insufficient = AgentSubmission.parse(mapper, AgentToolSchema.INSUFFICIENT_EVIDENCE_EXAMPLE);
+        AgentSubmission withoutEvidence = AgentSubmission.validate(insufficient, Map.of());
+        assertFalse(withoutEvidence.answered());
+        assertEquals(1, withoutEvidence.unresolved().size());
     }
 
     private static Map<String, Map<?, ?>> propertiesByTool() {

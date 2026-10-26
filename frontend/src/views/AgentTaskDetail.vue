@@ -41,7 +41,7 @@
           class="mb16"
           type="info"
           show-icon
-          :message="`正在执行：${progress?.currentAction || stateLabel(task.state)}`"
+          :message="`正在执行：${actionText(progress?.currentAction) || stateLabel(task.state)}`"
           description="已查范围与调用逐步保存。此处只显示工具动作，不显示模型内部思考。"
         />
         <a-alert
@@ -151,7 +151,8 @@
                   <h3>参数</h3>
                   <pre class="preview-code">{{ pretty(callDetail.arguments) }}</pre>
                   <h3>返回</h3>
-                  <pre class="preview-code">{{ JSON.stringify(callDetail.envelope, null, 2) }}</pre>
+                  <p v-if="callDetail.status === 'RUNNING'" class="muted small">请求正在执行，返回后自动更新。</p>
+                  <pre v-else class="preview-code">{{ JSON.stringify(callDetail.envelope, null, 2) }}</pre>
                   </div>
                   <div v-else key="empty" class="empty">选择左侧一次调用，查看保存的参数与返回。</div>
                 </Transition>
@@ -326,6 +327,8 @@ let timer: number | undefined
 let progressEpoch = 0
 let callEpoch = 0
 let callDetailEpoch = 0
+let pollEpoch = 0
+let disposed = false
 
 const terminalStates = ['SUCCEEDED', 'PARTIAL', 'FAILED', 'CANCELLED']
 const stateTone = computed(() => {
@@ -341,7 +344,11 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   stopPolling()
+  progressEpoch++
+  callEpoch++
+  callDetailEpoch++
 })
 
 function goBack() {
@@ -349,13 +356,15 @@ function goBack() {
 }
 
 function stopPolling() {
+  pollEpoch++
   if (timer) {
-    window.clearInterval(timer)
+    window.clearTimeout(timer)
     timer = undefined
   }
 }
 
 async function loadTask() {
+  stopPolling()
   taskLoading.value = true
   loadError.value = ''
   try {
@@ -411,14 +420,19 @@ function isTerminal(state: string | undefined) {
 
 function startPolling() {
   stopPolling()
-  timer = window.setInterval(async () => {
-    await loadProgress()
+  const epoch = pollEpoch
+  async function poll() {
+    if (disposed || epoch !== pollEpoch) return
+    await Promise.all([loadProgress(), loadCalls()])
+    if (disposed || epoch !== pollEpoch) return
     if (task.value && isTerminal(task.value.state)) {
-      stopPolling()
       await loadResult()
       await loadCalls()
+      return
     }
-  }, runtimeConfig().agentPollMillis)
+    timer = window.setTimeout(() => void poll(), runtimeConfig().agentPollMillis)
+  }
+  if (!disposed) timer = window.setTimeout(() => void poll(), runtimeConfig().agentPollMillis)
 }
 
 async function loadProgress() {
@@ -469,6 +483,11 @@ async function loadCalls() {
     calls.value = collected
     callTotal.value = total
     callError.value = ''
+    const selected = collected.find(call => call.id === selectedCallId.value)
+    if (selected && callDetail.value?.id === selected.id
+        && selected.status !== callDetail.value.status) {
+      await openCall(selected.id)
+    }
   } catch (e) {
     if (epoch === callEpoch) {
       callError.value = `调用记录读取失败：${(e as Error).message}`
@@ -516,6 +535,8 @@ function limitMax(key: string) {
 
 function callTone(status: string): 'green' | 'amber' | 'blue' | 'red' | 'default' {
   const value = status.toUpperCase()
+  if (value === 'RUNNING') return 'blue'
+  if (value === 'UNREADABLE' || value === 'INTERRUPTED' || value === 'CANCELLED') return 'red'
   if (value === 'OK') return 'blue'
   if (value.includes('TRUNC') || value.includes('LIMIT') || value.startsWith('REJECTED')) return 'amber'
   if (value.includes('FAIL') || value.includes('ERROR') || value.includes('INVALID') || value.includes('TIMEOUT')) return 'red'
@@ -523,7 +544,16 @@ function callTone(status: string): 'green' | 'amber' | 'blue' | 'red' | 'default
 }
 
 function callStatusText(status: string) {
-  return status === 'REJECTED_BATCH' ? '整批拒绝（未执行）' : status
+  return ({ RUNNING: '执行中', OK: '成功', UNREADABLE: '读取失败', NOT_FOUND: '未找到',
+    INVALID_ARGUMENT: '参数无效', TIMEOUT: '超时', ERROR: '失败', INTERRUPTED: '已中断',
+    CANCELLED: '已取消', REJECTED_BATCH: '整批拒绝（未执行）' } as Record<string, string>)[status] || status
+}
+
+function actionText(action: string | null | undefined) {
+  if (!action) return ''
+  if (action.startsWith('TOOL_CALL:')) return `调用 ${action.slice('TOOL_CALL:'.length)}`
+  return ({ MODEL_CALL: '等待模型响应', TOOL_CALL: '工具调用已完成',
+    PROTOCOL_RETRY: '纠正模型输出', RUNNING: '执行中' } as Record<string, string>)[action] || action
 }
 
 function scrollCallList(event: WheelEvent) {

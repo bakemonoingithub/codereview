@@ -48,15 +48,22 @@ class AgentSubmissionTest {
                 {"title":"t","summary":"s","answerStatus":"ANSWERED","markdown":"x [E1]",
                  "citations":[{"id":"E1","materialId":"missing","startLine":1,"endLine":1}]}
                 """);
-        assertEquals("CITATION_INVALID", assertThrows(AgentProtocolException.class,
-                () -> AgentSubmission.validate(unknown, sent)).code());
+        AgentProtocolException missing = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(unknown, sent));
+        assertEquals("CITATION_INVALID", missing.code());
+        assertTrue(missing.getMessage().contains("本次任务"), missing.getMessage());
+        assertTrue(missing.getMessage().contains("materialId"), missing.getMessage());
 
         AgentSubmission outOfRange = AgentSubmission.parse(mapper, """
                 {"title":"t","summary":"s","answerStatus":"ANSWERED","markdown":"x [E1]",
                  "citations":[{"id":"E1","materialId":"m1","startLine":19,"endLine":25}]}
                 """);
-        assertEquals("CITATION_INVALID", assertThrows(AgentProtocolException.class,
-                () -> AgentSubmission.validate(outOfRange, sent)).code());
+        AgentProtocolException range = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(outOfRange, sent));
+        assertEquals("CITATION_INVALID", range.code());
+        assertTrue(range.getMessage().contains("材料范围 10-20"), range.getMessage());
+        assertTrue(range.getMessage().contains("read_code"), range.getMessage());
+        assertTrue(range.getMessage().contains("materialId=m1"), range.getMessage());
     }
 
     @Test
@@ -172,6 +179,35 @@ class AgentSubmissionTest {
         assertTrue(AgentSubmission.validate(ok, sent).citations().isEmpty());
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = { "结论（E1）", "见 E1", "结论。[E1,E2]" })
+    void suppliedCitationsWithoutMarkdownMarkersExplainTheRequiredFormat(String markdown) {
+        AgentSubmission submission = new AgentSubmission("t", "s", "ANSWERED", markdown,
+                List.of(new AgentSubmission.Citation("E1", "m1", 12, 13)), List.of());
+
+        AgentProtocolException error = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(submission, sent));
+
+        assertEquals("CITATION_INVALID", error.code());
+        assertTrue(error.getMessage().contains("citations 已提供"), error.getMessage());
+        assertTrue(error.getMessage().contains("markdown"), error.getMessage());
+        assertTrue(error.getMessage().contains("[E1]"), error.getMessage());
+        assertFalse(error.getMessage().contains("citations 为空"), error.getMessage());
+    }
+
+    @Test
+    void missingCitationsExplainHowToDeclareRealEvidence() {
+        AgentSubmission submission = new AgentSubmission("t", "s", "ANSWERED", "结论。", List.of(), List.of());
+
+        AgentProtocolException error = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(submission, sent));
+
+        assertEquals("CITATION_INVALID", error.code());
+        assertTrue(error.getMessage().contains("citations 为空"), error.getMessage());
+        assertTrue(error.getMessage().contains("materialId"), error.getMessage());
+        assertTrue(error.getMessage().contains("[E1]"), error.getMessage());
+    }
+
     @Test
     void duplicateCitationIdsAreRejected() {
         AgentSubmission submission = AgentSubmission.parse(mapper, """
@@ -182,5 +218,24 @@ class AgentSubmissionTest {
         AgentProtocolException error = assertThrows(AgentProtocolException.class,
                 () -> AgentSubmission.validate(submission, sent));
         assertEquals("CITATION_INVALID", error.code());
+    }
+
+    @Test
+    void fullCitationBatchKeepsCorrectionHintsWithinTheToolEnvelopeLimit() {
+        var citations = java.util.stream.IntStream.rangeClosed(1, 100)
+                .mapToObj(index -> new AgentSubmission.Citation("E" + index, "m1", 25, 26)).toList();
+        String markdown = java.util.stream.IntStream.rangeClosed(1, 100)
+                .mapToObj(index -> "[E" + index + "]").collect(java.util.stream.Collectors.joining());
+        AgentSubmission submission = new AgentSubmission("t", "s", "ANSWERED", markdown, citations, List.of());
+
+        AgentProtocolException error = assertThrows(AgentProtocolException.class,
+                () -> AgentSubmission.validate(submission, sent));
+        ToolEnvelope envelope = ToolEnvelope.failure("tool-1",
+                ToolFailure.invalid("CITATION_INVALID", error.getMessage()),
+                AgentToolScope.single("p1", "a".repeat(40)));
+
+        assertTrue(error.getMessage().contains("read_code"), error.getMessage());
+        assertEquals(error.getMessage().indexOf("read_code"), error.getMessage().lastIndexOf("read_code"));
+        assertTrue(ToolEnvelopes.size(mapper, envelope) <= ToolLimits.ENVELOPE_MAX_BYTES);
     }
 }

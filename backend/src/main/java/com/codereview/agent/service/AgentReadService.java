@@ -115,7 +115,7 @@ public class AgentReadService {
 
     public PageResponse<AgentReadDtos.ToolCallSummary> toolCalls(String taskId, Integer pageNum,
                                                                  Integer pageSize) {
-        requireAgentTask(taskId);
+        AgentReviewTask task = requireAgentTask(taskId);
         int page = pageNum == null ? 1 : pageNum;
         int size = pageSize == null ? DEFAULT_PAGE_SIZE : pageSize;
         if (page < 1 || size < 1 || size > MAX_PAGE_SIZE) {
@@ -135,14 +135,14 @@ public class AgentReadService {
             items.add(new AgentReadDtos.ToolCallSummary(row.getId(),
                     row.getTurnNo() == null ? 0 : row.getTurnNo(),
                     row.getOrdinal() == null ? 0 : row.getOrdinal(),
-                    row.getToolName(), row.getStatus(), row.getStartedAt(), row.getFinishedAt()));
+                    row.getToolName(), toolStatus(task, row), row.getStartedAt(), row.getFinishedAt()));
         }
         boolean hasMore = (long) page * size < total;
         return new PageResponse<>(items, null, hasMore, total, page, size);
     }
 
     public AgentReadDtos.ToolCallDetail toolCall(String taskId, String callId) {
-        requireAgentTask(taskId);
+        AgentReviewTask task = requireAgentTask(taskId);
         AgentToolCall row = db.mapper(AgentToolCallMapper.class)
                 .selectById(AgentIds.requireValid(callId, "工具调用 ID"));
         if (row == null || !taskId.equals(row.getTaskId())) {
@@ -155,8 +155,22 @@ public class AgentReadService {
         return new AgentReadDtos.ToolCallDetail(row.getId(),
                 row.getTurnNo() == null ? 0 : row.getTurnNo(),
                 row.getOrdinal() == null ? 0 : row.getOrdinal(), row.getToolName(),
-                row.getProviderToolCallId(), row.getArguments(), readJson(row.getEnvelope()),
-                materialIds, row.getStatus(), row.getStartedAt(), row.getFinishedAt());
+                row.getProviderToolCallId(), row.getArguments(), toolEnvelope(task, row),
+                materialIds, toolStatus(task, row), row.getStartedAt(), row.getFinishedAt());
+    }
+
+    private String toolStatus(AgentReviewTask task, AgentToolCall row) {
+        // 重启、取消或期限可能先结束任务；缺失工具终态时不继续显示为执行中。
+        return "RUNNING".equals(row.getStatus()) && TaskStates.isTerminal(task.getState())
+                ? "INTERRUPTED" : row.getStatus();
+    }
+
+    private JsonNode toolEnvelope(AgentReviewTask task, AgentToolCall row) {
+        if ("INTERRUPTED".equals(toolStatus(task, row)) && "RUNNING".equals(row.getStatus())) {
+            return mapper.createObjectNode().put("status", "INTERRUPTED")
+                    .put("completeness", "UNKNOWN").put("diagnostic", "任务已结束，工具未记录最终返回");
+        }
+        return readJson(row.getEnvelope());
     }
 
     public AgentReadDtos.Result result(String taskId) {

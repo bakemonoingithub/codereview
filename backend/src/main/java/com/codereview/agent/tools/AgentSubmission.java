@@ -128,11 +128,13 @@ public record AgentSubmission(String title, String summary, String answerStatus,
                                            Map<String, SentMaterial> sentMaterials) {
         Map<String, Citation> byId = new LinkedHashMap<>();
         List<String> citationErrors = new ArrayList<>();
+        Set<String> citationHints = new LinkedHashSet<>();
         Set<String> ids = new LinkedHashSet<>();
         for (Citation citation : submission.citations()) {
             boolean validId = citation.id().matches("E[0-9]{1,3}");
             if (!validId) {
                 citationErrors.add("引用 ID 必须形如 E1：" + citation.id());
+                citationHints.add("citations.id 不带方括号，markdown 中使用对应的 [E1]，不要使用 S1 等编号");
             } else if (!ids.add(citation.id())) {
                 citationErrors.add("引用 ID 重复：" + citation.id());
                 validId = false;
@@ -145,6 +147,8 @@ public record AgentSubmission(String title, String summary, String answerStatus,
             if (material == null) {
                 citationErrors.add(citation.id() + " 指向未实际送入模型的材料："
                         + citation.materialId());
+                citationHints.add("请使用本次任务只读工具返回的真实 materialId，不要复制参考结果或其他任务的材料 ID；"
+                        + "尚未取得材料时先调用读取工具");
                 continue;
             }
             if (material.startLine() == null || material.endLine() == null) {
@@ -155,7 +159,9 @@ public record AgentSubmission(String title, String summary, String answerStatus,
                     || citation.endLine() > material.endLine()) {
                 citationErrors.add(citation.id() + " 行 " + citation.startLine() + "-"
                         + citation.endLine() + " 超出材料范围 " + material.startLine() + "-"
-                        + material.endLine());
+                        + material.endLine() + "（materialId=" + citation.materialId() + "）");
+                citationHints.add("引用必须完全落在对应材料范围内。需要范围外的证据时，先用 read_code 读取所需行，"
+                        + "再引用新返回的 materialId；不要直接扩大原引用的行号");
                 continue;
             }
             if (validId) {
@@ -169,11 +175,12 @@ public record AgentSubmission(String title, String summary, String answerStatus,
             String id = "E" + matcher.group(1);
             if (!byId.containsKey(id)) {
                 citationErrors.add("正文引用了未声明或无效的引用：" + id);
+                citationHints.add("请在 citations 中提供与正文标记同名且材料、行范围均有效的引用");
                 continue;
             }
             referenced.add(id);
         }
-        throwCitationErrors("CITATION_INVALID", citationErrors);
+        throwCitationErrors("CITATION_INVALID", citationErrors, citationHints);
         List<Citation> used = new ArrayList<>();
         for (Citation citation : submission.citations()) {
             if (referenced.contains(citation.id())) {
@@ -181,12 +188,20 @@ public record AgentSubmission(String title, String summary, String answerStatus,
             }
         }
         if (submission.answered() && used.isEmpty()) {
+            if (submission.citations().isEmpty()) {
+                throw new AgentProtocolException("CITATION_INVALID",
+                        "ANSWERED 的 citations 为空。请使用本次任务工具返回的真实 materialId 和材料内行范围，"
+                                + "填写至少一项引用，并在 markdown 正文用对应的 [E1] 标记引用它；"
+                                + "尚未取得证据时先调用读取工具，不要编造材料或行号");
+            }
             throw new AgentProtocolException("CITATION_INVALID",
-                    "ANSWERED 结果至少需要一个实际引用");
+                    "citations 已提供，但 markdown 正文未使用可识别的引用标记。"
+                            + "请使用英文半角方括号和单个编号，如 [E1]、[E2]；（E1）、见 E1、[E1,E2] 不会建立引用。"
+                            + "请在正文中引用对应的 citations.id；仅填写 citations 数组不算正文引用");
         }
         if (!submission.answered() && submission.unresolved().isEmpty()) {
             throw new AgentProtocolException("RESULT_INVALID",
-                    "INSUFFICIENT_EVIDENCE 结果必须写明未解决事项");
+                    "INSUFFICIENT_EVIDENCE 结果必须写明未解决事项：unresolved 数组至少填写一项具体缺失材料或无法确认的问题");
         }
         return new AgentSubmission(submission.title(), submission.summary(), submission.answerStatus(),
                 submission.markdown(), used, submission.unresolved());
@@ -219,7 +234,7 @@ public record AgentSubmission(String title, String summary, String answerStatus,
         return value.intValue();
     }
 
-    private static void throwCitationErrors(String code, List<String> errors) {
+    private static void throwCitationErrors(String code, List<String> errors, Set<String> hints) {
         if (errors.isEmpty()) {
             return;
         }
@@ -227,6 +242,9 @@ public record AgentSubmission(String title, String summary, String answerStatus,
         String message = String.join("；", errors.subList(0, shown));
         if (errors.size() > shown) {
             message += "；另有 " + (errors.size() - shown) + " 项错误未展开";
+        }
+        if (!hints.isEmpty()) {
+            message += "。修正方法：" + String.join("；", hints);
         }
         throw new AgentProtocolException(code, "引用校验发现 " + errors.size() + " 项问题：" + message);
     }

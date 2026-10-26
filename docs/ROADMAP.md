@@ -1,5 +1,13 @@
 # ROADMAP - 专项审查与 Agent 分析
 
+2026-10-26 搜索体积分页修复：`search_code` 按完整 JSON 的实际大小分页，保留续页游标，单条大结果明确缩短；6 个后端套件、54 项通过，修复待后端下次启动生效。详见[修复记录](work/agent-redesign/p33/tool-status-fix-20261026.md#搜索返回体积分页修复)。
+
+2026-10-26 提交提示完善：补齐 `submit_result` 字段说明和两种提交示例，区分引用数组为空与正文标记错误，补充材料、行范围错误的纠正动作；7 个后端套件、69 项通过。提示更新待后端下次启动生效，详见[修复记录](work/agent-redesign/p33/tool-status-fix-20261026.md#提交提示完善)。
+
+2026-10-26 工具说明补齐：根据 `tree` 参数错误记录，补充根目录省略 `path`、正确调用示例、共享路径约束及分页规则；5 个后端套件、38 项通过。说明更新待后端下次启动生效，详见[修复记录](work/agent-redesign/p33/tool-status-fix-20261026.md#工具说明补齐)。
+
+2026-10-26 Agent 工具状态修复：已核对任务 `01M5VPAHM0XHXG2MCP3EFEEKE5` 的 17 次成功读取与 4 次镜像连接失败；补齐运行中工具记录、持续刷新和终态中断显示，后端 53 项及前端 11 项通过。随后启动开发服务，用现有项目与模型完成真实任务 `01M5W3ETPMRGY0K22HRYPQQ5YE`：搜索 OK、1 个命中、2 轮后 ANSWERED，接口观察到工具执行中状态。详见[修复记录](work/agent-redesign/p33/tool-status-fix-20261026.md)，服务保留运行。
+
 2026-10-26 CFG 审查修复：提交差异选材与文件树统一使用运行后缀白名单，空白 `expected-database` 在业务组件创建前拒绝；11 个后端套件、132 项通过。详见[实施记录第 6 节](work/agent-redesign/runtime-configuration/implementation-20261026.md#6-审查修复2026-10-26)。
 
 当前：CFG-02–05 配置规范、后端参数外置、Agent 冻结预算及前端运行配置已完成，并通过定向工程检查。后端 533 项、前端 40 项及隔离构建通过；既有计量断言、类型错误和旧菜单断言已在改造前基线复现，不记为通过。详见[运行配置实施记录](work/agent-redesign/runtime-configuration/implementation-20261026.md)及[配置规范](work/agent-redesign/runtime-configuration/specification.md)。CFG-06／07 保持 todo，未操作真实数据库或启停现有服务；UPI-06 待验收状态不变。

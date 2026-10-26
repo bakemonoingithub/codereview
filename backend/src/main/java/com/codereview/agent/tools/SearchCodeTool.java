@@ -7,6 +7,7 @@ import com.codereview.git.GiteaProperties;
 import com.codereview.git.GitMirror;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")
 public class SearchCodeTool {
 
+    /** 正式材料 ID 是 26 位 ASCII；预检时占位，只有能装入当前页的材料才保存。 */
+    private static final String SIZING_MATERIAL_ID = "0".repeat(26);
     private final RepositoryReadService repository;
     private final ToolMaterialStore materials;
     private final GitMirror mirror;
@@ -38,16 +41,24 @@ public class SearchCodeTool {
     private final ToolProperties properties;
     private final Semaphore slots;
     private final Cache<String, CachedSearch> cache;
+    private final ObjectMapper mapper;
 
-    /** 生产装配使用共享镜像组件；测试与手工装配可用下一个构造自建。 */
-    @org.springframework.beans.factory.annotation.Autowired
+    /** 兼容手工装配：使用默认 JSON 序列化器。 */
     public SearchCodeTool(RepositoryReadService repository, ToolMaterialStore materials,
                           GitMirror mirror, GitGrepRunner grep, ToolProperties properties) {
+        this(repository, materials, mirror, grep, properties, new ObjectMapper());
+    }
+
+    /** 生产装配与只读工具出口共用序列化器，按同一份 JSON 表示计算体积。 */
+    @org.springframework.beans.factory.annotation.Autowired
+    public SearchCodeTool(RepositoryReadService repository, ToolMaterialStore materials,
+                          GitMirror mirror, GitGrepRunner grep, ToolProperties properties, ObjectMapper mapper) {
         this.repository = repository;
         this.materials = materials;
         this.grep = grep;
         this.properties = properties;
         this.mirror = mirror;
+        this.mapper = mapper;
         this.slots = new Semaphore(Math.max(1, properties.getSearchGlobalConcurrency()), true);
         this.cache = Caffeine.newBuilder()
                 .maximumWeight(Math.max(1, properties.getSearchCacheWeightBytes()))
@@ -137,41 +148,73 @@ public class SearchCodeTool {
 
         List<Map<String, Object>> hits = new ArrayList<>();
         List<ToolEnvelope.ToolMaterial> materialsOut = new ArrayList<>();
-        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
         int index = offset;
         int unreadable = 0;
+        page:
         while (index < filtered.size() && hits.size() < limit) {
             GitGrepRunner.Hit hit = filtered.get(index);
             String lineText = ToolTexts.truncateLine(hit.text(), ToolLimits.HIT_LINE_MAX_CHARS);
             MaterialResult material = contextMaterial(scope, invocation.sha(), hit, lineText);
-            if (!material.readable()) {
-                unreadable++;
+            while (true) {
+                ToolEnvelope.ToolMaterial draft = material.material();
+                ToolEnvelope.ToolMaterial preview = new ToolEnvelope.ToolMaterial(SIZING_MATERIAL_ID,
+                        draft.path(), draft.side(), draft.sha(), draft.startLine(), draft.endLine(),
+                        draft.contentHash(), draft.completeness(), draft.content());
+                hits.add(hitEntry(hit, lineText, SIZING_MATERIAL_ID));
+                materialsOut.add(preview);
+                ToolEnvelope candidate = page(toolCallId, invocation, scope, filtered.size(), search.truncated(),
+                        index + 1, hits, materialsOut, unreadable + (material.readable() ? 0 : 1));
+                int size = ToolEnvelopes.size(mapper, candidate);
+                hits.remove(hits.size() - 1);
+                materialsOut.remove(materialsOut.size() - 1);
+                if (size <= scope.limits().getEnvelopeMaxBytes()) {
+                    break;
+                }
+                if (!hits.isEmpty()) {
+                    // 保留本页已接受的命中，续页从这个未保存、未返回的命中开始。
+                    break page;
+                }
+                material = shorten(material, hit);
+                if (material == null) {
+                    return failure(toolCallId, scope, ToolEnvelope.ERROR,
+                            "单条命中无法装入工具返回上限，请缩小查询范围或用 read_code 读取指定文件");
+                }
+                lineText = ToolTexts.truncateLine(material.material().content(), ToolLimits.HIT_LINE_MAX_CHARS);
             }
-            int cost = ToolTexts.utf8Bytes(material.material().content()) + lineText.length() + 200;
-            if (!hits.isEmpty() && cost > budget) {
-                break;
-            }
-            budget -= cost;
             ToolEnvelope.ToolMaterial saved = materials.save(scope.projectId(), material.material());
             hits.add(hitEntry(hit, lineText, saved.materialId()));
             materialsOut.add(saved);
+            if (!material.readable()) unreadable++;
             index++;
         }
 
-        boolean hasMorePages = index < filtered.size();
-        boolean unknownBeyond = search.truncated();
-        String nextCursor = hasMorePages ? ToolCursor.encode(invocation, index) : null;
-        String completeness = hasMorePages || unknownBeyond
+        ToolEnvelope result = page(toolCallId, invocation, scope, filtered.size(), search.truncated(),
+                index, hits, materialsOut, unreadable);
+        if (ToolEnvelopes.size(mapper, result) > scope.limits().getEnvelopeMaxBytes()) {
+            return failure(toolCallId, scope, ToolEnvelope.ERROR,
+                    "搜索请求的元数据超过工具返回上限，请缩小查询范围或用 read_code 读取指定文件");
+        }
+        return result;
+    }
+
+    private ToolEnvelope page(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
+                               int totalHits, boolean unknownBeyond, int nextOffset,
+                               List<Map<String, Object>> hits, List<ToolEnvelope.ToolMaterial> materialsOut,
+                               int unreadable) {
+        boolean hasMorePages = nextOffset < totalHits;
+        boolean shortened = materialsOut.stream().anyMatch(material -> ToolEnvelope.PARTIAL.equals(material.completeness()));
+        String nextCursor = hasMorePages ? ToolCursor.encode(invocation, nextOffset) : null;
+        String completeness = hasMorePages || unknownBeyond || unreadable > 0 || shortened
                 ? ToolEnvelope.PARTIAL : ToolEnvelope.COMPLETE;
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("query", invocation.query());
         if (invocation.path() != null) {
             data.put("path", invocation.path());
         }
-        if (!extensions.isEmpty()) {
-            data.put("extensions", extensions);
+        if (!invocation.extensions().isEmpty()) {
+            data.put("extensions", normalizeExtensions(invocation.extensions()));
         }
-        data.put("totalHits", filtered.size());
+        data.put("totalHits", totalHits);
         data.put("hits", hits);
 
         List<String> notes = new ArrayList<>();
@@ -179,7 +222,10 @@ public class SearchCodeTool {
             notes.add("grep 输出达到上限，只保留了前 " + scope.limits().getSearchGrepMaxHits() + " 条原始命中");
         }
         if (unreadable > 0) {
-            notes.add(unreadable + " 个命中文件无法读取上下文，只保留命中行");
+            notes.add(unreadable + " 个命中无法读取上下文或上下文不完整，已保留可用片段");
+        }
+        if (shortened) {
+            notes.add("部分命中片段因体积限制已缩短，请用 read_code 读取所需行范围");
         }
         if (hasMorePages) {
             notes.add("结果未返回完，可用 nextCursor 继续");
@@ -187,6 +233,25 @@ public class SearchCodeTool {
         return new ToolEnvelope(toolCallId, ToolEnvelope.OK, scope.versionRefs(), null,
                 materialsOut, data, completeness, nextCursor,
                 notes.isEmpty() ? null : String.join("；", notes));
+    }
+
+    /** 单条命中也装不下时先退到命中行，再按字符边界缩短，绝不把截短内容标成完整材料。 */
+    private MaterialResult shorten(MaterialResult current, GitGrepRunner.Hit hit) {
+        ToolEnvelope.ToolMaterial material = current.material();
+        String content = material.content();
+        if (material.startLine() != hit.lineNumber() || material.endLine() != hit.lineNumber()) {
+            String[] lines = ToolTexts.splitLines(content);
+            int relativeLine = hit.lineNumber() - material.startLine() + 1;
+            content = ToolTexts.joinLines(lines, relativeLine, relativeLine);
+        } else {
+            int bytes = ToolTexts.utf8Bytes(content);
+            if (bytes <= 64) return null;
+            content = ToolTexts.clampToBytes(content, Math.max(64, bytes / 2));
+        }
+        String completeness = ToolEnvelope.UNKNOWN.equals(material.completeness())
+                ? ToolEnvelope.UNKNOWN : ToolEnvelope.PARTIAL;
+        return new MaterialResult(new ToolEnvelope.ToolMaterial(null, material.path(), material.side(),
+                material.sha(), hit.lineNumber(), hit.lineNumber(), ToolTexts.sha256(content), completeness, content), false);
     }
 
     private MaterialResult contextMaterial(AgentToolScope scope, String sha, GitGrepRunner.Hit hit,

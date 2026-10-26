@@ -229,6 +229,35 @@ class AgentReadServiceTest {
     }
 
     @Test
+    void unfinishedToolIsVisibleWhileRunningAndInterruptedAfterTaskCloses() {
+        task.setState("RUNNING");
+        AgentToolCall row = new AgentToolCall();
+        row.setId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E4");
+        row.setTaskId(TASK_ID);
+        row.setToolName("search_code");
+        row.setStatus("RUNNING");
+        row.setArguments("{\"query\":\"needle\"}");
+        when(toolCallMapper.selectCount(any())).thenReturn(1L);
+        when(toolCallMapper.selectList(any())).thenReturn(List.of(row));
+        when(toolCallMapper.selectById(any())).thenReturn(row);
+
+        assertEquals("RUNNING", service.toolCalls(TASK_ID, 1, 20).items().get(0).status());
+        var running = service.toolCall(TASK_ID, row.getId());
+        assertEquals("RUNNING", running.status());
+        assertNull(running.finishedAt());
+        assertTrue(running.envelope().isEmpty());
+
+        task.setState("FAILED");
+        task.setStopReason("INTERRUPTED");
+        assertEquals("INTERRUPTED", service.toolCalls(TASK_ID, 1, 20).items().get(0).status());
+        var stopped = service.toolCall(TASK_ID, row.getId());
+        assertEquals("INTERRUPTED", stopped.status());
+        assertEquals("UNKNOWN", stopped.envelope().path("completeness").asText());
+        assertTrue(stopped.envelope().path("diagnostic").asText().contains("未记录最终返回"));
+        assertNull(stopped.finishedAt());
+    }
+
+    @Test
     void nonAgentTasksAreRejected() {
         AgentReviewTask task = new AgentReviewTask();
         task.setId(TASK_ID);

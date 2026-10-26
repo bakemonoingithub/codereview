@@ -113,6 +113,7 @@ class AgentTaskWorkerTest {
         when(runMapper.updateById(any(AgentRun.class))).thenReturn(1);
         when(runMapper.update(any(), any())).thenReturn(1);
         when(toolCallMapper.insert(any(AgentToolCall.class))).thenReturn(1);
+        when(toolCallMapper.updateById(any(AgentToolCall.class))).thenReturn(1);
         when(callMaterialMapper.insert(any(com.codereview.agent.entity.AgentCallMaterial.class))).thenReturn(1);
         when(tools.execute(anyString(), anyString(), anyString(), any())).thenReturn(envelope());
         when(publisher.publish(anyString(), any(), any(), any(), anyInt())).thenReturn("result-1");
@@ -212,6 +213,60 @@ class AgentTaskWorkerTest {
         assertEquals(TaskStates.PARTIAL, outcome.state());
         assertEquals(TaskStates.STOP_NO_PROGRESS_LIMIT, outcome.stopReason());
         verify(invocation, org.mockito.Mockito.times(3)).invoke(any());
+    }
+
+    @Test
+    void runningToolIsPersistedBeforeExecutionAndUpdatedWithTheFailure() throws Exception {
+        var config = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(task.getConfigSnapshot());
+        config.withObject("limits").put("modelTurns", 1);
+        task.setConfigSnapshot(mapper.writeValueAsString(config));
+        when(invocation.invoke(any()))
+                .thenAnswer(i -> {
+                    ArgumentCaptor<AgentRun> runs = ArgumentCaptor.forClass(AgentRun.class);
+                    verify(runMapper, atLeastOnce()).updateById(runs.capture());
+                    assertEquals("MODEL_CALL", runs.getValue().getCurrentAction());
+                    return toolCallResult("call-1", "search_code", "{\"version\":\"V1\",\"query\":\"needle\"}");
+                });
+        when(tools.execute(anyString(), anyString(), anyString(), any())).thenAnswer(i -> {
+            ArgumentCaptor<AgentToolCall> records = ArgumentCaptor.forClass(AgentToolCall.class);
+            verify(toolCallMapper).insert(records.capture());
+            AgentToolCall running = records.getValue();
+            assertEquals("RUNNING", running.getStatus());
+            assertTrue(running.getStartedAt() != null);
+            assertEquals(null, running.getFinishedAt());
+            assertEquals(null, running.getEnvelope());
+            ArgumentCaptor<AgentRun> runs = ArgumentCaptor.forClass(AgentRun.class);
+            verify(runMapper, atLeastOnce()).updateById(runs.capture());
+            assertEquals("TOOL_CALL:search_code", runs.getValue().getCurrentAction());
+            return new ToolEnvelope("p1", ToolEnvelope.UNREADABLE, List.of(), null,
+                    List.of(), null, ToolEnvelope.UNKNOWN, null, "镜像准备失败：connection failed");
+        });
+
+        worker.execute(task);
+
+        ArgumentCaptor<AgentToolCall> completed = ArgumentCaptor.forClass(AgentToolCall.class);
+        verify(toolCallMapper).updateById(completed.capture());
+        assertEquals("UNREADABLE", completed.getValue().getStatus());
+        assertTrue(completed.getValue().getFinishedAt() != null);
+        assertTrue(completed.getValue().getEnvelope().contains("connection failed"));
+        ArgumentCaptor<AgentToolCall> inserted = ArgumentCaptor.forClass(AgentToolCall.class);
+        verify(toolCallMapper).insert(inserted.capture());
+        assertEquals(inserted.getAllValues().get(0).getId(), completed.getValue().getId());
+    }
+
+    @Test
+    void unexpectedToolFailureClosesItsRunningRecordAndFailsTheTask() {
+        when(invocation.invoke(any())).thenReturn(toolCallResult("call-1", "read_code", "{}"));
+        when(tools.execute(anyString(), anyString(), anyString(), any()))
+                .thenThrow(new IllegalStateException("unexpected storage failure"));
+
+        assertEquals(TaskStates.FAILED, worker.execute(task).state());
+
+        ArgumentCaptor<AgentToolCall> completed = ArgumentCaptor.forClass(AgentToolCall.class);
+        verify(toolCallMapper).updateById(completed.capture());
+        assertEquals("ERROR", completed.getValue().getStatus());
+        assertTrue(completed.getValue().getFinishedAt() != null);
+        verify(publisher, never()).publish(anyString(), any(), any(), any(), anyInt());
     }
 
     @Test

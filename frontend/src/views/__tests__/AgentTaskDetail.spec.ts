@@ -255,6 +255,66 @@ describe('Agent 任务详情', () => {
     wrapper.unmount()
   })
 
+  it('执行期间刷新调用状态和已打开的返回，并在卸载后停止轮询', async () => {
+    vi.useFakeTimers()
+    vi.mocked(tasksApi.detail).mockResolvedValue(task('RUNNING') as any)
+    vi.mocked(agentTasksApi.progress).mockResolvedValue(progress('RUNNING') as any)
+    const running = { id: 'c1', turnNo: 4, ordinal: 1, toolName: 'search_code', status: 'RUNNING',
+      startedAt: '2026-10-26 08:48:16', finishedAt: null }
+    vi.mocked(agentTasksApi.toolCalls).mockResolvedValue(page([running]) as any)
+    vi.mocked(agentTasksApi.toolCall).mockResolvedValue({ ...running,
+      arguments: '{"query":"needle"}', envelope: {}, materialIds: [] } as any)
+    const wrapper = await start()
+    try {
+      await state(wrapper).openCall('c1')
+      expect(wrapper.text()).toContain('执行中')
+      const failed = { ...running, status: 'UNREADABLE', finishedAt: '2026-10-26 08:48:57' }
+      vi.mocked(agentTasksApi.toolCalls).mockResolvedValue(page([failed]) as any)
+      vi.mocked(agentTasksApi.toolCall).mockResolvedValue({ ...failed,
+        arguments: '{"query":"needle"}', materialIds: [],
+        envelope: { status: 'UNREADABLE', diagnostic: '镜像准备失败：connection failed' } } as any)
+
+      vi.advanceTimersByTime(2000)
+      await flushPromises()
+      expect(state(wrapper).calls[0].status).toBe('UNREADABLE')
+      expect(wrapper.text()).toContain('读取失败')
+      expect(wrapper.text()).toContain('镜像准备失败：connection failed')
+      const requests = vi.mocked(agentTasksApi.toolCalls).mock.calls.length
+      wrapper.unmount()
+      vi.advanceTimersByTime(4000)
+      await flushPromises()
+      expect(agentTasksApi.toolCalls).toHaveBeenCalledTimes(requests)
+    } finally {
+      if (wrapper.exists()) wrapper.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('慢进度请求不会被重叠轮询持续覆盖，卸载后不重建计时器', async () => {
+    vi.useFakeTimers()
+    vi.mocked(tasksApi.detail).mockResolvedValue(task('RUNNING') as any)
+    vi.mocked(agentTasksApi.progress).mockResolvedValue(progress('RUNNING') as any)
+    const wrapper = await start()
+    let resolveProgress!: (value: any) => void
+    vi.mocked(agentTasksApi.progress).mockImplementation(() => new Promise(resolve => { resolveProgress = resolve }))
+    try {
+      vi.advanceTimersByTime(2000)
+      await flushPromises()
+      vi.advanceTimersByTime(6000)
+      await flushPromises()
+      expect(agentTasksApi.progress).toHaveBeenCalledTimes(2)
+      wrapper.unmount()
+      resolveProgress(progress('RUNNING'))
+      await flushPromises()
+      vi.advanceTimersByTime(4000)
+      await flushPromises()
+      expect(agentTasksApi.progress).toHaveBeenCalledTimes(2)
+    } finally {
+      if (wrapper.exists()) wrapper.unmount()
+      vi.useRealTimers()
+    }
+  })
+
   it('取消按钮使用当前修订号', async () => {
     vi.mocked(tasksApi.cancel).mockResolvedValue(task('CANCELLED') as any)
     const wrapper = await start()
