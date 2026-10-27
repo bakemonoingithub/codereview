@@ -39,20 +39,6 @@
           </div>
         </div>
 
-        <section class="config-snapshot mb16">
-          <div><span>模型</span><strong>{{ task.config?.modelName || '配置已不可用' }}</strong></div>
-          <div>
-            <span>通用规则</span>
-            <strong>{{ task.config?.promptId
-              ? `${task.config.promptName || task.config.promptId} · ${task.config.promptVersionNo ? 'v' + task.config.promptVersionNo : '版本未知'}`
-              : '未选择' }}</strong>
-          </div>
-          <details v-if="task.config?.promptContent">
-            <summary>查看任务冻结的规则正文</summary>
-            <pre>{{ task.config?.promptContent }}</pre>
-          </details>
-        </section>
-
         <a-alert
           v-if="task.state === 'PARTIAL'"
           type="warning"
@@ -650,32 +636,6 @@ function formatTime(value: string): string {
 </script>
 
 <style scoped lang="less">
-.config-snapshot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 8px 28px;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-.config-snapshot > div { display: grid; gap: 2px; }
-.config-snapshot span { color: var(--muted); font-size: 11px; }
-.config-snapshot strong { font-weight: 600; }
-.config-snapshot details { flex-basis: 100%; color: var(--ink); }
-.config-snapshot summary { cursor: pointer; color: var(--primary); font-size: 12px; }
-.config-snapshot pre {
-  max-height: 240px;
-  margin: 8px 0 0;
-  padding: 12px;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 .back-row {
   margin-bottom: 16px;
 }
