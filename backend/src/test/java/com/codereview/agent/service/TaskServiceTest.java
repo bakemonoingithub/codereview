@@ -4,6 +4,8 @@ import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.TaskDtos;
+import com.codereview.agent.entity.AgentIssue;
+import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentProject;
@@ -15,6 +17,8 @@ import com.codereview.agent.execution.TaskProperties;
 import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.invocation.ModelInvocationProperties;
 import com.codereview.agent.mapper.AgentModelCallMapper;
+import com.codereview.agent.mapper.AgentIssueMapper;
+import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
@@ -82,6 +86,10 @@ class TaskServiceTest {
     @Mock
     private AgentModelCallMapper callMapper;
     @Mock
+    private AgentReviewResultMapper resultMapper;
+    @Mock
+    private AgentIssueMapper issueMapper;
+    @Mock
     private RepositoryReadService repository;
     @Mock
     private TaskDispatchService dispatcher;
@@ -92,7 +100,7 @@ class TaskServiceTest {
     @BeforeEach
     void setUp() {
         for (Class<?> entity : List.of(AgentReviewTask.class, AgentTaskTarget.class,
-                AgentTaskQuota.class, AgentModelCall.class)) {
+                AgentTaskQuota.class, AgentModelCall.class, AgentReviewResult.class, AgentIssue.class)) {
             com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
                     new org.apache.ibatis.builder.MapperBuilderAssistant(
                             new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), entity);
@@ -107,6 +115,8 @@ class TaskServiceTest {
         when(db.mapper(AgentTaskTargetMapper.class)).thenReturn(targetMapper);
         when(db.mapper(AgentTaskQuotaMapper.class)).thenReturn(quotaMapper);
         when(db.mapper(AgentModelCallMapper.class)).thenReturn(callMapper);
+        when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
+        when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
         when(db.inTransaction(any())).thenAnswer(invocation ->
                 ((Supplier<?>) invocation.getArgument(0)).get());
         when(projectMapper.selectById(any())).thenReturn(project());
@@ -323,6 +333,80 @@ class TaskServiceTest {
 
         assertFalse(view.toString().contains("secret"));
         assertEquals(MODEL_ID, view.config().modelConfigId());
+    }
+
+    @Test
+    void detailIncludesEveryFilesIssueCountAndDistinguishesZeroFromUnpublished() {
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task(TASK_ID, null));
+        List<AgentTaskTarget> targets = java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(index -> {
+            AgentTaskTarget row = target();
+            row.setId("target-" + index);
+            row.setOrdinal(index);
+            return row;
+        }).toList();
+        when(targetMapper.selectList(any())).thenReturn(targets);
+        when(resultMapper.selectList(any())).thenReturn(List.of(
+                publishedResult("r1", "target-1", "COMPLETE"),
+                publishedResult("r2", "target-2", "COMPLETE"),
+                publishedResult("r4", "target-4", "INCOMPLETE")));
+        AgentIssue first = new AgentIssue(); first.setResultId("r1");
+        AgentIssue second = new AgentIssue(); second.setResultId("r1");
+        when(issueMapper.selectList(any())).thenReturn(List.of(first, second));
+
+        var view = service.detail(TASK_ID);
+
+        assertEquals(2, view.targets().get(0).issueCount());
+        assertEquals(0, view.targets().get(1).issueCount());
+        assertNull(view.targets().get(2).issueCount());
+        assertNull(view.targets().get(3).issueCount());
+        var resultQuery = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class);
+        verify(resultMapper).selectList(resultQuery.capture());
+        assertFalse(resultQuery.getValue().getSqlSelect().contains("body"));
+        resultQuery.getValue().getSqlSegment();
+        assertTrue(resultQuery.getValue().getParamNameValuePairs().containsValue(TASK_ID));
+        var issueQuery = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class);
+        verify(issueMapper).selectList(issueQuery.capture());
+        issueQuery.getValue().getSqlSegment();
+        assertTrue(issueQuery.getValue().getParamNameValuePairs().containsValue("r1"));
+        assertTrue(issueQuery.getValue().getParamNameValuePairs().containsValue("r2"));
+        assertFalse(issueQuery.getValue().getParamNameValuePairs().containsValue("r4"));
+    }
+
+    @Test
+    void detailCountsOnlyTheLatestResultForEachTarget() {
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task(TASK_ID, null));
+        when(resultMapper.selectList(any())).thenReturn(List.of(
+                publishedResult("latest", "target-1", "COMPLETE"),
+                publishedResult("old", "target-1", "COMPLETE")));
+        AgentIssue issue = new AgentIssue(); issue.setResultId("latest");
+        when(issueMapper.selectList(any())).thenReturn(List.of(issue));
+
+        assertEquals(1, service.detail(TASK_ID).targets().get(0).issueCount());
+
+        var query = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class);
+        verify(issueMapper).selectList(query.capture());
+        query.getValue().getSqlSegment();
+        assertFalse(query.getValue().getParamNameValuePairs().containsValue("old"));
+    }
+
+    @Test
+    void nonIssueTasksDoNotReportZeroIssues() {
+        AgentReviewTask task = task(TASK_ID, null);
+        task.setSpecialistType("PATTERN");
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task);
+
+        assertNull(service.detail(TASK_ID).targets().get(0).issueCount());
+        verify(resultMapper, never()).selectList(any());
+        verify(issueMapper, never()).selectList(any());
+    }
+
+    private static AgentReviewResult publishedResult(String id, String targetId, String completeness) {
+        AgentReviewResult result = new AgentReviewResult();
+        result.setId(id);
+        result.setTargetId(targetId);
+        result.setKind("ISSUE");
+        result.setCompleteness(completeness);
+        return result;
     }
 
     @Test

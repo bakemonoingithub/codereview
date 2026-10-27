@@ -58,7 +58,7 @@ public final class TaskDtos {
 
     public record TargetView(String id, int ordinal, String path, String oldPath, String baseSha,
                              String headSha, String note, String state, String errorCode, int revision,
-                             LocalDateTime createdAt, LocalDateTime updatedAt) {
+                             LocalDateTime createdAt, LocalDateTime updatedAt, Integer issueCount) {
     }
 
     public record ConfigView(String modelConfigId, String modelName, Integer modelRevision,

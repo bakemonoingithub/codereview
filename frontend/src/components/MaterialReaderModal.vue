@@ -15,12 +15,18 @@
           <a-descriptions-item label="版本">
             <code>{{ metadata.sha?.slice(0, 12) }}</code>
           </a-descriptions-item>
-          <a-descriptions-item label="侧">{{ sideText(metadata.side) }}</a-descriptions-item>
           <a-descriptions-item label="行号">{{ metadata.startLine }}-{{ metadata.endLine }}</a-descriptions-item>
-          <a-descriptions-item label="角色">{{ metadata.role }}</a-descriptions-item>
-          <a-descriptions-item label="完整性">{{ metadata.completeness }}</a-descriptions-item>
-          <a-descriptions-item label="发送">
-            {{ metadata.sent ? '实际发送' : '读取后未发送' }}
+          <a-descriptions-item v-if="metadata.side !== 'FILE'" label="代码版本">
+            {{ sideText(metadata.side) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="材料用途" :span="metadata.side === 'FILE' ? 2 : 1">
+            {{ roleText(metadata.role) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="材料内容" :span="2">
+            {{ contentText(metadata.completeness) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="模型使用情况" :span="2">
+            {{ metadata.sent ? '已提供给模型' : '未提供给模型' }}
           </a-descriptions-item>
         </a-descriptions>
         <a-alert v-if="!detail.complete" type="warning" show-icon message="保存的材料正文不可用，不能将空白内容视为完整原文。" />
@@ -213,7 +219,25 @@ async function loadDiff() {
 }
 
 function sideText(side: string): string {
-  return ({ FILE: '文件', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || side
+  return ({ BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || '版本信息未说明'
+}
+
+function roleText(role: string): string {
+  return ({
+    TARGET: '审查对象',
+    AUXILIARY: '辅助参考',
+    TOOL: '调查过程中获取的代码'
+  } as Record<string, string>)[role] || '材料用途未说明'
+}
+
+function contentText(completeness: string): string {
+  return ({
+    COMPLETE: '所选范围的完整内容',
+    DECLARATION_SUMMARY: '声明摘要（仅保留类型声明和方法签名，已省略方法体）',
+    FRAGMENT: '代码片段（仅包含文件中的部分代码）',
+    PARTIAL: '部分内容（所选范围未完整返回）',
+    UNKNOWN: '内容是否完整尚未确认'
+  } as Record<string, string>)[completeness] || '材料内容未说明'
 }
 
 function close() {

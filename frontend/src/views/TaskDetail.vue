@@ -86,8 +86,8 @@
               <span class="target-meta">
                 <StatusBadge :tone="stateTone(target.state)">{{ stateText(target.state) }}</StatusBadge>
                 <span v-if="target.errorCode" class="error">{{ target.errorCode }}</span>
-                <span v-else-if="result && target.id === selectedTargetId" class="muted small">
-                  {{ issueCount }} 个问题
+                <span v-else-if="target.issueCount != null" class="muted small">
+                  {{ target.issueCount }} 个问题
                 </span>
               </span>
             </button>
@@ -127,7 +127,7 @@
                 />
                 <a-empty v-if="!materials.length && !materialError" description="还没有关联材料" />
                 <div v-if="materials.length" class="material-list">
-                  <div v-for="material in materials" :key="material.id" class="material-row">
+                  <div v-for="material in orderedMaterials" :key="material.id" class="material-row">
                     <div class="material-main">
                       <code>{{ material.path }}</code>
                       <span class="muted small">
@@ -325,7 +325,15 @@ const succeededCount = computed(() =>
 const failedCount = computed(() =>
   task.value?.targets.filter((target) => target.state === 'FAILED').length || 0
 )
-const issueCount = computed(() => result.value?.issues.length || 0)
+function materialRoleOrder(role: string): number {
+  if (role === 'TARGET') return 0
+  if (role === 'AUXILIARY') return 2
+  return 1
+}
+// 同类材料保留接口默认的路径、代码版本、起始行顺序。
+const orderedMaterials = computed(() => [...materials.value].sort(
+  (left, right) => materialRoleOrder(left.role) - materialRoleOrder(right.role)
+))
 function saveScene() {
   if (!task.value) return
   try {

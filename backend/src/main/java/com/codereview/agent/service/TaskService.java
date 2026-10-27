@@ -674,12 +674,13 @@ public class TaskService {
                 textOrNull(prompt, "id"), textOrNull(prompt, "name"),
                 textOrNull(prompt, "versionId"), integerOrNull(prompt, "versionNo"),
                 textOrNull(prompt, "content"));
+        Map<String, Integer> issueCounts = targetIssueCounts(task, targets);
         List<TaskDtos.TargetView> targetViews = targets.stream()
                 .map(target -> new TaskDtos.TargetView(target.getId(), target.getOrdinal(),
                         target.getPath(), target.getOldPath(), target.getBaseSha(), target.getHeadSha(),
                         target.getNote(), target.getState(), target.getErrorCode(),
                         target.getRevision() == null ? 0 : target.getRevision(),
-                        target.getCreatedAt(), target.getUpdatedAt()))
+                        target.getCreatedAt(), target.getUpdatedAt(), issueCounts.get(target.getId())))
                 .toList();
         return new TaskDtos.View(task.getId(), TaskNames.display(task.getName(), task.getId()),
                 task.getProjectId(), task.getRoute(),
@@ -689,6 +690,39 @@ public class TaskService {
                 input.path("smartSplit").asBoolean(false), task.getRevision(), task.getCreatedAt(),
                 task.getUpdatedAt(), task.getStartedAt(), task.getFinishedAt(), task.getDeadlineAt(),
                 task.getCancelRequestedAt(), targetViews, configView);
+    }
+
+    /** 按最近发布的完整问题结果批量计数；没有完整结果时保留 null，不能补成零。 */
+    private Map<String, Integer> targetIssueCounts(AgentReviewTask task, List<AgentTaskTarget> targets) {
+        if (!"ISSUE".equals(task.getSpecialistType()) || targets.isEmpty()) {
+            return Map.of();
+        }
+        List<AgentReviewResult> results = db.mapper(AgentReviewResultMapper.class).selectList(
+                new LambdaQueryWrapper<AgentReviewResult>()
+                        .select(AgentReviewResult::getId, AgentReviewResult::getTargetId,
+                                AgentReviewResult::getKind, AgentReviewResult::getCompleteness)
+                        .eq(AgentReviewResult::getTaskId, task.getId())
+                        .in(AgentReviewResult::getTargetId, targets.stream().map(AgentTaskTarget::getId).toList())
+                        .orderByDesc(AgentReviewResult::getCreatedAt));
+        Map<String, AgentReviewResult> latest = new LinkedHashMap<>();
+        results.forEach(result -> latest.putIfAbsent(result.getTargetId(), result));
+        List<String> resultIds = latest.values().stream()
+                .filter(result -> "ISSUE".equals(result.getKind()) && "COMPLETE".equals(result.getCompleteness()))
+                .map(AgentReviewResult::getId).toList();
+        if (resultIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Integer> countsByResult = new LinkedHashMap<>();
+        db.mapper(AgentIssueMapper.class).selectList(new LambdaQueryWrapper<AgentIssue>()
+                        .select(AgentIssue::getResultId).in(AgentIssue::getResultId, resultIds))
+                .forEach(issue -> countsByResult.merge(issue.getResultId(), 1, Integer::sum));
+        Map<String, Integer> countsByTarget = new LinkedHashMap<>();
+        latest.forEach((targetId, result) -> {
+            if ("ISSUE".equals(result.getKind()) && "COMPLETE".equals(result.getCompleteness())) {
+                countsByTarget.put(targetId, countsByResult.getOrDefault(result.getId(), 0));
+            }
+        });
+        return countsByTarget;
     }
 
     private TaskDtos.Summary summary(AgentReviewTask task, List<AgentTaskTarget> targets) {

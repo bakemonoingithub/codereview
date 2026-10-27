@@ -49,6 +49,51 @@ beforeEach(() => {
   vi.mocked(tasksApi.calls).mockImplementation(async (_id, params) => page('c-' + params?.targetId) as any)
 })
 describe('任务详情的轮询与目标隔离', () => {
+  it('初次打开就显示所有文件的问题数，不依赖选中或结果详情加载', async () => {
+    const loaded = { ...task(), targets: [
+      { id: 'a', path: 'A.java', state: 'SUCCEEDED', issueCount: 6 },
+      { id: 'b', path: 'B.java', state: 'SUCCEEDED', issueCount: 3 }
+    ] }
+    vi.mocked(tasksApi.detail).mockResolvedValue(loaded as any)
+    const pending = deferred<any>()
+    vi.mocked(tasksApi.result).mockReturnValueOnce(pending.promise)
+    const w = await start()
+    expect(w.findAll('.target').map(row => row.text())).toEqual([
+      expect.stringContaining('6 个问题'), expect.stringContaining('3 个问题')
+    ])
+    expect(tasksApi.result).toHaveBeenCalledTimes(1)
+    pending.resolve(result()); await flushPromises()
+    await w.findAll('.target')[1].trigger('click'); await flushPromises()
+    expect(w.findAll('.target').map(row => row.text())).toEqual([
+      expect.stringContaining('6 个问题'), expect.stringContaining('3 个问题')
+    ])
+    w.unmount()
+  })
+  it('完整零问题显示 0，没有完整结果的文件不显示问题数', async () => {
+    vi.mocked(tasksApi.detail).mockResolvedValue({ ...task(), targets: [
+      { id: 'a', path: 'A.java', state: 'SUCCEEDED', issueCount: 0 },
+      { id: 'b', path: 'B.java', state: 'RUNNING', issueCount: null },
+      { id: 'c', path: 'C.java', state: 'FAILED', errorCode: 'CONTEXT_LIMIT', issueCount: null }
+    ] } as any)
+    const w = await start()
+    const rows = w.findAll('.target')
+    expect(rows[0].text()).toContain('0 个问题')
+    expect(rows[1].text()).not.toContain('个问题')
+    expect(rows[2].text()).not.toContain('个问题')
+    expect(rows[2].text()).toContain('CONTEXT_LIMIT')
+    w.unmount()
+  })
+  it('刷新任务时更新未选中文件的问题数', async () => {
+    const w = await start()
+    vi.mocked(tasksApi.detail).mockResolvedValue({ ...task(), targets: [
+      { id: 'a', path: 'A.java', state: 'SUCCEEDED', issueCount: 6 },
+      { id: 'b', path: 'B.java', state: 'SUCCEEDED', issueCount: 2 }
+    ] } as any)
+    await state(w).loadTask()
+    expect(w.findAll('.target')[1].text()).toContain('2 个问题')
+    expect(state(w).selectedTargetId).toBe('a')
+    w.unmount()
+  })
   it('保留旧统计时仍展示刷新失败提示', async () => {
     const w = await start()
     vi.mocked(tasksApi.statistics).mockRejectedValueOnce(new Error('统计失败'))

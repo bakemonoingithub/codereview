@@ -406,6 +406,8 @@ export interface TaskTargetView {
   note: string | null
   state: string
   errorCode: string | null
+  /** 没有完整问题结果或不是问题审查时为 null。 */
+  issueCount: number | null
   revision: number
   createdAt: string
   updatedAt: string
