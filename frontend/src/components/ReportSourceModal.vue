@@ -12,9 +12,20 @@
         <TaskDetailMetadata :task-id="source.snapshot.taskId || ''">
           {{ source.snapshot.project?.name || source.snapshot.project?.id || '项目未记录' }} · {{ kindText(source.snapshot.kind) }}
           <template v-if="source.snapshot.target?.path"> · {{ source.snapshot.target.path }}</template>
-          <template v-if="source.snapshot.target?.headSha"> · <code>{{ source.snapshot.target.headSha.slice(0, 12) }}</code></template>
           <template #extra>结果 {{ source.resultId }} · 冻结于 {{ source.snapshot.frozenAt || '—' }}</template>
         </TaskDetailMetadata>
+        <dl class="source-versions" aria-label="来源源码版本">
+          <template v-if="sourceVersion.branch">
+            <dt>分支</dt><dd><code>{{ sourceVersion.branch }}</code></dd>
+          </template>
+          <template v-if="sourceVersion.baseSha">
+            <dt>修改前版本</dt><dd><code>{{ sourceVersion.baseSha }}</code></dd>
+            <dt>修改后版本</dt><dd><code>{{ sourceVersion.headSha || '版本未记录' }}</code></dd>
+          </template>
+          <template v-else>
+            <dt>源码版本</dt><dd><code>{{ sourceVersion.headSha || '版本未记录' }}</code></dd>
+          </template>
+        </dl>
         <a-alert class="notice" type="info" show-icon message="当前阅读报告生成时的冻结快照，结果、反馈和材料均以当时保存的内容为准。" />
 
         <div class="reader-tabs" role="tablist" aria-label="冻结来源内容">
@@ -50,8 +61,13 @@
         </div>
 
         <div v-else class="feedback">
-          <h3>当时结果级反馈</h3>
-          <p>{{ feedbackText(source.snapshot.resultFeedback) }}</p>
+          <h3>{{ source.snapshot.kind === 'ISSUE' ? '当时问题反馈' : '当时结果级反馈' }}</h3>
+          <p class="feedback-summary">
+            <template v-if="source.snapshot.kind === 'ISSUE'">{{ frozenFeedback.total }} 个问题 · </template>
+            准确 {{ frozenFeedback.accurate }} · 不准确 {{ frozenFeedback.inaccurate }} ·
+            无法判断 {{ frozenFeedback.unknown }} · 未反馈 {{ frozenFeedback.unassessed }}
+          </p>
+          <p v-if="source.snapshot.kind !== 'ISSUE'">{{ feedbackText(source.snapshot.resultFeedback) }}</p>
           <div v-for="(issue, index) in source.snapshot.issues || []" :key="issue.id || index" class="feedback-item">
             <strong>{{ issue.title || `问题 ${index + 1}` }}</strong>
             <p>{{ feedbackText(issue.feedback) }}</p>
@@ -89,6 +105,28 @@ const codeOpen = ref(false)
 const codePayload = ref<CodeReferencePayload | null>(null)
 let loadEpoch = 0
 onBeforeUnmount(() => { loadEpoch++ })
+
+const sourceVersion = computed(() => {
+  const snapshot = source.value?.snapshot
+  return {
+    branch: snapshot?.task?.branch,
+    baseSha: snapshot?.target?.baseSha || snapshot?.task?.baseSha,
+    headSha: snapshot?.target?.headSha || snapshot?.task?.commitSha
+  }
+})
+const frozenFeedback = computed(() => {
+  const snapshot = source.value?.snapshot
+  const feedbacks = snapshot?.kind === 'ISSUE'
+    ? (snapshot.issues || []).map((issue: any) => issue.feedback) : [snapshot?.resultFeedback]
+  const counts = { total: feedbacks.length, accurate: 0, inaccurate: 0, unknown: 0, unassessed: 0 }
+  for (const feedback of feedbacks) {
+    if (feedback?.assessment === 'ACCURATE') counts.accurate++
+    else if (feedback?.assessment === 'INACCURATE') counts.inaccurate++
+    else if (feedback?.assessment === 'UNKNOWN') counts.unknown++
+    else counts.unassessed++
+  }
+  return counts
+})
 
 const materials = computed<MaterialDetail[]>(() => (source.value?.snapshot?.materials || []).map((material: any) => ({
   metadata: {
@@ -197,6 +235,9 @@ function feedbackText(feedback: any) {
 </style>
 <style scoped lang="less">
 .notice { margin: 14px 0; }
+.source-versions { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 6px 12px; margin: 14px 0; font-size: 13px; line-height: 1.8; }
+.source-versions dt { color: var(--muted); }
+.source-versions dd { margin: 0; overflow-wrap: anywhere; }
 .reader-tabs { display: flex; gap: 24px; margin-bottom: 20px; border-bottom: 1px solid var(--line); }
 .reader-tabs button { padding: 12px 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
 .reader-tabs button.active { border-bottom-color: var(--blue); color: var(--blue); font-weight: 600; }

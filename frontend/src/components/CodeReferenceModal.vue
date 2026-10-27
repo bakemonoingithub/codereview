@@ -15,7 +15,7 @@
         <div class="head-main">
           <div class="title-line">
             <h2>{{ fileName }}</h2>
-            <span class="pill">{{ scope === 'issue' ? '问题引用' : '结果引用' }}</span>
+<!--            <span class="pill">{{ scope === 'issue' ? '问题引用' : '结果引用' }}</span>-->
             <span v-if="isFrozen" class="pill">报告冻结</span>
             <span v-if="active?.label" class="pill">{{ active.label }}</span>
             <span v-if="active" class="pill blue">定位 第 {{ activeLabel }} 行</span>
@@ -24,10 +24,10 @@
             <span class="path" :title="path">{{ path }}</span>
             <span class="meta">
               <span>固定版本 <code>{{ shortSha }}</code></span>
-              <span>·</span>
-              <span>{{ sideLabel }}</span>
-              <span>·</span>
-              <span>{{ sentText }}</span>
+<!--              <span>·</span>-->
+<!--              <span>{{ sideLabel }}</span>-->
+<!--              <span>·</span>-->
+<!--              <span>{{ sentText }}</span>-->
             </span>
           </div>
         </div>
@@ -39,10 +39,10 @@
           <a-radio-button value="saved">{{ savedLabel }}</a-radio-button>
           <a-radio-button value="full">固定版本全文</a-radio-button>
         </a-radio-group>
-        <span class="source-note">{{ mode === 'saved' ? savedRangeText : fullRangeText }}</span>
-        <span class="scope-text">
-          {{ scopeText }}在此文件的 <b>{{ references.length }}</b> 处引用<template v-if="evidenceCount">（含 {{ evidenceCount }} 处辅助证据）</template>
-        </span>
+<!--        <span class="source-note">{{ mode === 'saved' ? savedRangeText : fullRangeText }}</span>-->
+<!--        <span class="scope-text">-->
+<!--          {{ scopeText }}在此文件的 <b>{{ references.length }}</b> 处引用<template v-if="evidenceCount">（含 {{ evidenceCount }} 处辅助证据）</template>-->
+<!--        </span>-->
         <div class="nav">
           <a-button size="small" :disabled="!canPrev" @click="go(-1)">↑ 上一处</a-button>
           <span class="counter">{{ references.length ? activePosition : '0 / 0' }}</span>
@@ -83,12 +83,12 @@
       </div>
 
       <footer class="reader-foot">
-        <span class="legend">
-          <i class="swatch active"></i>{{ scope === 'issue' ? '当前引用' : '当前依据' }}
-          <i class="swatch other"></i>{{ scope === 'issue' ? '本问题其他引用' : '本结果其他依据' }}
-        </span>
+<!--        <span class="legend">-->
+<!--          <i class="swatch active"></i>{{ scope === 'issue' ? '当前引用' : '当前依据' }}-->
+<!--          <i class="swatch other"></i>{{ scope === 'issue' ? '本问题其他引用' : '本结果其他依据' }}-->
+<!--        </span>-->
         <span class="spacer"></span>
-        <span class="hint">{{ footerHint }}</span>
+<!--        <span class="hint">{{ footerHint }}</span>-->
         <span class="hint kbd-hint"><kbd>Alt</kbd> + <kbd>←</kbd>/<kbd>→</kbd> 切换</span>
         <a-button size="small" @click="close">关闭</a-button>
       </footer>
@@ -192,35 +192,6 @@ const activeInView = computed(() => {
   if (mode.value === 'saved') return inSaved(active.value)
   return fullLoaded.value && active.value.endLine <= fullLineCount.value
 })
-const outsideCount = computed(() => mode.value === 'saved' && savedView.value
-  ? references.value.filter((ref) => !inSaved(ref)).length
-  : 0)
-
-const fullRangeText = computed(() => {
-  const note = `扩展阅读，不改变${isFrozen.value ? '冻结' : '发送'}内容`
-  if (!fullLoaded.value) return `全文件 · ${note}`
-  return fullLineCount.value
-    ? `全文件 1–${fullLineCount.value} 行 · ${note}`
-    : `空文件 · ${note}`
-})
-const savedRangeText = computed(() => savedView.value
-  ? `${isFrozen.value ? '报告冻结' : '实际发送'} · 第 ${savedView.value.start}–${savedView.value.end} 行`
-  : isFrozen.value ? '报告保存的冻结片段' : '实际发送的片段')
-const sentText = computed(() => {
-  if (!active.value?.materialId) return '未关联材料'
-  const detail = activeMaterial.value
-  if (detail) return `${isFrozen.value ? '报告冻结' : '本次发送'}第 ${detail.metadata.startLine}–${detail.metadata.endLine} 行`
-  return materialState.value[active.value.materialId] === 'error'
-    ? `${isFrozen.value ? '冻结' : '本次发送'}范围未知`
-    : `${isFrozen.value ? '冻结' : '本次发送'}范围读取中`
-})
-const scopeText = computed(() => props.scope === 'issue' ? '本问题' : '本结果')
-const footerHint = computed(() => {
-  const parts: string[] = []
-  if (outsideCount.value) parts.push(`${outsideCount.value} 处引用不在${isFrozen.value ? '冻结' : '发送'}片段内`)
-  parts.push(props.scope === 'issue' ? '同一审查的其他问题引用不标记' : '其他结果的引用不标记')
-  return parts.join(' · ')
-})
 const bannerText = computed(() => {
   if (!active.value) return ''
   if (mode.value === 'full' && fullLoaded.value && active.value.endLine > fullLineCount.value) {
@@ -237,9 +208,6 @@ const canNext = computed(() => !navDisabled.value && activeIndex.value < referen
 
 const fileName = computed(() => props.path.split('/').pop() || props.path)
 const shortSha = computed(() => props.sha ? props.sha.slice(0, 12) : '未记录')
-const sideLabel = computed(() => (
-  ({ FILE: '文件', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[props.side] || props.side
-))
 
 function fmtRange(ref: { startLine: number; endLine: number }): string {
   return ref.startLine === ref.endLine ? String(ref.startLine) : `${ref.startLine}–${ref.endLine}`

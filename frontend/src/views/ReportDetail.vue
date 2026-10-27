@@ -25,14 +25,8 @@
               <h1>{{ report.title }}</h1>
               <StatusBadge :tone="stateTone(report.state)">{{ stateText(report.state) }}</StatusBadge>
             </div>
-            <TaskDetailMetadata :task-id="report.id" id-label="报告 ID">
+            <TaskDetailMetadata :task-id="report.id" :show-id="false">
               {{ projectSummary }} · 审查报告
-              <span v-if="report.model"> · {{ report.model.name }}（{{ report.model.modelName }}）</span>
-              <template #extra>
-                冻结于 {{ formatTime(report.createdAt) }}
-                <span v-if="report.finishedAt"> · 结束于 {{ formatTime(report.finishedAt) }}</span>
-                <span v-if="report.model"> · 模型配置修订 {{ report.model.revision }}</span>
-              </template>
             </TaskDetailMetadata>
           </div>
           <div class="actions">
@@ -81,68 +75,99 @@
           </template>
         </a-alert>
 
-        <div class="overview">
-          <div><b>{{ report.sourceCount }}</b><span>个审查结果</span></div>
-          <div><b>{{ report.taskCount }}</b><span>个来源任务</span></div>
-          <div><b>{{ report.versionCount }}</b><span>个仓库版本</span></div>
-          <div class="kind-distribution">
-            <span>类型分布</span>
-            <div class="kind-tags">
-              <a-tag v-for="item in kindDistribution" :key="item.kind">{{ item.label }} {{ item.count }}</a-tag>
-              <span v-if="!kindDistribution.length">—</span>
-            </div>
-          </div>
-        </div>
-
-        <section class="card config-card">
-          <div class="section-head"><strong>生成配置</strong></div>
-          <div class="config-grid">
-            <div><span class="muted small">生成模型</span><strong>{{ report.model?.name || '—' }}</strong></div>
-            <div><span class="muted small">报告通用规则</span><strong>{{ report.prompt ? `${report.prompt.name} · v${report.prompt.versionNo}` : '未使用报告通用规则' }}</strong></div>
-            <div class="config-instruction"><span class="muted small">补充要求</span><p>{{ report.instruction || '无' }}</p></div>
-          </div>
-          <div v-if="report.prompt" class="frozen-prompt">
-            <div class="section-head"><strong>冻结的规则正文</strong><span class="muted small">{{ report.prompt.name }} · v{{ report.prompt.versionNo }}</span></div>
-            <pre>{{ report.prompt.content }}</pre>
-          </div>
-        </section>
-
         <div class="report-layout">
-          <section class="card report-body">
-            <template v-if="report.body">
-              <ReportMarkdown
-                :text="report.body"
-                :source-count="report.sources.length"
-                @citation="openSource"
-              />
-              <div class="notice">
-                正文与下载使用同一份保存内容。引用 [S1] 可打开对应冻结来源；后续修改反馈、配置或源码不会替换本报告。
-              </div>
-            </template>
-            <div v-else-if="report.state === 'FAILED'" class="empty">
-              <a-empty description="没有可阅读的报告正文">
-                <p class="muted small">可查看下方实际调用与错误，或返回报告列表重新选材生成。</p>
-                <a-button @click="router.push('/reports/new')">重新选材生成</a-button>
-              </a-empty>
+          <section class="card report-content">
+            <div class="tabbar" aria-label="报告详情内容">
+              <button type="button" :class="{ active: activeTab === 'result' }" @click="activeTab = 'result'">报告正文</button>
+              <button type="button" :class="{ active: activeTab === 'input' }" @click="activeTab = 'input'">输入与配置</button>
+              <button type="button" :class="{ active: activeTab === 'calls' }" @click="activeTab = 'calls'">实际调用</button>
             </div>
-            <div v-else class="empty muted">报告正文生成后显示在这里。</div>
 
-            <section v-if="report.calls.length" class="calls">
-              <div class="section-head">
-                <strong>实际调用</strong>
-                <span class="spacer" />
-                <span class="muted small">{{ report.calls.length }} 次尝试</span>
-              </div>
-              <div v-for="call in report.calls" :key="call.id" class="call-row">
-                <div>
-                  <StatusBadge :tone="call.state === 'SUCCEEDED' ? 'green' : call.state === 'FAILED' ? 'red' : 'blue'">
-                    {{ call.state }}
-                  </StatusBadge>
-                  <span class="muted small">第 {{ call.attempt }} 次 · {{ call.errorCode || '无错误码' }}</span>
-                  <div v-if="call.errorMessage" class="error small">{{ call.errorMessage }}</div>
+            <div v-show="activeTab === 'result'" class="report-body">
+              <template v-if="report.body">
+                <ReportMarkdown
+                  :text="report.body"
+                  :source-count="report.sources.length"
+                  @citation="openSource"
+                />
+                <div class="notice">
+                  正文与下载使用同一份保存内容。引用 [S1] 可打开对应冻结来源；后续修改反馈、配置或源码不会替换本报告。
                 </div>
-                <a-button size="small" @click="openCall(call.id)">查看完整请求与返回</a-button>
+              </template>
+              <div v-else-if="report.state === 'FAILED'" class="empty">
+                <a-empty description="没有可阅读的报告正文">
+                  <p class="muted small">可在「实际调用」中查看请求、返回与错误，或重新选材生成。</p>
+                  <a-button @click="activeTab = 'calls'">查看实际调用</a-button>
+                  <a-button @click="router.push('/reports/new')">重新选材生成</a-button>
+                </a-empty>
               </div>
+              <div v-else class="empty muted">报告正文生成后显示在这里。</div>
+            </div>
+
+            <div v-show="activeTab === 'input'" class="report-input">
+              <section class="input-section" aria-label="任务配置">
+                <h3>任务配置</h3>
+                <dl class="input-pairs">
+                  <dt>涉及项目</dt>
+                  <dd>{{ projectSummary }}</dd>
+                  <dt>任务类型</dt>
+                  <dd>审查报告</dd>
+                  <dt>使用的模型</dt>
+                  <dd>{{ report.model?.name || (report.state === 'INPUT_FROZEN' ? '尚未选择' : '模型名称未记录') }}</dd>
+                </dl>
+              </section>
+
+              <section class="input-section" aria-label="报告规则">
+                <h3>报告规则</h3>
+                <dl class="input-pairs">
+                  <dt>本次要求</dt>
+                  <dd class="input-text">{{ report.instruction?.trim() ? report.instruction : (report.state === 'INPUT_FROZEN' ? '尚未设置' : '未填写') }}</dd>
+                  <dt>通用规则</dt>
+                  <dd>{{ report.prompt ? `${report.prompt.name} · v${report.prompt.versionNo}` : (report.state === 'INPUT_FROZEN' ? '尚未选择' : '未使用通用规则') }}</dd>
+                  <template v-if="report.prompt">
+                    <dt>规则正文</dt>
+                    <dd>
+                      <details>
+                        <summary>展开查看</summary>
+                        <pre class="input-rule-content">{{ report.prompt.content?.trim() ? report.prompt.content : '保存的规则正文不可用。' }}</pre>
+                      </details>
+                    </dd>
+                  </template>
+                </dl>
+              </section>
+
+              <section class="input-section" aria-label="报告材料">
+                <h3>报告材料</h3>
+                <dl class="input-pairs">
+                  <dt>来源范围</dt>
+                  <dd>{{ report.sourceCount }} 个审查结果 · {{ report.taskCount }} 个来源任务 · {{ report.versionCount }} 个源码版本</dd>
+                  <dt>来源类型</dt>
+                  <dd class="kind-tags">
+                    <a-tag v-for="item in kindDistribution" :key="item.kind">{{ item.label }} {{ item.count }}</a-tag>
+                    <span v-if="!kindDistribution.length" class="muted">来源类型未记录</span>
+                  </dd>
+                </dl>
+                <p v-if="report.sources.length" class="muted small input-material-intro">可在「报告来源」中打开生成时保存的结果、版本、反馈和代码材料。</p>
+              </section>
+
+              <section class="input-section" aria-label="任务信息">
+                <h3>任务信息</h3>
+                <dl class="input-pairs">
+                  <dt>报告 ID</dt>
+                  <dd><code>{{ report.id }}</code></dd>
+                  <dt>创建与结束</dt>
+                  <dd>
+                    创建：{{ report.createdAt ? formatTime(report.createdAt) : '创建时间未记录' }}<br>
+                    结束：{{ report.finishedAt ? formatTime(report.finishedAt) : (report.state === 'INPUT_FROZEN' ? '尚未开始生成' : (['QUEUED', 'RUNNING'].includes(report.state) ? '尚未结束' : '结束时间未记录')) }}
+                  </dd>
+                  <dt>模型配置修订</dt>
+                  <dd>{{ report.model?.revision ?? (report.state === 'INPUT_FROZEN' ? '尚未选择模型' : '未记录') }}</dd>
+                </dl>
+              </section>
+            </div>
+
+            <section v-show="activeTab === 'calls'" class="calls">
+              <ActualCallList :calls="report.calls" :format-time="formatTime" @open="openCall" />
             </section>
           </section>
 
@@ -156,26 +181,17 @@
             <button
               v-for="source in report.sources"
               :key="source.ordinal"
+              type="button"
               class="source-card"
+              :aria-label="`查看来源 S${source.ordinal}`"
               @click="openSource(source.ordinal)"
             >
               <div class="row wrap">
-                <StatusBadge tone="blue">S{{ source.ordinal }}</StatusBadge>
-                <StatusBadge :tone="source.kind === 'AGENT' ? 'blue' : 'default'">{{ kindText(source.kind) }}</StatusBadge>
-                <span class="spacer" />
-                <span class="muted small">{{ shortSha(source.headSha) }}</span>
+                <StatusBadge tone="blue">S{{ source.ordinal }} · {{ kindText(source.kind) }}</StatusBadge>
               </div>
-              <strong class="source-title">{{ source.projectName || source.projectId }}</strong>
-              <span class="muted small">{{ source.path || 'Agent Markdown' }} · {{ shortId(source.taskId) }}</span>
-              <span class="muted small">{{ source.summary || '无摘要' }}</span>
-              <span v-if="source.kind === 'ISSUE'" class="muted small">
-                {{ source.issueCount }} 个问题 · 准确 {{ source.accurate }} · 不准确 {{ source.inaccurate }} ·
-                无法判断 {{ source.unknown }} · 未反馈 {{ source.unassessed }}
-              </span>
-              <span v-else class="muted small">
-                结果级反馈：准确 {{ source.accurate }} · 不准确 {{ source.inaccurate }} ·
-                无法判断 {{ source.unknown }} · 未反馈 {{ source.unassessed }}
-              </span>
+              <strong class="source-title">{{ source.projectName || '项目名称不可用' }}</strong>
+              <span v-if="source.kind === 'AGENT'" class="muted small">{{ source.summary || 'Agent 分析结果' }}</span>
+              <code v-else class="source-path">{{ source.path || '文件路径未记录' }}</code>
             </button>
             <p class="muted small">
               正文中的 [S1] 等引用可打开对应来源；来源读取使用冻结快照，不重新查询当前配置或最新代码。
@@ -273,12 +289,14 @@ import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import ReportSourceModal from '@/components/ReportSourceModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
+import ActualCallList from '@/components/ActualCallList.vue'
 import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 
 const route = useRoute()
 const router = useRouter()
 const id = computed(() => String(route.params.id || ''))
 const report = ref<ReportDetail | null>(null)
+const activeTab = ref<'result' | 'input' | 'calls'>('result')
 const loading = ref(false)
 const refreshing = ref(false)
 const error = ref('')
@@ -324,7 +342,7 @@ const selectedPromptVersion = computed(() =>
 const projectSummary = computed(() => {
   const projects = new Map<string, string>()
   for (const source of report.value?.sources || []) {
-    projects.set(source.projectId, source.projectName || source.projectId)
+    projects.set(source.projectId, source.projectName || '项目名称不可用')
   }
   return [...projects.values()].join('、') || '项目未记录'
 })
@@ -337,6 +355,7 @@ watch(
   () => {
     reportEpoch++
     report.value = null
+    activeTab.value = 'result'
     sourceOpen.value = false
     sourceOrdinal.value = 0
     callOpen.value = false
@@ -559,15 +578,7 @@ function stateTone(state: string): 'green' | 'amber' | 'blue' | 'red' | 'default
 }
 
 function kindText(kind: string) {
-  return ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度', AGENT: 'Agent' } as Record<string, string>)[kind] || kind
-}
-
-function shortSha(sha: string | null) {
-  return sha ? sha.slice(0, 12) : 'UNKNOWN'
-}
-
-function shortId(value: string) {
-  return value.length <= 10 ? value : value.slice(-10)
+  return ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度', AGENT: 'Agent 分析' } as Record<string, string>)[kind] || kind
 }
 
 function formatTime(value: string) {
@@ -631,76 +642,6 @@ function formatTime(value: string) {
 .error {
   color: var(--red);
 }
-.config-card {
-  margin-bottom: 18px;
-  padding: 18px 22px;
-}
-.config-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-.config-grid > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.config-grid strong {
-  overflow-wrap: anywhere;
-}
-.config-instruction p {
-  margin: 0;
-  white-space: pre-wrap;
-}
-.frozen-prompt {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-.frozen-prompt pre {
-  max-height: 260px;
-  margin: 10px 0 0;
-  overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--ink);
-  font: inherit;
-  font-size: 12px;
-  line-height: 1.65;
-}
-.overview {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 22px;
-  padding: 22px 28px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #fff;
-  box-shadow: var(--shadow);
-}
-.overview > div {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-}
-.overview b {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.8px;
-  color: var(--ink);
-}
-.overview span {
-  color: var(--muted);
-  font-size: 12px;
-}
-.overview > .kind-distribution {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-}
 .kind-tags {
   display: flex;
   flex-wrap: wrap;
@@ -724,6 +665,64 @@ function formatTime(value: string) {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
+.report-content { min-width: 0; }
+.tabbar {
+  display: flex;
+  gap: 28px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.tabbar button {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding: 15px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tabbar button.active {
+  color: var(--blue);
+  border-bottom: 2px solid var(--blue);
+  font-weight: 600;
+}
+.report-input {
+  padding: 20px 24px 24px;
+  .input-section {
+    padding: 20px 0;
+    border-top: 1px solid var(--line);
+    h3 { margin: 0 0 15px; font-size: 16px; }
+    &:last-child { padding-bottom: 0; }
+  }
+  .input-pairs {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 13px 18px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.8;
+    dt { color: var(--muted); }
+    dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  }
+  .input-text { white-space: pre-wrap; }
+  summary { color: var(--blue); cursor: pointer; }
+  .input-rule-content {
+    max-height: 260px;
+    overflow: auto;
+    margin: 12px 0 0;
+    padding: 13px 15px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: inherit;
+  }
+  .input-material-intro { margin: 16px 0 14px; line-height: 1.8; }
+}
 .report-body {
   padding: 30px 38px;
   max-width: none;
@@ -745,9 +744,6 @@ function formatTime(value: string) {
   padding: 18px 24px;
   border-bottom: 1px solid var(--line);
 }
-.calls .section-head {
-  margin-bottom: 10px;
-}
 .spacer {
   flex: 1;
 }
@@ -765,6 +761,7 @@ function formatTime(value: string) {
   box-shadow: none;
   cursor: pointer;
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 .source-card:hover {
   background: var(--bg);
@@ -772,6 +769,7 @@ function formatTime(value: string) {
 .source-title {
   margin-top: 2px;
 }
+.source-path { color: var(--muted); font-size: 12px; }
 .notice {
   margin-top: 18px;
   padding: 13px 16px;
@@ -787,17 +785,8 @@ function formatTime(value: string) {
   padding: 15px 18px;
 }
 .calls {
-  margin-top: 24px;
-  border-top: 1px solid #eef2f7;
-  padding-top: 16px;
-}
-.call-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f2f5f9;
+  min-height: 320px;
+  padding: 20px 24px 24px;
 }
 .empty {
   padding: 36px 0;
@@ -821,16 +810,9 @@ function formatTime(value: string) {
     position: static;
     max-height: none;
   }
-  .overview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .config-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
-@media (max-width: 650px) {
-  .config-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 760px) {
+  .page-head { flex-direction: column; align-items: flex-start; }
+  .report-input .input-pairs { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
 }
 </style>

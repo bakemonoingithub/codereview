@@ -93,9 +93,8 @@ describe('代码引用阅读', () => {
     expect(repositoryApi.file).toHaveBeenCalledWith('p1', sha, 'src/A.java')
     expect(tasksApi.material).toHaveBeenCalledWith('t1', 'm1')
     expect(wrapper.text()).toContain('定位 第 10–12 行')
-    expect(wrapper.text()).toContain('本问题在此文件的 3 处引用（含 1 处辅助证据）')
     expect(wrapper.text()).toContain('1 / 3')
-    expect(wrapper.text()).toContain('全文件 1–40 行')
+    expect(wrapper.find('.toolbar').text()).toContain('固定版本全文')
     expect(wrapper.findAll('.range')).toHaveLength(3)
     expect(wrapper.findAll('.range.active')).toHaveLength(1)
     expect(wrapper.find('.code-gutter').text()).toContain('1')
@@ -122,7 +121,7 @@ describe('代码引用阅读', () => {
       activeEnd: 20
     })
     expect(wrapper.find('.reader-head').text()).toContain('E2')
-    expect(wrapper.text()).toContain('本结果在此文件的 3 处引用')
+    expect(wrapper.text()).toContain('2 / 3')
     await button(wrapper, '下一处').trigger('click')
     await flushPromises()
     expect(wrapper.find('.reader-head').text()).toContain('E3')
@@ -139,7 +138,7 @@ describe('代码引用阅读', () => {
     expect(tasksApi.material).toHaveBeenCalledWith('t1', 'm1')
     expect(wrapper.find('.reader-head').text()).toContain('E1')
     expect(wrapper.find('pre').text()).toContain('line 10')
-    expect(wrapper.text()).toContain('实际发送 · 第 8–35 行')
+    expect(wrapper.find('.toolbar').text()).toContain('保存片段')
     wrapper.unmount()
   })
 
@@ -177,7 +176,7 @@ describe('代码引用阅读', () => {
     await flushPromises()
     await nextTick()
 
-    expect(wrapper.text()).toContain('实际发送 · 第 8–35 行')
+    expect(wrapper.find('.toolbar').text()).toContain('保存片段')
     expect(wrapper.find('.code-gutter').text()).toContain('8')
     expect(wrapper.find('pre').text()).toContain('line 8')
 
@@ -188,7 +187,7 @@ describe('代码引用阅读', () => {
     wrapper.unmount()
   })
 
-  it('片段不覆盖当前引用时给出说明，并提示未覆盖的引用数', async () => {
+  it('片段不覆盖当前引用时给出说明', async () => {
     vi.mocked(tasksApi.material).mockResolvedValue(saved('m1', 20, 25) as any)
     const wrapper = await start()
     state(wrapper).mode = 'saved'
@@ -196,7 +195,6 @@ describe('代码引用阅读', () => {
     await nextTick()
 
     expect(wrapper.text()).toContain('当前引用第 10–12 行不在本次发送的片段（第 20–25 行）内')
-    expect(wrapper.text()).toContain('2 处引用不在发送片段内')
     wrapper.unmount()
   })
 

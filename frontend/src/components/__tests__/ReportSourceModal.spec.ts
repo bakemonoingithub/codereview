@@ -36,6 +36,61 @@ beforeEach(() => {
 })
 
 describe('报告冻结来源', () => {
+  it('来源弹窗展示完整的冻结分支与修改前后版本', async () => {
+    const data: any = snapshot()
+    data.snapshot.task = { branch: 'release', commitSha: 'c'.repeat(40), baseSha: 'd'.repeat(40) }
+    data.snapshot.target = { path: 'A.java', baseSha: 'b'.repeat(40), headSha: 'a'.repeat(40) }
+    vi.mocked(reportsApi.source).mockResolvedValue(data)
+    const wrapper = await start()
+    const versions = wrapper.find('[aria-label="来源源码版本"]')
+    expect(versions.text()).toContain('release')
+    expect(versions.text()).toContain('修改前版本')
+    expect(versions.text()).toContain('修改后版本')
+    expect(versions.findAll('code').map(code => code.text())).toEqual(['release', 'b'.repeat(40), 'a'.repeat(40)])
+    expect(tasksApi.material).not.toHaveBeenCalled()
+    expect(repositoryApi.file).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('版本只使用冻结字段，单版本及缺失版本有明确展示', async () => {
+    const data: any = snapshot()
+    data.snapshot.task = { commitSha: 'saved-version' }
+    vi.mocked(reportsApi.source).mockResolvedValue(data)
+    const wrapper = await start()
+    const versions = wrapper.find('[aria-label="来源源码版本"]')
+    expect(versions.text()).toContain('源码版本')
+    expect(versions.text()).toContain('saved-version')
+    expect(versions.text()).not.toContain('修改前版本')
+    vi.mocked(reportsApi.source).mockResolvedValue(snapshot() as any)
+    await wrapper.setProps({ ordinal: 2 })
+    await flushPromises()
+    expect(wrapper.find('[aria-label="来源源码版本"]').text()).toContain('版本未记录')
+    wrapper.unmount()
+  })
+
+  it('反馈计数根据冻结评价展示，问题审查与结果级反馈分别统计', async () => {
+    const data: any = snapshot()
+    data.snapshot.issues = ['ACCURATE', 'INACCURATE', 'UNKNOWN', null].map((assessment, index) => ({
+      id: `issue-${index}`, title: `问题 ${index}`, locations: [], feedback: assessment ? { assessment } : null
+    }))
+    vi.mocked(reportsApi.source).mockResolvedValue(data)
+    const wrapper = await start()
+    await wrapper.findAll('.reader-tabs button')[2].trigger('click')
+    expect(wrapper.find('.feedback-summary').text()).toContain('4 个问题')
+    expect(wrapper.find('.feedback-summary').text()).toContain('准确 1 · 不准确 1 · 无法判断 1 · 未反馈 1')
+
+    data.snapshot.kind = 'AGENT'
+    data.snapshot.resultFeedback = { assessment: 'UNKNOWN', comment: '冻结评论' }
+    vi.mocked(reportsApi.source).mockResolvedValue(data)
+    await wrapper.setProps({ ordinal: 2 })
+    await flushPromises()
+    await wrapper.findAll('.reader-tabs button')[2].trigger('click')
+    expect(wrapper.find('.feedback-summary').text()).toContain('准确 0 · 不准确 0 · 无法判断 1 · 未反馈 0')
+    expect(wrapper.find('.feedback-summary').text()).not.toContain('个问题')
+    expect(wrapper.find('.feedback').text()).toContain('无法判断（冻结评论）')
+    wrapper.unmount()
+  })
+
   it('展示冻结的辅助证据、变更关系与材料缺口，并按材料 ID 还原位置', async () => {
     const wrapper = await start()
     expect(wrapper.text()).toContain('删除幂等保护')

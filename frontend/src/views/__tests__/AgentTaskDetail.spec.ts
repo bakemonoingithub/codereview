@@ -180,7 +180,7 @@ describe('Agent 任务详情', () => {
     expect(meters[3].find('progress').attributes()).toMatchObject({ value: '310', max: '1200' })
     expect(meters[4].find('strong').text()).toContain('12,000')
     expect(meters[4].find('strong').text()).toContain('16,384')
-    expect(meters[4].text()).toContain('累计已记录 24,000 Token')
+    expect(meters[4].text()).toContain('总计 24,000 Token')
     expect(meters[4].find('progress').attributes()).toMatchObject({ value: '12000', max: '16384' })
     wrapper.unmount()
   })

@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { reactive, nextTick } from 'vue'
 import ReportDetail from '@/views/ReportDetail.vue'
+import ReportMarkdown from '@/components/ReportMarkdown.vue'
+import ReportSourceModal from '@/components/ReportSourceModal.vue'
 import { namedAntStubs, silentStub } from '@/testUtils/antStubs'
 
 const context = vi.hoisted(() => ({
@@ -19,7 +21,7 @@ vi.mock('@/api/v2', () => ({
   promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() }
 }))
 vi.mock('@/components/ReportMarkdown.vue', () => ({
-  default: { props: ['text'], template: '<div class="report-body-stub">{{ text }}</div>' }
+  default: { props: ['text', 'sourceCount'], emits: ['citation'], template: '<div class="report-body-stub">{{ text }}</div>' }
 }))
 
 import { modelsApi, promptsApi, reportsApi } from '@/api/v2'
@@ -125,11 +127,142 @@ describe('报告详情阅读', () => {
     const s = state(wrapper)
 
     expect(wrapper.text()).toContain('订单报告')
-    expect(wrapper.text()).toContain('重试可能重复扣款')
+    expect(wrapper.find('.source-card').text()).toContain('A.java')
     expect(wrapper.find('.report-body-stub').text()).toContain('[S1]')
-    s.openSource(1)
+    wrapper.findComponent(ReportMarkdown).vm.$emit('citation', 1)
     expect(s.sourceOpen).toBe(true)
     expect(s.sourceOrdinal).toBe(1)
+    wrapper.unmount()
+  })
+
+  it('默认阅读报告正文，输入与调用独立展示，标题下只保留项目和类型', async () => {
+    const wrapper = await start()
+    expect(state(wrapper).activeTab).toBe('result')
+    expect(wrapper.find('.report-body').attributes('style') || '').not.toContain('display: none')
+    expect(wrapper.find('.report-input').attributes('style')).toContain('display: none')
+    expect(wrapper.find('.calls').attributes('style')).toContain('display: none')
+    expect(wrapper.find('.task-metadata').text()).toBe('订单服务 · 审查报告')
+    expect(wrapper.find('.config-card').exists()).toBe(false)
+    expect(wrapper.find('.overview').exists()).toBe(false)
+
+    await wrapper.findAll('.tabbar button')[1].trigger('click')
+    expect(wrapper.find('.report-input').attributes('style') || '').not.toContain('display: none')
+    expect(wrapper.find('.report-body').attributes('style')).toContain('display: none')
+    expect(wrapper.findAll('.input-section h3').map(heading => heading.text())).toEqual([
+      '任务配置', '报告规则', '报告材料', '任务信息'
+    ])
+    const info = wrapper.find('[aria-label="任务信息"]')
+    expect(info.text()).toContain('report-1')
+    expect(info.text()).toContain('创建与结束')
+    expect(info.text()).toContain('模型配置修订')
+    expect(info.find('details').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="报告材料"]').text()).toContain('1 个审查结果 · 1 个来源任务 · 1 个源码版本')
+    wrapper.unmount()
+  })
+
+  it('输入中使用保存的规则与模型，不读取当前配置，规则正文默认收起', async () => {
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report,
+      instruction: '优先说明支付风险\n保留来源引用',
+      prompt: { id: 'old-rule', name: '生成时规则', versionId: 'old-version', versionNo: 3, content: '生成时保存的正文' }
+    } as any)
+    const wrapper = await start()
+    await wrapper.findAll('.tabbar button')[1].trigger('click')
+    const rules = wrapper.find('[aria-label="报告规则"]')
+    expect(rules.text()).toContain('生成时规则 · v3')
+    expect(rules.find('.input-text').text()).toBe('优先说明支付风险\n保留来源引用')
+    expect(rules.find('details').attributes('open')).toBeUndefined()
+    expect(rules.find('pre').text()).toBe('生成时保存的正文')
+    expect(wrapper.find('[aria-label="任务配置"]').text()).toContain('默认')
+    expect(promptsApi.detail).not.toHaveBeenCalled()
+    expect(modelsApi.list).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('混合来源只在共用侧栏列出，文件显示路径，Agent 显示摘要', async () => {
+    const headSha = 'a'.repeat(40)
+    const baseSha = 'b'.repeat(40)
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report,
+      sourceCount: 2, taskCount: 2, versionCount: 2, kindCounts: { ISSUE: 1, AGENT: 1 },
+      sources: [{ ...source, headSha, baseSha }, { ...source, ordinal: 2, resultId: 'agent-result', kind: 'AGENT', path: null, headSha: null, baseSha: null }]
+    } as any)
+    const wrapper = await start()
+    await wrapper.findAll('.tabbar button')[1].trigger('click')
+    const materials = wrapper.find('[aria-label="报告材料"]')
+    expect(materials.find('.material-list').exists()).toBe(false)
+    expect(materials.text()).toContain('2 个审查结果 · 2 个来源任务 · 2 个源码版本')
+    expect(materials.text()).toContain('「报告来源」')
+    const rows = wrapper.findAll('.source-card')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].text()).toContain('A.java')
+    expect(rows[0].text()).not.toContain('准确')
+    expect(rows[0].text()).not.toContain(headSha)
+    expect(rows[1].text()).toContain('重试可能重复扣款')
+    expect(rows[1].text()).toContain('Agent 分析')
+    for (const tab of wrapper.findAll('.tabbar button')) {
+      await tab.trigger('click')
+      expect(wrapper.findAll('.source-card')).toHaveLength(2)
+    }
+    await rows[1].trigger('click')
+    expect(state(wrapper).sourceOrdinal).toBe(2)
+    expect(state(wrapper).sourceOpen).toBe(true)
+    expect(wrapper.findComponent(ReportSourceModal).props('reportId')).toBe('report-1')
+    wrapper.unmount()
+  })
+
+  it('区分待生成时尚未选择配置和已生成但未使用规则，调用无记录时有说明', async () => {
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report,
+      state: 'INPUT_FROZEN', body: null, model: null, instruction: null, prompt: null, finishedAt: null
+    } as any)
+    const wrapper = await start()
+    expect(wrapper.find('[aria-label="任务配置"]').text()).toContain('尚未选择')
+    expect(wrapper.find('[aria-label="报告规则"]').text()).toContain('尚未设置')
+    expect(wrapper.find('[aria-label="报告规则"]').text()).not.toContain('未使用通用规则')
+    expect(wrapper.find('[aria-label="任务信息"]').text()).toContain('尚未开始生成')
+    await wrapper.findAll('.tabbar button')[2].trigger('click')
+    expect(wrapper.find('.calls').attributes('style') || '').not.toContain('display: none')
+    expect(wrapper.find('.calls').text()).toContain('暂无已保存的模型调用记录')
+
+    vi.mocked(reportsApi.detail).mockResolvedValue(report as any)
+    await state(wrapper).load()
+    await flushPromises()
+    expect(state(wrapper).activeTab).toBe('calls')
+    expect(wrapper.find('[aria-label="报告规则"]').text()).toContain('未使用通用规则')
+    expect(wrapper.find('[aria-label="报告规则"]').text()).toContain('未填写')
+    expect(wrapper.find('[aria-label="报告规则"]').find('details').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('实际调用沿用完整请求与返回阅读入口，错误、状态和尝试顺序可见', async () => {
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, calls: [
+      { id: 'call-1', state: 'FAILED', attempt: 1, errorCode: 'TIMEOUT', errorMessage: '请求超时', createdAt: '2026-10-21T10:01:00' },
+      { id: 'call-2', state: 'SUCCEEDED', attempt: 2, errorCode: null, errorMessage: null, createdAt: '2026-10-21T10:02:00' }
+    ] } as any)
+    const wrapper = await start()
+    await wrapper.findAll('.tabbar button')[2].trigger('click')
+    const rows = wrapper.findAll('.call-row')
+    expect(rows[0].text()).toContain('失败')
+    expect(rows[0].text()).toContain('第 1 次传输尝试')
+    expect(rows[0].text()).toContain('TIMEOUT')
+    expect(rows[0].text()).toContain('请求超时')
+    expect(rows[1].text()).toContain('成功')
+    expect(wrapper.find('.report-body').find('.call-row').exists()).toBe(false)
+    await rows[1].find('a-button-stub').trigger('click')
+    expect(state(wrapper).callId).toBe('call-2')
+    expect(state(wrapper).callOpen).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('失败页可跳到实际调用，切换报告后恢复正文 tab', async () => {
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, state: 'FAILED', body: null } as any)
+    const wrapper = await start()
+    const jump = wrapper.findAll('.report-body a-button-stub').find(button => button.text() === '查看实际调用')!
+    await jump.trigger('click')
+    expect(state(wrapper).activeTab).toBe('calls')
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, id: 'report-2' } as any)
+    context.route.params.id = 'report-2'
+    await flushPromises()
+    expect(state(wrapper).activeTab).toBe('result')
+    expect(wrapper.find('.report-body').attributes('style') || '').not.toContain('display: none')
     wrapper.unmount()
   })
 

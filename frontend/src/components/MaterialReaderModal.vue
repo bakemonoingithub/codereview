@@ -55,7 +55,7 @@
             提交差异
           </a-button>
           <span class="spacer" />
-          <span class="muted small">扩展全文不会改变实际发送内容</span>
+<!--          <span class="muted small">扩展全文不会改变实际发送内容</span>-->
         </div>
 
         <a-spin :spinning="contentLoading">

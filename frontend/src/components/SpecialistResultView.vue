@@ -14,7 +14,7 @@
         </a-tag>
         <span class="muted small">协议 v{{ result.schemaVersion }}</span>
         <span class="spacer" />
-        <span class="muted small">{{ result.createdAt?.replace('T', ' ').slice(0, 19) }}</span>
+<!--        <span class="muted small">{{ result.createdAt?.replace('T', ' ').slice(0, 19) }}</span>-->
       </div>
       <p class="summary-text">{{ result.body.summary || '（无摘要）' }}</p>
     </div>

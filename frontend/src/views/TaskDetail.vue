@@ -14,16 +14,8 @@
               <h1 :title="task.id">{{ taskLabel(task.name, task.id) }}</h1>
               <StatusBadge :tone="stateTone(task.state)">{{ stateText(task.state) }}</StatusBadge>
             </div>
-            <TaskDetailMetadata :task-id="task.id">
-              {{ projectName }} · {{ typeText(task.specialistType) }} ·
-              {{ task.sourceKind === 'DIFF' ? '提交差异' : '文件内容' }} ·
-              <code>{{ (task.headSha || '').slice(0, 7) }}</code>
-              <span v-if="task.baseSha"> → 父 {{ task.baseSha.slice(0, 7) }}</span>
-              <template #extra>
-              文件完成 {{ succeededCount }} / {{ task.targets.length }}
-              <span v-if="failedCount">（失败 {{ failedCount }}）</span>
-              · {{ task.smartSplit ? '允许智能拆分' : '整文件提交' }}
-              </template>
+            <TaskDetailMetadata :task-id="task.id" :show-id="false">
+              {{ projectName }} · {{ typeText(task.specialistType) }}
             </TaskDetailMetadata>
           </div>
           <div class="actions">
@@ -119,77 +111,101 @@
               </template>
 
               <template v-else-if="activeTab === 'materials'">
-                <a-alert
-                  v-if="materialError"
-                  type="error"
-                  show-icon
-                  :message="materialError"
-                />
-                <a-empty v-if="!materials.length && !materialError" description="还没有关联材料" />
-                <div v-if="materials.length" class="material-list">
-                  <div v-for="material in orderedMaterials" :key="material.id" class="material-row">
-                    <div class="material-main">
-                      <code>{{ material.path }}</code>
-                      <span class="muted small">
-                        {{ material.sha.slice(0, 10) }} · 第 {{ material.startLine }}-{{ material.endLine }} 行
-                        · {{ sideText(material.side) }} · {{ material.role }}
-                        · {{ material.sent ? '已发送' : '未发送' }}
-                      </span>
-                      <span v-if="material.diagnostic" class="muted small">{{ material.diagnostic }}</span>
+                <div class="review-input">
+<!--                  <h2>输入与配置</h2>-->
+<!--                  <p class="muted input-intro">查看本任务的配置，以及当前文件的要求和关联代码材料。</p>-->
+
+                  <section class="input-section" aria-label="任务配置">
+                    <h3>任务配置</h3>
+                    <dl class="input-pairs">
+                      <dt>审查项目</dt>
+                      <dd>{{ projectName && projectName !== task.projectId ? projectName : '项目名称不可用' }}</dd>
+                      <dt>审查类型</dt>
+                      <dd>{{ typeText(task.specialistType) || '未知类型' }}</dd>
+                      <dt>分支与源码版本</dt>
+                      <dd><code class="input-version" :title="inputVersion.full">{{ inputVersion.label }}</code></dd>
+                      <dt>当前审查文件</dt>
+                      <dd>
+                        <code>{{ inputTarget?.path || '文件路径未记录' }}</code>
+                        <small v-if="inputTarget?.oldPath && inputTarget.oldPath !== inputTarget.path" class="muted input-old-path">
+                          原路径：<code>{{ inputTarget.oldPath }}</code>
+                        </small>
+                      </dd>
+                      <dt>文件处理设置</dt>
+                      <dd>{{ task.smartSplit ? '允许按需拆分' : '整文件提交' }}</dd>
+                      <dt>使用的模型</dt>
+                      <dd>{{ task.config?.modelName || '模型名称未记录' }}</dd>
+                    </dl>
+                  </section>
+
+                  <section class="input-section" aria-label="审查规则">
+                    <h3>审查规则</h3>
+                    <dl class="input-pairs">
+                      <dt>本次要求</dt>
+                      <dd class="input-text">{{ inputTarget?.note?.trim() ? inputTarget.note : '未填写' }}</dd>
+                      <dt>通用规则</dt>
+                      <dd>{{ inputRuleLabel }}</dd>
+                      <template v-if="hasInputRule">
+                        <dt>规则正文</dt>
+                        <dd>
+                          <details>
+                            <summary>展开查看</summary>
+                            <pre class="input-rule-content">{{ task.config?.promptContent?.trim() ? task.config.promptContent : '保存的规则正文不可用。' }}</pre>
+                          </details>
+                        </dd>
+                      </template>
+                    </dl>
+                  </section>
+
+                  <section class="input-section" aria-label="代码材料">
+                    <h3>代码材料</h3>
+                    <p class="muted small input-material-intro">以下是与当前文件关联的材料记录。可打开查看保存的内容、完整程度及是否已提供给模型。</p>
+                    <a-alert v-if="materialError" type="error" show-icon :message="materialError" />
+                    <a-empty v-if="!materials.length && !materialError" description="暂无关联材料记录" />
+                    <div v-for="group in inputMaterialGroups" :key="group.label" class="input-material-group">
+                      <h4>{{ group.label }}</h4>
+                      <div class="material-list">
+                        <div v-for="material in group.materials" :key="material.id" class="material-row">
+                          <div class="material-main">
+                            <code>{{ material.path }}</code>
+                            <span class="muted small">
+                              <template v-if="material.side !== 'FILE'">{{ sideText(material.side) }}</template>
+                            </span>
+                          </div>
+                          <a-button size="small" type="link" @click="openMaterialById(material.id)">查看代码</a-button>
+                        </div>
+                      </div>
                     </div>
-                    <a-button size="small" @click="openMaterialById(material.id)">查看代码</a-button>
-                  </div>
+                  </section>
+
+                  <section class="input-section" aria-label="任务信息">
+                    <h3>任务信息</h3>
+                    <dl class="input-pairs">
+                      <dt>任务 ID</dt>
+                      <dd><code>{{ task.id }}</code></dd>
+                      <dt>创建与结束</dt>
+                      <dd>
+                        创建：{{ task.createdAt ? formatTime(task.createdAt) : '创建时间未记录' }}<br>
+                        结束：{{ task.finishedAt ? formatTime(task.finishedAt) : (['QUEUED', 'PREPARING', 'RUNNING'].includes(task.state) ? '尚未结束' : '结束时间未记录') }}
+                      </dd>
+                      <dt>模型配置修订</dt>
+                      <dd>{{ task.config?.modelRevision ?? '未记录' }}</dd>
+                    </dl>
+                  </section>
                 </div>
-                <p class="muted small hint">
-                  列表显示实际关联到调用的材料；声明摘要与拆片段不是完整源码，扩展全文不改变实际发送内容。
-                </p>
               </template>
 
               <template v-else>
-                <a-alert v-if="callError" type="error" show-icon :message="callError" />
-                <a-empty v-if="!calls.length && !callError" description="还没有调用记录" />
-                <a-table
-                  v-if="calls.length"
-                  :data-source="calls"
-                  row-key="id"
-                  :pagination="false"
-                  size="small"
-                >
-                  <a-table-column title="尝试" key="attempt" width="140">
-                    <template #default="{ record }">
-                      传输尝试 {{ record.attempt }}
-                      <span class="muted small">
-                        {{ record.generation ? '第 ' + record.generation + ' 代 · ' : '' }}
-                        {{ record.unitOrdinal ? '单元 ' + record.unitOrdinal : '单元未记录' }} ·
-                        {{ record.purpose }}
-                      </span>
-                    </template>
-                  </a-table-column>
-                  <a-table-column title="状态" key="state" width="120">
-                    <template #default="{ record }">
-                      <a-tag :color="record.state === 'SUCCEEDED' ? 'green' : 'red'">
-                        {{ record.state }}
-                      </a-tag>
-                    </template>
-                  </a-table-column>
-                  <a-table-column title="时间" key="time" width="170">
-                    <template #default="{ record }">{{ formatTime(record.createdAt) }}</template>
-                  </a-table-column>
-                  <a-table-column title="操作" key="action" width="160">
-                    <template #default="{ record }">
-                      <a-button size="small" @click="openCall(record.id)">完整输入 / 输出</a-button>
-                    </template>
-                  </a-table-column>
-                </a-table>
-                <a-button
-                  v-if="callsHasMore"
-                  size="small"
-                  :loading="callsLoadingMore"
-                  class="load-more"
-                  @click="loadMoreCalls"
-                >
-                  加载更多调用
-                </a-button>
+                <ActualCallList
+                  :calls="calls"
+                  :format-time="formatTime"
+                  show-units
+                  :error="callError"
+                  :has-more="callsHasMore"
+                  :loading-more="callsLoadingMore"
+                  @open="openCall"
+                  @load-more="loadMoreCalls"
+                />
               </template>
             </a-spin>
           </section>
@@ -240,6 +256,7 @@ import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'
 import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
+import ActualCallList from '@/components/ActualCallList.vue'
 import { discardFeedbackDrafts, hasDirtyFeedbackDrafts, feedbackSaveVersion } from '@/components/feedbackDrafts'
 import { taskLabel } from '@/utils/taskLabel'
 import type { CodeReferencePayload } from '@/utils/codeReferences'
@@ -315,16 +332,10 @@ onBeforeRouteUpdate((to, from) => to.params.id === from.params.id
 
 const tabs = [
   { key: 'result' as const, label: '审查结果' },
-  { key: 'materials' as const, label: '审查输入' },
+  { key: 'materials' as const, label: '输入与配置' },
   { key: 'calls' as const, label: '实际调用' }
 ]
 
-const succeededCount = computed(() =>
-  task.value?.targets.filter((target) => target.state === 'SUCCEEDED').length || 0
-)
-const failedCount = computed(() =>
-  task.value?.targets.filter((target) => target.state === 'FAILED').length || 0
-)
 function materialRoleOrder(role: string): number {
   if (role === 'TARGET') return 0
   if (role === 'AUXILIARY') return 2
@@ -334,6 +345,37 @@ function materialRoleOrder(role: string): number {
 const orderedMaterials = computed(() => [...materials.value].sort(
   (left, right) => materialRoleOrder(left.role) - materialRoleOrder(right.role)
 ))
+const inputTarget = computed(() => task.value?.targets.find(target => target.id === selectedTargetId.value))
+const inputVersion = computed(() => {
+  const branch = task.value?.branch || '分支未记录'
+  const head = inputTarget.value?.headSha || task.value?.headSha
+  const base = inputTarget.value?.baseSha || task.value?.baseSha
+  const after = head || '源码版本未记录'
+  if (task.value?.sourceKind === 'DIFF') {
+    const before = base || '比较基线未记录'
+    return {
+      label: `${branch} · ${base ? base.slice(0, 12) : before}（修改前）→ ${head ? head.slice(0, 12) : after}（修改后）`,
+      full: `${branch} · ${before}（修改前）→ ${after}（修改后）`
+    }
+  }
+  return { label: `${branch} · ${head ? head.slice(0, 12) : after}`, full: `${branch} · ${after}` }
+})
+const hasInputRule = computed(() => {
+  const config = task.value?.config
+  return Boolean(config && (config.promptId || config.promptName || config.promptVersionId ||
+    config.promptVersionNo != null || config.promptContent))
+})
+const inputRuleLabel = computed(() => {
+  if (!hasInputRule.value) return '未使用通用规则'
+  const config = task.value?.config
+  const version = config?.promptVersionNo != null ? `v${config.promptVersionNo}` : '版本未记录'
+  return `${config?.promptName || '规则名称未记录'} · ${version}`
+})
+const inputMaterialGroups = computed(() => [
+  { label: '审查对象', materials: orderedMaterials.value.filter(material => material.role === 'TARGET') },
+  { label: '辅助参考', materials: orderedMaterials.value.filter(material => material.role === 'AUXILIARY') },
+  { label: '其他材料', materials: orderedMaterials.value.filter(material => !['TARGET', 'AUXILIARY'].includes(material.role)) }
+].filter(group => group.materials.length))
 function saveScene() {
   if (!task.value) return
   try {
@@ -635,7 +677,7 @@ function stateTone(state: string): 'green' | 'amber' | 'blue' | 'red' | 'default
 }
 
 function sideText(side: string): string {
-  return ({ FILE: '文件', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || side
+  return ({ FILE: '', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || '代码版本未说明'
 }
 
 function formatTime(value: string): string {
@@ -776,6 +818,76 @@ function formatTime(value: string): string {
 }
 .content :deep(.ant-spin-container) {
   padding: 20px 24px 24px;
+}
+.review-input {
+  h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    line-height: 1.4;
+  }
+  .input-intro {
+    margin: 0 0 12px;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .input-section {
+    padding: 20px 0;
+    border-top: 1px solid var(--line);
+    h3 {
+      margin: 0 0 15px;
+      font-size: 16px;
+    }
+    &:last-child { padding-bottom: 0; }
+  }
+  .input-pairs {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 13px 18px;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.8;
+    dt { color: var(--muted); }
+    dd {
+      margin: 0;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+  .input-version {
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: var(--bg);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  .input-old-path { display: block; margin-top: 4px; }
+  .input-text { white-space: pre-wrap; }
+  summary { color: var(--blue); cursor: pointer; }
+  .input-rule-content {
+    max-height: 260px;
+    overflow: auto;
+    margin: 12px 0 0;
+    padding: 13px 15px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: inherit;
+  }
+  .input-material-intro { margin: 0 0 14px; line-height: 1.8; }
+  .input-material-group h4 {
+    margin: 16px 0 8px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .material-list { border-radius: 8px; }
+  .material-row { padding: 12px 14px; }
+  .material-row :deep(.ant-btn) { flex-shrink: 0; }
+  @media (max-width: 760px) {
+    .input-pairs { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
+  }
 }
 .material-list {
   border: 1px solid var(--line);

@@ -15,11 +15,10 @@
             <div class="row wrap">
               <h1 :title="task.id">{{ task.name || 'Agent 任务' }}</h1>
               <StatusBadge :tone="stateTone">{{ stateLabel(task.state) }}</StatusBadge>
-              <span class="agent-label">只读</span>
+<!--              <span class="agent-label">只读</span>-->
             </div>
-            <TaskDetailMetadata :task-id="task.id">
-              {{ projectName || task.projectId }} · Agent 分析 · {{ sourceLabel(task.sourceKind) }}
-              <template v-if="task.headSha"> · <code>{{ task.headSha.slice(0, 7) }}</code></template>
+            <TaskDetailMetadata :task-id="task.id" :show-id="false">
+              {{ projectName || task.projectId }} · Agent 分析
             </TaskDetailMetadata>
           </div>
           <div class="actions">
@@ -44,15 +43,15 @@
           :message="`正在执行：${actionText(progress?.currentAction) || stateLabel(task.state)}`"
           description="已查范围与调用逐步保存。此处只显示工具动作，不显示模型内部思考。"
         />
+<!--        <a-alert-->
+<!--          v-else-if="task.state === 'SUCCEEDED'"-->
+<!--          class="mb16"-->
+<!--          type="info"-->
+<!--          show-icon-->
+<!--          message="审查材料、审查结果已固定保存。"-->
+<!--        />-->
         <a-alert
-          v-else-if="task.state === 'SUCCEEDED'"
-          class="mb16"
-          type="info"
-          show-icon
-          message="审查材料、审查结果已固定保存。"
-        />
-        <a-alert
-          v-else
+          v-else-if="task.state !== 'SUCCEEDED'"
           class="mb16"
           type="warning"
           show-icon
@@ -94,7 +93,7 @@
         <div class="tabbar">
           <button type="button" :class="{ active: activeTab === 'result' }" @click="activeTab = 'result'">审查结果</button>
           <button type="button" :class="{ active: activeTab === 'input' }" @click="activeTab = 'input'">审查输入</button>
-          <button type="button" :class="{ active: activeTab === 'calls' }" @click="activeTab = 'calls'">实际调用 · {{ callTotal }}</button>
+          <button type="button" :class="{ active: activeTab === 'calls' }" @click="activeTab = 'calls'">实际调用</button>
         </div>
 
         <div v-show="activeTab === 'result'">
@@ -117,10 +116,10 @@
           <div class="section-top">
             <h2>逐次调用记录</h2>
             <span class="spacer" />
-            <span class="muted small">完整正文按需打开</span>
+<!--            <span class="muted small">完整正文按需打开</span>-->
           </div>
           <a-alert v-if="callError" type="error" show-icon :message="callError" class="pad-alert" />
-          <div v-if="!calls.length" class="empty">尚未发送模型调用，当前没有请求快照。</div>
+          <div v-if="!calls.length && !callError" class="empty">暂无已保存的模型或工具调用记录。</div>
           <div v-else class="agent-call-layout">
             <div class="agent-call-list" aria-label="逐次调用记录" @wheel.prevent="scrollCallList">
               <button
@@ -130,7 +129,8 @@
                 :class="{ active: selectedCallId === call.id }"
                 @click="openCall(call.id)"
               >
-                第 {{ call.turnNo }} 轮 · {{ call.ordinal }}
+                <template v-if="call.kind === 'initial-model'">初始模型请求</template>
+                <template v-else>第 {{ call.turnNo }} 轮 · {{ call.ordinal }}</template>
                 <small class="call-tags">
                   <a-tag color="blue">{{ call.toolName }}</a-tag>
                   <a-tag :color="callTone(call.status)">{{ callStatusText(call.status) }}</a-tag>
@@ -143,15 +143,19 @@
                   <div v-if="callDetail" :key="callDetail.id" class="call-detail-view">
                   <div class="row wrap">
                     <strong>{{ callDetail.toolName }}</strong>
-                    <span class="call-position">{{ selectedCallPosition }} / {{ callTotal }}</span>
+                    <span v-if="callDetail.kind !== 'initial-model'" class="call-position">{{ selectedCallPosition }} / {{ callTotal }}</span>
                     <span class="spacer" />
                     <StatusBadge :tone="callTone(callDetail.status)">{{ callStatusText(callDetail.status) }}</StatusBadge>
                   </div>
-                  <p class="muted small">提供方 {{ callDetail.providerToolCallId }} · {{ formatTime(callDetail.startedAt) }}</p>
-                  <h3>参数</h3>
-                  <pre class="preview-code">{{ pretty(callDetail.arguments) }}</pre>
-                  <h3>返回</h3>
+                  <p v-if="callDetail.kind === 'initial-model'" class="muted small">第 {{ callDetail.attempt }} 次传输尝试 · {{ formatTime(callDetail.startedAt) }}</p>
+                  <p v-else class="muted small">提供方 {{ callDetail.providerToolCallId }} · {{ formatTime(callDetail.startedAt) }}</p>
+                  <a-alert v-if="callDetail.kind === 'initial-model' && (callDetail.errorMessage || callDetail.errorCode)" type="error" show-icon :message="callDetail.errorMessage || callDetail.errorCode || ''" />
+                  <h3>{{ callDetail.kind === 'initial-model' ? '完整请求' : '参数' }}</h3>
+                  <pre v-if="callDetail.kind === 'initial-model'" class="preview-code">{{ callDetail.requestBody?.trim() ? pretty(callDetail.requestBody) : '未保存请求正文。' }}</pre>
+                  <pre v-else class="preview-code">{{ pretty(callDetail.arguments) }}</pre>
+                  <h3>{{ callDetail.kind === 'initial-model' ? '模型返回' : '返回' }}</h3>
                   <p v-if="callDetail.status === 'RUNNING'" class="muted small">请求正在执行，返回后自动更新。</p>
+                  <pre v-else-if="callDetail.kind === 'initial-model'" class="preview-code">{{ callDetail.responseBody?.trim() ? pretty(callDetail.responseBody) : '未保存模型返回。' }}</pre>
                   <pre v-else class="preview-code">{{ JSON.stringify(callDetail.envelope, null, 2) }}</pre>
                   </div>
                   <div v-else key="empty" class="empty">选择左侧一次调用，查看保存的参数与返回。</div>
@@ -161,44 +165,88 @@
           </div>
         </section>
 
-        <section v-show="activeTab === 'input'" class="card input-readonly">
-          <div class="section-top"><h2>提交时保存的输入</h2><span class="spacer" /><span class="muted small">只读历史快照</span></div>
-          <div class="pad">
-            <dl class="input-list">
-              <dt>范围</dt>
-              <dd>{{ inputScope ? scopeLabel(inputScope.scope.kind) : sourceLabel(task.sourceKind) }}<template v-if="inputScope?.scope.branch"> · {{ inputScope.scope.branch }}</template></dd>
-              <dt>固定版本</dt>
-              <dd><code>{{ inputScope?.scope.observedSha || task.headSha || '—' }}</code></dd>
-              <template v-if="inputScope?.scope.description">
-                <dt>范围描述</dt><dd class="snapshot-text">{{ inputScope.scope.description }}</dd>
-              </template>
-              <dt>目标</dt>
-              <dd>
-                <template v-if="inputScope?.scope.kind === 'COMMITS'">
-                  <p v-for="(commit, index) in inputScope.scope.commits || []" :key="commit"><code>C{{ index + 1 }} · {{ commit }}</code></p>
+        <section v-show="activeTab === 'input'" class="card agent-input">
+          <div class="review-input">
+            <a-alert v-if="inputError" type="error" show-icon :message="inputError" class="input-error">
+              <template #action><a-button size="small" :loading="inputLoading" @click="loadInput">重试</a-button></template>
+            </a-alert>
+
+            <section class="input-section" aria-label="任务配置">
+              <h3>任务配置</h3>
+              <dl class="input-pairs">
+                <dt>审查项目</dt>
+                <dd>{{ projectName || '项目名称不可用' }}</dd>
+                <dt>审查类型</dt>
+                <dd>Agent 分析</dd>
+                <dt>分支与源码版本</dt>
+                <dd v-if="inputKind === 'COMMITS'">
+                  <code v-if="inputScope?.scope.branch" class="input-version">{{ inputScope.scope.branch }}</code>
+                  <div v-if="inputScope?.scope.commits?.length" class="input-targets">
+                    <div v-for="(commit, index) in inputScope.scope.commits" :key="commit">
+                      <code class="input-version" :title="commit">C{{ index + 1 }} · {{ commit.slice(0, 12) }}</code>
+                    </div>
+                  </div>
+                  <span v-else class="muted">{{ inputLoading ? '正在读取提交版本…' : (inputError ? '提交版本暂不可用' : '提交版本未记录') }}</span>
+                  <small class="muted input-note">按所选顺序逐项分析提交差异。</small>
+                </dd>
+                <dd v-else><code class="input-version" :title="inputVersion.full">{{ inputVersion.label }}</code></dd>
+                <template v-if="inputKind === 'TEXT'">
+                  <dt>范围描述</dt>
+                  <dd class="snapshot-text">{{ inputScope?.scope.description?.trim() ? inputScope.scope.description : (inputLoading ? '正在读取范围描述…' : (inputError ? '范围描述暂不可用' : '范围描述未记录')) }}</dd>
                 </template>
-                <template v-else-if="inputScope?.scope.kind === 'FILES'">
-                  <p v-for="path in inputScope.scope.paths || []" :key="path">
-                    <button type="button" class="source-link target-source-link" @click="openTargetFile(path)">
-                      <code>{{ path }}</code>
-                    </button>
-                  </p>
+                <template v-else-if="inputKind === 'FILES'">
+                  <dt>审查文件/目录</dt>
+                  <dd>
+                    <div v-if="inputScope?.scope.paths?.length" class="input-targets">
+                      <button v-for="path in inputScope.scope.paths" :key="path" type="button" class="source-link target-source-link" @click="openTargetFile(path)">
+                        <code>{{ path }}</code>
+                      </button>
+                    </div>
+                    <span v-else class="muted">{{ inputLoading ? '正在读取文件范围…' : (inputError ? '文件范围暂不可用' : '文件范围未记录') }}</span>
+                  </dd>
                 </template>
-                <p v-else-if="!inputScope" class="muted small">正在读取提交时保存的范围…</p>
-                <p v-else class="muted small">按文字范围调查</p>
-              </dd>
-              <dt>本次要求</dt>
-              <dd class="snapshot-text">{{ inputScope?.requirements || (inputLoading ? '正在读取…' : '—') }}</dd>
-              <dt>模型与指导提示词</dt>
-              <dd>
-                {{ task.config?.modelName || '—' }}
-                <br />
-                {{ task.config?.promptId ? '指导提示词 ' + task.config.promptId + ' · v' + task.config.promptVersionNo : '未选指导提示词' }}
-                <template v-if="inputScope?.referenceResultId"><br />参考结果：{{ inputScope.referenceResultId }}</template>
-              </dd>
-              <dt>创建 / 期限</dt>
-              <dd>{{ formatTime(task.createdAt) }} · {{ formatTime(task.deadlineAt) }}</dd>
-            </dl>
+                <dt>使用的模型</dt>
+                <dd>{{ task.config?.modelName || '模型名称未记录' }}</dd>
+                <template v-if="inputScope?.referenceResultId">
+                  <dt>参考结果</dt>
+                  <dd><code>{{ inputScope.referenceResultId }}</code></dd>
+                </template>
+              </dl>
+            </section>
+
+            <section class="input-section" aria-label="审查规则">
+              <h3>审查规则</h3>
+              <dl class="input-pairs">
+                <dt>本次要求</dt>
+                <dd class="snapshot-text">{{ inputScope?.requirements?.trim() ? inputScope.requirements : (inputLoading ? '正在读取…' : (inputError ? '本次要求暂不可用' : '本次要求未记录')) }}</dd>
+                <dt>通用规则</dt>
+                <dd>{{ inputRuleLabel }}</dd>
+                <template v-if="hasInputRule">
+                  <dt>规则正文</dt>
+                  <dd>
+                    <details>
+                      <summary>展开查看</summary>
+                      <pre class="input-rule-content">{{ task.config?.promptContent?.trim() ? task.config.promptContent : '保存的规则正文不可用。' }}</pre>
+                    </details>
+                  </dd>
+                </template>
+              </dl>
+            </section>
+
+            <section class="input-section" aria-label="任务信息">
+              <h3>任务信息</h3>
+              <dl class="input-pairs">
+                <dt>任务 ID</dt>
+                <dd><code>{{ task.id }}</code></dd>
+                <dt>创建与结束</dt>
+                <dd>
+                  创建：{{ task.createdAt ? formatTime(task.createdAt) : '创建时间未记录' }}<br>
+                  结束：{{ task.finishedAt ? formatTime(task.finishedAt) : (['QUEUED', 'PREPARING', 'RUNNING'].includes(task.state) ? '尚未结束' : '结束时间未记录') }}
+                </dd>
+                <dt>模型配置修订</dt>
+                <dd>{{ task.config?.modelRevision ?? '未记录' }}</dd>
+              </dl>
+            </section>
           </div>
         </section>
       </template>
@@ -259,6 +307,8 @@ import {
   type AgentResultView,
   type AgentToolCallDetail,
   type AgentToolCallSummary,
+  type CallDetailFull,
+  type CallSummary,
   type TaskView
 } from '@/api/v2'
 
@@ -270,6 +320,31 @@ const task = ref<TaskView | null>(null)
 const projectName = ref('')
 const inputScope = ref<AgentTaskCopyInput | null>(null)
 const inputLoading = ref(false)
+const inputError = ref('')
+const inputKind = computed(() => {
+  const kind = inputScope.value?.scope.kind || String(task.value?.sourceKind || '')
+  return kind === 'DIFF' ? 'COMMITS' : kind
+})
+const inputVersion = computed(() => {
+  const branch = inputScope.value?.scope.branch || task.value?.branch || '分支未记录'
+  const sha = inputScope.value?.scope.observedSha || task.value?.headSha
+  return {
+    label: `${branch} · ${sha ? sha.slice(0, 12) : '源码版本未记录'}`,
+    full: `${branch} · ${sha || '源码版本未记录'}`
+  }
+})
+const hasInputRule = computed(() => {
+  const config = task.value?.config
+  return Boolean(config?.promptId || config?.promptName || config?.promptVersionId ||
+    config?.promptVersionNo != null || config?.promptContent ||
+    inputScope.value?.guidancePromptId || inputScope.value?.guidancePromptVersionId)
+})
+const inputRuleLabel = computed(() => {
+  if (!hasInputRule.value) return '未使用通用规则'
+  const config = task.value?.config
+  const version = config?.promptVersionNo != null ? `v${config.promptVersionNo}` : '版本未记录'
+  return `${config?.promptName || '规则名称未记录'} · ${version}`
+})
 const taskLoading = ref(false)
 const refreshing = ref(false)
 const cancelling = ref(false)
@@ -287,7 +362,7 @@ const outputUsageNote = computed(() => {
   const usage = progress.value?.outputUsage
   if (!usage) return '输出用量暂不可用'
   if (usage.totalOutputTokens === null) return `${usage.unreportedCalls} 次调用未返回输出用量`
-  const total = `累计已记录 ${tokenText(usage.totalOutputTokens)} Token`
+  const total = `总计 ${tokenText(usage.totalOutputTokens)} Token`
   return usage.unreportedCalls > 0 ? `${total} · ${usage.unreportedCalls} 次用量未返回` : total
 })
 
@@ -300,16 +375,29 @@ const resultLoading = ref(false)
 const resultError = ref('')
 const downloadingMarkdown = ref(false)
 
-const calls = ref<AgentToolCallSummary[]>([])
+type InitialModelCall = {
+  kind: 'initial-model'
+  id: string
+  modelCallId: string
+  toolName: string
+  status: string
+  startedAt: string | null
+  finishedAt: string | null
+}
+type AgentCallItem = (AgentToolCallSummary & { kind?: 'tool' }) | InitialModelCall
+type AgentCallDetail = (AgentToolCallDetail & { kind?: 'tool' }) |
+  (CallDetailFull & { kind: 'initial-model'; toolName: string; status: string })
+
+const calls = ref<AgentCallItem[]>([])
 const callTotal = ref(0)
 const callError = ref('')
 
 const callOpen = ref(false)
 const callLoading = ref(false)
-const callDetail = ref<AgentToolCallDetail | null>(null)
+const callDetail = ref<AgentCallDetail | null>(null)
 const selectedCallId = ref('')
 const selectedCallPosition = computed(() => {
-  const index = calls.value.findIndex((call) => call.id === selectedCallId.value)
+  const index = calls.value.filter(call => call.kind !== 'initial-model').findIndex((call) => call.id === selectedCallId.value)
   return index >= 0 ? index + 1 : 0
 })
 
@@ -396,10 +484,12 @@ async function loadProjectName() {
 
 async function loadInput() {
   inputLoading.value = true
+  inputError.value = ''
   try {
     inputScope.value = await agentTasksApi.copyInput(taskId.value)
-  } catch {
+  } catch (failure) {
     inputScope.value = null
+    inputError.value = `读取本次输入失败：${(failure as Error).message || '请稍后重试'}`
   } finally {
     inputLoading.value = false
   }
@@ -468,31 +558,67 @@ async function loadResult() {
 
 async function loadCalls() {
   const epoch = ++callEpoch
-  try {
-    const collected: AgentToolCallSummary[] = []
-    let pageNum = 1
-    let total = 0
-    do {
-      const page = await agentTasksApi.toolCalls(taskId.value, { pageNum, pageSize: 100 })
-      if (epoch !== callEpoch) return
-      collected.push(...page.items)
-      total = page.total || collected.length
-      pageNum += 1
-      if (!page.items.length) break
-    } while (collected.length < total)
-    calls.value = collected
-    callTotal.value = total
-    callError.value = ''
-    const selected = collected.find(call => call.id === selectedCallId.value)
-    if (selected && callDetail.value?.id === selected.id
-        && selected.status !== callDetail.value.status) {
-      await openCall(selected.id)
-    }
-  } catch (e) {
-    if (epoch === callEpoch) {
-      callError.value = `调用记录读取失败：${(e as Error).message}`
-    }
+  const id = taskId.value
+  const [toolsOutcome, initialOutcome] = await Promise.allSettled([
+    readToolCalls(id, epoch), readInitialModelCall(id, epoch)
+  ])
+  if (disposed || epoch !== callEpoch || id !== taskId.value) return
+
+  const tools = toolsOutcome.status === 'fulfilled'
+    ? toolsOutcome.value.items : calls.value.filter(call => call.kind !== 'initial-model')
+  if (toolsOutcome.status === 'fulfilled') callTotal.value = toolsOutcome.value.total
+  let initial = calls.value.find(call => call.kind === 'initial-model')
+  if (initialOutcome.status === 'fulfilled') {
+    const record = initialOutcome.value
+    initial = record ? {
+      kind: 'initial-model', id: `initial-model:${record.id}`, modelCallId: record.id,
+      toolName: '模型请求', status: record.state, startedAt: record.startedAt, finishedAt: record.finishedAt
+    } : undefined
   }
+  calls.value = initial ? [initial, ...tools] : tools
+  callError.value = [
+    toolsOutcome.status === 'rejected' ? `工具调用记录读取失败：${(toolsOutcome.reason as Error)?.message || '请稍后重试'}` : '',
+    initialOutcome.status === 'rejected' ? `初始模型请求读取失败：${(initialOutcome.reason as Error)?.message || '请稍后重试'}` : ''
+  ].filter(Boolean).join('；')
+  const selected = calls.value.find(call => call.id === selectedCallId.value)
+  if (selected && callDetail.value?.id === selected.id && selected.status !== callDetail.value.status) {
+    await openCall(selected.id)
+  }
+}
+
+async function readToolCalls(id: string, epoch: number) {
+  const items: AgentToolCallSummary[] = []
+  let pageNum = 1
+  let total = 0
+  do {
+    const page = await agentTasksApi.toolCalls(id, { pageNum, pageSize: 100 })
+    if (disposed || epoch !== callEpoch || id !== taskId.value) return { items: [], total: 0 }
+    items.push(...page.items)
+    total = page.total || items.length
+    pageNum += 1
+    if (!page.items.length) break
+  } while (items.length < total)
+  return { items, total }
+}
+
+async function readInitialModelCall(id: string, epoch: number): Promise<CallSummary | null> {
+  let earliest: CallSummary | null = null
+  let cursor: string | undefined
+  const seen = new Set<string>()
+  do {
+    const page = await tasksApi.calls(id, { cursor, limit: 100 })
+    if (disposed || epoch !== callEpoch || id !== taskId.value) return null
+    // 接口按创建时间及 ID 倒序返回，完整遍历摘要后才能确定最早保存的 Agent 请求。
+    const agentCalls = page.items.filter(call => call.purpose === 'AGENT')
+    if (agentCalls.length) earliest = agentCalls[agentCalls.length - 1]
+    if (!page.hasMore) return earliest
+    if (!page.nextCursor || seen.has(page.nextCursor)) {
+      throw new Error('分页信息异常，无法确认最早的模型请求')
+    }
+    seen.add(page.nextCursor)
+    cursor = page.nextCursor
+  } while (cursor)
+  return earliest
 }
 
 function stateLabel(state: string) {
@@ -504,19 +630,6 @@ function stateLabel(state: string) {
     FAILED: '失败',
     CANCELLED: '已取消'
   } as Record<string, string>)[state] || state
-}
-
-function sourceLabel(kind: string) {
-  return ({
-    FILES: '文件范围',
-    DIFF: '提交差异',
-    TEXT: '文字范围',
-    COMMITS: '逐提交差异'
-  } as Record<string, string>)[kind] || kind
-}
-
-function scopeLabel(kind: string) {
-  return ({ TEXT: '文字范围', FILES: '文件／目录', COMMITS: '提交比较' } as Record<string, string>)[kind] || kind
 }
 
 function limitNumber(key: string) {
@@ -537,14 +650,14 @@ function callTone(status: string): 'green' | 'amber' | 'blue' | 'red' | 'default
   const value = status.toUpperCase()
   if (value === 'RUNNING') return 'blue'
   if (value === 'UNREADABLE' || value === 'INTERRUPTED' || value === 'CANCELLED') return 'red'
-  if (value === 'OK') return 'blue'
+  if (value === 'OK' || value === 'SUCCEEDED') return 'blue'
   if (value.includes('TRUNC') || value.includes('LIMIT') || value.startsWith('REJECTED')) return 'amber'
   if (value.includes('FAIL') || value.includes('ERROR') || value.includes('INVALID') || value.includes('TIMEOUT')) return 'red'
   return 'amber'
 }
 
 function callStatusText(status: string) {
-  return ({ RUNNING: '执行中', OK: '成功', UNREADABLE: '读取失败', NOT_FOUND: '未找到',
+  return ({ RUNNING: '执行中', OK: '成功', SUCCEEDED: '成功', FAILED: '失败', UNREADABLE: '读取失败', NOT_FOUND: '未找到',
     INVALID_ARGUMENT: '参数无效', TIMEOUT: '超时', ERROR: '失败', INTERRUPTED: '已中断',
     CANCELLED: '已取消', REJECTED_BATCH: '整批拒绝（未执行）' } as Record<string, string>)[status] || status
 }
@@ -567,11 +680,21 @@ async function openCall(callId: string) {
   callOpen.value = true
   callLoading.value = true
   const epoch = ++callDetailEpoch
+  const id = taskId.value
+  const entry = calls.value.find(call => call.id === callId)
+  callDetail.value = null
   try {
-    const detail = await agentTasksApi.toolCall(taskId.value, callId)
-    if (epoch === callDetailEpoch) callDetail.value = detail
+    if (entry?.kind === 'initial-model') {
+      const detail = await tasksApi.call(id, entry.modelCallId)
+      if (!disposed && epoch === callDetailEpoch && id === taskId.value) {
+        callDetail.value = { ...detail, kind: 'initial-model', id: callId, toolName: '初始模型请求', status: detail.state }
+      }
+    } else {
+      const detail = await agentTasksApi.toolCall(id, callId)
+      if (!disposed && epoch === callDetailEpoch && id === taskId.value) callDetail.value = detail
+    }
   } catch (e) {
-    if (epoch === callDetailEpoch) callError.value = `调用详情读取失败：${(e as Error).message}`
+    if (!disposed && epoch === callDetailEpoch && id === taskId.value) callError.value = `调用详情读取失败：${(e as Error).message}`
   } finally {
     if (epoch === callDetailEpoch) callLoading.value = false
   }
@@ -807,9 +930,44 @@ function formatTime(value: string | null | undefined) {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-.input-readonly { background: #f8fafc; }
-.input-readonly .pad { color: #475569; }
-.input-readonly code { color: #64748b; }
+.agent-input .review-input { padding: 20px 24px 24px; }
+.agent-input .input-section { padding: 20px 0; border-top: 1px solid var(--line); }
+.agent-input .input-section:last-child { padding-bottom: 0; }
+.agent-input .input-section h3 { margin: 0 0 15px; font-size: 16px; }
+.agent-input .input-pairs {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 13px 18px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.agent-input .input-pairs dt { color: var(--muted); }
+.agent-input .input-pairs dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.agent-input .input-version {
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: var(--bg);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.agent-input .input-targets { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-height: 240px; overflow: auto; }
+.agent-input .target-source-link { margin-top: 0; font-weight: 400; }
+.agent-input .input-note { display: block; margin-top: 6px; }
+.agent-input .input-error { margin-bottom: 16px; }
+.agent-input summary { color: var(--blue); cursor: pointer; }
+.agent-input .input-rule-content {
+  max-height: 260px;
+  overflow: auto;
+  margin: 12px 0 0;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
 .section-top {
   display: flex;
   align-items: center;
@@ -906,10 +1064,6 @@ function formatTime(value: string | null | undefined) {
   color: var(--muted);
   font-size: 12px;
 }
-.input-list { margin: 0; font-size: 13px; }
-.input-list dt { color: var(--muted); margin-top: 14px; font-size: 12px; }
-.input-list dt:first-child { margin-top: 0; }
-.input-list dd { margin: 4px 0 0; overflow-wrap: anywhere; }
 .empty { text-align: center; padding: 48px 25px; color: var(--muted); }
 .pad-alert { margin: 16px 24px 0; }
 @media (max-width: 1250px) {
@@ -926,5 +1080,6 @@ function formatTime(value: string | null | undefined) {
   .agent-meters { grid-template-columns: 1fr; }
   .agent-meter strong { font-size: 16px; }
   .tabbar { gap: 18px; }
+  .agent-input .input-pairs { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
 }
 </style>
