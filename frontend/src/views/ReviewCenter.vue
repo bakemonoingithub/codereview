@@ -64,12 +64,12 @@
         <template #default="{ record }">
           <div class="task-cell">
             <strong><a :title="taskLabel(record.name, record.id)" @click="openTask(record.id)">{{ taskLabel(record.name, record.id) }}</a></strong>
-            <span class="cell-sub" :title="record.id">{{ record.id }}</span>
-            <span class="cell-sub">{{ projectName(record.projectId) }}</span>
+<!--            <span class="cell-sub" :title="record.id">{{ record.id }}</span>-->
+            <span class="cell-sub">项目：{{ projectName(record.projectId) }}</span>
           </div>
         </template>
       </a-table-column>
-      <a-table-column title="类型 / 范围" key="type" width="180">
+      <a-table-column title="类型" key="type" width="180">
         <template #default="{ record }">
           {{ typeText(record) }}
           <span class="cell-sub">{{ record.targetCount }} 个目标</span>

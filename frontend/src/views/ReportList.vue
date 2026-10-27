@@ -41,9 +41,9 @@
         <template #default="{ record }">
           <div class="title-cell">
             <a @click="open(record.id)">{{ record.title }}</a>
-            <span class="muted small">
-              {{ record.modelName || '未记录模型' }} · {{ shortId(record.id) }}
-            </span>
+<!--            <span class="muted small">-->
+<!--              {{ record.modelName || '未记录模型' }} · {{ shortId(record.id) }}-->
+<!--            </span>-->
           </div>
         </template>
       </a-table-column>
@@ -76,7 +76,7 @@
       </a-table-column>
       <a-table-column title="操作" key="actions" width="120">
         <template #default="{ record }">
-          <a-button size="small" type="link" @click="open(record.id)">查看</a-button>
+          <a-button size="small" type="link" @click="open(record.id)">查看详情 →</a-button>
         </template>
       </a-table-column>
       <template #emptyText>
@@ -145,10 +145,6 @@ onBeforeUnmount(() => {
 
 function open(id: string) {
   router.push(`/reports/${id}`)
-}
-
-function shortId(id: string) {
-  return id.length <= 10 ? id : id.slice(-10)
 }
 
 function kindEntries(counts: Record<string, number>) {
