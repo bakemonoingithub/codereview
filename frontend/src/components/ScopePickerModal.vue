@@ -36,7 +36,7 @@
       />
       <a-button size="small" @click="expandAll">展开</a-button>
       <a-button size="small" @click="collapseAll">收起</a-button>
-      <a-button size="small" @click="selectFiltered">全选筛选结果</a-button>
+      <a-button size="small" @click="selectFiltered">全选</a-button>
       <a-button size="small" @click="clearChecked">清空</a-button>
       <span class="spacer" />
       <span class="muted">已选 {{ checked.length }} / 当前可选 {{ entries.length }} 个文件</span>
@@ -73,10 +73,11 @@
     </div>
 
     <div class="scope-foot">
-      <span class="muted">点击文件名只预览，复选框只调整审查目标；确认后回填主表单，取消不改变原范围。</span>
+      <span class="muted" v-if="mode === 'DIFF'">点击文件名可浏览修改。</span>
+      <span class="muted" v-else>点击文件名可浏览代码。</span>
       <span class="spacer" />
       <a-button @click="close">取消</a-button>
-      <a-button type="primary" :disabled="loading || !!error" @click="confirm">确认选择</a-button>
+      <a-button type="primary" :disabled="loading || !!error" @click="confirm">确认</a-button>
     </div>
 
     <a-modal
@@ -106,13 +107,14 @@
               {{ previewSides.baseSha?.slice(0, 7) || '无父提交' }} → {{ previewSides.headSha.slice(0, 7) }}
             </span>
           </div>
-          <DiffViewer
-            v-if="mode === 'DIFF' && previewMode === 'changes'"
-            :path="previewPath"
-            :patch="previewSides?.patch || null"
-            highlight
-            empty-text="该文件没有可显示的差异"
-          />
+          <div v-if="mode === 'DIFF' && previewMode === 'changes'" class="source-code" tabindex="0" role="region" aria-label="提交差异预览，可滚动">
+            <DiffViewer
+              :path="previewPath"
+              :patch="previewSides?.patch || null"
+              highlight
+              empty-text="该文件没有可显示的差异"
+            />
+          </div>
           <div v-else-if="previewCode !== null" class="source-code" tabindex="0" role="region" aria-label="代码预览，可横向滚动">
             <CodeViewer :text="previewCode" :path="previewPath" />
           </div>
@@ -188,7 +190,7 @@ const diffTabs = [
 
 const treeData = computed(() => filterPathTree(tree.value, query.value))
 const previewTitle = computed(() =>
-  props.mode === 'DIFF' ? `${previewPath.value} · 提交差异` : `${previewPath.value} · 文件原文`
+  props.mode === 'DIFF' ? `提交差异` : `文件原文`
 )
 const previewCode = computed<string | null>(() => {
   if (props.mode === 'FILES' || previewMode.value === 'content') return previewContent.value

@@ -52,6 +52,100 @@ beforeEach(() => {
 })
 
 describe('Agent 发起表单', () => {
+  it('已选文件按行展示，移除后同步选择器并提交剩余路径', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    s.onScopeConfirm([{ path: 'src/A.java' }, { path: 'src/B.java' }])
+    s.form.requirements = '检查调用链'
+    await flushPromises()
+    const rows = wrapper.findAll('.target-row')
+    expect(rows.map(row => row.find('code').text())).toEqual(['src/A.java', 'src/B.java'])
+    await rows[0].find('a-button-stub').trigger('click')
+    expect(s.form.paths).toEqual(['src/B.java'])
+    expect(wrapper.findComponent({ name: 'ScopePickerModal' }).props('selected')).toEqual(['src/B.java'])
+    await s.submit()
+    expect(vi.mocked(agentTasksApi.create).mock.calls[0][0].scope.paths).toEqual(['src/B.java'])
+    await wrapper.find('.target-row a-button-stub').trigger('click')
+    expect(wrapper.find('.target-list').exists()).toBe(false)
+    expect(s.canSubmit).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('固定版本字段支持重新读取，版本变化时清空文件范围', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    s.form.paths = ['src/A.java']
+    s.form.requirements = '检查调用链'
+    let finish!: (sha: string) => void
+    vi.mocked(repositoryApi.head).mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    const preview = wrapper.findComponent({ name: 'LaunchVersionPreview' })
+    expect(formItem(wrapper, '提交hash')?.attributes('required')).toBe('')
+    expect(preview.props('refreshText')).toBe('重新读取')
+    preview.vm.$emit('refresh')
+    await flushPromises()
+    expect(s.headLoading).toBe(true)
+    expect(s.form.observedSha).toBe('')
+    expect(s.canSubmit).toBe(false)
+    finish('head-2')
+    await flushPromises()
+    expect(s.form.observedSha).toBe('head-2')
+    expect(s.form.paths).toEqual([])
+    expect(s.headMoved).toBe(true)
+    s.onScopeConfirm([{ path: 'src/B.java' }])
+    expect(s.headMoved).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('读取失败后重试仍能识别版本变化，版本不变时保留文件', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    s.form.paths = ['src/A.java']
+    vi.mocked(repositoryApi.head).mockRejectedValueOnce(new Error('网络错误'))
+    await s.loadHead()
+    expect(s.form.observedSha).toBe('')
+    expect(s.headError).toContain('网络错误')
+    expect(s.canSubmit).toBe(false)
+    vi.mocked(repositoryApi.head).mockResolvedValueOnce('head-1')
+    await s.loadHead()
+    expect(s.headError).toBe('')
+    expect(s.form.paths).toEqual(['src/A.java'])
+    vi.mocked(repositoryApi.head).mockRejectedValueOnce(new Error('暂不可用'))
+    await s.loadHead()
+    vi.mocked(repositoryApi.head).mockResolvedValueOnce('head-2')
+    await s.loadHead()
+    expect(s.form.paths).toEqual([])
+    expect(s.headMoved).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('迟到的版本读取不能覆盖新分支，文字范围得以保留', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    s.form.kind = 'TEXT'
+    s.form.description = '支付调用链'
+    let finish!: (sha: string) => void
+    vi.mocked(repositoryApi.head).mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    const oldRequest = s.loadHead()
+    s.form.branch = 'new-branch'
+    vi.mocked(repositoryApi.head).mockResolvedValueOnce('new-head')
+    s.onHeadBranchChange()
+    await flushPromises()
+    finish('old-head')
+    await oldRequest
+    expect(s.form.observedSha).toBe('new-head')
+    expect(s.form.description).toBe('支付调用链')
+    expect(s.headLoading).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('切换分支时立即清空文件范围，即使两个分支指向同一版本', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    s.form.paths = ['src/A.java']
+    s.form.branch = 'new-branch'
+    s.onHeadBranchChange()
+    expect(s.form.paths).toEqual([])
+    expect(s.headMoved).toBe(true)
+    await flushPromises()
+    expect(s.form.observedSha).toBe('head-1')
+    wrapper.unmount()
+  })
+
   it('只列出已通过 Agent 验证的模型与 AGENT 用途提示词', async () => {
     const wrapper = await start()
     const s = state(wrapper)
@@ -119,6 +213,34 @@ describe('Agent 发起表单', () => {
     expect(body.scope.commits).toEqual(['c1', 'c3'])
     expect(body.scope.branch).toBeUndefined()
     expect(body.scope.observedSha).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('已选提交按行显示，移除中间项后编号、弹窗和提交顺序一致', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    const shas = ['a'.repeat(40), 'b'.repeat(40), 'c'.repeat(40)]
+    s.form.kind = 'COMMITS'
+    s.form.commits = [...shas]
+    s.form.requirements = '比较提交'
+    await flushPromises()
+    expect(formItem(wrapper, '目标')?.text()).toContain('已选 3 项，最多 20 项')
+    const rows = wrapper.findAll('.target-row')
+    expect(rows.map(row => row.find('code').text())).toEqual([
+      'C1 · aaaaaaaaaa', 'C2 · bbbbbbbbbb', 'C3 · cccccccccc'
+    ])
+    await rows[1].find('a-button-stub').trigger('click')
+    expect(formItem(wrapper, '目标')?.text()).toContain('已选 2 项，最多 20 项')
+    expect(wrapper.findAll('.target-row').map(row => row.find('code').text())).toEqual([
+      'C1 · aaaaaaaaaa', 'C2 · cccccccccc'
+    ])
+    await s.openCommitPicker()
+    await flushPromises()
+    const picker = wrapper.findComponent({ name: 'CommitPickerModal' })
+    expect(picker.props('selectedShas')).toEqual([shas[0], shas[2]])
+    expect((picker.vm.$.setupState as any).draftShas).toEqual([shas[0], shas[2]])
+    s.commitPickerOpen = false
+    await s.submit()
+    expect(vi.mocked(agentTasksApi.create).mock.calls[0][0].scope.commits).toEqual([shas[0], shas[2]])
     wrapper.unmount()
   })
 
@@ -226,15 +348,15 @@ describe('发起弹窗骨架', () => {
     expect(wrapper.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('发起 Agent 分析')
     expect(wrapper.findComponent({ name: 'LaunchModalShell' }).props('maskClosable')).toBe(true)
     expect(wrapper.findAll('.launch-section')).toHaveLength(3)
-    expect(wrapper.text()).toContain('1. 审查目标')
-    expect(wrapper.text()).toContain('2. 审查范围')
-    expect(wrapper.text()).toContain('3. 补充要求')
+    expect(wrapper.text()).toContain('1. 基本信息')
+    expect(wrapper.text()).toContain('2. 范围')
+    expect(wrapper.text()).toContain('3. 要求')
     const bar = wrapper.find('.submit-bar')
     expect(bar.text().indexOf('取消')).toBeGreaterThanOrEqual(0)
     expect(bar.text().indexOf('取消')).toBeLessThan(bar.text().indexOf('开始 Agent 分析'))
     expect(wrapper.html()).not.toContain('class="required"')
     expect(wrapper.html()).not.toContain('>必填<')
-    for (const label of ['项目', '模型', '范围类型', '分支', '文件与目录', '补充要求']) {
+    for (const label of ['项目', '模型', '范围类型', '分支', '提交hash', '目标', '本次要求']) {
       expect(formItem(wrapper, label)?.attributes('required'), label).toBe('')
     }
     const name = wrapper.findAll('a-form-item-stub').find((item) => item.text().includes('任务名称'))
@@ -245,37 +367,37 @@ describe('发起弹窗骨架', () => {
     expect(wrapper.html()).not.toContain('任务名称（可选）')
     expect(wrapper.text()).toContain('文件/目录')
     expect(wrapper.text()).not.toContain('文件／目录')
-    expect(wrapper.html()).toContain('不使用指导提示词')
     expect(wrapper.html()).not.toContain('不选则使用内置调查方法')
     const project = wrapper.findAll('a-select-stub').find((item) => item.attributes('placeholder') === '选择项目')
     expect(project?.attributes('show-search')).toBe('')
     expect(project?.attributes('option-filter-prop')).toBe('label')
     const requirements = wrapper.findComponent({ name: 'ATextarea' })
-    expect(requirements.attributes('maxlength')).toBe('16000')
+    expect(requirements.attributes('maxlength')).toBe('4000')
     expect(requirements.attributes('rows')).toBeUndefined()
     expect(requirements.attributes('show-count')).toBe('')
     expect(requirements.vm.$.vnode.props['auto-size']).toEqual({ minRows: 4, maxRows: 8 })
     expect(formItem(wrapper, '提示词版本')).toBeUndefined()
-    const guidance = wrapper.findAll('a-form-item-stub').find((item) => item.text().includes('指导提示词'))
+    const guidance = wrapper.findAll('a-form-item-stub').find((item) => item.text().includes('通用规则'))
     expect(guidance?.text()).toContain('（可选）')
     expect(guidance?.attributes('required')).toBeUndefined()
     const s = state(wrapper)
     s.form.guidancePromptId = 'g1'
     await flushPromises()
     expect(formItem(wrapper, '提示词版本')?.attributes('required')).toBe('')
-    expect(wrapper.text()).toContain('所选版本正文')
+    expect(wrapper.findComponent({ name: 'PromptInfoPreview' }).exists()).toBe(true)
     s.form.kind = 'TEXT'
     await flushPromises()
     expect(formItem(wrapper, '范围描述')?.attributes('required')).toBe('')
     s.form.kind = 'COMMITS'
     await flushPromises()
-    expect(formItem(wrapper, '目标提交')?.attributes('required')).toBe('')
-    expect(formItem(wrapper, '目标提交')?.attributes('label')).toBe('目标提交')
+    expect(formItem(wrapper, '目标')?.attributes('required')).toBe('')
+    expect(formItem(wrapper, '分支')?.attributes('required')).toBe('')
     expect(formItem(wrapper, '提交比较')).toBeUndefined()
     expect(wrapper.text()).toContain('提交比较')
-    expect(wrapper.text()).toContain('选择提交（已选 0/20）')
+    const target = formItem(wrapper, '目标')!
+    expect(target.findAll('a-button-stub').some((button: { text: () => string }) => button.text() === '选择提交')).toBe(true)
+    expect(target.text()).toContain('已选 0 项，最多 20 项')
     expect(wrapper.html()).toContain('placeholder="选择分支"')
-    expect(formItem(wrapper, '分支')).toBeUndefined()
     wrapper.unmount()
   })
 

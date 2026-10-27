@@ -74,6 +74,7 @@ describe('报告生成表单', () => {
     const wrapper = await start()
     const s = state(wrapper)
     s.selected.set(candidate.resultId, candidate)
+    s.form.title = '报告'
     s.form.modelConfigId = 'model-1'
     s.form.promptId = 'prompt-report'
     await flushPromises()
@@ -119,6 +120,7 @@ describe('报告生成表单', () => {
     const wrapper = await start()
     const s = state(wrapper)
     s.selected.set(candidate.resultId, candidate)
+    s.form.title = '报告'
     s.form.modelConfigId = 'model-1'
     s.form.instruction = '原始要求'
     let resolve!: (value: any) => void
@@ -138,6 +140,7 @@ describe('报告生成表单', () => {
     const wrapper = await start()
     const s = state(wrapper)
     s.selected.set(candidate.resultId, candidate)
+    s.form.title = '报告'
     let resolve!: (value: any) => void
     vi.mocked(reportsApi.start).mockImplementationOnce(() => new Promise((done) => { resolve = done }))
     const pending = s.submit()
@@ -249,9 +252,9 @@ describe('发起弹窗骨架', () => {
   it('三分区与页脚统一，星号只来自 required', async () => {
     const wrapper = await start()
     expect(wrapper.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('生成报告')
-    expect(wrapper.text()).toContain('1. 报告信息')
-    expect(wrapper.text()).toContain('2. 审查材料')
-    expect(wrapper.text()).toContain('3. 补充要求')
+    expect(wrapper.text()).toContain('1. 基本信息')
+    expect(wrapper.text()).toContain('2. 审查结果')
+    expect(wrapper.text()).toContain('3. 要求')
     expect(wrapper.text()).toContain('选择审查结果')
     const bar = wrapper.find('.submit-bar')
     expect(bar.text().indexOf('取消')).toBeGreaterThanOrEqual(0)
@@ -266,7 +269,7 @@ describe('发起弹窗骨架', () => {
     const optional = wrapper.findAll('a-form-item-stub').filter((item) => item.text().includes('（可选）'))
     expect(optional.map((item) => item.text())).toEqual(expect.arrayContaining([
       expect.stringContaining('通用规则'),
-      expect.stringContaining('补充要求')
+      expect.stringContaining('本次要求')
     ]))
     optional.forEach((item) => {
       expect(item.attributes('required')).toBeUndefined()
@@ -283,7 +286,7 @@ describe('发起弹窗骨架', () => {
     s.form.promptId = 'prompt-report'
     await flushPromises()
     expect(formItem(wrapper, '规则版本')?.attributes('required')).toBe('')
-    expect(wrapper.text()).toContain('所选版本正文')
+    expect(wrapper.findComponent({ name: 'PromptInfoPreview' }).exists()).toBe(true)
     expect(wrapper.text()).not.toContain('所选报告规则正文')
     wrapper.unmount()
   })

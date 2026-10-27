@@ -272,22 +272,30 @@ describe('专项发起来源和提交保护', () => {
     const picker = w.findComponent(CommitPickerModal)
     const replacementRow = () => picker.findAll('.commit-row').find((row) => row.text().includes('新提交'))!
     const pickerButton = (label: string) => picker.findAll('a-button-stub').find((button) => button.text().trim() === label)!
-    await replacementRow().trigger('click')
+    await replacementRow().find('.commit-choice').trigger('click')
     await pickerButton('取消').trigger('click'); await nextTick()
     expect(s.form.commitSha).toBe(selected)
     expect(s.form.targets).toEqual([{ path: 'A.java', oldPath: null, note: '保留的说明' }])
 
     s.openCommitPicker(); await nextTick()
-    await pickerButton('使用这个提交').trigger('click'); await flushPromises()
+    await pickerButton('确定').trigger('click'); await flushPromises()
     expect(s.form.commitSha).toBe(selected)
     expect(s.form.targets).toHaveLength(1)
 
     s.openCommitPicker(); await nextTick()
-    await replacementRow().trigger('click')
-    await pickerButton('使用这个提交').trigger('click'); await flushPromises()
+    await replacementRow().find('.commit-choice').trigger('click')
+    await pickerButton('确定').trigger('click'); await flushPromises()
     expect(s.form.commitSha).toBe(replacement)
     expect(s.form.baseSha).toBe('base-' + replacement)
     expect(s.form.targets).toEqual([])
+    s.form.targets = [{ path: 'B.java', oldPath: null, note: '' }]
+    s.openCommitPicker(); await nextTick()
+    await pickerButton('清空选择').trigger('click')
+    await pickerButton('确定').trigger('click'); await flushPromises()
+    expect(s.form.commitSha).toBe('')
+    expect(s.form.baseSha).toBe('')
+    expect(s.form.targets).toEqual([])
+    expect(s.canSubmit).toBe(false)
     w.unmount()
   })
   it('填写的审查名称随任务提交', async () => {
@@ -465,15 +473,15 @@ describe('发起弹窗骨架', () => {
     const w = await start()
     expect(w.findComponent({ name: 'LaunchModalShell' }).props('title')).toBe('发起专项审查')
     expect(w.findAll('.launch-section')).toHaveLength(3)
-    expect(w.text()).toContain('1. 审查目标')
-    expect(w.text()).toContain('2. 范围与版本')
-    expect(w.text()).toContain('3. 补充要求')
+    expect(w.text()).toContain('1. 基本信息')
+    expect(w.text()).toContain('2. 范围')
+    expect(w.text()).toContain('3. 要求')
     const bar = w.find('.submit-bar')
     expect(bar.text().indexOf('取消')).toBeGreaterThanOrEqual(0)
     expect(bar.text().indexOf('取消')).toBeLessThan(bar.text().indexOf('开始审查'))
     expect(w.html()).not.toContain('class="required"')
     expect(w.html()).not.toContain('>必填<')
-    for (const label of ['项目', '模型', '分支', '固定版本', '目标文件']) {
+    for (const label of ['项目', '模型', '分支', '提交hash', '目标']) {
       expect(formItem(w, label)?.attributes('required'), label).toBe('')
     }
     const name = w.findAll('a-form-item-stub').find((item: any) => item.text().includes('审查名称'))
@@ -495,15 +503,15 @@ describe('发起弹窗骨架', () => {
     s.form.promptId = 'g1'
     await nextTick()
     expect(formItem(w, '规则版本')?.attributes('required')).toBe('')
-    expect(w.text()).toContain('所选版本正文')
+    expect(w.findComponent({ name: 'PromptInfoPreview' }).exists()).toBe(true)
     s.form.sourceKind = 'DIFF'
     await nextTick()
-    expect(formItem(w, '目标提交')?.attributes('required')).toBe('')
+    expect(formItem(w, '提交')?.attributes('required')).toBe('')
     expect(formItem(w, '审查提交')).toBeUndefined()
-    expect(formItem(w, '固定版本')).toBeUndefined()
+    expect(formItem(w, '提交hash')).toBeUndefined()
     s.form.targets = [{ path: 'A.java', oldPath: null, note: '' }]
     await nextTick()
-    expect(w.text()).toContain('补充要求')
+    expect(w.text()).toContain('本次要求')
     const note = w.findComponent({ name: 'ATextarea' })
     expect(note.attributes('maxlength')).toBe('4000')
     expect(note.attributes('rows')).toBeUndefined()

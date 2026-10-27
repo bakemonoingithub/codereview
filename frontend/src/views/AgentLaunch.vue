@@ -20,10 +20,12 @@
         message="已带入原任务参数。请核对当前分支版本、范围和模型；确认后才会创建新任务。"
       />
       <a-alert v-if="error" type="error" show-icon :message="error" />
+      <a-alert v-if="headError" type="error" show-icon :message="headError" />
+      <a-alert v-if="headMoved" type="warning" show-icon message="分支或版本已变化，已清空原文件范围；请重新选择。" />
     </template>
 
     <template #body>
-      <LaunchFormSections :titles="{ goal: '审查目标', scope: '审查范围', extra: '补充要求' }">
+      <LaunchFormSections :titles="{ goal: '基本信息', scope: '范围', extra: '要求' }">
         <template #goal>
           <a-form-item>
             <template #label>任务名称 <span class="muted small">（可选）</span></template>
@@ -65,20 +67,33 @@
             </a-radio-group>
           </a-form-item>
 
-          <a-form-item v-if="form.kind !== 'COMMITS'" label="分支" required>
-            <a-select
-              :get-popup-container="getPopupContainer"
-              v-model:value="form.branch"
-              :options="branchOptions"
-              :loading="branchLoading"
-              style="max-width: 360px"
-              placeholder="选择分支"
-              @change="loadHead"
-            />
-            <span class="muted head-hint">
-              head：<LaunchVersionPreview :sha="form.observedSha" :loading="headLoading" />
-            </span>
-          </a-form-item>
+          <a-row v-if="form.kind !== 'COMMITS'" :gutter="16">
+            <a-col :xs="24" :md="12">
+              <a-form-item label="分支" required>
+                <a-select
+                  :get-popup-container="getPopupContainer"
+                  v-model:value="form.branch"
+                  :options="branchOptions"
+                  :loading="branchLoading"
+                  style="width: 100%"
+                  placeholder="选择分支"
+                  @change="onHeadBranchChange"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :md="12">
+              <a-form-item label="提交hash" required>
+                <LaunchVersionPreview
+                  :sha="form.observedSha"
+                  :loading="headLoading"
+                  :loading-text="form.observedSha || '读取中…'"
+                  empty-text="读取中…"
+                  refresh-text="重新读取"
+                  @refresh="loadHead"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
 
           <a-form-item v-if="form.kind === 'TEXT'" label="范围描述" required>
             <a-textarea
@@ -89,43 +104,46 @@
             />
           </a-form-item>
 
-          <a-form-item v-if="form.kind === 'FILES'" label="文件与目录" required>
+          <a-form-item v-if="form.kind === 'FILES'" label="目标" required>
             <a-space wrap>
               <a-button :disabled="!form.observedSha" @click="scopeOpen = true">选择文件/目录</a-button>
               <span class="muted">已选 {{ form.paths.length }} 项，最多 100 项</span>
             </a-space>
-            <div v-if="form.paths.length" class="selected-paths">
-              <a-tag v-for="path in form.paths" :key="path" closable @close="removePath(path)">
-                {{ path }}
-              </a-tag>
+            <div v-if="form.paths.length" class="target-list">
+              <div v-for="path in form.paths" :key="path" class="target-row">
+                <div class="target-main"><code>{{ path }}</code></div>
+                <a-button size="small" danger type="text" @click="removePath(path)">移除</a-button>
+              </div>
             </div>
           </a-form-item>
 
-          <a-form-item v-if="form.kind === 'COMMITS'" label="目标提交" required>
+          <a-row v-if="form.kind === 'COMMITS'" :gutter="16">
+            <a-col :xs="24" :md="12">
+              <a-form-item label="分支" required>
+                <a-select
+                  :get-popup-container="getPopupContainer"
+                  v-model:value="form.branch"
+                  :options="branchOptions"
+                  :loading="branchLoading"
+                  style="width: 100%"
+                  placeholder="选择分支"
+                  @change="onBranchChange"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+
+          <a-form-item v-if="form.kind === 'COMMITS'" label="目标" required>
             <a-space wrap>
-              <a-select
-                :get-popup-container="getPopupContainer"
-                v-model:value="form.branch"
-                :options="branchOptions"
-                :loading="branchLoading"
-                style="width: 260px"
-                placeholder="选择分支"
-                @change="onBranchChange"
-              />
-              <a-button :disabled="!form.branch" @click="openCommitPicker">
-                选择提交（已选 {{ form.commits.length }}/20）
-              </a-button>
-              <span class="muted">按选择顺序逐项读取，最多 20 个；不合并成首尾净差异</span>
+              <a-button :disabled="!form.branch" @click="openCommitPicker">选择提交</a-button>
+              <span class="muted">已选 {{ form.commits.length }} 项，最多 20 项</span>
+<!--              <span class="muted">按选择顺序逐项读取，最多 20 个；不合并成首尾净差异</span>-->
             </a-space>
-            <div v-if="form.commits.length" class="selected-paths">
-              <a-tag
-                v-for="(sha, index) in form.commits"
-                :key="sha"
-                closable
-                @close="toggleCommit(sha)"
-              >
-                C{{ index + 1 }} · {{ sha.slice(0, 10) }}
-              </a-tag>
+            <div v-if="form.commits.length" class="target-list">
+              <div v-for="(sha, index) in form.commits" :key="sha" class="target-row">
+                <div class="target-main"><code>C{{ index + 1 }} · {{ sha.slice(0, 10) }}</code></div>
+                <a-button size="small" danger type="text" @click="toggleCommit(sha)">移除</a-button>
+              </div>
             </div>
           </a-form-item>
         </template>
@@ -134,8 +152,8 @@
           <a-row :gutter="16">
             <a-col :xs="24" :md="12">
               <a-form-item>
-                <template #label>指导提示词 <span class="muted small">（可选）</span></template>
-                <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" placeholder="不使用指导提示词" />
+                <template #label>通用规则 <span class="muted small">（可选）</span></template>
+                <a-select :get-popup-container="getPopupContainer" v-model:value="form.guidancePromptId" allow-clear :options="promptOptions" />
               </a-form-item>
             </a-col>
             <a-col v-if="form.guidancePromptId" :xs="24" :md="12">
@@ -160,11 +178,11 @@
             :error="guidancePromptError"
             @retry="loadGuidancePrompt()"
           />
-          <p v-if="form.guidancePromptId" class="muted">任务创建时保存所选版本的正文；覆盖版本会影响之后创建的任务。</p>
-          <a-form-item label="补充要求" required>
+<!--          <p v-if="form.guidancePromptId" class="muted">任务创建时保存所选版本的正文；覆盖版本会影响之后创建的任务。</p>-->
+          <a-form-item label="本次要求" required>
             <a-textarea
               v-model:value="form.requirements"
-              :maxlength="16000"
+              :maxlength="4000"
               show-count
               :auto-size="{ minRows: 4, maxRows: 8 }"
               placeholder="核对重试路径的幂等约定，并说明材料缺口。"
@@ -258,6 +276,12 @@ let guidancePromptEpoch = 0
 const branches = ref<string[]>([])
 const commits = ref<CommitInfo[]>([])
 const headLoading = ref(false)
+const headError = ref('')
+const headMoved = ref(false)
+let headEpoch = 0
+let lastObservedSha = ''
+let lastHeadProject = ''
+let lastHeadBranch = ''
 const branchLoading = ref(false)
 const commitLoading = ref(false)
 const commitLoadingMore = ref(false)
@@ -356,6 +380,7 @@ onMounted(() => window.addEventListener('scroll', closeDropdownOnScroll, true))
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', closeDropdownOnScroll, true)
   guidancePromptEpoch++
+  headEpoch++
 })
 
 onMounted(async () => {
@@ -447,6 +472,14 @@ function onBranchChange() {
 }
 
 async function selectProject(projectId: string) {
+  headEpoch++
+  headLoading.value = false
+  headError.value = ''
+  headMoved.value = false
+  lastObservedSha = ''
+  lastHeadProject = ''
+  lastHeadBranch = ''
+  scopeOpen.value = false
   form.projectId = projectId
   form.paths = []
   form.commits = []
@@ -481,19 +514,47 @@ async function selectProject(projectId: string) {
 }
 
 async function loadHead() {
+  const epoch = ++headEpoch
+  const projectId = form.projectId
+  const branch = form.branch
+  const sameContext = projectId === lastHeadProject && branch === lastHeadBranch
+  const previousSha = sameContext ? (form.observedSha || lastObservedSha) : ''
+  if (!sameContext) {
+    lastObservedSha = ''
+    lastHeadProject = projectId
+    lastHeadBranch = branch
+  }
+  scopeOpen.value = false
+  form.observedSha = ''
+  headError.value = ''
   if (!form.projectId || !form.branch) {
-    form.observedSha = ''
+    headLoading.value = false
     return
   }
   headLoading.value = true
   try {
-    form.observedSha = await repositoryApi.head(form.projectId, form.branch)
+    const sha = await repositoryApi.head(projectId, branch)
+    if (epoch !== headEpoch || projectId !== form.projectId || branch !== form.branch) return
+    if (previousSha && previousSha !== sha && form.paths.length) {
+      form.paths = []
+      headMoved.value = true
+    }
+    form.observedSha = sha
+    lastObservedSha = sha
   } catch (e) {
-    form.observedSha = ''
-    error.value = `读取分支 HEAD 失败：${(e as Error).message}`
+    if (epoch !== headEpoch || projectId !== form.projectId || branch !== form.branch) return
+    headError.value = `读取分支版本失败：${(e as Error).message}`
   } finally {
-    headLoading.value = false
+    if (epoch === headEpoch) headLoading.value = false
   }
+}
+
+function onHeadBranchChange() {
+  if (form.paths.length) {
+    form.paths = []
+    headMoved.value = true
+  }
+  void loadHead()
 }
 
 async function loadCommits(reset = true) {
@@ -573,6 +634,13 @@ async function locateCommit(sha: string) {
 function onKindChange() {
   error.value = ''
   if (form.kind === 'COMMITS') {
+    headEpoch++
+    headLoading.value = false
+    headError.value = ''
+    headMoved.value = false
+    form.observedSha = ''
+    lastObservedSha = ''
+    scopeOpen.value = false
     form.paths = []
     if (!commits.value.length) {
       void loadCommits()
@@ -586,16 +654,13 @@ function onKindChange() {
 }
 
 function onScopeConfirm(entries: Array<{ path: string }>) {
+  if (headLoading.value || !form.observedSha) return
   form.paths = entries.map((entry) => entry.path).slice(0, 100)
+  headMoved.value = false
 }
 
 function removePath(path: string) {
   form.paths = form.paths.filter((item) => item !== path)
-}
-
-function commitOrder(sha: string): string {
-  const index = form.commits.indexOf(sha)
-  return index >= 0 ? `C${index + 1}` : ''
 }
 
 function toggleCommit(sha: string) {
@@ -650,11 +715,24 @@ async function submit() {
 .mb16 { margin-bottom: 16px; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
-.head-hint { margin-left: 12px; }
-.selected-paths {
-  margin-top: 8px;
+.target-list {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  max-height: 240px;
+  overflow: auto;
+}
+.target-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #edf1f6;
+}
+.target-row:last-child { border-bottom: 0; }
+.target-main {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 </style>

@@ -15,6 +15,27 @@ async function start() { const w = mount(ScopePickerModal, { props: {
 }, global: { stubs: { ...namedAntStubs, 'a-tree': { inheritAttrs: false, template: '<div />' }, 'a-modal': { template: '<div><slot /></div>' }, DiffViewer: true } } }); await flushPromises(); return w }
 beforeEach(() => { vi.resetAllMocks(); vi.mocked(repositoryApi.paths).mockResolvedValue(listing('A.java') as any) })
 describe('范围弹窗的异步隔离', () => {
+  it('提交改动预览和文件原文使用相同的滚动容器', async () => {
+    const w = await start(); const s = state(w)
+    vi.mocked(repositoryApi.file).mockResolvedValue({ content: '文件原文' } as any)
+    await s.openPreview({ path: 'A.java' }); await flushPromises()
+    expect(w.find('[aria-label="代码预览，可横向滚动"]').classes()).toContain('source-code')
+
+    vi.mocked(repositoryApi.commit).mockResolvedValue({ files: [], truncated: false } as any)
+    vi.mocked(repositoryApi.diff).mockResolvedValue({
+      baseSha: 'base', headSha: 'head', patch: '@@ -1 +1 @@\n-old\n+new',
+      before: { status: 'PRESENT', content: 'old' }, after: { status: 'PRESENT', content: 'new' }
+    } as any)
+    await w.setProps({ mode: 'DIFF', commitSha: 'head' }); await flushPromises()
+    await s.openPreview({ path: 'A.java' }); await flushPromises()
+    const diff = w.find('[aria-label="提交差异预览，可滚动"]')
+    expect(diff.classes()).toContain('source-code')
+    expect(diff.attributes('tabindex')).toBe('0')
+    expect(diff.findComponent({ name: 'DiffViewer' }).props('patch')).toContain('+new')
+    s.previewMode = 'after'; await flushPromises()
+    expect(w.find('[aria-label="代码预览，可横向滚动"]').classes()).toContain('source-code')
+    w.unmount()
+  })
   it('来源变化后丢弃迟到列表', async () => {
     const w = await start(); const s = state(w); const old = deferred<any>(); const latest = deferred<any>()
     vi.mocked(repositoryApi.paths).mockReturnValueOnce(old.promise).mockReturnValueOnce(latest.promise)

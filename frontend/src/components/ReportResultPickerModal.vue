@@ -12,7 +12,7 @@
       <a-select v-model:value="filterProject" allow-clear placeholder="全部项目" :options="projectOptions" @change="resetCandidates()" />
       <a-select v-model:value="filterKind" allow-clear placeholder="全部类型" :options="kindOptions" @change="resetCandidates()" />
       <span class="spacer" />
-      <a-button size="small" :loading="loading" :disabled="loadingMore" @click="resetCandidates(false)">刷新结果</a-button>
+      <a-button size="small" :loading="loading" :disabled="loadingMore" @click="resetCandidates(false)">刷新</a-button>
     </div>
     <div class="search-row">
       <a-input v-model:value="query" allow-clear placeholder="筛选已加载结果的任务、项目、路径或版本" />
@@ -47,8 +47,8 @@
                 :disabled="selectionDisabled(item)" @click="toggle(item, $event)">
                 <strong :title="taskLabel(item.taskName, item.taskId)">{{ taskLabel(item.taskName, item.taskId) }}</strong>
                 <span class="target" :title="pathTitle(item)">{{ item.kind === 'AGENT' ? 'Agent 调查结果' : fileName(item.path) }}</span>
-                <span class="muted result-meta" :title="`${item.projectName || item.projectId} · ${kindText(item.kind)} · ${item.headSha || '—'} · ${resultTime(item.resultCreatedAt)}`">
-                  {{ item.projectName || item.projectId }} · {{ kindText(item.kind) }} · {{ shortSha(item.headSha) }} · {{ resultTime(item.resultCreatedAt) }}
+                <span class="muted result-meta" :title="`${kindText(item.kind)} · ${resultTime(item.resultCreatedAt)}`">
+                  {{ kindText(item.kind) }} · {{ resultTime(item.resultCreatedAt) }}
                 </span>
               </button>
               <div class="result-status">
@@ -58,14 +58,14 @@
                 <span v-else class="muted small">{{ item.kind === 'ISSUE' ? `${item.issueCount} 个问题` : '结果级反馈' }}</span>
                 <span v-if="item.kind === 'AGENT' && item.unresolvedCount" class="muted small">未解决 {{ item.unresolvedCount }} 项</span>
                 <span v-else class="muted small">{{ feedbackText(item) }}</span>
-                <span class="muted small">{{ item.kind === 'AGENT' ? 'Agent 调查' : item.sourceKind === 'DIFF' ? '提交差异' : '文件内容' }}</span>
+                <span class="muted small">{{ item.kind === 'AGENT' ? 'Agent 调查' : item.sourceKind === 'DIFF' ? '审查差异' : '审查内容' }}</span>
               </div>
               <a-button type="link" size="small" :disabled="item.kind !== 'AGENT' && !item.targetId" @click="emit('preview', item)">查看结果</a-button>
             </div>
           </template>
         </VirtualList>
         <div class="list-foot">
-          <a-button v-if="hasMore" size="small" :loading="loadingMore" :disabled="loading || !!error" @click="loadMore">加载更多结果</a-button>
+          <a-button v-if="hasMore" size="small" :loading="loadingMore" :disabled="loading || !!error" @click="loadMore">加载更多</a-button>
           <span v-else-if="!loading && !error" class="muted small">已加载完当前筛选下的结果</span>
         </div>
       </a-spin>
@@ -75,7 +75,7 @@
       <a-button size="small" :disabled="!draft.size" @click="draft.clear()">清空选择</a-button>
       <span class="spacer" />
       <a-button @click="close">取消</a-button>
-      <a-button type="primary" @click="confirm">使用所选结果</a-button>
+      <a-button type="primary" @click="confirm">确定</a-button>
     </div>
   </a-modal>
 </template>
@@ -85,7 +85,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import VirtualList from 'ant-design-vue/es/vc-virtual-list'
 import { reportsApi, type ProjectView, type ReportCandidate } from '@/api/v2'
 import { fileName, taskLabel } from '@/utils/taskLabel'
-import { feedbackText, kindText, pathTitle, resultTime, shortSha } from '@/utils/reportCandidates'
+import { feedbackText, kindText, pathTitle, resultTime } from '@/utils/reportCandidates'
 
 const props = defineProps<{ open: boolean; selected: ReportCandidate[]; projects: ProjectView[] }>()
 const emit = defineEmits<{

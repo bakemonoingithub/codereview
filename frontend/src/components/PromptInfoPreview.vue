@@ -1,6 +1,6 @@
 <template>
   <section class="prompt-info-preview">
-    <div class="section-heading">{{ title }}</div>
+<!--    <div class="section-heading">{{ title }}</div>-->
     <a-spin :spinning="loading">
       <a-alert v-if="error" type="error" show-icon :message="error">
         <template #action>
@@ -10,7 +10,7 @@
       <template v-if="prompt">
         <strong class="item-title">{{ prompt.name }} · {{ formatPromptVersion(displayVersion?.versionNo) }}</strong>
         <p v-if="displayVersion?.createdAt" class="description">创建时间：{{ displayVersion.createdAt.replace('T', ' ') }}</p>
-        <p v-if="prompt.description" class="description">{{ prompt.description }}</p>
+        <p v-if="prompt.description" class="description">描述：{{ prompt.description }}</p>
         <div v-if="prompt.tags.length" class="tags">
           <a-tag v-for="tag in prompt.tags" :key="tag">{{ tag }}</a-tag>
         </div>

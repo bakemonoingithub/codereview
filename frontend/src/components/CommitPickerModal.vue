@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :open="open"
-    title="选择审查提交"
+    title="选择提交"
     width="min(860px, calc(100vw - 48px))"
     :footer="null"
     destroy-on-close
@@ -9,10 +9,10 @@
   >
     <div class="picker-head">
       <div>
-        <strong>分支 {{ branch || '—' }}</strong>
-        <span class="muted">当前分支的提交历史</span>
+        <strong>当前分支： {{ branch || '—' }}</strong>
+<!--        <span class="muted">当前分支的提交历史</span>-->
       </div>
-      <a-button size="small" :loading="loading" :disabled="loadingMore" @click="$emit('refresh')">刷新最近提交</a-button>
+      <a-button size="small" :loading="loading" :disabled="loadingMore" @click="$emit('refresh')">刷新</a-button>
     </div>
 
     <a-alert v-if="error" type="error" show-icon :message="error" class="mb12">
@@ -54,15 +54,19 @@
     <a-alert v-if="lookupError" type="error" show-icon :message="lookupError" class="lookup-result" />
     <div v-for="entry in separateCommits" :key="entry.commit.sha" class="lookup-result">
       <p class="muted search-note">{{ entry.label }}</p>
-      <button
-        type="button"
+      <div
         class="commit-row located-row"
         :id="locatedRowId(entry.commit.sha)"
         :class="{ selected: isSelected(entry.commit.sha) }"
-        :aria-pressed="isSelected(entry.commit.sha)"
-        @click="selectCommit(entry.commit.sha, $event)"
-        @dblclick="onDoubleClick"
       >
+        <a-checkbox
+          :checked="isSelected(entry.commit.sha)"
+          :disabled="selectionDisabled(entry.commit.sha)"
+          :aria-label="`选择提交 ${entry.commit.sha}`"
+          @change="onCheckboxChange(entry.commit.sha, $event.target.checked)"
+        />
+        <button type="button" class="commit-choice" :aria-pressed="isSelected(entry.commit.sha)"
+          :disabled="selectionDisabled(entry.commit.sha)" @click="selectCommit(entry.commit.sha, $event)" @dblclick="onDoubleClick">
         <span class="commit-main">
           <code>{{ entry.commit.sha.slice(0, 10) }}</code>
           <strong :title="subject(entry.commit.message)">{{ subject(entry.commit.message) || '无提交说明' }}</strong>
@@ -71,7 +75,8 @@
           <span>{{ entry.commit.author || '未知作者' }}</span>
           <span>{{ formatDate(entry.commit.date) || '时间未知' }}</span>
         </span>
-      </button>
+        </button>
+      </div>
     </div>
 
     <div ref="listRef" class="commit-list" @scroll.passive="onScroll">
@@ -91,14 +96,18 @@
           @scroll="onScroll"
         >
           <template #default="commit">
-            <button
-              type="button"
+            <div
               class="commit-row"
               :class="{ selected: isSelected(commit.sha) }"
-              :aria-pressed="isSelected(commit.sha)"
-              @click="selectCommit(commit.sha, $event)"
-              @dblclick="onDoubleClick"
             >
+              <a-checkbox
+                :checked="isSelected(commit.sha)"
+                :disabled="selectionDisabled(commit.sha)"
+                :aria-label="`选择提交 ${commit.sha}`"
+                @change="onCheckboxChange(commit.sha, $event.target.checked)"
+              />
+              <button type="button" class="commit-choice" :aria-pressed="isSelected(commit.sha)"
+                :disabled="selectionDisabled(commit.sha)" @click="selectCommit(commit.sha, $event)" @dblclick="onDoubleClick">
               <span class="commit-main">
                 <code>{{ commit.sha.slice(0, 10) }}</code>
                 <strong :title="subject(commit.message)">{{ subject(commit.message) || '无提交说明' }}</strong>
@@ -107,7 +116,8 @@
                 <span>{{ commit.author || '未知作者' }}</span>
                 <span>{{ formatDate(commit.date) || '时间未知' }}</span>
               </span>
-            </button>
+              </button>
+            </div>
           </template>
         </VirtualList>
 
@@ -119,7 +129,7 @@
             :disabled="loading || !!error"
             @click="$emit('load-more')"
           >
-            加载更早提交
+            加载更多
           </a-button>
           <span v-else-if="!error && !loading && !loadingMore" class="muted">已加载完该分支提交历史</span>
         </div>
@@ -134,12 +144,13 @@
         已选 <code>{{ draftSha.slice(0, 10) }}</code>
       </span>
       <span v-else class="muted">请选择一条提交；双击提交也可直接确认。</span>
+      <a-button size="small" :disabled="!displayedSelectedShas.length" @click="clearSelection">清空选择</a-button>
       <span class="spacer" />
       <a-button @click="close">取消</a-button>
-      <a-button v-if="multiple" type="primary" :disabled="!draftShas.length" @click="confirm">
-        使用所选提交
+      <a-button v-if="multiple" type="primary" :disabled="!draftShas.length && !selectedShas.length" @click="confirm">
+        确定
       </a-button>
-      <a-button v-else type="primary" :disabled="!draftSha" @click="confirm">使用这个提交</a-button>
+      <a-button v-else type="primary" :disabled="!draftSha && !selectedSha" @click="confirm">确定</a-button>
     </div>
   </a-modal>
 </template>
@@ -267,15 +278,29 @@ function close() {
 
 function confirm() {
   if (props.multiple) {
-    if (draftShas.value.length) emit('confirm-many', [...draftShas.value])
+    if (draftShas.value.length || props.selectedShas.length) emit('confirm-many', [...draftShas.value])
     return
   }
-  if (!draftSha.value) return
+  if (!draftSha.value && !props.selectedSha) return
   emit('confirm', draftSha.value)
 }
 
 function isSelected(sha: string): boolean {
   return props.multiple ? draftShas.value.includes(sha) : draftSha.value === sha
+}
+
+function selectionDisabled(sha: string): boolean {
+  return Boolean(props.multiple && props.maxSelections && draftShas.value.length >= props.maxSelections && !isSelected(sha))
+}
+
+function onCheckboxChange(sha: string, checked: boolean) {
+  if (checked && !isSelected(sha)) selectCommit(sha)
+  else if (!checked && isSelected(sha)) removeDraftCommit(sha)
+}
+
+function clearSelection() {
+  draftSha.value = ''
+  draftShas.value = []
 }
 
 function selectCommit(sha: string, event?: MouseEvent) {
@@ -424,18 +449,28 @@ function onScroll(event?: Event) {
 .commit-row {
   display: flex;
   width: 100%;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #edf1f6;
+  background: #fff;
+}
+.commit-choice {
+  display: flex;
+  flex: 1;
+  min-width: 0;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  min-height: 64px;
-  padding: 11px 14px;
+  padding: 0;
   border: 0;
-  border-bottom: 1px solid #edf1f6;
-  background: #fff;
+  background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
 }
+.commit-choice:disabled { cursor: not-allowed; }
 .commit-row:hover {
   background: #f7faff;
 }
@@ -468,6 +503,7 @@ function onScroll(event?: Event) {
 }
 .picker-foot {
   gap: 10px;
+  flex-wrap: wrap;
   margin-top: 14px;
 }
 .selected-summary {
@@ -483,7 +519,7 @@ function onScroll(event?: Event) {
   margin-bottom: 12px;
 }
 @media (max-width: 700px) {
-  .commit-row {
+  .commit-choice {
     align-items: flex-start;
     flex-direction: column;
     gap: 5px;

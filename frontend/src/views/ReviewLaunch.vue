@@ -31,7 +31,7 @@
     </template>
 
     <template #body>
-      <LaunchFormSections :titles="{ goal: '审查目标', scope: '范围与版本', extra: '补充要求' }">
+      <LaunchFormSections :titles="{ goal: '基本信息', scope: '范围', extra: '要求' }">
         <template #goal>
           <div class="form-grid">
             <a-form-item class="full">
@@ -39,7 +39,7 @@
               <a-input
                 v-model:value="form.name"
                 :maxlength="200"
-                placeholder="留空时保存为「审查任务」加任务 ID"
+                placeholder="例如：问题专项审查"
               />
             </a-form-item>
             <a-form-item label="项目" required>
@@ -94,7 +94,7 @@
                 @change="onBranchChange"
               />
             </a-form-item>
-            <a-form-item v-if="form.sourceKind === 'FILES'" label="固定版本" required>
+            <a-form-item v-if="form.sourceKind === 'FILES'" label="提交hash" required>
               <LaunchVersionPreview
                 :sha="form.observedSha"
                 :loading="headLoading"
@@ -104,7 +104,7 @@
                 @refresh="resolveHead"
               />
             </a-form-item>
-            <a-form-item v-else label="目标提交" required>
+            <a-form-item v-else label="提交" required>
               <div class="commit-picker-field">
                 <a-button
                   :loading="commitsLoading && !commits.length"
@@ -125,7 +125,7 @@
                     : '提交详情就绪后显示' }}
                 </template>
                 <template v-else>
-                  提交历史分页加载；选择器会明确提示是否还有更早提交。
+<!--                  提交历史分页加载；选择器会明确提示是否还有更早提交。-->
                 </template>
               </p>
               <a-alert v-if="commitDetailError" type="error" show-icon :message="commitDetailError" class="commit-help">
@@ -134,7 +134,7 @@
                 </template>
               </a-alert>
             </a-form-item>
-            <a-form-item class="full" label="目标文件" required>
+            <a-form-item class="full" label="目标" required>
               <div class="target-actions">
                 <a-button type="primary" ghost :disabled="!scopeReady" @click="scopeOpen = true">
                   {{ form.targets.length ? '调整文件范围' : '选择文件范围' }}
@@ -201,7 +201,7 @@
             <div v-for="(target, index) in form.targets" :key="target.path" class="file-note">
               <div class="note-head">
                 <strong>{{ target.path }}</strong>
-                <span>补充要求 <span class="muted small">（可选）</span></span>
+                <span>本次要求 <span class="muted small">（可选）</span></span>
               </div>
               <a-textarea
                 v-model:value="form.targets[index].note"

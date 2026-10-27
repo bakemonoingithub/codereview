@@ -13,11 +13,11 @@
     </template>
 
     <template #body>
-      <LaunchFormSections :titles="{ goal: '报告信息', scope: '审查材料', extra: '补充要求' }">
+      <LaunchFormSections :titles="{ goal: '基本信息', scope: '审查结果', extra: '要求' }">
         <template #goal>
           <div class="form-grid">
             <a-form-item label="报告名称" required>
-              <a-input v-model:value="form.title" :maxlength="200" placeholder="例如：订单服务专项审查报告" />
+              <a-input v-model:value="form.title" :maxlength="200" placeholder="例如：专项审查报告" />
             </a-form-item>
             <a-form-item label="模型" required>
               <a-select
@@ -36,8 +36,7 @@
             <a-button type="primary" :disabled="submitting" @click="pickerOpen = true">选择审查结果</a-button>
             <span class="muted small">已选 {{ selected.size }} 个结果</span>
           </div>
-          <p v-if="!selected.size" class="muted small">尚未选择材料。</p>
-          <div v-else class="selected-list">
+          <div v-if="selected.size" class="selected-list">
             <div v-for="item in selectedList" :key="item.resultId" class="selected-item">
               <div>
                 <strong :title="item.taskId">{{ taskLabel(item.taskName, item.taskId) }}</strong>
@@ -88,13 +87,13 @@
               />
             </div>
             <a-form-item class="full">
-              <template #label>补充要求 <span class="muted small">（可选）</span></template>
+              <template #label>本次要求 <span class="muted small">（可选）</span></template>
               <a-textarea
                 v-model:value="form.instruction"
                 :maxlength="4000"
                 show-count
                 :auto-size="{ minRows: 4, maxRows: 8 }"
-                placeholder="例如：优先说明支付重试风险，保留来源引用。"
+                placeholder="优先说明支付重试风险，保留来源引用。"
               />
             </a-form-item>
           </div>
@@ -184,7 +183,7 @@ const resultView = ref<ResultView | null>(null)
 const resultTaskId = ref('')
 const resultTitle = ref('审查结果')
 const form = reactive({
-  title: '专项审查报告', modelConfigId: undefined as string | undefined, instruction: '',
+  title: '', modelConfigId: undefined as string | undefined, instruction: '',
   promptId: '', promptVersionId: ''
 })
 const formError = ref('')
