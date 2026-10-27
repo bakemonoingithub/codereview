@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-10-27 专项结果 SRF 方案：负责人已要求依据三类原型实施，并确认逐条结论反馈、评论直接展示。现已交付[实施方案](work/agent-redesign/specialist-result-prototype/implementation-plan.md)，业务修订见[契约第 11 节](work/agent-redesign/business-contract.md#11-专项审查结果展示与逐条反馈2026-10-27)。SRF-01 文档完成，SRF-02–08 均 todo，详见[主 ROADMAP](ROADMAP.md#srf-专项审查结果展示与逐条反馈2026-10-27)；后端、新表及历史回填尚未获实施授权，tab 外统计／报告依赖待确认最小范围。当前未改正式代码或数据库，SRF 无 active；P29–P33、UPI、CFG 状态保持不变。
+
 2026-10-27 材料阅读文案及审查输入排序：按负责人确认的方案修改字段名称、条件显示与枚举描述，审查输入按用途排序，详情见[改动记录](work/agent-redesign/material-reader-copy-20261027.md)。不变更业务阶段状态。
 
 2026-10-27 专项详情逐文件问题数修复：左侧计数改为读取各目标的独立汇总，不依赖点击；后端 29 项、前端 18 项及隔离构建通过，类型检查的既有错误和服务生效边界见[修复记录](work/agent-redesign/target-issue-count-20261027.md)。不变更业务阶段状态。

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>专项审查 · 结果层级预览</title>
+<style>
+:root{--ink:#18243b;--muted:#63738b;--line:#e3e9f2;--blue:#245fe5;--bg:#f5f7fb;--red:#b93837;--orange:#9c6214}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.75 "Segoe UI","Microsoft YaHei",sans-serif}button,textarea,select{font:inherit}button,select{cursor:pointer}button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #8cb4ff;outline-offset:3px}button{border:1px solid #d9e1ed;background:white;border-radius:6px;padding:4px 12px;color:var(--ink)}button:disabled{cursor:default;color:#9aa5b5;background:#f6f8fb}.prototype-bar{max-width:1192px;margin:20px auto 14px;display:flex;align-items:center;gap:12px;padding:0 16px;color:var(--muted);font-size:12px}.prototype-bar strong{color:var(--ink);font-size:13px}.prototype-bar label{margin-left:auto}select{margin-left:8px;border:1px solid var(--line);border-radius:6px;padding:5px 10px;color:var(--ink);background:white}.panel{max-width:1160px;margin:0 auto 40px;background:white;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 20px #273e6610;overflow:hidden}.tabs{display:flex;gap:30px;padding:0 26px;border-bottom:1px solid var(--line)}.tab{padding:16px 0 13px;font-size:13px;color:var(--muted)}.tab.active{color:var(--blue);font-weight:600;border-bottom:2px solid var(--blue)}main{padding:26px}.conclusion{border:1px solid #d9e5fc;border-left:4px solid var(--blue);background:#f4f7ff;border-radius:9px;padding:20px 22px;margin-bottom:26px}.conclusion-head{display:flex;align-items:center;gap:12px}.conclusion h1{font-size:19px;margin:0;letter-spacing:.4px}.kind{font-size:12px;color:var(--blue);border:1px solid #cadbff;border-radius:4px;padding:0 7px;background:#fff}.conclusion p{font-size:15px;line-height:1.9;margin:12px 0}.counts{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13px}.counts b{font-size:16px}.high-ink{color:var(--red)}.medium-ink{color:var(--orange)}.hint{font-size:12px;color:var(--muted)}.counts .hint{margin-left:auto}.list-heading{display:flex;align-items:baseline;gap:10px;margin:0 0 12px}.list-heading h2{font-size:16px;margin:0}.list-heading span{font-size:12px;color:var(--muted)}.issue{border:1px solid #dbe2ed;border-radius:10px;margin:0 0 22px;overflow:hidden}.issue-head{padding:18px 22px 16px;background:#fcfdff;border-bottom:1px solid var(--line)}.meta{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:9px}.number{font-weight:600;color:var(--muted);margin-right:3px}.severity{padding:0 8px;border:1px solid #edc7c4;border-radius:4px;background:#fff2f0;color:var(--red);font-weight:600}.severity.medium{border-color:#efdbb4;background:#fff8ea;color:var(--orange)}.category{padding:0 8px;border:1px solid var(--line);border-radius:4px;color:#596a83;background:#f3f6fa}.issue h3{font-size:17px;margin:0;line-height:1.6;font-weight:650}.issue-content{padding:20px 22px}.section-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:650;margin:0 0 7px}.section-label:before{content:"";display:block;width:3px;height:13px;background:#94a7c6;border-radius:2px}.description{margin:0 0 18px;line-height:1.95;overflow-wrap:anywhere}.suggestion{padding:14px 16px;background:#f3f7fd;border:1px solid #e0e9f7;border-radius:7px;margin:0 0 20px}.suggestion .section-label{color:#305991}.suggestion .section-label:before{background:#6a93d2}.suggestion p{margin:0;line-height:1.9}.references{border-top:1px solid var(--line);padding-top:17px}.ref-row{display:grid;grid-template-columns:82px 1fr;gap:12px;margin-top:11px;align-items:start}.ref-label{font-size:12px;color:var(--muted);padding-top:2px}.ref-link{border:0;background:none;text-align:left;padding:0;color:var(--blue);min-width:0;line-height:1.6}.ref-link strong{font-size:13px}.ref-link:hover strong{text-decoration:underline}.ref-link small{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere;margin-top:3px}.line-tag{display:inline-block;margin-left:8px;background:#edf3ff;padding:0 6px;border-radius:4px;font-size:12px}.open{margin-left:8px;font-size:12px}.feedback{padding:15px 22px 17px;background:#fafbfd;border-top:1px solid var(--line)}.feedback-top,.feedback-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.feedback-top{margin-bottom:9px;font-size:12px}.feedback-top strong{font-size:13px}.status{margin-left:auto;color:var(--muted)}.feedback-actions button{font-size:12px}.feedback-actions button.selected{background:#edf3ff;border-color:#82a6f2;color:var(--blue)}.link-button{border-color:transparent;background:transparent;color:var(--blue)}.save{margin-left:auto;background:var(--blue);border-color:var(--blue);color:white}.feedback .comment{font-size:12px;margin-top:12px}.comment-label{display:block;color:var(--muted)}.feedback textarea{width:100%;resize:vertical;min-height:78px;padding:10px;border:1px solid #dbe2ed;border-radius:6px;margin-top:8px;line-height:1.7;color:var(--ink)}.feedback .comment .hint{display:block;margin-top:3px}.boundary{padding:14px 18px;background:#fffaf0;border:1px solid #efe1bb;border-radius:8px;font-size:13px;color:#725f36}.boundary strong{display:block;margin-bottom:4px}.empty{padding:36px 16px;text-align:center;border:1px dashed var(--line);border-radius:9px}.empty strong{display:block;font-size:16px;margin-bottom:8px}.warning{padding:12px 16px;border:1px solid #edce8e;background:#fff9ec;border-radius:8px;margin-bottom:18px;color:#8b601c;font-size:13px}[hidden]{display:none!important}dialog{width:min(650px,90vw);border:1px solid var(--line);border-radius:12px;padding:22px;color:var(--ink)}dialog::backdrop{background:#15213b65}dialog h2{font-size:17px;margin:0 0 12px}dialog pre{white-space:pre-wrap;background:var(--bg);padding:16px;font:13px/1.8 Consolas,monospace}dialog .close{float:right}code{font: .94em Consolas,monospace;background:#edf1f7;border-radius:3px;padding:1px 4px}.footer-note{max-width:1160px;margin:-24px auto 30px;font-size:12px;color:var(--muted);padding:0 8px}@media(max-width:700px){.prototype-bar{flex-wrap:wrap}.prototype-bar label{margin-left:0}.panel{margin:0 10px 36px}.tabs{padding:0 18px}main{padding:18px 14px}.conclusion{padding:16px}.counts .hint{width:100%;margin:0}.issue-head,.issue-content,.feedback{padding:16px}.ref-row{grid-template-columns:1fr;gap:2px}.issue h3{font-size:16px}.feedback .save{margin-left:0}.footer-note{padding:0 18px}}
+.prototype-bar label{margin-left:0}.prototype-bar .mode-picker{margin-left:auto}.type-tag{padding:0 8px;border:1px solid #d8ccef;border-radius:4px;background:#f6f1ff;color:#715298}.type-tag.green{color:#32776a;border-color:#c8e1da;background:#eef8f4}.role{padding:13px 16px;background:#f7f4fc;border:1px solid #e7dff3;border-radius:7px;margin-bottom:18px}.role .section-label{color:#715298}.role p{margin:0}.fact-panel{border:1px solid var(--line);border-radius:10px;padding:20px 22px;margin-bottom:24px}.fact-heading{display:flex;align-items:center;gap:10px;margin-bottom:14px}.fact-heading h2{font-size:16px;margin:0}.fact-heading span{font-size:12px;color:var(--muted)}.fact-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}.fact-stat{background:#f4f8f7;border:1px solid #e0ebe7;border-radius:7px;padding:13px 16px}.fact-stat span{display:block;font-size:12px;color:var(--muted)}.fact-stat strong{font-size:24px;color:#326d62;font-weight:650;margin-right:6px}.fact-stat.unresolved{background:#fffbf2;border-color:#eee2c7}.fact-stat.unresolved strong{color:var(--orange)}.table-scroll{overflow-x:auto;margin-top:14px}.facts{width:100%;border-collapse:collapse;text-align:left;font-size:13px}.facts th{background:#f7f9fc;font-size:12px;color:var(--muted);font-weight:500}.facts th,.facts td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}.facts td small{display:block;color:var(--muted);font-size:12px;overflow-wrap:anywhere}.facts tr:target{background:#fff8e5}.fact-links{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}.fact-link{color:#32776a;background:#f0f8f5;border:1px solid #d7e8e0;border-radius:5px;padding:3px 9px;text-decoration:none;font-size:12px}.fact-link:hover{text-decoration:underline}.result-feedback{margin-top:22px;border:1px solid var(--line);border-radius:9px}.boundary ul{margin:0;padding-left:18px}.list-heading .type-caption{margin-left:auto}@media(max-width:700px){.prototype-bar .mode-picker{margin-left:0}.fact-panel{padding:16px}.fact-stats{grid-template-columns:1fr}.fact-heading{flex-wrap:wrap}.list-heading{flex-wrap:wrap}.list-heading .type-caption{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="prototype-bar"><strong>审查结果 · 展示优化预览</strong><span>示例数据 · 反馈仅保留在当前预览页</span><label class="mode-picker">专项类型<select id="review-kind"><option value="ISSUE">问题审查</option><option value="COUPLING">耦合度分析</option><option value="PATTERN">设计模式分析</option></select></label><label>示例状态<select id="scenario"><option value="issues">发现问题</option><option value="empty">未发现问题</option><option value="incomplete">文件未完成</option></select></label></div>
+<div class="panel">
+  <nav class="tabs" aria-label="详情导航"><span class="tab active" aria-current="page">审查结果</span><span class="tab">输入与配置</span><span class="tab">实际调用</span></nav>
+  <main>
+    <div class="warning" id="incomplete" hidden>文件未完成：以下内容来自已成功的片段，不能作为完整文件结论或报告材料。</div>
+    <section class="conclusion" aria-labelledby="conclusion-title">
+      <div class="conclusion-head"><h1 id="conclusion-title">审查结论</h1><span class="kind">问题审查</span></div>
+      <p id="summary">TaskService 创建链路具备幂等、快照与事务衔接，但存在入队失败后任务永久停留 QUEUED、快照读取静默降级等可靠性风险。</p>
+      <div class="counts" id="result-counts"><span>当前文件发现 <b>2</b> 个问题</span><span class="high-ink">高严重度 <b>1</b></span><span class="medium-ink">中严重度 <b>1</b></span><span class="hint">模型分析结果，问题准确性可逐项反馈</span></div>
+    </section>
+    <div id="results">
+      <div class="list-heading"><h2>问题详情</h2><span>按模型返回顺序展示</span></div>
+      <article class="issue" id="issue-1">
+        <header class="issue-head"><div class="meta"><span class="number">问题 01</span><span class="severity">高严重度</span><span class="category">可靠性</span></div><h3>事务提交后 dispatch 失败会使任务永久停留 QUEUED</h3></header>
+        <div class="issue-content">
+          <h4 class="section-label">问题说明</h4>
+          <p class="description">任务与目标、额度在事务内落库并置为 QUEUED（第 117、592 行），事务提交后第 143 行直接调用 dispatcher.dispatch(task.getId())。该调用位于 try/catch 之外，若其抛出异常（如线程池拒绝、执行器不可用），create 会向调用方返回失败，但任务已持久化为 QUEUED 且没有任何补偿或状态收敛；调用方重试若未带同一 Idempotency-Key 会创建重复任务，若带同一 key 则 replay 返回一个从未被调度的 QUEUED 任务。</p>
+          <section class="suggestion"><h4 class="section-label">修改建议</h4><p>将 dispatch 调用纳入异常处理：捕获后通过 dispatcher.terminate/finish 将任务与目标收敛为明确失败态（如 EXECUTOR_UNAVAILABLE）再抛出，或改为事务提交后可靠投递（如 outbox/重试队列），确保 QUEUED 任务最终一定被调度或标记失败。</p></section>
+          <section class="references"><h4 class="section-label">代码定位与证据</h4>
+            <div class="ref-row"><span class="ref-label">问题位置</span><button class="ref-link" data-file="TaskService.java" data-lines="127–144"><strong>TaskService.java</strong><span class="line-tag">127–144 行</span><span class="open">查看代码 ↗</span><small>backend/src/main/java/com/codereview/agent/service/TaskService.java · 文件</small></button></div>
+            <div class="ref-row"><span class="ref-label">辅助证据</span><button class="ref-link" data-file="TaskDispatchService.java" data-lines="26–33"><strong>TaskDispatchService.java</strong><span class="line-tag">26–33 行</span><span class="open">查看代码 ↗</span><small>backend/src/main/java/com/codereview/agent/execution/TaskDispatchService.java · 文件</small></button></div>
+          </section>
+        </div>
+        <section class="feedback" aria-label="问题 01 的人工反馈">
+          <div class="feedback-top"><strong>人工反馈</strong><span class="hint">此问题是否准确？</span><span class="status" aria-live="polite">尚未反馈</span></div>
+          <div class="feedback-actions"><button data-assessment="准确" aria-pressed="false">准确</button><button data-assessment="不准确" aria-pressed="false">不准确</button><button data-assessment="无法判断" aria-pressed="false">无法判断</button><button class="link-button clear" disabled>清除评价</button><button class="save" disabled>保存反馈</button></div>
+          <div class="comment"><span class="comment-label">评论（可选）</span><textarea aria-label="问题 01 的评论" placeholder="补充判断依据或纠正意见，也可只保存评论。" maxlength="16000"></textarea><span class="hint">评价与评论分别保留，修改后点击「保存反馈」。</span></div>
+        </section>
+      </article>
+      <article class="issue" id="issue-2">
+        <header class="issue-head"><div class="meta"><span class="number">问题 02</span><span class="severity medium">中严重度</span><span class="category">可靠性</span></div><h3>快照读取异常被静默降级，调用方难以识别输入缺失</h3></header>
+        <div class="issue-content"><h4 class="section-label">问题说明</h4><p class="description">此条为布局演示：读取快照失败后返回空值，可能使后续流程继续使用不完整的输入。需要结合异常分支及调用方行为核实。</p><section class="suggestion"><h4 class="section-label">修改建议</h4><p>区分快照不存在与读取失败，保留可定位的失败原因，并由调用方显式处理。</p></section><section class="references"><h4 class="section-label">代码定位与证据</h4><div class="hint">此条仅演示多个问题之间的视觉分隔，未提供真实代码位置或辅助证据。</div></section></div>
+        <section class="feedback" aria-label="问题 02 的人工反馈"><div class="feedback-top"><strong>人工反馈</strong><span class="hint">此问题是否准确？</span><span class="status" aria-live="polite">尚未反馈</span></div><div class="feedback-actions"><button data-assessment="准确" aria-pressed="false">准确</button><button data-assessment="不准确" aria-pressed="false">不准确</button><button data-assessment="无法判断" aria-pressed="false">无法判断</button><button class="link-button clear" disabled>清除评价</button><button class="save" disabled>保存反馈</button></div><div class="comment"><span class="comment-label">评论（可选）</span><textarea aria-label="问题 02 的评论" placeholder="补充判断依据或纠正意见，也可只保存评论。" maxlength="16000"></textarea><span class="hint">评价与评论分别保留，修改后点击「保存反馈」。</span></div></section>
+      </article>
+    </div>
+    <section id="coupling-panel" hidden>
+      <section class="fact-panel" aria-labelledby="facts-title">
+        <div class="fact-heading"><h2 id="facts-title">文件级依赖事实</h2><span>程序解析结果</span></div>
+        <div class="fact-stats"><div class="fact-stat"><span>仓库内已解析出向依赖</span><strong>2</strong> 项</div><div class="fact-stat unresolved"><span>未可靠定位类型</span><strong>1</strong> 个</div></div>
+        <p class="hint">示例版本 a1b2c3d · 文件；未解析类型不计为零依赖，不包含全仓入向关系。</p>
+        <div class="table-scroll"><table class="facts"><caption class="hint" style="text-align:left">目标文件 TaskService.java 的已解析依赖（示例）</caption><thead><tr><th scope="col">编号</th><th scope="col">依赖关系</th><th scope="col">关系类型</th><th scope="col">目标声明文件</th><th scope="col">本文件引用行</th></tr></thead><tbody>
+          <tr id="dep-1"><td>D1</td><td>TaskService → TaskRepository</td><td>字段依赖</td><td>TaskRepository.java<small>backend/src/main/java/com/example/review/repository/TaskRepository.java</small></td><td>32 行</td></tr>
+          <tr id="dep-2"><td>D2</td><td>TaskService → TaskDispatcher</td><td>字段依赖</td><td>TaskDispatcher.java<small>backend/src/main/java/com/example/review/execution/TaskDispatcher.java</small></td><td>35 行</td></tr>
+        </tbody></table></div>
+      </section>
+      <div id="coupling-observations">
+        <div class="list-heading"><h2>依赖关系解读</h2><span>模型基于上述事实给出的解释</span></div>
+        <article class="issue" data-conclusion-id="coupling-1" data-feedback-label="耦合度解读 01"><header class="issue-head"><div class="meta"><span class="number">解读 01</span><span class="type-tag green">出向依赖</span></div><h3>任务创建同时依赖持久化与调度协作</h3></header><div class="issue-content">
+          <h4 class="section-label">关系说明</h4><p class="description">TaskService 持有 TaskRepository 与 TaskDispatcher，分别承担数据存储和任务调度协作。这些依赖反映了目标文件对两项外部职责的使用；仅凭当前出向依赖，不能判断模块整体的耦合程度。</p>
+          <h4 class="section-label">关联依赖事实</h4><div class="fact-links"><a class="fact-link" href="#dep-1">D1 · TaskService → TaskRepository</a><a class="fact-link" href="#dep-2">D2 · TaskService → TaskDispatcher</a></div>
+          <section class="suggestion"><h4 class="section-label">改进建议</h4><p>若持久化与调度的变更频率或失败处理方式不同，可明确两者的协作接口与异常契约，再根据实际维护成本决定是否拆分职责。</p></section>
+          <section class="references"><h4 class="section-label">代码依据</h4><div class="ref-row"><span class="ref-label">目标文件</span><button class="ref-link" data-file="TaskService.java" data-lines="30–38"><strong>TaskService.java</strong><span class="line-tag">30–38 行</span><span class="open">查看代码 ↗</span><small>backend/src/main/java/com/example/review/service/TaskService.java · 文件</small></button></div></section>
+        </div></article>
+        <article class="issue" data-conclusion-id="coupling-2" data-feedback-label="耦合度解读 02"><header class="issue-head"><div class="meta"><span class="number">解读 02</span><span class="type-tag green">调度协作</span></div><h3>调度契约的变更可能影响任务创建逻辑</h3></header><div class="issue-content">
+          <h4 class="section-label">关系说明</h4><p class="description">TaskService 通过 TaskDispatcher 触发后续执行。调度接口、返回约定或异常语义的变化，可能要求调用方同步调整。此处说明依赖带来的影响，不据此确认存在缺陷。</p>
+          <h4 class="section-label">关联依赖事实</h4><div class="fact-links"><a class="fact-link" href="#dep-2">D2 · TaskService → TaskDispatcher</a></div>
+          <section class="references"><h4 class="section-label">代码依据</h4><div class="ref-row"><span class="ref-label">调用位置</span><button class="ref-link" data-file="TaskService.java" data-lines="140–144"><strong>TaskService.java</strong><span class="line-tag">140–144 行</span><span class="open">查看代码 ↗</span><small>backend/src/main/java/com/example/review/service/TaskService.java · 文件</small></button></div></section>
+        </div></article>
+      </div>
+    </section>
+    <section id="pattern-panel" hidden>
+      <div class="list-heading"><h2>模式候选</h2><span>按模型返回顺序展示</span><span class="type-caption">候选表示结构上的对应关系，需结合材料判断</span></div>
+      <article class="issue" data-conclusion-id="pattern-1" data-feedback-label="设计模式候选 01"><header class="issue-head"><div class="meta"><span class="number">候选 01</span><span class="type-tag">行为型</span></div><h3>策略模式（Strategy）</h3></header><div class="issue-content">
+        <section class="role"><h4 class="section-label">目标承担的角色</h4><p>上下文：持有执行策略接口，并将任务执行委托给选定的实现。</p></section>
+        <h4 class="section-label">模式说明</h4><p class="description">示例中的 ReviewExecutor 通过 ReviewStrategy 接口执行审查，具体实现由外部传入。执行入口与策略实现分离，与策略模式中「上下文依赖统一策略接口」的结构对应。当前材料只能支持该结构判断，不能证明所有策略均可互换。</p>
+        <section class="references"><h4 class="section-label">代码依据</h4><div class="ref-row"><span class="ref-label">目标结构</span><button class="ref-link" data-file="ReviewExecutor.java" data-lines="18–31"><strong>ReviewExecutor.java</strong><span class="line-tag">18–31 行</span><span class="open">查看代码 ↗</span><small>backend/src/main/java/com/example/review/execution/ReviewExecutor.java · 文件</small></button></div><div class="ref-row"><span class="ref-label">辅助声明</span><button class="ref-link" data-file="ReviewStrategy.java" data-lines="7–14"><strong>ReviewStrategy.java</strong><span class="line-tag">7–14 行</span><span class="open">查看代码 ↗</span><small>backend/src/main/java/com/example/review/execution/ReviewStrategy.java · 文件</small></button></div></section>
+      </div></article>
+      <article class="issue" data-conclusion-id="pattern-2" data-feedback-label="设计模式候选 02"><header class="issue-head"><div class="meta"><span class="number">候选 02</span><span class="type-tag">结构型</span></div><h3>外观模式（Facade）</h3></header><div class="issue-content">
+        <section class="role"><h4 class="section-label">目标承担的角色</h4><p>外观入口：封装材料准备、策略调用与结果保存的协作过程。</p></section>
+        <h4 class="section-label">模式说明</h4><p class="description">ReviewExecutor 向调用方提供统一的 execute 入口，并在内部协调多个组件，具有外观模式的结构特征。该候选与策略模式描述的是不同职责，可以同时存在；是否采用这一命名还需要结合调用方的使用方式判断。</p>
+        <section class="references"><h4 class="section-label">代码依据</h4><div class="ref-row"><span class="ref-label">目标结构</span><button class="ref-link" data-file="ReviewExecutor.java" data-lines="33–58"><strong>ReviewExecutor.java</strong><span class="line-tag">33–58 行</span><span class="open">查看代码 ↗</span><small>backend/src/main/java/com/example/review/execution/ReviewExecutor.java · 文件</small></button></div></section>
+      </div></article>
+    </section>
+    <div class="empty" id="empty" hidden><strong>基于本次材料未发现可说明的问题</strong><span class="hint">未发现问题不等于完整验证了依赖实现或业务正确性。</span></div>
+    <aside class="boundary"><strong>审查边界与材料缺失</strong><div id="boundary-content">此处为边界区示例：结论限于本次提供的目标与辅助材料，不能据此判断完整业务链路均正确。</div></aside>
+  </main>
+</div>
+<p class="footer-note">本页仅讨论三类专项结果区的信息层级与交互。问题审查第 1 条沿用截图，其余问题、依赖事实、模式候选、路径、版本与行号均为布局示例，不作为真实代码结论。三类专项均逐条反馈：问题审查评价每个问题，耦合度评价每条模型解读，设计模式评价每个候选。顶部总结和程序解析的依赖事实不单独评价。</p>
+<dialog id="code-dialog" aria-labelledby="code-title"><button class="close" aria-label="关闭代码预览">关闭</button><h2 id="code-title">代码阅读</h2><p id="code-location"></p><pre>这里只演示代码阅读入口，不连接仓库。
+正式页面沿用固定版本、原始行号与引用高亮。</pre></dialog>
+<template id="conclusion-feedback-template">
+  <section class="feedback">
+    <div class="feedback-top"><strong>人工反馈</strong><span class="hint">这条结论是否准确？</span><span class="status" aria-live="polite">尚未反馈</span></div>
+    <div class="feedback-actions"><button data-assessment="准确" aria-pressed="false">准确</button><button data-assessment="不准确" aria-pressed="false">不准确</button><button data-assessment="无法判断" aria-pressed="false">无法判断</button><button class="link-button clear" disabled>清除评价</button><button class="save" disabled>保存反馈</button></div>
+    <div class="comment"><span class="comment-label">评论（可选）</span><textarea placeholder="补充这条结论的判断依据或纠正意见，也可只保存评论。" maxlength="16000"></textarea><span class="hint">评价针对本条结论的准确性，不以是否采纳建议为准。评价与评论分别保留，修改后点击「保存反馈」。</span></div>
+  </section>
+</template>
+<script>
+const conclusionFeedbackTemplate=document.querySelector('#conclusion-feedback-template');
+document.querySelectorAll('[data-conclusion-id]').forEach(card=>{
+  const feedback=conclusionFeedbackTemplate.content.firstElementChild.cloneNode(true);
+  feedback.dataset.subjectId=card.dataset.conclusionId;
+  feedback.setAttribute('aria-label',card.dataset.feedbackLabel+' 的人工反馈');
+  feedback.querySelector('textarea').setAttribute('aria-label',card.dataset.feedbackLabel+' 的评论');
+  card.append(feedback);
+});
+document.querySelectorAll('.feedback').forEach(box=>{
+  let assessment=null, baseline={assessment:null,comment:''};
+  const comment=box.querySelector('textarea'), status=box.querySelector('.status'), save=box.querySelector('.save'), clear=box.querySelector('.clear');
+  function update(){const dirty=assessment!==baseline.assessment||comment.value!==baseline.comment;save.disabled=!dirty;clear.disabled=assessment===null;status.textContent=dirty?'尚未保存':box.dataset.saved?'已保存（预览）':'尚未反馈';box.querySelectorAll('[data-assessment]').forEach(button=>{const selected=button.dataset.assessment===assessment;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});}
+  box.querySelectorAll('[data-assessment]').forEach(button=>button.addEventListener('click',()=>{assessment=button.dataset.assessment;update();}));
+  clear.addEventListener('click',()=>{assessment=null;update();});comment.addEventListener('input',update);
+  save.addEventListener('click',()=>{baseline={assessment,comment:comment.value};box.dataset.saved='true';update();});
+});
+const kindPicker=document.querySelector('#review-kind'), scenarioPicker=document.querySelector('#scenario');
+const previews={
+  ISSUE:{name:'问题审查',title:'审查结论',normal:'TaskService 创建链路具备幂等、快照与事务衔接，但存在入队失败后任务永久停留 QUEUED、快照读取静默降级等可靠性风险。',empty:'基于本次提供的材料，未发现可说明的问题。',emptyTitle:'基于本次材料未发现可说明的问题',emptyHint:'未发现问题不等于完整验证了依赖实现或业务正确性。',states:['发现问题','未发现问题'],boundary:'此处为边界区示例：结论限于本次提供的目标与辅助材料，不能据此判断完整业务链路均正确。'},
+  COUPLING:{name:'耦合度分析',title:'耦合度分析结论',normal:'TaskService 的已解析依赖涉及持久化与任务调度，创建流程需要协调两类协作组件。另有 1 个类型未可靠定位，当前事实不足以判断模块整体耦合程度。',empty:'已保留文件级依赖事实，模型未形成有依据的关系解释。',emptyTitle:'未形成有依据的关系解释',emptyHint:'依赖事实仍可查阅；没有关系解读不等于没有依赖或耦合风险。',states:['有关系解读','无关系解读'],boundary:'<ul><li>示例中有 1 个类型未可靠定位，未解析不等于没有依赖。</li><li>只包含目标文件可解析的仓库内出向依赖，不包含全仓入向关系，也不直接给出模块级耦合评分。</li><li>关系解读与建议来自模型，需结合代码依据及实际业务判断。</li></ul>'},
+  PATTERN:{name:'设计模式分析',title:'设计模式分析结论',normal:'ReviewExecutor 呈现策略模式与外观模式的结构特征：通过策略接口委托执行，同时对外封装审查流程。两项均为基于当前材料识别的候选。',empty:'基于本次材料，未识别到有代码依据的模式候选。',emptyTitle:'未识别到有依据的模式候选',emptyHint:'未识别到候选不代表不存在设计模式，也不直接表示代码设计质量高或低。',states:['有模式候选','无模式候选'],boundary:'<ul><li>候选基于目标文件与本次提供的辅助声明，不代表完整验证了所有实现及调用方行为。</li><li>模式对应关系不直接构成设计质量评分，也不意味着需要为了套用模式而修改代码。</li></ul>'}
+};
+function renderScenario(){
+  const kind=kindPicker.value, config=previews[kind], empty=scenarioPicker.value==='empty', incomplete=scenarioPicker.value==='incomplete';
+  document.querySelector('#conclusion-title').textContent=config.title;
+  document.querySelector('.kind').textContent=config.name;
+  scenarioPicker.options[0].textContent=config.states[0];scenarioPicker.options[1].textContent=config.states[1];
+  document.querySelector('#empty').hidden=!empty;document.querySelector('#incomplete').hidden=!incomplete;
+  document.querySelector('#results').hidden=kind!=='ISSUE'||empty;
+  document.querySelector('#coupling-panel').hidden=kind!=='COUPLING';
+  document.querySelector('#coupling-observations').hidden=empty;
+  document.querySelector('#pattern-panel').hidden=kind!=='PATTERN'||empty;
+  document.querySelectorAll('.issue .feedback').forEach(box=>box.hidden=incomplete);
+  document.querySelector('#summary').textContent=incomplete?'以下为已成功片段中的分析，尚未形成完整文件结论。':empty?config.empty:config.normal;
+  const count=empty?0:2, prefix=incomplete?'已完成片段':'当前文件';
+  const metrics=kind==='ISSUE'?`<span>${prefix}发现 <b>${count}</b> 个问题</span><span class="high-ink">高严重度 <b>${empty?0:1}</b></span><span class="medium-ink">中严重度 <b>${empty?0:1}</b></span>`:kind==='COUPLING'?`<span>${prefix}形成 <b>${count}</b> 条关系解读</span>`:`<span>${prefix}识别 <b>${count}</b> 个模式候选</span>`;
+  const hint=incomplete?'仅展示成功片段，暂不支持反馈':empty?'暂无可逐条评价的结论':kind==='COUPLING'?'可逐条评价模型解读的准确性':kind==='PATTERN'?'可逐条评价模式候选的准确性':'模型分析结果，问题准确性可逐项反馈';
+  document.querySelector('#result-counts').innerHTML=metrics+`<span class="hint">${hint}</span>`;
+  document.querySelector('#empty strong').textContent=config.emptyTitle;document.querySelector('#empty .hint').textContent=config.emptyHint;
+  document.querySelector('#boundary-content').innerHTML=config.boundary;
+}
+kindPicker.addEventListener('change',renderScenario);scenarioPicker.addEventListener('change',renderScenario);renderScenario();
+const dialog=document.querySelector('#code-dialog');document.querySelectorAll('[data-file]').forEach(button=>button.addEventListener('click',()=>{document.querySelector('#code-location').textContent=button.dataset.file+' · '+button.dataset.lines+' 行（示例）';dialog.showModal();}));dialog.querySelector('.close').addEventListener('click',()=>dialog.close());
+</script>
+</body>
+</html>
