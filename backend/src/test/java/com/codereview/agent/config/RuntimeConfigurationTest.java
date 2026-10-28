@@ -37,43 +37,101 @@ class RuntimeConfigurationTest {
             assertThrows(IllegalStateException.class, () -> RuntimeConfigurationValidation.validate(env));
         }
     }
-    @Test void validatesApplicationEnvironmentKeysWithoutTreatingGitPagerAsConfiguration() {
+    @Test void environmentCannotOverrideFileValuesOrDefaults() {
         MockEnvironment environment = new MockEnvironment();
+        environment.withProperty("agent.budget.model-turns", "14").withProperty("github.token", "file-token");
         environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource("systemEnvironment",
-                java.util.Map.of("GIT_PAGER", "cat", "AGENT_BUDGET_MODELTURNS", "12")));
+                java.util.Map.of("GIT_PAGER", "cat", "AGENT_BUDGET_MODELTURNS", "0",
+                        "GITHUB_TOKEN", "environment-token-do-not-print", "SERVER_PORT", "65536")));
         assertDoesNotThrow(() -> RuntimeConfigurationValidation.validate(environment));
-        assertEquals(12, org.springframework.boot.context.properties.bind.Binder.get(environment)
+        assertEquals(14, org.springframework.boot.context.properties.bind.Binder.get(environment)
                 .bind("agent.budget", org.springframework.boot.context.properties.bind.Bindable.of(AgentBudgetProperties.class))
                 .get().getModelTurns());
-        environment.getPropertySources().replace("systemEnvironment", new SystemEnvironmentPropertySource("systemEnvironment",
-                java.util.Map.of("AGENT_BUDGET_MODEL_TRUNS", "secret-do-not-print")));
-        var failure = assertThrows(IllegalStateException.class,
-                () -> RuntimeConfigurationValidation.validate(environment));
-        assertFalse(failure.getMessage().contains("secret-do-not-print"));
-        assertTrue(failure.getMessage().contains("AGENT_BUDGET_MODEL_TRUNS"));
+        assertEquals("file-token", environment.getProperty("github.token"));
+        assertNull(environment.getProperty("server.port"));
+        assertNull(environment.getProperty("GITHUB_TOKEN"));
     }
 
-    @Test void runnerToolsDirectoryCoexistsWithApplicationEnvironmentOverrides() {
+    @Test void arbitraryHostEnvironmentDoesNotBecomeApplicationConfiguration() {
         MockEnvironment environment = new MockEnvironment();
-        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource("systemEnvironment",
+        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource("customHostEnvironment",
                 java.util.Map.of("AGENT_TOOLSDIRECTORY", "/opt/hostedtoolcache",
-                        "AGENT_BUDGET_MODELTURNS", "12")));
+                        "AGENT_NEW_HOST_SETTING", "secret-do-not-print", "APP_UI_UNKNOWN", "secret-do-not-print",
+                        "GIT_HTTP_UNKNOWN", "secret-do-not-print", "GITHUB_RUN_ID", "fixture")));
         assertDoesNotThrow(() -> RuntimeConfigurationValidation.validate(environment));
-        assertEquals(12, org.springframework.boot.context.properties.bind.Binder.get(environment)
-                .bind("agent.budget", org.springframework.boot.context.properties.bind.Bindable.of(AgentBudgetProperties.class))
-                .get().getModelTurns());
+        assertNull(environment.getPropertySources().get("customHostEnvironment"));
     }
+
+    @Test void applicationRemovesEnvironmentBeforeConfigDataAndJsonProcessing(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        var file = directory.resolve("application.yml");
+        java.nio.file.Files.writeString(file, "agent:\n  budget:\n    model-turns: 14\ngithub:\n  token: file-token\n");
+        var environment = new org.springframework.core.env.StandardEnvironment();
+        environment.getPropertySources().replace("systemEnvironment", new SystemEnvironmentPropertySource("systemEnvironment",
+                java.util.Map.of("AGENT_BUDGET_MODELTURNS", "0", "GITHUB_TOKEN", "environment-token-do-not-print",
+                        "SPRING_CONFIG_LOCATION", "file:/must-not-load.yml", "SPRING_PROFILES_ACTIVE", "host-profile",
+                        "SPRING_APPLICATION_JSON", "{\"agent\":{\"budget\":{\"model-turns\":0}}}")));
+        var application = new org.springframework.boot.SpringApplication(RuntimeConfigurationValidation.class,
+                BindingProbe.class);
+        application.setEnvironment(environment);
+        application.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE);
+        application.setRegisterShutdownHook(false);
+        try (var context = application.run("--spring.config.location=" + file.toUri(), "--spring.main.banner-mode=off")) {
+            assertEquals(14, context.getBean(AgentBudgetProperties.class).getModelTurns());
+            assertEquals("file-token", context.getEnvironment().getProperty("github.token"));
+            assertEquals(14, context.getBean("turnsFromValue"));
+            assertEquals(0, context.getEnvironment().getActiveProfiles().length);
+            assertNull(context.getEnvironment().getProperty("SPRING_APPLICATION_JSON"));
+            assertNull(context.getEnvironment().getProperty("SPRING_CONFIG_LOCATION"));
+            assertNull(context.getEnvironment().getPropertySources().get("systemEnvironment"));
+        }
+    }
+
+    @org.springframework.boot.context.properties.EnableConfigurationProperties(AgentBudgetProperties.class)
+    static class BindingProbe {
+        @org.springframework.context.annotation.Bean
+        Integer turnsFromValue(@org.springframework.beans.factory.annotation.Value("${agent.budget.model-turns}") int turns) {
+            return turns;
+        }
+    }
+
+    @Test void environmentCannotSupplyPlaceholderValues() {
+        MockEnvironment environment = new MockEnvironment().withProperty("github.token", "${GITHUB_TOKEN:}");
+        environment.getPropertySources().addFirst(githubActionsEnvironment());
+        assertDoesNotThrow(() -> RuntimeConfigurationValidation.validate(environment));
+        assertEquals("", environment.getProperty("github.token"));
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(strings = { "AGENT_BUDGET_MODEL_TRUNS", "AGENT_TOOLSDIRECTORY_EXTRA" })
-    void runnerToolsDirectoryDoesNotHideUnknownApplicationEnvironmentKeys(String unknownKey) {
-        MockEnvironment environment = new MockEnvironment();
-        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource("systemEnvironment",
-                java.util.Map.of("AGENT_TOOLSDIRECTORY", "/opt/hostedtoolcache",
-                        unknownKey, "secret-do-not-print")));
+    @org.junit.jupiter.params.provider.ValueSource(strings = { "github.tokne", "agent.budget.model-truns", "git.http.read-timeout-second" })
+    void githubActionsEnvironmentDoesNotHideUnknownFileConfiguration(String unknownKey) {
+        MockEnvironment environment = new MockEnvironment().withProperty(unknownKey, "secret-do-not-print");
+        environment.getPropertySources().addFirst(githubActionsEnvironment());
         var failure = assertThrows(IllegalStateException.class,
                 () -> RuntimeConfigurationValidation.validate(environment));
         assertTrue(failure.getMessage().contains(unknownKey));
         assertFalse(failure.getMessage().contains("secret-do-not-print"));
+        assertFalse(failure.getMessage().contains("fixture-token-do-not-print"));
+    }
+
+    @Test void githubActionsEnvironmentDoesNotHideUnknownCommandLineConfiguration() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.getPropertySources().addFirst(githubActionsEnvironment());
+        environment.getPropertySources().addFirst(new org.springframework.core.env.SimpleCommandLinePropertySource(
+                "--github.tokne=secret-do-not-print"));
+        var failure = assertThrows(IllegalStateException.class,
+                () -> RuntimeConfigurationValidation.validate(environment));
+        assertTrue(failure.getMessage().contains("github.tokne"));
+        assertFalse(failure.getMessage().contains("secret-do-not-print"));
+        assertFalse(failure.getMessage().contains("fixture-token-do-not-print"));
+    }
+
+    private static SystemEnvironmentPropertySource githubActionsEnvironment() {
+        return new SystemEnvironmentPropertySource("systemEnvironment", java.util.Map.of(
+                "GITHUB_ACTIONS", "true", "GITHUB_ACTION", "__run", "GITHUB_RUN_ID", "40665486775",
+                "GITHUB_WORKFLOW_REF", "fixture/repo/.github/workflows/release.yml@refs/tags/fixture",
+                "GITHUB_WORKSPACE", "/home/runner/work/fixture/fixture", "GITHUB_API_URL", "https://api.github.com",
+                "GITHUB_TOKEN", "fixture-token-do-not-print", "AGENT_TOOLSDIRECTORY", "/opt/hostedtoolcache"));
     }
 
     @Test void checkOnlyEntryUsesExternalFileAndCommandLineOverridesWithoutDatabase(
@@ -93,7 +151,6 @@ class RuntimeConfigurationTest {
         var configFile = java.nio.file.Files.copy(example, directory.resolve("application.yml"));
         assertDoesNotThrow(() -> com.codereview.CodeReviewApplication.checkConfiguration(new String[] {
                 "--check-config", "--spring.config.location=" + configFile.toUri(),
-                "--DB_URL=jdbc:mysql://invalid/not-connected", "--DB_USER=test", "--DB_PASSWORD=test",
                 "--spring.main.banner-mode=off" }));
     }
     @Test void renderedIntranetTemplateBindsAllRetryAndValidationSettings(
@@ -119,8 +176,7 @@ class RuntimeConfigurationTest {
         var file = java.nio.file.Files.copy(java.nio.file.Path.of("src/main/resources/application.example.yml"),
                 directory.resolve("application.yml"));
         assertDoesNotThrow(() -> com.codereview.CodeReviewApplication.checkConfiguration(new String[] {
-                "--check-config", "--spring.config.location=" + file.toUri(), "--DB_URL=jdbc:mysql://invalid/fixture",
-                "--DB_USER=fixture", "--DB_PASSWORD=fixture", "--spring.main.banner-mode=off" }));
+                "--check-config", "--spring.config.location=" + file.toUri(), "--spring.main.banner-mode=off" }));
     }
 
     @Test void preflightRunsBeforeSingletonConstruction() {

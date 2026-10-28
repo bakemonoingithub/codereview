@@ -5,9 +5,10 @@
 ## 1. 加载、生效与兼容
 
 - 配置使用 Spring Boot 现有加载机制。当前 Docker 镜像入口以 `--spring.config.location=file:/app/config/application.yml` 指定外置文件。部署脚本在数据库启动前使用新镜像执行静态配置检查；目标机实际加载与重建验收仍待执行。
-- 在本期涉及的来源中，命令行参数高于 Java 系统属性，系统属性高于环境变量，环境变量高于配置文件；同层外置文件高于打包默认值。显式 `spring.config.location` 替换默认文件搜索位置。本轮以独立配置检查上下文验证文件与命令行覆盖，不把它记为真实部署重启通过。
-- 参数缺省采用类型化配置默认值；所有有效自有参数在数据库、任务调度和外部请求组件构造前校验。YAML／properties／命令行中的未知自有键拒绝启动。环境变量只校验自有命名空间，`GIT_PAGER` 等 Git 进程变量不视为应用配置。
-- Spring 环境变量名称把点改为下划线、删除连字符后大写，例如 `agent.budget.model-turns` 对应 `AGENT_BUDGET_MODELTURNS`，不要写成 `AGENT_BUDGET_MODEL_TURNS`。列表索引可使用 `_0` 后缀。YAML 中的凭据引用建议使用 `DB_URL`／`DB_USER`／`DB_PASSWORD`，或直接使用规范键对应的环境变量覆盖。
+- 2026-10-28 负责人要求停用环境变量配置。应用在 ConfigData 和 `SPRING_APPLICATION_JSON` 处理前移除 Spring 的系统环境属性来源，正式启动与 `--check-config` 使用相同规则。环境变量不参与文件搜索、profile 选择、参数绑定、`@Value` 或占位符解析；宿主进程及 Git 子进程仍保留正常操作系统环境。
+- 应用运行值直接填写外置文件，参数缺省采用类型化配置默认值。为保留现有显式启动入口，命令行参数与 Java `-D` 系统属性仍有效，优先级为命令行 > Java 系统属性 > 配置文件 > 默认值；标准部署不追加业务覆盖。显式 `spring.config.location` 替换默认文件搜索位置，不能再通过 `SPRING_CONFIG_LOCATION` 环境变量指定文件。
+- 所有有效自有参数在数据库、任务调度和外部请求组件构造前校验。YAML／properties／命令行中的未知自有键、错误类型及非法组合仍拒绝启动，不再扫描宿主环境变量或维护名称豁免表。
+- 数据库值、`github.token`、`git.gitea.token` 与 `git.gitea.work-dir` 直接填写实际 YAML。原有 `${DB_URL}`、`${GITHUB_TOKEN:}` 等环境引用须在升级前改为实际值；带默认值的占位符不会再取得环境值。部署目录 `.env` 仅供脚本／Compose 管理容器与数据库初始化，不作为应用配置来源。
 - 重启后的缓存、线程池和 HTTP 客户端使用新进程参数；新建 Agent 冻结执行预算与工具约束。已打开的前端页面须刷新；遗留任务／报告仍按现有中断收敛，不断点续跑。
 - 模型网关、模型窗口、项目与提示词继续由数据库和现有界面维护；运行文件不覆盖业务记录。本轮无数据库迁移。
 
@@ -280,6 +281,6 @@ java -jar app.jar --check-config --spring.config.location=file:/app/config/appli
 
 ## 6. 配置样例与后续边界
 
-[独立样例](application.yml.example) 可作为参数参考，包含占位凭据。通用样例使用 DB_URL／DB_USER／DB_PASSWORD 环境变量；容器[正式模板](../../../../deploy/config/application.yml.example)使用部署脚本渲染数据库占位符，其余键按同一规范提供。两种方式不能混用而遗漏环境变量。模板不覆盖已有正式 YAML；目标内网端口／挂载、镜像排密及完整部署演练仍需按 CFG-06／07 核对。
+[独立样例](application.yml.example) 可作为参数参考，数据库使用示例地址、账号与 `CHANGE_ME` 密码，部署前填写真实值，不将真实凭据提交到版本库。容器[正式模板](../../../../deploy/config/application.yml.example)由部署脚本首次渲染数据库占位符，令牌及持久化镜像目录直接写在 YAML。模板不覆盖已有正式文件；升级时先手工替换旧环境引用。目标内网端口／挂载、镜像排密及完整部署演练仍需按 CFG-06／07 核对。
 
 内网真实重启、冷镜像、三类业务实际模型调用及回退验收仍属于 CFG-07。本期工程检查和模拟服务结果不能替代这些验收。

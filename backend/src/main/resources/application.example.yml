@@ -1,4 +1,5 @@
-# 通用参数样例；容器版参考 deploy/config/application.yml.example。
+# 通用参数样例；运行参数从文件读取，不读取系统环境变量。部署前填写数据库值与令牌。
+# 容器版参考 deploy/config/application.yml.example；不要将真实凭据提交到版本库。
 server:
   port: 8080
 spring:
@@ -14,9 +15,9 @@ springdoc:
     path: /swagger-ui.html
 agent:
   datasource:
-    url: "${DB_URL}"
-    username: "${DB_USER}"
-    password: "${DB_PASSWORD}"
+    url: "jdbc:mysql://127.0.0.1:3306/ai_code_review_agent"
+    username: "codereview_agent"
+    password: "CHANGE_ME"
     driver-class-name: "com.mysql.cj.jdbc.Driver"
     expected-database: "ai_code_review_agent"
     migration-location: "classpath:db/agent-migration"
@@ -120,7 +121,7 @@ git:
   gitea:
     hosts: ["localhost:3000", "192.104.224.172"]
     api-base: ""
-    token: "${GITEA_TOKEN:}"
+    token: ""
     work-dir: ""
     local-clone-enabled: true
     mirror-timeout-seconds: 120
@@ -130,7 +131,7 @@ git:
     raw-file-max-size: 500
     expire-minutes: 30
 github:
-  token: "${GITHUB_TOKEN:}"
+  token: ""
 app:
   ui:
     title: "智能代码分析工具"

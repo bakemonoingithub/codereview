@@ -1,13 +1,13 @@
 # 通用代码默认值参考；容器内网建议值见 deploy/config/application.yml.example。
-# 数据库值由 DB_URL / DB_USER / DB_PASSWORD 提供，不填写真实凭据到版本库。
+# 数据库值与令牌直接填写到实际运行文件；不读取系统环境变量，不将真实凭据提交到版本库。
 # Gitea hosts 沿用当前代码缺省作对照，部署时必须按目标环境覆盖。
 server:
   port: 8080
 agent:
   datasource:
-    url: "${DB_URL}"
-    username: "${DB_USER}"
-    password: "${DB_PASSWORD}"
+    url: "jdbc:mysql://127.0.0.1:3306/ai_code_review_agent"
+    username: "codereview_agent"
+    password: "CHANGE_ME"
     driver-class-name: "com.mysql.cj.jdbc.Driver"
     expected-database: "ai_code_review_agent"
     migration-location: "classpath:db/agent-migration"
@@ -111,7 +111,7 @@ git:
   gitea:
     hosts: ["localhost:3000", "192.104.224.172"]
     api-base: ""
-    token: "${GITEA_TOKEN:}"
+    token: ""
     work-dir: ""
     local-clone-enabled: true
     mirror-timeout-seconds: 120
@@ -121,7 +121,7 @@ git:
     raw-file-max-size: 500
     expire-minutes: 30
 github:
-  token: "${GITHUB_TOKEN:}"
+  token: ""
 app:
   ui:
     title: "智能代码分析工具"

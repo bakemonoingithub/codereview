@@ -41,6 +41,11 @@ init_bundle() {
 # 值尾部会多一个 \r，密码会静默错误。
 get_env() { grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r'; }
 
+# Detect former application environment placeholders without reading or printing their values.
+uses_legacy_application_environment() {
+  sed '/^[[:space:]]*#/d' "$1" | grep -qE '\$\{(GITHUB_TOKEN|GITEA_TOKEN|GITEA_MIRROR_DIR|DB_URL|DB_USER|DB_PASSWORD)(:|\})'
+}
+
 # .env 里允许出现的键（逐个取值后 export）。
 # 为什么不用 `set -a; . ./.env`：形如
 #     JAVA_OPTS=-Xms1g -Xmx4g -XX:+UseG1GC
@@ -50,8 +55,7 @@ get_env() { grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r
 ENV_KEYS="APP_PORT APP_BIND_IP APP_TAG CR_SUBNET \
 MYSQL_ROOT_PASSWORD MYSQL_DATABASE MYSQL_USER MYSQL_PASSWORD MYSQL_IMAGE_TAG MYSQL_BUFFER_POOL \
 AGENT_DB_NAME AGENT_DB_USER AGENT_DB_PASSWORD \
-APP_MEM_LIMIT MYSQL_MEM_LIMIT JAVA_OPTS GITEA_MIRROR_DIR GITEA_TOKEN GITHUB_TOKEN DEEPSEEK_API_KEY \
-AI_BASE_URL AI_MODEL"
+APP_MEM_LIMIT MYSQL_MEM_LIMIT JAVA_OPTS"
 
 load_env() {
   [ -f .env ] || die "缺少 .env（应位于 $BUNDLE/.env）。首次部署直接运行 deploy.sh，它会自动生成。"

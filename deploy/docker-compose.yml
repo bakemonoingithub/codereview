@@ -68,11 +68,6 @@ services:
       TZ: Asia/Shanghai
       # 目标机是共享机器：堆必须显式限制，不能让它按物理内存比例自动开
       JAVA_TOOL_OPTIONS: "${JAVA_OPTS:--Xms1g -Xmx4g -XX:+UseG1GC -XX:-UseTransparentHugePages -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai}"
-      # Gitea 没有 compare 接口，靠本地 bare 镜像算差异 —— 这个目录必须持久化
-      GITEA_MIRROR_DIR: ${GITEA_MIRROR_DIR:-/app/data/git-mirrors}
-      # 令牌走环境变量注入，不写进配置文件、不进镜像（留空则由界面/数据库配置决定）
-      GITEA_TOKEN: ${GITEA_TOKEN:-}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     volumes:
       # 外挂配置：改数据库/换 AI 网关只需改这个文件 + 重启容器，不用重建镜像
       - ./config/application.yml:/app/config/application.yml:ro

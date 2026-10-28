@@ -25,7 +25,8 @@ public class RuntimeConfigurationValidation {
     }
 
     public static void validate(Environment environment) {
-        validateEnvironmentKeys(environment);
+        // SpringApplication removes this before ConfigData; also cover direct context/validation callers.
+        FileConfigurationEnvironmentPostProcessor.removeSystemEnvironment(environment);
         int port;
         try { port = environment.getProperty("server.port", Integer.class, 8080); }
         catch (RuntimeException e) { throw new IllegalStateException("配置无效：server.port，必须为整数"); }
@@ -33,8 +34,6 @@ public class RuntimeConfigurationValidation {
         Binder binder = Binder.get(environment);
         Agent agent = bind(binder, "agent", Agent.class);
         Git git = bind(binder, "git", Git.class);
-        // GIT_PAGER and other Git process variables are not application settings.
-        // Validate known Git namespaces separately so their environment overrides remain strict.
         bind(binder, "git.http", GitHttpProperties.class);
         bind(binder, "git.github", GitHubHostProperties.class);
         bind(binder, "git.gitea", GiteaProperties.class);
@@ -82,37 +81,6 @@ public class RuntimeConfigurationValidation {
                 ui.getAgentPollMillis(), ui.getReportPollMillis(), ui.getSpecialistPollMillis());
     }
 
-    private static void validateEnvironmentKeys(Environment environment) {
-        if (!(environment instanceof org.springframework.core.env.ConfigurableEnvironment configurable)) return;
-        java.util.Set<String> known = new java.util.HashSet<>();
-        collectKeys(Agent.class, "agent", known);
-        collectKeys(Git.class, "git", known);
-        collectKeys(GitHubProperties.class, "github", known);
-        collectKeys(UiProperties.class, "app.ui", known);
-        for (var source : configurable.getPropertySources()) {
-            if (!(source instanceof org.springframework.core.env.SystemEnvironmentPropertySource variables)) continue;
-            for (String name : variables.getSource().keySet()) {
-                String upper = name.toUpperCase(java.util.Locale.ROOT);
-                // GitHub Actions uses this host variable for its tool cache, not application configuration.
-                if (upper.equals("AGENT_TOOLSDIRECTORY")) continue;
-                boolean applicationKey = upper.startsWith("AGENT_") || upper.startsWith("APP_UI_")
-                        || upper.matches("GIT_(HTTP|GITEA|CACHE|GITHUB)_.*");
-                if (!applicationKey) continue;
-                String canonical = upper.replaceFirst("_[0-9]+$", "");
-                check(known.contains(canonical), name, "未知应用环境变量；名称应将配置路径的点改为下划线，并删除连字符");
-            }
-        }
-    }
-
-    private static void collectKeys(Class<?> type, String prefix, java.util.Set<String> known) {
-        for (var field : type.getDeclaredFields()) {
-            if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
-            String key = prefix + "." + field.getName();
-            if (field.getType().getName().startsWith("com.codereview")) collectKeys(field.getType(), key, known);
-            else known.add(key.replace(".", "_").toUpperCase(java.util.Locale.ROOT));
-        }
-    }
-
     public static void validateBudget(AgentBudgetProperties budget) {
         positiveFields(budget, "agent.budget");
         check(budget.getMaxProtocolErrors() <= 2, "agent.budget.max-protocol-errors", "范围为 0–2");
@@ -135,10 +103,7 @@ public class RuntimeConfigurationValidation {
 
     private static <T> T bind(Binder binder, String prefix, Class<T> type) {
         try {
-            // Environment keys are checked above; root namespaces can also contain host process variables.
-            return binder.bind(prefix, Bindable.of(type), new NoUnboundElementsBindHandler(BindHandler.DEFAULT,
-                            source -> !((prefix.equals("git") || prefix.equals("agent"))
-                                    && source.getUnderlyingSource() instanceof org.springframework.core.env.SystemEnvironmentPropertySource)))
+            return binder.bind(prefix, Bindable.of(type), new NoUnboundElementsBindHandler(BindHandler.DEFAULT))
                     .orElseGet(() -> { try { return type.getDeclaredConstructor().newInstance(); } catch (Exception e) { throw new IllegalStateException(e); } });
         } catch (Exception e) {
             String key = e instanceof BindException b ? b.getName().toString() : prefix;

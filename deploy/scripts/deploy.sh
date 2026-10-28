@@ -184,8 +184,6 @@ set_env APP_TAG "$NEW_TAG"
 if ! docker run --rm --network none \
     --memory "${APP_MEM_LIMIT:-4g}" -e "JAVA_TOOL_OPTIONS=${JAVA_OPTS:--Xms1g -Xmx3g}" \
     -v "$BUNDLE/config/application.yml:/app/config/application.yml:ro" \
-    -e "GITEA_MIRROR_DIR=${GITEA_MIRROR_DIR:-/app/data/git-mirrors}" \
-    -e "GITEA_TOKEN=${GITEA_TOKEN:-}" -e "GITHUB_TOKEN=${GITHUB_TOKEN:-}" \
     "codereview-app:$NEW_TAG" --check-config; then
   die "运行配置校验失败；应用和数据库均未由本次脚本启动，请修正配置后重试。"
 fi

@@ -67,13 +67,20 @@ sed -i \
   config/application.yml
 
 chk "模板占位符已全部替换" "$(grep -c '__DB_\|__AGENT_DB_\|__AI_' config/application.yml)" "0"
-chk "Gitea 镜像目录指向持久卷" "$(grep -Fc 'work-dir: "${GITEA_MIRROR_DIR:/app/data/git-mirrors}"' config/application.yml)" "1"
+chk "Gitea 镜像目录指向持久卷" "$(grep -Fc 'work-dir: "/app/data/git-mirrors"' config/application.yml)" "1"
 chk "Agent 数据源指向独立新库" "$(grep -c 'jdbc:mysql://mysql:3306/ai_code_review_agent?' config/application.yml)" "1"
 chk "Agent 迁移历史与旧链隔离" "$(grep -c 'history-table: "agent_schema_history"' config/application.yml)" "1"
 chk "Agent 用户名已渲染" "$(grep -c 'username: codereview_agent' config/application.yml)" "1"
 chk "Agent 密码已渲染" "$(grep -c 'password: AgentPass1234567890' config/application.yml)" "1"
-chk "自带 yml 占位符未被误伤" "$(grep -c '\${GITHUB_TOKEN:}' config/application.yml)" "1"
+chk "应用配置不再引用环境变量" "$(grep -c '\${' config/application.yml)" "0"
 chk "YAML 可解析" "$(python -c "import yaml,io; yaml.safe_load(io.open('config/application.yml',encoding='utf-8')); print('y')" 2>/dev/null || echo n)" "y"
+
+for old_key in GITHUB_TOKEN GITEA_TOKEN GITEA_MIRROR_DIR DB_URL DB_USER DB_PASSWORD; do
+  printf 'value: "${%s:}"\n' "$old_key" > config/legacy.yml
+  chk "升级时识别旧引用 $old_key" "$(uses_legacy_application_environment config/legacy.yml && echo legacy || echo file)" "legacy"
+done
+printf '# token: ${GITHUB_TOKEN:}\nvalue: "literal"\n' > config/legacy.yml
+chk "纯文件配置与注释不误报" "$(uses_legacy_application_environment config/legacy.yml && echo legacy || echo file)" "file"
 
 say "== 4. 网段挑选（用 stub 假装是本机那台跑着一堆容器的机器）=="
 # 目标语义：跳过别的项目占用的 /16，落在一个空闲的 172.x 上；

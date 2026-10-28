@@ -148,6 +148,9 @@ if [ -f .env ]; then
     if grep -q 'gitea.example.internal' config/application.yml; then
       fail "请先将 config/application.yml 中的 git.gitea.hosts 填为实际仓库 host[:port]"
     fi
+    if uses_legacy_application_environment config/application.yml; then
+      fail "应用已停用环境变量配置。请将 config/application.yml 中的旧环境变量引用改为实际值；部署脚本不会覆盖已有文件。"
+    fi
   else
     fail "缺少 config/application.yml（首次部署时 deploy.sh 会自动生成，单独跑体检可忽略这条）"
   fi

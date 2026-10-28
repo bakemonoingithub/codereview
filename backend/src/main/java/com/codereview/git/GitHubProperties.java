@@ -14,6 +14,6 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "github")
 public class GitHubProperties {
 
-    /** 兜底 Personal Access Token（建议经环境变量 GITHUB_TOKEN 注入，避免明文入库） */
+    /** 兜底 Personal Access Token，在外置配置中填写；项目独立凭据优先。 */
     private String token = "";
 }
