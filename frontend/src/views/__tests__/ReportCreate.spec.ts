@@ -70,7 +70,9 @@ beforeEach(() => {
 })
 
 describe('报告生成表单', () => {
-  it('只列报告用途规则，并提交用户选择的历史版本', async () => {
+  it.each(['REPORT', 'COMMON'])('%s 只列报告用途规则，并提交用户选择的历史版本', async (purpose) => {
+    vi.mocked(promptsApi.list).mockResolvedValue({ items: [{ id: 'prompt-report', name: '报告规则', purpose }] as any, hasMore: false, nextCursor: null })
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'prompt-report', name: '报告规则', purpose, tags: [], currentVersion: { id: 'version-2', versionNo: 2, content: '当前正文' } } as any)
     const wrapper = await start()
     const s = state(wrapper)
     s.selected.set(candidate.resultId, candidate)
@@ -290,4 +292,21 @@ describe('发起弹窗骨架', () => {
     expect(wrapper.text()).not.toContain('所选报告规则正文')
     wrapper.unmount()
   })
+  it('分页读取通用规则，详情用途已变更时阻止生成', async () => {
+    vi.mocked(promptsApi.list).mockResolvedValueOnce({ items: [
+      { id: 'agent', purpose: 'AGENT' }, { id: 'specialist', purpose: 'SPECIALIST' }
+    ] as any, hasMore: true, nextCursor: 'next' }).mockResolvedValueOnce({ items: [
+      { id: 'common', name: '通用规则', purpose: 'COMMON' }
+    ] as any, hasMore: false, nextCursor: null })
+    const wrapper = await start(); const s = state(wrapper)
+    expect(s.promptOptions).toEqual([{ value: 'common', label: '通用规则' }])
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'common', purpose: 'AGENT' } as any)
+    s.form.promptId = 'common'
+    await flushPromises()
+    expect(s.promptError).toContain('用途')
+    await s.submit()
+    expect(reportsApi.start).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
 })

@@ -259,12 +259,12 @@ describe('Agent 发起表单', () => {
     expect(s.canSubmit).toBe(true)
     wrapper.unmount()
   })
-  it('选择历史提示词版本时预览并提交该版本，清空时重置版本', async () => {
+  it.each(['AGENT', 'COMMON'])('%s 选择历史提示词版本时预览并提交该版本，清空时重置版本', async (purpose) => {
     const versions = [
       { id: 'v2', versionNo: 2, content: '新版调查', createdAt: '2026-10-25' },
       { id: 'v1', versionNo: 1, content: '旧版调查', createdAt: '2026-10-24' }
     ]
-    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '指导', tags: [], currentVersion: versions[0] } as any)
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '指导', purpose, tags: [], currentVersion: versions[0] } as any)
     vi.mocked(promptsApi.versions).mockResolvedValue(versions)
     const wrapper = await start(); const s = state(wrapper)
     s.form.guidancePromptId = 'g1'
@@ -283,13 +283,13 @@ describe('Agent 发起表单', () => {
     wrapper.unmount()
   })
 
-  it('复制历史参数时保留版本，版本失效时阻止提交', async () => {
+  it.each(['AGENT', 'COMMON'])('%s 复制历史参数时保留版本，版本失效时阻止提交', async (purpose) => {
     context.route.query = { copyFrom: 'old-task' }
     const versions = [
       { id: 'v2', versionNo: 2, content: '新版', createdAt: '2026-10-25' },
       { id: 'v1', versionNo: 1, content: '旧版', createdAt: '2026-10-24' }
     ]
-    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '指导', tags: [], currentVersion: versions[0] } as any)
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '指导', purpose, tags: [], currentVersion: versions[0] } as any)
     vi.mocked(promptsApi.versions).mockResolvedValue(versions)
     vi.mocked(agentTasksApi.copyInput).mockResolvedValue({ projectId: 'p1', modelConfigId: 'm1',
       guidancePromptId: 'g1', guidancePromptVersionId: 'v1', requirements: '原要求',
@@ -314,7 +314,7 @@ describe('Agent 发起表单', () => {
     let finishOld!: (value: any) => void
     const old = new Promise<any>(resolve => { finishOld = resolve })
     const version = { id: 'v1', versionNo: 1, content: '规则', createdAt: '2026-10-25' }
-    vi.mocked(promptsApi.detail).mockImplementation(id => id === 'old' ? old : Promise.resolve({ id, tags: [], currentVersion: version }) as any)
+    vi.mocked(promptsApi.detail).mockImplementation(id => id === 'old' ? old : Promise.resolve({ id, purpose: 'AGENT', tags: [], currentVersion: version }) as any)
     vi.mocked(promptsApi.versions).mockResolvedValue([version])
     const wrapper = await start(); const s = state(wrapper)
     s.form.guidancePromptId = 'old'
@@ -412,4 +412,24 @@ describe('发起弹窗骨架', () => {
     expect(wrapper.html()).not.toContain('确认提交后才会创建新任务')
     wrapper.unmount()
   })
+  it('列表包含通用规则，读取已改为错用途的规则后阻止提交', async () => {
+    vi.mocked(promptsApi.list).mockResolvedValue(page([
+      { id: 'g1', name: 'Agent', purpose: 'AGENT' },
+      { id: 'common', name: '通用', purpose: 'COMMON' },
+      { id: 'report', name: '报告', purpose: 'REPORT' },
+      { id: 'specialist', name: '专项', purpose: 'SPECIALIST' }
+    ]) as any)
+    const wrapper = await start(); const s = state(wrapper)
+    expect(s.prompts.map((p: any) => p.id)).toEqual(['g1', 'common'])
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'common', purpose: 'REPORT' } as any)
+    vi.mocked(promptsApi.versions).mockResolvedValue([{ id: 'v1', content: '正文' }] as any)
+    s.form.paths = ['A.java']; s.form.requirements = '检查'; s.form.guidancePromptId = 'common'
+    await flushPromises()
+    expect(s.guidancePromptError).toContain('用途')
+    expect(s.canSubmit).toBe(false)
+    await s.submit()
+    expect(agentTasksApi.create).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
 })

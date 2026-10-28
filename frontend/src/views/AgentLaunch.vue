@@ -254,7 +254,7 @@ import {
 } from '@/api/v2'
 
 import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
-import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
+import { isPromptApplicable, readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 
 withDefaults(defineProps<{ open?: boolean }>(), { open: true })
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
@@ -344,6 +344,7 @@ async function loadGuidancePrompt() {
   try {
     const { prompt, versions, version } = await readPromptSelection(id, form.guidancePromptVersionId, true)
     if (epoch === guidancePromptEpoch) {
+      if (!isPromptApplicable(prompt.purpose, 'AGENT')) throw new Error('所选提示词须为 Agent 分析或通用用途，请重新选择。')
       selectedGuidancePrompt.value = prompt
       guidancePromptVersions.value = versions
       if (!version) {
@@ -398,7 +399,7 @@ onMounted(async () => {
     agentModels.value = modelItems.filter(
       (model) => model.agentValidationStatus === 'PASSED'
     )
-    prompts.value = promptItems.filter((prompt) => prompt.purpose === 'AGENT')
+    prompts.value = promptItems.filter((prompt) => isPromptApplicable(prompt.purpose, 'AGENT'))
     if (!form.projectId && projects.value.length) {
       await selectProject(projects.value[0].id)
     }

@@ -290,7 +290,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import ReportSourceModal from '@/components/ReportSourceModal.vue'
 import CallReaderModal from '@/components/CallReaderModal.vue'
 import ActualCallList from '@/components/ActualCallList.vue'
-import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
+import { isPromptApplicable, readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 
 const route = useRoute()
 const router = useRouter()
@@ -333,7 +333,7 @@ const modelOptions = computed(() =>
   }))
 )
 const promptOptions = computed(() => prompts.value
-  .filter(prompt => prompt.purpose === 'REPORT')
+  .filter(prompt => isPromptApplicable(prompt.purpose, 'REPORT'))
   .map(prompt => ({ value: prompt.id, label: prompt.name }))
 )
 const selectedPromptVersion = computed(() =>
@@ -479,7 +479,7 @@ async function loadReportPrompts(): Promise<PromptSummary[]> {
   do {
     const page = await promptsApi.list({ limit: 100, ...(cursor ? { cursor } : {}) })
     for (const prompt of page.items) {
-      if (prompt.purpose === 'REPORT') items.set(prompt.id, prompt)
+      if (isPromptApplicable(prompt.purpose, 'REPORT')) items.set(prompt.id, prompt)
     }
     if (!page.hasMore) return [...items.values()]
     if (!page.nextCursor || seen.has(page.nextCursor)) throw new Error('报告规则分页异常，请重新加载。')
@@ -502,7 +502,7 @@ async function loadPromptSelection(promptId: string, preferredVersionId?: string
   try {
     const selection = await readPromptSelection(promptId, preferredVersionId, true)
     if (disposed || epoch !== promptEpoch) return
-    if (selection.prompt.purpose !== 'REPORT') throw new Error('所选提示词不属于报告生成用途，请重新选择。')
+    if (!isPromptApplicable(selection.prompt.purpose, 'REPORT')) throw new Error('所选提示词须为报告生成或通用用途，请重新选择。')
     selectedPrompt.value = selection.prompt
     promptVersions.value = selection.versions
     if (selection.version) {

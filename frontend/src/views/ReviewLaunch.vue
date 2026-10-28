@@ -269,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
+import { isPromptApplicable, readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -368,7 +368,7 @@ const projectOptions = computed(() =>
 const branchOptions = computed(() => branches.value.map((item) => ({ value: item, label: item })))
 const modelOptions = computed(() => models.value.map((model) => ({ value: model.id, label: model.name })))
 const promptOptions = computed(() => prompts.value
-  .filter((prompt) => prompt.purpose === 'SPECIALIST')
+  .filter((prompt) => isPromptApplicable(prompt.purpose, 'SPECIALIST'))
   .map((prompt) => ({ value: prompt.id, label: prompt.name }))
 )
 const selectedCommitSubject = computed(() => {
@@ -881,8 +881,8 @@ async function loadPromptSelection(promptId: string, preferredVersionId?: string
   try {
     const selection = await readPromptSelection(promptId, preferredVersionId || undefined, true)
     if (epoch !== promptEpoch) return
-    if (selection.prompt.purpose !== 'SPECIALIST') {
-      throw new Error('所选提示词不属于专项用途，请重新选择')
+    if (!isPromptApplicable(selection.prompt.purpose, 'SPECIALIST')) {
+      throw new Error('所选提示词须为专项审查或通用用途，请重新选择')
     }
     selectedPrompt.value = selection.prompt
     promptVersions.value = selection.versions

@@ -30,6 +30,7 @@ import com.codereview.agent.repository.RepositoryPaths;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.repository.RepositorySnapshots;
 import com.codereview.agent.support.AgentIds;
+import com.codereview.agent.support.PromptApplicability;
 import com.codereview.agent.support.AgentTime;
 import com.codereview.agent.tools.AgentToolLoopValidator;
 import com.codereview.agent.tools.AgentToolNames;
@@ -386,10 +387,10 @@ public class AgentTaskService {
         if (prompt == null) {
             throw new ApiException(ErrorCode.NOT_FOUND, "提示词不存在：" + promptId);
         }
-        if (!"AGENT".equals(prompt.getPurpose())) {
+        if (!PromptApplicability.supports(prompt.getPurpose(), "AGENT")) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "只能选择 Agent 用途的指导提示词", Map.of("promptId", promptId,
-                            "purpose", prompt.getPurpose()));
+                    "只能选择 Agent 用途或通用用途的指导提示词", Map.of("promptId", promptId,
+                            "purpose", prompt.getPurpose() == null ? "" : prompt.getPurpose()));
         }
         AgentPromptVersion version = PromptVersionResolver.resolve(db, prompt, versionId);
         return new FrozenPrompt(prompt.getId(), prompt.getName(), version.getId(),

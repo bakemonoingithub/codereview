@@ -307,7 +307,9 @@ describe('报告详情阅读', () => {
     wrapper.unmount()
   })
 
-  it('生成时提交所选报告规则的具体版本', async () => {
+  it.each(['REPORT', 'COMMON'])('%s 生成时提交所选报告规则的具体版本', async (purpose) => {
+    vi.mocked(promptsApi.list).mockResolvedValue({ items: [{ id: 'prompt-report', name: '报告规则', purpose }] as any, hasMore: false, nextCursor: null })
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'prompt-report', name: '报告规则', purpose, tags: [], currentVersion: { id: 'version-2', versionNo: 2, content: '当前正文' } } as any)
     vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, state: 'INPUT_FROZEN', body: null } as any)
     vi.mocked(modelsApi.list).mockResolvedValue({ items: [{ id: 'model-1', name: '默认', modelName: 'qwen', contextWindow: 32000 } as any], nextCursor: null, hasMore: false })
     const wrapper = await start()
@@ -326,4 +328,23 @@ describe('报告详情阅读', () => {
     })
     wrapper.unmount()
   })
+  it('分页读取通用规则，详情用途已变更时阻止生成', async () => {
+    vi.mocked(promptsApi.list).mockResolvedValueOnce({ items: [
+      { id: 'agent', purpose: 'AGENT' }, { id: 'specialist', purpose: 'SPECIALIST' }
+    ] as any, hasMore: true, nextCursor: 'next' }).mockResolvedValueOnce({ items: [
+      { id: 'common', name: '通用规则', purpose: 'COMMON' }
+    ] as any, hasMore: false, nextCursor: null })
+    vi.mocked(reportsApi.detail).mockResolvedValue({ ...report, state: 'INPUT_FROZEN', body: null } as any)
+    const wrapper = await start(); const s = state(wrapper)
+    await s.openGenerate()
+    expect(s.promptOptions).toEqual([{ value: 'common', label: '通用规则' }])
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'common', purpose: 'AGENT' } as any)
+    s.generateForm.promptId = 'common'
+    await flushPromises()
+    expect(s.promptError).toContain('用途')
+    await s.startGeneration()
+    expect(reportsApi.start).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
 })

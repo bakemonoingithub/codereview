@@ -11,6 +11,8 @@ import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.common.TextDiff;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -53,10 +55,11 @@ class AgentPromptServiceTest {
         when(db.inTransaction(any())).thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(0)).get());
     }
 
-    @Test
-    void createWritesFirstVersionAndPointsPromptAtIt() {
+    @ParameterizedTest
+    @ValueSource(strings = {"SPECIALIST", "COMMON"})
+    void createWritesFirstVersionAndPointsPromptAtIt(String purpose) {
         PromptDtos.View view = service.create(new PromptDtos.Create(
-                "通用规则", "描述", List.of("java", "通用"), "SPECIALIST", "规则正文"));
+                "通用规则", "描述", List.of("java", "通用"), purpose, "规则正文"));
 
         assertEquals(1, view.currentVersion().versionNo());
         assertEquals("规则正文", view.currentVersion().content());
@@ -64,6 +67,8 @@ class AgentPromptServiceTest {
         verify(promptMapper).insert(insertedPrompt.capture());
         assertTrue(insertedPrompt.getValue().getCurrentVersionId() != null);
         assertEquals(0, insertedPrompt.getValue().getRevision());
+        assertEquals(purpose, insertedPrompt.getValue().getPurpose());
+        assertEquals(purpose, view.purpose());
         ArgumentCaptor<AgentPromptVersion> insertedVersion = ArgumentCaptor.forClass(AgentPromptVersion.class);
         verify(versionMapper).insert(insertedVersion.capture());
         assertEquals(1, insertedVersion.getValue().getVersionNo());
@@ -96,18 +101,20 @@ class AgentPromptServiceTest {
         verify(versionMapper, never()).insert(any(AgentPromptVersion.class));
     }
 
-    @Test
-    void clearingDescriptionAndTagsUpdatesThemToNull() {
+    @ParameterizedTest
+    @ValueSource(strings = {"SPECIALIST", "COMMON"})
+    void clearingDescriptionAndTagsUpdatesThemToNull(String purpose) {
         AgentPrompt prompt = prompt(0);
         when(promptMapper.selectById(any())).thenReturn(prompt);
         when(promptMapper.update(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(1);
 
-        service.update(prompt.getId(), new PromptDtos.Update("新名称", "", List.of(), "SPECIALIST", 0));
+        service.update(prompt.getId(), new PromptDtos.Update("新名称", "", List.of(), purpose, 0));
 
         ArgumentCaptor<com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<AgentPrompt>> captor =
                 ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
         verify(promptMapper).update(org.mockito.ArgumentMatchers.isNull(), captor.capture());
         String set = captor.getValue().getSqlSet();
+        assertTrue(captor.getValue().getParamNameValuePairs().containsValue(purpose));
         assertTrue(set.contains("description"), "清空描述必须出现在 SET 里：" + set);
         assertTrue(set.contains("tags"), "清空标签必须出现在 SET 里：" + set);
     }

@@ -176,7 +176,8 @@ const form = ref({
 const purposeOptions = [
   { value: 'SPECIALIST', label: '专项审查' },
   { value: 'REPORT', label: '报告生成' },
-  { value: 'AGENT', label: 'Agent 分析' }
+  { value: 'AGENT', label: 'Agent 分析' },
+  { value: 'COMMON', label: '通用' }
 ]
 
 const versionOpen = ref(false)

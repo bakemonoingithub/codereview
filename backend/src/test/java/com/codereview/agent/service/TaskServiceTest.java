@@ -31,6 +31,9 @@ import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -409,12 +412,13 @@ class TaskServiceTest {
         return result;
     }
 
-    @Test
-    void specialistUsesAndFreezesTheDirectlySelectedRuleVersion() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"SPECIALIST", "COMMON"})
+    void specialistUsesAndFreezesTheDirectlySelectedRuleVersion(String purpose) throws Exception {
         var prompt = new com.codereview.agent.entity.AgentPrompt();
         prompt.setId(com.codereview.agent.support.AgentIds.next());
         prompt.setName("服务端通用规则");
-        prompt.setPurpose("SPECIALIST");
+        prompt.setPurpose(purpose);
         prompt.setCurrentVersionId(com.codereview.agent.support.AgentIds.next());
         var old = new com.codereview.agent.entity.AgentPromptVersion();
         old.setId(com.codereview.agent.support.AgentIds.next());
@@ -445,11 +449,55 @@ class TaskServiceTest {
                 .path("schemaVersion").asInt());
         assertEquals("当前规则", mapper.readTree(tasks.getAllValues().get(1).getConfigSnapshot())
                 .path("prompt").path("content").asText());
+        prompt.setPurpose("REPORT");
         old.setContent("被覆盖");
         assertEquals("旧版规则", pinnedSnapshot.path("content").asText());
+        assertThrows(ApiException.class, () -> service.create(req, null));
+        verify(taskMapper, org.mockito.Mockito.times(2)).insert(any(AgentReviewTask.class));
+        prompt.setPurpose(purpose);
         assertThrows(ApiException.class, () -> service.create(new TaskDtos.Create(base.projectId(), base.route(),
                 base.specialistType(), base.source(), base.targets(), MODEL_ID, prompt.getId(),
                 com.codereview.agent.support.AgentIds.next(), base.smartSplit(), base.name()), null));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"AGENT", "REPORT", "UNKNOWN", ""})
+    void wrongRulePurposeDoesNotCreateOrDispatchTask(String purpose) {
+        var prompt = new com.codereview.agent.entity.AgentPrompt();
+        prompt.setId(com.codereview.agent.support.AgentIds.next());
+        prompt.setPurpose(purpose);
+        when(promptMapper.selectById(prompt.getId())).thenReturn(prompt);
+        var base = request(null);
+        var req = new TaskDtos.Create(base.projectId(), base.route(), base.specialistType(), base.source(),
+                base.targets(), MODEL_ID, prompt.getId(), com.codereview.agent.support.AgentIds.next(), false, null);
+        assertEquals(ErrorCode.VALIDATION_FAILED,
+                assertThrows(ApiException.class, () -> service.create(req, null)).errorCode());
+        verify(taskMapper, never()).insert(any(AgentReviewTask.class));
+        verify(dispatcher, never()).dispatch(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SPECIALIST", "COMMON"})
+    void invalidRuleVersionDoesNotCreateOrDispatchTask(String purpose) {
+        var prompt = new com.codereview.agent.entity.AgentPrompt();
+        prompt.setId(com.codereview.agent.support.AgentIds.next());
+        prompt.setPurpose(purpose);
+        var version = new com.codereview.agent.entity.AgentPromptVersion();
+        version.setId(com.codereview.agent.support.AgentIds.next());
+        version.setPromptId(com.codereview.agent.support.AgentIds.next());
+        version.setContent("其他规则正文");
+        when(promptMapper.selectById(prompt.getId())).thenReturn(prompt);
+        when(promptVersionMapper.selectById(version.getId())).thenReturn(version);
+        var base = request(null);
+        var req = new TaskDtos.Create(base.projectId(), base.route(), base.specialistType(), base.source(),
+                base.targets(), MODEL_ID, prompt.getId(), version.getId(), false, null);
+        assertThrows(ApiException.class, () -> service.create(req, null));
+        version.setPromptId(prompt.getId());
+        version.setContent(" ");
+        assertThrows(ApiException.class, () -> service.create(req, null));
+        verify(taskMapper, never()).insert(any(AgentReviewTask.class));
+        verify(dispatcher, never()).dispatch(any());
     }
 
     private TaskDtos.Create request(String unused) {

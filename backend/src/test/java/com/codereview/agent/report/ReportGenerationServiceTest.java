@@ -23,6 +23,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -106,8 +109,9 @@ class ReportGenerationServiceTest {
         verify(dispatcher, never()).dispatch(any());
     }
 
-    @Test
-    void freezesTheSelectedReportPromptVersionAndReturnsItsSnapshot() {
+    @ParameterizedTest
+    @ValueSource(strings = {"REPORT", "COMMON"})
+    void freezesTheSelectedReportPromptVersionAndReturnsItsSnapshot(String purpose) throws Exception {
         AgentReport frozen = report(ReportStates.INPUT_FROZEN);
         AgentReport queued = report(ReportStates.QUEUED);
         queued.setModelSnapshot("{\"id\":\"" + MODEL_ID + "\",\"name\":\"默认\",\"modelName\":\"qwen\"}");
@@ -118,7 +122,7 @@ class ReportGenerationServiceTest {
         AgentPrompt prompt = new AgentPrompt();
         prompt.setId(PROMPT_ID);
         prompt.setName("报告规范");
-        prompt.setPurpose("REPORT");
+        prompt.setPurpose(purpose);
         AgentPromptVersion version = new AgentPromptVersion();
         version.setId(PROMPT_VERSION_ID);
         version.setPromptId(PROMPT_ID);
@@ -134,14 +138,28 @@ class ReportGenerationServiceTest {
                 new ReportDtos.GenerateRequest(MODEL_ID, " 强调证据 ", PROMPT_ID, PROMPT_VERSION_ID));
 
         assertEquals("QUEUED", detail.state());
+        var update = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(reportMapper).update(org.mockito.ArgumentMatchers.isNull(), update.capture());
+        update.getValue().getSqlSet();
+        String written = (String) update.getValue().getParamNameValuePairs().values().stream()
+                .filter(value -> value instanceof String && ((String) value).contains("\"prompt\""))
+                .findFirst().orElseThrow();
+        var frozenPrompt = json.readTree(written).path("prompt");
+        assertEquals(PROMPT_VERSION_ID, frozenPrompt.path("versionId").asText());
+        assertEquals("冻结规则正文", frozenPrompt.path("content").asText());
+        prompt.setPurpose("AGENT");
+        version.setContent("修改后的正文");
+        assertEquals("冻结规则正文", json.readTree(written).path("prompt").path("content").asText());
         assertEquals("强调证据", detail.instruction());
         assertEquals(new ReportDtos.PromptView(PROMPT_ID, "报告规范", PROMPT_VERSION_ID, 1, "冻结规则正文"),
                 detail.prompt());
         verify(dispatcher).dispatch(REPORT_ID);
     }
 
-    @Test
-    void rejectsPartialOrNonReportPromptSelectionBeforeQueueing() {
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"AGENT", "SPECIALIST", "UNKNOWN", ""})
+    void rejectsPartialOrNonReportPromptSelectionBeforeQueueing(String purpose) {
         when(reportMapper.selectById(REPORT_ID)).thenReturn(report(ReportStates.INPUT_FROZEN));
         ApiException partial = assertThrows(ApiException.class, () -> service.start(REPORT_ID,
                 new ReportDtos.GenerateRequest(MODEL_ID, null, PROMPT_ID, null)));
@@ -149,7 +167,7 @@ class ReportGenerationServiceTest {
 
         AgentPrompt prompt = new AgentPrompt();
         prompt.setId(PROMPT_ID);
-        prompt.setPurpose("AGENT");
+        prompt.setPurpose(purpose);
         when(modelMapper.selectById(MODEL_ID)).thenReturn(model());
         when(promptMapper.selectById(PROMPT_ID)).thenReturn(prompt);
         ApiException wrongPurpose = assertThrows(ApiException.class, () -> service.start(REPORT_ID,
@@ -159,13 +177,14 @@ class ReportGenerationServiceTest {
         verify(dispatcher, never()).dispatch(any());
     }
 
-    @Test
-    void rejectsVersionOwnedByAnotherPromptAndBlankContent() {
+    @ParameterizedTest
+    @ValueSource(strings = {"REPORT", "COMMON"})
+    void rejectsVersionOwnedByAnotherPromptAndBlankContent(String purpose) {
         when(reportMapper.selectById(REPORT_ID)).thenReturn(report(ReportStates.INPUT_FROZEN));
         when(modelMapper.selectById(MODEL_ID)).thenReturn(model());
         AgentPrompt prompt = new AgentPrompt();
         prompt.setId(PROMPT_ID);
-        prompt.setPurpose("REPORT");
+        prompt.setPurpose(purpose);
         when(promptMapper.selectById(PROMPT_ID)).thenReturn(prompt);
         AgentPromptVersion version = new AgentPromptVersion();
         version.setId(PROMPT_VERSION_ID);

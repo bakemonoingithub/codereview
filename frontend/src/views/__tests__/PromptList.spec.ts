@@ -172,4 +172,25 @@ describe('PromptList 编辑与版本', () => {
     expect(alert.text()).toContain('对比接口 500')
     expect(wrapper.find('diff-viewer-stub').exists()).toBe(false)
   })
+  it('新建和编辑均保存通用用途，编辑用途不新增正文版本', async () => {
+    vi.mocked(promptsApi.create).mockResolvedValue({ ...detail, purpose: 'COMMON' } as any)
+    vi.mocked(promptsApi.update).mockResolvedValue({ ...detail, purpose: 'COMMON', revision: 2 } as any)
+    const wrapper = mount(PromptList, options)
+    await flush()
+    const s = (wrapper.vm as any).$.setupState
+    expect(s.purposeOptions).toContainEqual({ value: 'COMMON', label: '通用' })
+    expect(s.purposeLabel('COMMON')).toBe('通用')
+    s.openCreate()
+    s.form.name = '共用规则'; s.form.content = '规则正文'; s.form.purpose = 'COMMON'
+    await s.onSave()
+    expect(promptsApi.create).toHaveBeenCalledWith(expect.objectContaining({ purpose: 'COMMON' }))
+    s.openEdit(summary)
+    await flush()
+    s.form.purpose = 'COMMON'
+    await s.onSave()
+    expect(promptsApi.update).toHaveBeenCalledWith('p1', expect.objectContaining({ purpose: 'COMMON', expectedRevision: 1 }))
+    expect(promptsApi.addVersion).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
 })

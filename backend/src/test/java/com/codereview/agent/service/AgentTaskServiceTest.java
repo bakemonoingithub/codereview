@@ -30,6 +30,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -73,6 +76,7 @@ class AgentTaskServiceTest {
     @Mock private AgentReviewTaskMapper taskMapper;
     @Mock private AgentTaskQuotaMapper quotaMapper;
     @Mock private RepositoryReadService repository;
+    @Mock private com.codereview.agent.execution.TaskDispatchService dispatcher;
 
     private AgentTaskService service;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -87,7 +91,7 @@ class AgentTaskServiceTest {
                 new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentModelValidation.class);
         when(taskMapper.selectIncludingDeletedForUpdate(org.mockito.ArgumentMatchers.anyString()))
                 .thenAnswer(call -> taskMapper.selectById((String) call.getArgument(0)));
-        service = new AgentTaskService(db, mapper, repository, new ModelInvocationProperties());
+        service = new AgentTaskService(db, mapper, repository, new ModelInvocationProperties(), dispatcher);
         project = new AgentProject();
         project.setId(PROJECT_ID);
         project.setName("订单服务");
@@ -247,11 +251,13 @@ class AgentTaskServiceTest {
                 assertThrows(ApiException.class, () -> service.create(withFiles, null)).errorCode());
     }
 
-    @Test
-    void guidanceMustUseTheAgentPurpose() {
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"SPECIALIST", "REPORT", "UNKNOWN", ""})
+    void guidanceMustUseTheAgentPurpose(String purpose) {
         AgentPrompt prompt = new AgentPrompt();
         prompt.setId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E4");
-        prompt.setPurpose("SPECIALIST");
+        prompt.setPurpose(purpose);
         prompt.setCurrentVersionId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E5");
         when(promptMapper.selectById(any())).thenReturn(prompt);
 
@@ -264,12 +270,13 @@ class AgentTaskServiceTest {
         assertTrue(error.getMessage().contains("Agent 用途"));
     }
 
-    @Test
-    void guidanceVersionIsFrozenIntoTheConfigSnapshot() {
+    @ParameterizedTest
+    @ValueSource(strings = {"AGENT", "COMMON"})
+    void guidanceVersionIsFrozenIntoTheConfigSnapshot(String purpose) {
         AgentPrompt prompt = new AgentPrompt();
         prompt.setId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E4");
         prompt.setName("调用方优先");
-        prompt.setPurpose("AGENT");
+        prompt.setPurpose(purpose);
         prompt.setCurrentVersionId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E5");
         when(promptMapper.selectById(any())).thenReturn(prompt);
         AgentPromptVersion version = new AgentPromptVersion();
@@ -292,8 +299,13 @@ class AgentTaskServiceTest {
         assertEquals(version.getId(), config.path("versionId").asText());
         when(taskMapper.selectById(task.getId())).thenReturn(task);
         assertEquals(version.getId(), service.copyInput(task.getId()).guidancePromptVersionId());
+        prompt.setPurpose("REPORT");
         version.setContent("覆盖后的正文");
         assertEquals("先看调用方。", read(task.getConfigSnapshot()).path("prompt").path("content").asText());
+        assertEquals(ErrorCode.VALIDATION_FAILED,
+                assertThrows(ApiException.class, () -> service.create(req, null)).errorCode());
+        verify(taskMapper, org.mockito.Mockito.times(1)).insert(any(AgentReviewTask.class));
+        verify(dispatcher, org.mockito.Mockito.times(1)).dispatch(task.getId());
     }
 
     @Test
@@ -354,14 +366,15 @@ class AgentTaskServiceTest {
         assertNull(copy.guidancePromptId());
     }
 
-    @Test
-    void guidanceRejectsOrphanMissingAndCrossPromptVersionsWithoutFallback() {
+    @ParameterizedTest
+    @ValueSource(strings = {"AGENT", "COMMON"})
+    void guidanceRejectsOrphanMissingAndCrossPromptVersionsWithoutFallback(String purpose) {
         AgentTaskDtos.Create base = filesRequest();
         String promptId = "01J9Z6Q3W4X5Y6Z7A8B9C0D1E4";
         String versionId = "01J9Z6Q3W4X5Y6Z7A8B9C0D1E5";
         AgentPrompt prompt = new AgentPrompt();
         prompt.setId(promptId);
-        prompt.setPurpose("AGENT");
+        prompt.setPurpose(purpose);
         prompt.setCurrentVersionId("01J9Z6Q3W4X5Y6Z7A8B9C0D1E9");
         when(promptMapper.selectById(promptId)).thenReturn(prompt);
         assertThrows(ApiException.class, () -> service.create(new AgentTaskDtos.Create(PROJECT_ID,
@@ -375,6 +388,11 @@ class AgentTaskServiceTest {
         wrong.setContent("另一个提示词");
         when(promptVersionMapper.selectById(versionId)).thenReturn(wrong);
         assertThrows(ApiException.class, () -> service.create(explicit, null));
+        wrong.setPromptId(promptId);
+        wrong.setContent(" ");
+        assertThrows(ApiException.class, () -> service.create(explicit, null));
+        verify(taskMapper, org.mockito.Mockito.never()).insert(any(AgentReviewTask.class));
+        verify(dispatcher, org.mockito.Mockito.never()).dispatch(any());
         verify(promptVersionMapper, org.mockito.Mockito.never()).selectById(prompt.getCurrentVersionId());
     }
 

@@ -20,6 +20,7 @@ import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
 import com.codereview.agent.support.AgentIds;
+import com.codereview.agent.support.PromptApplicability;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -312,9 +313,9 @@ public class ReportGenerationService {
         if (prompt == null) {
             throw new ApiException(ErrorCode.NOT_FOUND, "报告通用规则不存在：" + promptId);
         }
-        if (!"REPORT".equals(prompt.getPurpose())) {
+        if (!PromptApplicability.supports(prompt.getPurpose(), "REPORT")) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "所选通用规则不属于报告生成用途");
+                    "所选提示词须为报告生成或通用用途");
         }
         AgentPromptVersion version = db.mapper(AgentPromptVersionMapper.class).selectById(promptVersionId);
         if (version == null || !promptId.equals(version.getPromptId())) {

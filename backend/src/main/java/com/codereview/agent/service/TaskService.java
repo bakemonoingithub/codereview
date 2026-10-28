@@ -39,6 +39,7 @@ import com.codereview.agent.mapper.AgentTaskTargetMapper;
 import com.codereview.agent.repository.RepositoryPaths;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.support.AgentIds;
+import com.codereview.agent.support.PromptApplicability;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -527,8 +528,8 @@ public class TaskService {
             if (prompt == null) {
                 throw new ApiException(ErrorCode.NOT_FOUND, "通用规则不存在：" + req.promptId());
             }
-            if (!"SPECIALIST".equals(prompt.getPurpose())) {
-                throw new ApiException(ErrorCode.VALIDATION_FAILED, "所选通用规则不属于专项用途");
+            if (!PromptApplicability.supports(prompt.getPurpose(), "SPECIALIST")) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "所选提示词须为专项审查或通用用途");
             }
             promptVersion = PromptVersionResolver.resolve(db, prompt,
                     AgentIds.requireValid(req.promptVersionId(), "通用规则版本 ID"));

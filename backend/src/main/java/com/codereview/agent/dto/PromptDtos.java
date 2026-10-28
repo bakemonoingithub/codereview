@@ -1,5 +1,6 @@
 package com.codereview.agent.dto;
 
+import com.codereview.agent.support.PromptApplicability;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -18,7 +19,7 @@ public final class PromptDtos {
             @NotBlank @Size(max = 100) String name,
             @Size(max = 500) String description,
             List<@Size(max = 50) String> tags,
-            @Pattern(regexp = "SPECIALIST|REPORT|AGENT", message = "不支持的用途")
+            @Pattern(regexp = PromptApplicability.PURPOSE_PATTERN, message = "不支持的用途")
             String purpose,
             @NotBlank String content) {
     }
@@ -27,7 +28,7 @@ public final class PromptDtos {
             @NotBlank @Size(max = 100) String name,
             @Size(max = 500) String description,
             List<@Size(max = 50) String> tags,
-            @Pattern(regexp = "SPECIALIST|REPORT|AGENT", message = "不支持的用途")
+            @Pattern(regexp = PromptApplicability.PURPOSE_PATTERN, message = "不支持的用途")
             String purpose,
             @NotNull Integer expectedRevision) {
     }

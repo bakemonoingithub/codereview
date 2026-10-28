@@ -399,10 +399,10 @@ describe('专项发起来源和提交保护', () => {
     w.unmount()
   })
 
-  it('固定历史通用规则版本时预览同一正文，版本失效时阻止提交', async () => {
+  it.each(['SPECIALIST', 'COMMON'])('%s 固定历史通用规则版本时预览同一正文，版本失效时阻止提交', async (purpose) => {
     const current = { id: 'v2', versionNo: 2, content: '新版规则', createdAt: '2026-10-25' }
     const old = { id: 'v1', versionNo: 1, content: '历史规则', createdAt: '2026-10-24' }
-    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '规则', purpose: 'SPECIALIST', tags: [], currentVersion: current } as any)
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', name: '规则', purpose, tags: [], currentVersion: current } as any)
     vi.mocked(promptsApi.versions).mockResolvedValue([current, old])
     const wrapper = await start(); const s = state(wrapper)
     s.form.modelConfigId = 'm1'; s.form.promptId = 'g1'; s.form.targets = [{ path: 'A.java' }]
@@ -532,4 +532,28 @@ describe('发起弹窗骨架', () => {
     expect(w.html()).not.toContain('已复制历史参数')
     w.unmount()
   })
+  it.each(['SPECIALIST', 'COMMON'])('%s 复制参数保留规则版本并重新校验用途', async (purpose) => {
+    context.route.query = { copyFrom: 'old-task' }
+    const version = { id: 'v1', versionNo: 1, content: '原规则正文', createdAt: '2026-10-28T00:00:00' }
+    vi.mocked(promptsApi.list).mockResolvedValue(page([
+      { id: 'g1', name: '原规则', purpose }, { id: 'a1', name: 'Agent', purpose: 'AGENT' }
+    ]) as any)
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', purpose, tags: [], currentVersion: version } as any)
+    vi.mocked(promptsApi.versions).mockResolvedValue([version] as any)
+    vi.mocked(tasksApi.copyInput).mockResolvedValue({ projectId: 'p1', specialistType: 'ISSUE', sourceKind: 'FILES',
+      branch: 'main', targets: [{ path: 'A.java' }], modelConfigId: 'm1', promptId: 'g1', promptVersionId: 'v1' } as any)
+    vi.mocked(tasksApi.detail).mockResolvedValue({ headSha: 'sha-main' } as any)
+    const w = await start(); const s = state(w)
+    expect(s.promptOptions).toEqual([{ value: 'g1', label: '原规则' }])
+    expect(s.form.promptVersionId).toBe('v1')
+    expect(s.selectedPromptVersion.content).toBe('原规则正文')
+    vi.mocked(promptsApi.detail).mockResolvedValue({ id: 'g1', purpose: 'REPORT', currentVersion: version } as any)
+    await s.loadPromptSelection('g1', 'v1')
+    expect(s.promptError).toContain('用途')
+    expect(s.canSubmit).toBe(false)
+    await s.submit()
+    expect(tasksApi.create).not.toHaveBeenCalled()
+    w.unmount()
+  })
+
 })
