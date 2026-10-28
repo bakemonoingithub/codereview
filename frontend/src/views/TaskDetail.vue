@@ -384,7 +384,7 @@ function saveScene() {
     }))
   } catch { /* 存储不可用不阻断阅读 */ }
 }
-watch(() => route.params.id, () => {
+watch(() => [route.params.id, route.query?.targetId] as const, () => {
   saveScene()
   stopPoll()
   taskEpoch++
@@ -415,6 +415,11 @@ watch(() => route.params.id, () => {
       callsPages = Math.min(4, Math.max(1, Number(saved.callsPages) || 1))
     }
   } catch { /* 无现场 */ }
+  const linkedTargetId = route.query?.targetId
+  if (typeof linkedTargetId === 'string' && linkedTargetId) {
+    selectedTargetId.value = linkedTargetId
+    activeTab.value = 'result'
+  }
   void loadTask()
 }, { immediate: true, flush: 'sync' })
 onBeforeUnmount(() => {

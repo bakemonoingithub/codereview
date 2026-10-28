@@ -49,6 +49,28 @@ beforeEach(() => {
   vi.mocked(tasksApi.calls).mockImplementation(async (_id, params) => page('c-' + params?.targetId) as any)
 })
 describe('任务详情的轮询与目标隔离', () => {
+  it('报告来源链接优先定位对应文件和结果页，不受已保存现场影响', async () => {
+    sessionStorage.setItem('review-detail-t1', JSON.stringify({ selectedTargetId: 'a', activeTab: 'calls', callsPages: 1 }))
+    context.route.query = { targetId: 'b' }
+    const wrapper = await start()
+    expect(state(wrapper).selectedTargetId).toBe('b')
+    expect(state(wrapper).activeTab).toBe('result')
+    expect(tasksApi.result).toHaveBeenCalledWith('t1', 'b')
+    wrapper.unmount()
+  })
+
+  it('同任务切换链接目标后重新加载对应文件；无效目标沿用现有提示和回退', async () => {
+    context.route.query = { targetId: 'a' }
+    const wrapper = await start()
+    context.route.query.targetId = 'b'; await flushPromises()
+    expect(state(wrapper).selectedTargetId).toBe('b')
+    expect(tasksApi.result).toHaveBeenLastCalledWith('t1', 'b')
+    context.route.query.targetId = 'missing'; await flushPromises()
+    expect(state(wrapper).selectedTargetId).toBe('a')
+    expect(tasksApi.result).toHaveBeenLastCalledWith('t1', 'a')
+    wrapper.unmount()
+  })
+
   it('初次打开就显示所有文件的问题数，不依赖选中或结果详情加载', async () => {
     const loaded = { ...task(), targets: [
       { id: 'a', path: 'A.java', state: 'SUCCEEDED', issueCount: 6 },

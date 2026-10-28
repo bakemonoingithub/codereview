@@ -43,7 +43,7 @@ export interface Page<T> {
 }
 
 export interface FeedbackView {
-  subjectKind: 'ISSUE' | 'RESULT'
+  subjectKind: 'ISSUE' | 'RESULT' | 'PATTERN' | 'COUPLING'
   subjectId: string
   assessment: 'ACCURATE' | 'INACCURATE' | 'UNKNOWN' | null
   comment: string | null
@@ -550,6 +550,7 @@ export interface ResultView {
     }>
     limitations?: string[]
   }
+  items?: Array<{ id: string; kind: 'PATTERN' | 'COUPLING'; ordinal: number }>
   issues: IssueView[]
   provenance: {
     versions?: { headSha?: string; baseSha?: string; path?: string; oldPath?: string }

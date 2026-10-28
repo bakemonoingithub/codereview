@@ -38,7 +38,7 @@ import { feedbackDraftKey, readFeedbackDraft, storeFeedbackDraft, recordFeedback
 
 type Assessment = FeedbackView['assessment']
 
-const props = defineProps<{ taskId: string; subjectKind: FeedbackView['subjectKind']; subjectId: string; subjectText: string }>()
+const props = defineProps<{ taskId: string; subjectKind: FeedbackView['subjectKind']; subjectId: string; subjectText: string; conclusion?: boolean }>()
 const emit = defineEmits<{ (event: 'saved', value: FeedbackView): void }>()
 const choices: { value: Exclude<Assessment, null>; label: string }[] = [
   { value: 'ACCURATE', label: '准确' }, { value: 'INACCURATE', label: '不准确' }, { value: 'UNKNOWN', label: '无法判断' }

@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-10-27 报告来源阅读：负责人验证原型后要求修改正式页面，已完成头部精简、两个页签归类、共用结果组件及冻结反馈只读展示，并支持另开原审查详情定位文件。前端 8 个文件、95 项及隔离构建通过，类型检查与修改前副本的两处既有错误一致；正式页面视觉待确认。详见[实施与检查记录](work/agent-redesign/report-source-reader/README.md#7-正式实现与工程检查)。未扩展冻结字段、操作数据库或启停服务，既有 SRF 等工作包状态不变。
+
 2026-10-27 专项结果 SRF 方案：负责人已要求依据三类原型实施，并确认逐条结论反馈、评论直接展示。现已交付[实施方案](work/agent-redesign/specialist-result-prototype/implementation-plan.md)，业务修订见[契约第 11 节](work/agent-redesign/business-contract.md#11-专项审查结果展示与逐条反馈2026-10-27)。SRF-01 文档完成，SRF-02–08 均 todo，详见[主 ROADMAP](ROADMAP.md#srf-专项审查结果展示与逐条反馈2026-10-27)；后端、新表及历史回填尚未获实施授权，tab 外统计／报告依赖待确认最小范围。当前未改正式代码或数据库，SRF 无 active；P29–P33、UPI、CFG 状态保持不变。
 
 2026-10-27 材料阅读文案及审查输入排序：按负责人确认的方案修改字段名称、条件显示与枚举描述，审查输入按用途排序，详情见[改动记录](work/agent-redesign/material-reader-copy-20261027.md)。不变更业务阶段状态。

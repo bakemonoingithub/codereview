@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>报告来源阅读 · 独立原型</title>
+  <style>
+    :root { --ink:#0f172a; --muted:#64748b; --line:#e8edf3; --bg:#f8fafc; --blue:#2563eb; --notice:#f3f7ff; --notice-border:#d8e6fb; --radius:20px; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#edf1f6; font:14px/1.7 "Inter","Microsoft YaHei",system-ui,sans-serif; }
+    button,select { font:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,select:focus-visible { outline:3px solid #93b4f5; outline-offset:3px; }
+    button.plain { border:1px solid #e2e8f0; border-radius:9px; background:white; color:var(--ink); padding:6px 14px; }
+    button.link { background:none; color:var(--blue); border:0; padding:0; }
+    .demo-bar { position:relative; z-index:2; min-height:52px; display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:9px 24px; background:#fff; border-bottom:1px solid var(--line); font-size:12px; }
+    .demo-bar strong { font-size:13px; }
+    select { max-width:100%; background:var(--bg); border:1px solid #dce3ed; border-radius:7px; padding:3px 8px; color:var(--ink); }
+    .muted { color:var(--muted); }
+    .small { font-size:12px; }
+    .spacer { flex:1; }
+    .backdrop { position:fixed; inset:52px 0 0; padding:40px 7%; color:#94a3b8; }
+    .backdrop h1 { font-size:26px; }
+    .backdrop .paper { width:70%; height:65vh; background:#fff; border-radius:20px; padding:30px; }
+    .mask { position:fixed; inset:52px 0 0; background:#0f172a59; backdrop-filter:blur(3px); display:flex; justify-content:center; align-items:center; padding:20px; }
+    .shell { width:min(1200px,100%); height:min(900px,calc(100dvh - 92px)); background:#fff; border-radius:24px; box-shadow:0 30px 80px #0f172a33; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+    .header { padding:20px 28px 14px; flex:none; }
+    .head-row { display:flex; align-items:center; gap:12px; }
+    .header h1 { font-size:22px; line-height:1.5; margin:0; }
+    .pill { display:inline-flex; align-items:center; border-radius:6px; font-size:12px; padding:1px 8px; background:#eef2f7; color:#5d6c80; }
+    .green { color:#047857; background:#eaf7ef; }
+    .amber { color:#946b2c; background:#fff4e5; }
+    .close { font-size:25px; line-height:1; width:32px; height:32px; color:#94a3b8; background:none; border:0; border-radius:7px; }
+    .subtitle { margin:4px 0 9px; color:var(--muted); font-size:13px; overflow-wrap:anywhere; }
+    .notice { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--notice); border:1px solid var(--notice-border); border-radius:9px; color:#46628a; font-size:12px; }
+    .tabs { display:flex; flex:none; gap:28px; padding:0 28px; border-bottom:1px solid var(--line); }
+    .tabs button { border:0; border-bottom:2px solid transparent; padding:12px 0; color:var(--muted); background:none; }
+    .tabs button[aria-selected="true"] { color:var(--blue); border-color:var(--blue); font-weight:600; }
+    .content { min-height:0; overflow:auto; overscroll-behavior:contain; flex:1; padding:24px 28px; }
+    [hidden] { display:none !important; }
+    .footer { flex:none; display:flex; align-items:center; gap:12px; padding:12px 28px; border-top:1px solid var(--line); }
+    h2,h3,h4,p { margin:0; }
+    h2 { font-size:20px; }
+    h3 { font-size:17px; }
+    h4 { font-size:12px; font-weight:500; color:var(--muted); margin-bottom:7px; }
+    p { white-space:pre-wrap; }
+    .agent-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(290px,340px); gap:24px; align-items:start; }
+    .card { min-width:0; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:#fff; }
+    .agent-article { padding:24px 28px; line-height:1.95; }
+    .agent-article h2 { margin:8px 0 12px; }
+    .agent-article h3 { margin:24px 0 8px; }
+    .agent-article ul { margin:8px 0; padding-left:22px; }
+    .section-head { display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line); }
+    .section-head h3 { font-size:14px; }
+    .evidence { padding:16px 20px; }
+    .evidence + .evidence { border-top:1px solid var(--line); }
+    .reference { display:block; width:100%; height:auto; margin-top:8px; text-align:left; overflow-wrap:anywhere; border:1px solid var(--line); padding:10px 14px; background:var(--bg); color:var(--blue); border-radius:8px; font-size:12px; }
+    .agent-side .reference { border:0; background:#eff4ff; padding:6px 9px; }
+    .warning { padding:14px 18px; margin:20px 0 0; border:1px solid #efdfbd; border-radius:10px; background:#fffaf0; color:#946b2c; font-size:13px; }
+    .warning ul { padding-left:20px; margin:6px 0 0; }
+    .conclusion { padding:22px 24px; border:1px solid var(--notice-border); border-radius:14px; background:var(--notice); margin-bottom:24px; }
+    .eyebrow { color:var(--muted); font-size:12px; }
+    .conclusion h2 { margin:8px 0 12px; }
+    .metrics { display:flex; flex-wrap:wrap; gap:10px 24px; margin-top:18px; font-size:12px; color:var(--muted); }
+    .metrics b { color:var(--ink); font-size:18px; margin:0 4px; }
+    .finding { border:1px solid var(--line); border-top:3px solid #ca8a27; border-radius:12px; overflow:hidden; margin-top:20px; }
+    .finding.pattern { border-top-color:#8767b3; }
+    .finding.coupling { border-top-color:#458b7c; }
+    .finding-head { padding:18px 22px; border-bottom:1px solid var(--line); }
+    .finding-head h3 { margin-top:8px; }
+    .meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+    .finding-content { padding:22px; line-height:1.9; }
+    .finding-content section { margin-top:20px; }
+    .suggestion { padding:14px 16px; background:var(--notice); border-left:3px solid var(--notice-border); border-radius:0 8px 8px 0; }
+    .feedback { border-top:1px solid var(--line); background:#fafbfd; padding:15px 22px; font-size:13px; }
+    .feedback .meta { margin-bottom:7px; }
+    .feedback p { color:#475569; }
+    .legacy { margin-top:22px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    .legacy .feedback { border:0; }
+    .facts { padding:18px 22px; background:var(--bg); border:1px solid var(--line); border-radius:12px; margin-bottom:20px; }
+    .input-section + .input-section { border-top:1px solid var(--line); margin-top:24px; padding-top:24px; }
+    .input-section h3 { font-size:15px; margin-bottom:16px; }
+    .input-pairs { display:grid; grid-template-columns:125px minmax(0,1fr); column-gap:20px; row-gap:12px; font-size:13px; margin:0; }
+    dt { color:var(--muted); }
+    dd { margin:0; min-width:0; overflow-wrap:anywhere; }
+    code { font-family:Consolas,"Cascadia Code",monospace; font-size:12px; }
+    .input-pairs code { padding:3px 7px; border:1px solid var(--line); border-radius:5px; background:var(--bg); }
+    .input-note { margin:16px 0 0; color:var(--muted); font-size:12px; }
+    .material-row { display:flex; align-items:center; gap:20px; padding:14px 0; border-bottom:1px solid var(--line); }
+    .material-row:last-child { border:0; }
+    .material-main { min-width:0; flex:1; }
+    .material-main code { display:block; overflow-wrap:anywhere; }
+    .material-main p { margin-top:4px; color:var(--muted); font-size:12px; }
+    .material-row button { flex:none; font-size:12px; }
+    .empty { padding:64px 24px; text-align:center; color:var(--muted); }
+    dialog { width:min(840px,calc(100vw - 48px)); max-height:80vh; border:1px solid var(--line); border-radius:18px; padding:0; color:var(--ink); box-shadow:0 30px 80px #0f172a33; }
+    dialog::backdrop { background:#0f172a59; }
+    .dialog-head { display:flex; gap:20px; align-items:center; padding:16px 22px; border-bottom:1px solid var(--line); }
+    .dialog-body { padding:22px; overflow:auto; }
+    pre { overflow:auto; white-space:pre; padding:18px; background:var(--bg); font:13px/1.9 Consolas,monospace; border-radius:10px; }
+    @media (max-width:1000px) { .agent-layout { grid-template-columns:1fr; } }
+    @media (max-width:600px) { .demo-bar { padding:8px 12px; gap:8px; } .demo-bar .muted { display:none; } .mask { padding:10px; top:88px; } .shell { height:calc(100dvh - 108px); border-radius:16px; } .header,.content { padding:16px; } .tabs { padding:0 16px; } .footer { padding:10px 16px; } .footer .small { display:none; } .header h1 { font-size:20px; } .input-pairs { grid-template-columns:90px minmax(0,1fr); gap:10px; } .agent-article { padding:20px; } .material-row { align-items:flex-start; } }
+  </style>
+</head>
+<body>
+  <div class="demo-bar">
+    <strong>独立原型 · 演示数据</strong>
+    <label>来源示例 <select id="sample"><option value="agent">Agent 分析</option><option value="issue">问题审查</option><option value="pattern">设计模式</option><option value="coupling">耦合度</option><option value="legacy">历史整份反馈</option><option value="missing">信息缺失</option></select></label>
+    <span class="muted">切换示例和页签，查看归类与只读效果。</span>
+    <button id="reopen" class="link" hidden>重新打开来源</button>
+  </div>
+  <div class="backdrop" aria-hidden="true"><h1>审查报告</h1><div class="paper">报告正文<br><br>任务执行与结果发布的审查结论，详见来源 [S1]。</div></div>
+  <div class="mask" id="mask">
+    <section class="shell" role="dialog" aria-modal="true" aria-labelledby="source-title">
+      <header class="header">
+        <div class="head-row"><h1 id="source-title">来源 S1</h1><span class="pill">报告快照 · 只读</span><span class="spacer"></span><button class="close" id="close" aria-label="关闭来源">×</button></div>
+        <p class="subtitle" id="subtitle"></p>
+        <div class="notice"><span aria-hidden="true">ⓘ</span> 结果、反馈和材料以报告生成时保存的内容为准。</div>
+      </header>
+      <nav class="tabs" role="tablist" aria-label="报告来源内容">
+        <button id="result-tab" role="tab" aria-selected="true" aria-controls="result-panel" data-tab="result">审查结果</button>
+        <button id="input-tab" role="tab" aria-selected="false" aria-controls="input-panel" data-tab="input" tabindex="-1">输入与配置</button>
+      </nav>
+      <main class="content" id="scroller">
+        <div id="result-panel" role="tabpanel" aria-labelledby="result-tab" tabindex="0"></div>
+        <div id="input-panel" role="tabpanel" aria-labelledby="input-tab" tabindex="0" hidden></div>
+      </main>
+      <footer class="footer"><button class="plain" id="original">打开原审查详情 ↗</button><span class="muted small">查看完整任务配置、实际调用及当前反馈</span><span class="spacer"></span><button class="plain" id="done">关闭</button></footer>
+    </section>
+  </div>
+  <dialog id="code-dialog" aria-labelledby="code-title"><div class="dialog-head"><strong id="code-title">冻结代码片段</strong><span class="pill">报告快照</span><span class="spacer"></span><button class="close" id="code-close" aria-label="关闭代码">×</button></div><div class="dialog-body" id="code-body"></div></dialog>
+  <dialog id="original-dialog" aria-labelledby="original-title"><div class="dialog-head"><strong id="original-title">打开原审查详情</strong><span class="spacer"></span><button class="close" id="original-close" aria-label="关闭说明">×</button></div><div class="dialog-body"><p>正式页面将另开原审查详情，并定位对应文件。这里可以查看完整任务配置、实际调用和当前反馈。</p><p class="input-note">本页为独立原型，不连接业务服务。</p></div></dialog>
+  <script>
+    const $ = id => document.getElementById(id);
+    const sha = 'ef7f3d6ede649163098c65f4afe644f104f454de';
+    const taskId = 'DEMO-TASK-001';
+    const paths = ['backend/src/main/java/com/codereview/agent/service/TaskService.java', 'backend/src/main/java/com/codereview/agent/execution/SpecialistTaskWorker.java'];
+    const samples = {
+      agent:{kind:'Agent 分析',ordinal:1,path:'',summary:'本次调查覆盖了任务执行与结果发布链路。'},
+      issue:{kind:'问题审查',ordinal:2,path:paths[0],summary:'基于本次保存的材料，识别到 1 条需要复核的问题。'},
+      pattern:{kind:'设计模式',ordinal:3,path:paths[0],summary:'识别到 1 条有代码依据的模式候选。'},
+      coupling:{kind:'耦合度',ordinal:4,path:paths[0],summary:'结合文件级依赖事实，形成 1 条关系解读。'},
+      legacy:{kind:'设计模式',ordinal:5,path:paths[0],summary:'此示例保留报告当时的整份结果反馈。'},
+      missing:{kind:'Agent 分析',ordinal:6,path:'',summary:''}
+    };
+    let selected = 'agent';
+    let activeTab = 'result';
+    function feedback({legacy=false,empty=false}={}) {
+      return `<div class="feedback"><div class="meta"><strong>${legacy ? '当时整份结果反馈' : '当时反馈'}</strong><span class="pill ${empty ? '' : 'green'}">${empty ? '未反馈' : '准确'}</span><span class="spacer"></span><span>只读</span></div>${empty ? '<p>当时尚未保存评价或评论。</p>' : '<p>评论：已结合保存的代码片段复核，结论与本次材料相符。</p>'}</div>`;
+    }
+    function reference(index=0) { return `<button class="reference" data-code="${index}">${paths[index]} : 39–43 · 查看代码 ↗</button>`; }
+    function resultMarkup(key) {
+      if (key === 'missing') return '<div class="empty">冻结快照中没有可浏览的结果。</div><div class="warning">此示例未记录源码版本及材料正文。不会从当前任务或仓库补齐报告当时的数据。</div>';
+      const s = samples[key];
+      if (key === 'agent') return `<div class="agent-layout"><article class="card agent-article"><span class="pill amber">材料不足</span><h2>任务执行与结果发布链路分析</h2><p class="muted">${s.summary}</p><div class="warning"><strong>未解决事项</strong><ul><li>未取得实际数据库事务及并发运行记录，无法确认真实运行时的竞争行为。</li></ul></div><h3>结果发布与任务终态</h3><p>保存的代码显示，结果发布与任务终态更新通过事务组织。这里描述的是当前材料能够支持的实现关系，真实并发行为仍需运行验证。</p><p>可从右侧代码证据核对保存的引用 <button class="link" data-code="0">[C1]</button>。</p><h3>调查边界</h3><p>结论以已取得的材料为限。未取得运行记录，不表示运行时不存在异常。</p></article><aside class="card agent-side"><div class="section-head"><h3>代码证据</h3><span class="spacer"></span><span class="muted small">固定版本</span></div><div class="evidence"><span class="muted small">C1</span>${reference()}<p class="muted small">${sha.slice(0,7)} · 第 39–43 行</p></div><div class="evidence"><span class="muted small">C2</span>${reference(1)}<p class="muted small">${sha.slice(0,7)} · 第 39–43 行</p></div></aside></div><section class="legacy">${feedback({legacy:true,empty:true})}</section>`;
+      const pattern = key === 'pattern' || key === 'legacy';
+      const coupling = key === 'coupling';
+      const title = pattern ? '策略模式候选' : coupling ? '服务与执行器之间的直接依赖' : '取消状态更新缺少条件保护';
+      return `<section class="conclusion"><div class="eyebrow">${s.kind} · 文件结论</div><h2>审查结论</h2><p>${s.summary}</p><div class="metrics"><span>共 <b>1</b> 条${pattern ? '模式候选' : coupling ? '依赖解读' : '问题'}</span>${!pattern && !coupling ? '<span>中严重度 <b>1</b></span>' : ''}</div></section>${coupling ? '<section class="facts"><div class="eyebrow">程序解析</div><h3>文件级依赖事实</h3><div class="metrics"><span>已解析出向依赖 <b>4</b></span><span>未可靠定位类型 <b>1</b></span></div><p class="input-note">未解析类型不计为零依赖，不包含全仓入向关系。</p></section>' : ''}<article class="finding ${pattern ? 'pattern' : coupling ? 'coupling' : ''}"><header class="finding-head"><div class="meta"><span>${pattern ? '候选' : coupling ? '解读' : '问题'} 01</span><span class="pill">${pattern ? '行为型' : coupling ? '依赖关系' : '中严重度 · 可靠性'}</span></div><h3>${title}</h3></header><div class="finding-content"><h4>${pattern ? '模式说明' : coupling ? '关系说明' : '问题说明'}</h4><p>${pattern ? '服务通过统一的执行接口选择具体处理逻辑，具有策略模式的部分结构特征。这里只记录基于代码材料的候选解释。' : coupling ? '目标文件直接使用任务执行组件。该关系支持当前职责划分，后续变化需要结合调用边界判断影响。' : '取消与结果发布可能在不同执行路径更新任务状态，需要核对更新条件，防止终态被迟到写入覆盖。此为原型演示结论。'}</p><section class="suggestion"><h4>${pattern ? '目标承担的角色' : '修改建议'}</h4><p>${pattern ? '作为调用侧，依赖统一执行接口完成不同类型的处理。' : '结合事务边界与条件更新检查状态变更，并通过并发场景验证。'}</p></section><section><h4>${pattern || coupling ? '代码依据' : '问题位置'}</h4>${reference()}</section></div>${key === 'legacy' ? '' : feedback()}</article>${key === 'legacy' ? `<section class="legacy">${feedback({legacy:true})}<p class="input-note" style="padding:0 22px 16px">当时保存的是整份评价，未分配给各条结论。</p></section>` : ''}<aside class="warning"><strong>审查边界与材料缺失</strong><p>结论来自保存的源码材料，未覆盖实际数据库与部署环境。</p></aside>`;
+    }
+    function inputMarkup(key) {
+      const s = samples[key]; const missing = key === 'missing';
+      return `<section class="input-section"><h3>来源范围</h3><dl class="input-pairs"><dt>审查项目</dt><dd>codereview</dd><dt>审查类型</dt><dd>${s.kind}</dd><dt>分支与源码版本</dt><dd>${missing ? '版本未记录' : `<code>dev · ${sha}</code>`}</dd>${s.path ? `<dt>当前审查文件</dt><dd><code>${s.path}</code></dd>` : ''}</dl><p class="input-note">此快照未保存完整的模型、通用规则和本次要求。可打开原审查详情查看任务配置。</p></section><section class="input-section"><h3>代码材料${missing ? '' : ' · 2 份'}</h3><p class="muted small">以下是报告保存的代码材料；材料范围不代表完整任务输入。</p>${missing ? '<p class="input-note">此来源没有保存代码材料。</p>' : paths.map((path,index) => `<div class="material-row"><div class="material-main"><code>${path}</code><p>固定版本 ${sha.slice(0,12)} · 第 1–200 行</p><p>已保存该范围的完整内容${index === 1 ? ' · 父类源码未取得' : ''}</p></div><button class="link" data-code="${index}">查看冻结代码 ↗</button></div>`).join('')}</section><section class="input-section"><h3>冻结记录</h3><dl class="input-pairs"><dt>来源编号</dt><dd>S${s.ordinal}</dd><dt>任务 ID</dt><dd><code>${taskId}</code></dd><dt>结果 ID</dt><dd><code>DEMO-RESULT-00${s.ordinal}</code></dd><dt>结果发布时间</dt><dd>${missing ? '未记录' : '2026-10-26 16:52:08'}</dd><dt>冻结时间</dt><dd>${missing ? '未记录' : '2026-10-26 16:54:37'}</dd></dl></section>`;
+    }
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('[data-tab]').forEach(button => { const active = button.dataset.tab === tab; button.setAttribute('aria-selected',String(active)); button.tabIndex = active ? 0 : -1; });
+      $('result-panel').hidden = tab !== 'result'; $('input-panel').hidden = tab !== 'input'; $('scroller').scrollTop = 0;
+    }
+    function render() {
+      const s = samples[selected];
+      $('source-title').textContent = `来源 S${s.ordinal}`;
+      $('subtitle').textContent = `codereview · ${s.kind}${s.path ? ' · ' + s.path.split('/').pop() : ''}`;
+      $('result-panel').innerHTML = resultMarkup(selected);
+      $('input-panel').innerHTML = inputMarkup(selected);
+      switchTab('result');
+    }
+    function close() { $('mask').hidden = true; $('reopen').hidden = false; $('reopen').focus(); }
+    function open() { $('mask').hidden = false; $('reopen').hidden = true; $('close').focus(); }
+    $('sample').addEventListener('change',event => { selected = event.target.value; render(); });
+    document.querySelectorAll('[data-tab]').forEach(button => { button.addEventListener('click',() => switchTab(button.dataset.tab)); button.addEventListener('keydown',event => { if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) { event.preventDefault(); switchTab(event.key === 'Home' ? 'result' : event.key === 'End' ? 'input' : activeTab === 'result' ? 'input' : 'result'); $(activeTab+'-tab').focus(); } }); });
+    $('close').onclick = close; $('done').onclick = close; $('reopen').onclick = open;
+    $('original').onclick = () => $('original-dialog').showModal();
+    $('original-close').onclick = () => $('original-dialog').close();
+    $('code-close').onclick = () => $('code-dialog').close();
+    document.addEventListener('click',event => {
+      const button = event.target.closest('[data-code]'); if (!button) return;
+      $('code-title').textContent = paths[Number(button.dataset.code)].split('/').pop();
+      $('code-body').innerHTML = `<p class="muted small">${paths[Number(button.dataset.code)]}</p><p class="input-note">冻结片段 · 固定版本 ${sha.slice(0,12)} · 原型演示代码</p><pre>39  // 示例：在事务中发布结果并更新任务终态\n40  inTransaction(() -&gt; {\n41      publishResult();\n42      updateTaskState();\n43  });</pre><p class="input-note">正式页面复用代码阅读器。冻结片段缺失时明确提示，不读取当前任务材料补齐。</p>`;
+      $('code-dialog').showModal();
+    });
+    document.addEventListener('keydown',event => { if (event.key === 'Escape' && !$('code-dialog').open && !$('original-dialog').open && !$('mask').hidden) close(); });
+    render();
+  </script>
+</body>
+</html>
