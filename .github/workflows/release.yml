@@ -123,7 +123,8 @@ jobs:
         env:
           V: ${{ steps.ver.outputs.version }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'echo "::error::离线包组装失败：第 ${LINENO} 行：${BASH_COMMAND}" >&2' ERR
           B="codereview-offline-$V"
           MYSQL_TAG="${MYSQL_IMAGE##*:}"
           rm -rf "$B"
@@ -139,7 +140,8 @@ jobs:
           grep -q 'jdbc:mysql://mysql:3306/__AGENT_DB_NAME__' "$B/config/application.yml.example"
           grep -q 'expected-database: __AGENT_DB_NAME__' "$B/config/application.yml.example"
           grep -q 'AGENT_DB_PASSWORD' "$B/.env.example"
-          grep -q 'Agent 新库与独立账号已就绪' "$B/scripts/deploy.sh"
+          grep -qF 'CREATE DATABASE IF NOT EXISTS \`$AGENT_DB_NAME\`' "$B/scripts/deploy.sh"
+          grep -qF "CREATE USER IF NOT EXISTS '\$AGENT_DB_USER'@'%'" "$B/scripts/deploy.sh"
           grep -q 'AGENT_DB_NAME' "$B/scripts/backup.sh"
           grep -q 'connectivity-validation-timeout-seconds' "$B/config/application.yml.example"
           grep -q 'retry-jitter-ratio' "$B/config/application.yml.example"
