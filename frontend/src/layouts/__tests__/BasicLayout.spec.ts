@@ -58,7 +58,7 @@ describe('侧边栏菜单图标', () => {
     expect(icons[3]).toContain('anticon-folder')
     expect(icons[4]).toContain('anticon-robot')
     expect(icons[5]).toContain('anticon-file-text')
-    expect(icons[6]).toContain('anticon-setting')
+    expect(icons).toHaveLength(6)
   })
 
   it('菜单项带 title，折叠态才有中文 tooltip', () => {
@@ -68,7 +68,7 @@ describe('侧边栏菜单图标', () => {
       ...new Set(wrapper.findAllComponents({ name: 'AMenuItem' }).map((m) => m.props('title')))
     ]
 
-    expect(titles).toEqual(['审查中心', '代码浏览', '报告', '项目管理', '模型管理', '提示词管理', '策略管理'])
+    expect(titles).toEqual(['审查中心', '代码浏览', '报告', '项目管理', '模型管理', '提示词管理'])
   })
 })
 

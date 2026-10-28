@@ -93,6 +93,8 @@ public class RuntimeConfigurationValidation {
             if (!(source instanceof org.springframework.core.env.SystemEnvironmentPropertySource variables)) continue;
             for (String name : variables.getSource().keySet()) {
                 String upper = name.toUpperCase(java.util.Locale.ROOT);
+                // GitHub Actions uses this host variable for its tool cache, not application configuration.
+                if (upper.equals("AGENT_TOOLSDIRECTORY")) continue;
                 boolean applicationKey = upper.startsWith("AGENT_") || upper.startsWith("APP_UI_")
                         || upper.matches("GIT_(HTTP|GITEA|CACHE|GITHUB)_.*");
                 if (!applicationKey) continue;
@@ -133,8 +135,10 @@ public class RuntimeConfigurationValidation {
 
     private static <T> T bind(Binder binder, String prefix, Class<T> type) {
         try {
+            // Environment keys are checked above; root namespaces can also contain host process variables.
             return binder.bind(prefix, Bindable.of(type), new NoUnboundElementsBindHandler(BindHandler.DEFAULT,
-                            source -> !prefix.equals("git") || !(source.getUnderlyingSource() instanceof org.springframework.core.env.SystemEnvironmentPropertySource)))
+                            source -> !((prefix.equals("git") || prefix.equals("agent"))
+                                    && source.getUnderlyingSource() instanceof org.springframework.core.env.SystemEnvironmentPropertySource)))
                     .orElseGet(() -> { try { return type.getDeclaredConstructor().newInstance(); } catch (Exception e) { throw new IllegalStateException(e); } });
         } catch (Exception e) {
             String key = e instanceof BindException b ? b.getName().toString() : prefix;

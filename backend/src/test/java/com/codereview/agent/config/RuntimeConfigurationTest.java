@@ -22,6 +22,7 @@ class RuntimeConfigurationTest {
     @Test void rejectsUnknownKeysAndInvalidCrossLimits() {
         for (var env : new MockEnvironment[] {
                 new MockEnvironment().withProperty("agent.budget.model-truns", "12"),
+                new MockEnvironment().withProperty("agent.toolsdirectory", "/not-an-application-setting"),
                 new MockEnvironment().withProperty("agent.model.per-task-concurrency", "5"),
                 new MockEnvironment().withProperty("agent.tools.limits.read-max-lines", "100"),
                 new MockEnvironment().withProperty("agent.model.transport-retries", "11"),
@@ -50,6 +51,29 @@ class RuntimeConfigurationTest {
                 () -> RuntimeConfigurationValidation.validate(environment));
         assertFalse(failure.getMessage().contains("secret-do-not-print"));
         assertTrue(failure.getMessage().contains("AGENT_BUDGET_MODEL_TRUNS"));
+    }
+
+    @Test void runnerToolsDirectoryCoexistsWithApplicationEnvironmentOverrides() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource("systemEnvironment",
+                java.util.Map.of("AGENT_TOOLSDIRECTORY", "/opt/hostedtoolcache",
+                        "AGENT_BUDGET_MODELTURNS", "12")));
+        assertDoesNotThrow(() -> RuntimeConfigurationValidation.validate(environment));
+        assertEquals(12, org.springframework.boot.context.properties.bind.Binder.get(environment)
+                .bind("agent.budget", org.springframework.boot.context.properties.bind.Bindable.of(AgentBudgetProperties.class))
+                .get().getModelTurns());
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = { "AGENT_BUDGET_MODEL_TRUNS", "AGENT_TOOLSDIRECTORY_EXTRA" })
+    void runnerToolsDirectoryDoesNotHideUnknownApplicationEnvironmentKeys(String unknownKey) {
+        MockEnvironment environment = new MockEnvironment();
+        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource("systemEnvironment",
+                java.util.Map.of("AGENT_TOOLSDIRECTORY", "/opt/hostedtoolcache",
+                        unknownKey, "secret-do-not-print")));
+        var failure = assertThrows(IllegalStateException.class,
+                () -> RuntimeConfigurationValidation.validate(environment));
+        assertTrue(failure.getMessage().contains(unknownKey));
+        assertFalse(failure.getMessage().contains("secret-do-not-print"));
     }
 
     @Test void checkOnlyEntryUsesExternalFileAndCommandLineOverridesWithoutDatabase(
