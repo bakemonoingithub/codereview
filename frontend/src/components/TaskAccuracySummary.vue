@@ -18,7 +18,9 @@ import { computed } from 'vue'
 import type { TaskStatistics } from '@/api/v2'
 
 const props = defineProps<{ specialistType: TaskStatistics['specialistType']; stats: TaskStatistics }>()
-const counts = computed(() => props.specialistType === 'ISSUE' ? props.stats.issues : props.stats.results)
+const counts = computed(() => props.specialistType === 'ISSUE' ? props.stats.issues
+  : props.specialistType === 'PATTERN' ? props.stats.patterns || props.stats.results : props.stats.couplings || props.stats.results)
+const itemCounts = computed(() => props.specialistType === 'PATTERN' ? props.stats.patterns : props.stats.couplings)
 const percent = computed(() => {
   const value = counts.value.accuracyPercent
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -26,11 +28,12 @@ const percent = computed(() => {
 const percentText = computed(() =>
   percent.value === null ? '— · 暂无明确判定' : `${percent.value}%`)
 const title = computed(() => (
-  { ISSUE: '本任务问题判定准确率', PATTERN: '本任务模式结果判定准确率', COUPLING: '本任务耦合结果判定准确率' }
+  { ISSUE: '本任务问题判定准确率', PATTERN: itemCounts.value ? '本任务模式候选判定准确率' : '本任务模式结果判定准确率', COUPLING: itemCounts.value ? '本任务依赖解读判定准确率' : '本任务耦合结果判定准确率' }
 )[props.specialistType] || '本任务判定准确率')
 const scopeText = computed(() => props.specialistType === 'ISSUE'
   ? '仅统计本任务已完成结果中的问题'
-  : '仅统计本任务已完整发布的模式／耦合结果')
+  : itemCounts.value ? (props.specialistType === 'PATTERN' ? '仅统计本任务完整结果中的模式候选' : '仅统计本任务完整结果中的依赖解读')
+    : '仅统计本任务已完整发布的模式／耦合结果')
 </script>
 
 <style scoped lang="less">

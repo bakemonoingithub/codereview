@@ -34,7 +34,7 @@ const statistics = (type = 'ISSUE', overrides: Record<string, unknown> = {}) => 
 })
 const state = (w: any) => w.vm.$.setupState as any
 async function start() { const w = mount(TaskDetail, { global: { stubs: { ...namedAntStubs,
-  SpecialistResultView: { props: ['result'], template: '<div>{{ result.id }}</div>' },
+  SpecialistReviewResultTab: { props: ['result'], template: '<div>{{ result.id }}</div>' },
   MaterialReaderModal: true, CodeReferenceModal: true, CallReaderModal: true, 'a-table-column': { template: '<span />' }
 } } }); await flushPromises(); return w }
 beforeEach(() => {

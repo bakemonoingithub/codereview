@@ -14,6 +14,9 @@ import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
+import com.codereview.agent.service.ResultItemIndex;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentToolCallMapper;
@@ -46,6 +49,7 @@ public class AgentDataSourceConfig {
             AgentMaterialMapper.class,
             AgentCallMaterialMapper.class,
             AgentReviewResultMapper.class,
+            AgentReviewResultItemMapper.class,
             AgentIssueMapper.class,
             AgentFeedbackMapper.class,
             AgentReportMapper.class,
@@ -53,6 +57,13 @@ public class AgentDataSourceConfig {
 
     @Bean(destroyMethod = "destroy")
     public AgentDatabase agentDatabase(AgentDataSourceProperties properties) {
-        return new AgentDatabase(properties, MAPPERS);
+        AgentDatabase db = new AgentDatabase(properties, MAPPERS);
+        try {
+            new ResultItemIndex(db, new ObjectMapper()).backfill();
+            return db;
+        } catch (RuntimeException failure) {
+            db.destroy();
+            throw failure;
+        }
     }
 }

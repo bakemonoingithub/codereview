@@ -102,8 +102,10 @@ public final class TaskDtos {
     /** 统一详情读取：结果正文按保存时的 JSON 返回，不按当前模板重建。 */
     public record ResultView(String id, String targetId, String kind, String schemaVersion,
                              String completeness, LocalDateTime createdAt, JsonNode body,
-                             List<IssueView> issues, JsonNode provenance) {
+                             List<IssueView> issues, JsonNode provenance, List<ResultItemView> items) {
     }
+
+    public record ResultItemView(String id, String kind, int ordinal) { }
 
     public record IssueView(String id, int ordinal, String category, String severity, String title,
                             String reason, String suggestion, JsonNode locations,
@@ -138,6 +140,7 @@ public final class TaskDtos {
      * 只统计本任务已完整发布的结果。
      */
     public record Statistics(String taskId, String specialistType,
-                             FeedbackCounts issues, FeedbackCounts results) {
+                             FeedbackCounts issues, FeedbackCounts results,
+                             FeedbackCounts patterns, FeedbackCounts couplings) {
     }
 }

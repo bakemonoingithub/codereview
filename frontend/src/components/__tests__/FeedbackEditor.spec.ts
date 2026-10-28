@@ -48,6 +48,28 @@ beforeEach(() => {
 })
 
 describe('反馈草稿、冲突及迟到响应回归', () => {
+  it('逐条结论支持只评论保存、清除评价保留评论及保存中继续编辑', async () => {
+    const id = nextId(); const pending = deferred<any>()
+    vi.mocked(feedbackApi.get).mockResolvedValue(server(id, { subjectKind: 'PATTERN', assessment: null, comment: '', revision: 0 }) as any)
+    vi.mocked(feedbackApi.save).mockReturnValue(pending.promise)
+    const wrapper = mount(FeedbackEditor, { props: { taskId: 'task-1', subjectKind: 'PATTERN', subjectId: id, subjectText: '此模式候选', conclusion: true }, global: { stubs: namedAntStubs } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('这条结论是否准确？')
+    await textarea(wrapper).setValue('仅评论')
+    await button(wrapper, '准确').trigger('click')
+    await button(wrapper, '清除评价').trigger('click')
+    expect((textarea(wrapper).element as HTMLInputElement).value).toBe('仅评论')
+    await button(wrapper, '保存反馈').trigger('click')
+    expect(feedbackApi.save).toHaveBeenCalledWith('PATTERN', id, { assessment: null, comment: '仅评论', expectedRevision: 0 })
+    expect(textarea(wrapper).attributes('disabled')).toBeUndefined()
+    await textarea(wrapper).setValue('保存中继续编辑')
+    pending.resolve(server(id, { subjectKind: 'PATTERN', assessment: null, comment: '仅评论', revision: 1 }))
+    await flushPromises()
+    expect((textarea(wrapper).element as HTMLInputElement).value).toBe('保存中继续编辑')
+    expect(wrapper.text()).toContain('尚未保存')
+    wrapper.unmount()
+  })
+
   it('恢复非空草稿时仍显示读取失败原因', async () => {
     const id = nextId()
     vi.mocked(feedbackApi.get).mockResolvedValueOnce(server(id) as any)

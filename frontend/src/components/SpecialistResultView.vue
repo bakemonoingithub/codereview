@@ -85,6 +85,9 @@
             {{ modelLocationLabel(evidence) }}
           </a-button>
         </div>
+        <FeedbackEditor v-if="itemFeedback && !readOnly && result.completeness === 'COMPLETE' && resultItemId(index + 1)"
+          :task-id="taskId" subject-kind="PATTERN" :subject-id="resultItemId(index + 1)!" subject-text="此模式候选"
+          @saved="emit('feedback-saved')" />
       </div>
     </template>
 
@@ -123,6 +126,9 @@
             {{ modelLocationLabel(evidence) }}
           </a-button>
         </div>
+        <FeedbackEditor v-if="itemFeedback && !readOnly && result.completeness === 'COMPLETE' && resultItemId(index + 1)"
+          :task-id="taskId" subject-kind="COUPLING" :subject-id="resultItemId(index + 1)!" subject-text="此依赖解读"
+          @saved="emit('feedback-saved')" />
       </div>
     </template>
 
@@ -132,7 +138,7 @@
         <li v-for="(limitation, index) in limitations" :key="index">{{ limitation }}</li>
       </ul>
     </div>
-    <FeedbackEditor v-if="!readOnly && result.kind !== 'ISSUE' && result.completeness === 'COMPLETE'"
+    <FeedbackEditor v-if="!itemFeedback && !readOnly && result.kind !== 'ISSUE' && result.completeness === 'COMPLETE'"
       :task-id="taskId" subject-kind="RESULT" :subject-id="result.id"
       :subject-text="result.kind === 'PATTERN' ? '整个模式审查结果' : '整个耦合度审查结果'"
       @saved="emit('feedback-saved')" />
@@ -155,8 +161,8 @@ type BodyIssue = NonNullable<ResultView['body']['issues']>[number]
 type BodyPattern = NonNullable<ResultView['body']['patterns']>[number]
 type BodyObservation = NonNullable<ResultView['body']['observations']>[number]
 
-const props = withDefaults(defineProps<{ result: ResultView; taskId: string; readOnly?: boolean }>(), {
-  readOnly: false
+const props = withDefaults(defineProps<{ result: ResultView; taskId: string; readOnly?: boolean; itemFeedback?: boolean }>(), {
+  readOnly: false, itemFeedback: false
 })
 const emit = defineEmits<{
   (event: 'open-code', value: CodeReferencePayload): void
@@ -170,6 +176,9 @@ const limitations = computed(() => [...new Set([
   ...(props.result.provenance.couplingFacts?.limitations || []),
   ...(props.result.provenance.materialGaps || []).map(gap => `${gap.code}：${gap.subject}，${gap.detail}`)
 ])])
+function resultItemId(ordinal: number): string | undefined {
+  return props.result.items?.find(item => item.kind === props.result.kind && item.ordinal === ordinal)?.id
+}
 function sideText(side: string): string {
   return ({ FILE: '文件', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || side
 }

@@ -21,7 +21,7 @@ public final class ReportDtos {
                             String sourceKind, String path, String oldPath, String headSha,
                             String baseSha, String branch, LocalDateTime resultCreatedAt,
                             int issueCount, String answerStatus, int unresolvedCount,
-                            Feedback feedback) {
+                            Feedback feedback, TaskDtos.FeedbackCounts itemFeedback) {
     }
 
     /** 结果级当前反馈；问题级反馈随各自问题冻结。 */

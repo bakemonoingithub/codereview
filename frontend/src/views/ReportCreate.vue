@@ -126,6 +126,7 @@
             v-else-if="resultView && resultTaskId"
             :result="resultView"
             :task-id="resultTaskId"
+            item-feedback
           />
         </a-spin>
       </a-modal>

@@ -1,22 +1,22 @@
 <template>
-  <section class="feedback">
+  <section class="feedback" :class="{ conclusion }">
     <div class="feedback-head">
-      <strong class="small">准确度反馈</strong>
+      <strong class="small">{{ conclusion ? (subjectKind === 'ISSUE' ? '这个问题是否准确？' : '这条结论是否准确？') : '准确度反馈' }}</strong>
       <span class="muted small">作用于{{ subjectText }}</span>
       <span class="spacer" />
       <span class="muted small">{{ statusText }}</span>
     </div>
     <div class="choices">
       <a-button v-for="choice in choices" :key="choice.value" size="small"
-        :type="assessment === choice.value ? 'primary' : 'default'" :disabled="loading || saving || !ready"
+        :type="assessment === choice.value ? 'primary' : 'default'" :disabled="loading || (!conclusion && saving) || !ready"
         @click="setAssessment(choice.value)">{{ choice.label }}</a-button>
-      <a-button size="small" type="link" :disabled="assessment === null || loading || saving || !ready"
+      <a-button size="small" type="link" :disabled="assessment === null || loading || (!conclusion && saving) || !ready"
         @click="setAssessment(null)">清除评价</a-button>
     </div>
-    <a-textarea v-model:value="comment" :maxlength="16000" :rows="3" :disabled="loading || saving || !ready"
+    <a-textarea v-model:value="comment" :maxlength="16000" :rows="3" :disabled="loading || (!conclusion && saving) || !ready"
       placeholder="可选评论，可不选择评价而单独保存" />
     <div class="feedback-foot">
-      <span class="muted small">评论与评价分别保留；切换问题或文件时保留页面内输入。</span>
+      <span class="muted small">{{ conclusion ? '评价结论、说明及依据的准确性，与是否采纳建议无关。' : '评论与评价分别保留；切换问题或文件时保留页面内输入。' }}</span>
       <span class="spacer" />
       <a-button size="small" type="primary" :loading="saving" :disabled="loading || saving || !ready || !dirty || !!latest" @click="save">保存反馈</a-button>
     </div>
@@ -175,6 +175,7 @@ function timeText(value: string | null): string {
   border: 1px solid var(--line);
   border-radius: 14px;
 }
+.feedback.conclusion { margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 18px 22px; }
 .feedback-head, .feedback-foot, .choices { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .feedback-head { margin-bottom: 10px; }
 .choices { margin-bottom: 9px; }

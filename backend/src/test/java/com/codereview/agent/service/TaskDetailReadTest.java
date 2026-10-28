@@ -4,6 +4,9 @@ import com.codereview.agent.api.ApiException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.db.AgentDatabase;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import com.codereview.agent.dto.TaskDtos;
 import com.codereview.agent.entity.AgentCallMaterial;
 import com.codereview.agent.entity.AgentIssue;
@@ -20,6 +23,8 @@ import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentMaterialMapper;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
+import com.codereview.agent.entity.AgentReviewResultItem;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
 import com.codereview.agent.repository.RepositoryReadService;
@@ -47,6 +52,7 @@ class TaskDetailReadTest {
     private static final String CALL_ID = AgentIds.next();
     private static final String MATERIAL_ID = AgentIds.next();
 
+    private AgentReviewResultItemMapper itemMapper;
     private AgentDatabase db;
     private AgentReviewTaskMapper taskMapper;
     private AgentTaskTargetMapper targetMapper;
@@ -82,6 +88,9 @@ class TaskDetailReadTest {
         when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
         when(db.mapper(AgentTaskTargetMapper.class)).thenReturn(targetMapper);
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
+        itemMapper = org.mockito.Mockito.mock(AgentReviewResultItemMapper.class);
+        when(db.mapper(AgentReviewResultItemMapper.class)).thenReturn(itemMapper);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), AgentReviewResultItem.class);
         when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
         when(db.mapper(AgentModelCallMapper.class)).thenReturn(callMapper);
         when(db.mapper(AgentCallMaterialMapper.class)).thenReturn(callMaterialMapper);
@@ -90,6 +99,21 @@ class TaskDetailReadTest {
                 mock(TaskDispatchService.class), new ModelInvocationProperties(), new TaskProperties());
         when(taskMapper.selectById(TASK_ID)).thenReturn(task());
         when(targetMapper.selectById(TARGET_ID)).thenReturn(target());
+    }
+
+    @Test
+    void readsStableItemsAndRefusesIncompleteIndexWithoutCreatingIds() {
+        var result = ResultItemIndexTest.result("PATTERN", 1);
+        result.setTaskId(TASK_ID); result.setTargetId(TARGET_ID); result.setProvenance("{}");
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+        var item = ResultItemIndexTest.item(result, 1);
+        when(itemMapper.selectList(any())).thenReturn(List.of(item));
+        var view = service.result(TASK_ID, TARGET_ID);
+        assertEquals(item.getId(), view.items().get(0).id());
+        assertEquals(1, view.items().get(0).ordinal());
+        when(itemMapper.selectList(any())).thenReturn(List.of());
+        assertThrows(ApiException.class, () -> service.result(TASK_ID, TARGET_ID));
+        org.mockito.Mockito.verify(itemMapper, org.mockito.Mockito.never()).insert(any(AgentReviewResultItem.class));
     }
 
     @Test

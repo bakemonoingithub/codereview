@@ -15,6 +15,19 @@ function stats(type: TaskStatistics['specialistType'], issues: Partial<TaskStati
 }
 
 describe('任务级准确率摘要', () => {
+  it('新条目统计优先于历史整份统计，模式与耦合不混算', () => {
+    for (const type of ['PATTERN', 'COUPLING'] as const) {
+      const data = stats(type, {}, { total: 1, accurate: 1, accuracyPercent: 100 })
+      data.patterns = { ...zero, total: 2, accurate: 1, inaccurate: 1, accuracyPercent: 50 }
+      data.couplings = { ...zero, total: 3, unknown: 2, unassessed: 1 }
+      const wrapper = mount(TaskAccuracySummary, { props: { specialistType: type, stats: data } })
+      expect(wrapper.text()).toContain(type === 'PATTERN' ? '模式候选判定准确率' : '依赖解读判定准确率')
+      expect(wrapper.text()).toContain(type === 'PATTERN' ? '50%' : '暂无明确判定')
+      expect(wrapper.text()).not.toContain('100%')
+      wrapper.unmount()
+    }
+  })
+
   it('问题审查展示问题级比例与四类计数', () => {
     const wrapper = mount(TaskAccuracySummary, {
       props: { specialistType: 'ISSUE', stats: stats('ISSUE', { total: 3, accurate: 2, inaccurate: 1, accuracyPercent: 67 }) }

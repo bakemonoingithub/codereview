@@ -12,6 +12,8 @@ import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
+import com.codereview.agent.entity.AgentReviewResultItem;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.support.AgentIds;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -76,7 +78,20 @@ public class TaskStatisticsService {
         Map<String, String> issueAssessments = assessments("ISSUE", issueIds);
         Map<String, String> resultAssessments = assessments("RESULT", resultSubjectIds);
         return new TaskDtos.Statistics(id, task.getSpecialistType(),
-                counts(issueIds, issueAssessments), counts(resultSubjectIds, resultAssessments));
+                counts(issueIds, issueAssessments), counts(resultSubjectIds, resultAssessments),
+                itemCounts("PATTERN", results), itemCounts("COUPLING", results));
+    }
+
+    private TaskDtos.FeedbackCounts itemCounts(String kind, List<AgentReviewResult> results) {
+        List<String> resultIds = results.stream().filter(result -> kind.equals(result.getKind()))
+                .map(AgentReviewResult::getId).toList();
+        List<String> ids = resultIds.isEmpty() ? List.of()
+                : db.mapper(AgentReviewResultItemMapper.class).selectList(
+                        new LambdaQueryWrapper<AgentReviewResultItem>()
+                                .eq(AgentReviewResultItem::getKind, kind)
+                                .in(AgentReviewResultItem::getResultId, resultIds))
+                .stream().map(AgentReviewResultItem::getId).toList();
+        return counts(ids, assessments(kind, ids));
     }
 
     private Map<String, String> assessments(String subjectKind, List<String> subjectIds) {

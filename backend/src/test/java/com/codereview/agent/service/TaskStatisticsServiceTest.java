@@ -14,6 +14,8 @@ import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
+import com.codereview.agent.entity.AgentReviewResultItem;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.support.AgentIds;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
@@ -57,6 +59,8 @@ class TaskStatisticsServiceTest {
     @Mock
     private AgentFeedbackMapper feedbackMapper;
 
+    private AgentReviewResultItemMapper itemMapper;
+
     private TaskStatisticsService service;
 
     @BeforeEach
@@ -67,9 +71,41 @@ class TaskStatisticsServiceTest {
         }
         when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
+        itemMapper = org.mockito.Mockito.mock(AgentReviewResultItemMapper.class);
+        when(db.mapper(AgentReviewResultItemMapper.class)).thenReturn(itemMapper);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), AgentReviewResultItem.class);
         when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
         when(db.mapper(AgentFeedbackMapper.class)).thenReturn(feedbackMapper);
         service = new TaskStatisticsService(db);
+    }
+
+    @Test
+    void itemStatisticsUseAllStableSubjectsAndKeepLegacyResultFeedbackSeparate() {
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task("PATTERN"));
+        var result = ResultItemIndexTest.result("PATTERN", 4);
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+        var items = java.util.stream.IntStream.rangeClosed(1, 4)
+                .mapToObj(ordinal -> ResultItemIndexTest.item(result, ordinal)).toList();
+        when(itemMapper.selectList(any())).thenReturn(items);
+        when(feedbackMapper.selectList(any())).thenAnswer(call -> {
+            LambdaQueryWrapper<AgentFeedback> query = call.getArgument(0);
+            if (query.getParamNameValuePairs().isEmpty()) query.getSqlSegment();
+            if (query.getParamNameValuePairs().containsValue("RESULT")) {
+                return List.of(feedback(result.getId(), "RESULT", "UNKNOWN"));
+            }
+            return List.of(feedback(items.get(0).getId(), "PATTERN", "ACCURATE"),
+                    feedback(items.get(1).getId(), "PATTERN", "INACCURATE"),
+                    feedback(items.get(2).getId(), "PATTERN", "UNKNOWN"));
+        });
+        var stats = service.statistics(TASK_ID);
+        assertEquals(4, stats.patterns().total());
+        assertEquals(1, stats.patterns().unassessed());
+        assertEquals(1, stats.patterns().unknown());
+        assertEquals(50, stats.patterns().accuracyPercent());
+        assertEquals(1, stats.results().total());
+        assertEquals(1, stats.results().unknown());
+        assertEquals(0, stats.couplings().total());
+        assertNull(stats.couplings().accuracyPercent());
     }
 
     @Test

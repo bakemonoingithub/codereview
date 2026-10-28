@@ -1,12 +1,17 @@
 package com.codereview.agent.execution;
 
 import com.codereview.agent.db.AgentDatabase;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import com.codereview.agent.entity.AgentIssue;
 import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.AgentTaskTarget;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
+import com.codereview.agent.entity.AgentReviewResultItem;
 import com.codereview.agent.specialist.capacity.SpecialistResultMerger;
 import com.codereview.agent.specialist.capacity.SpecialistUnitPlan;
 import com.codereview.agent.specialist.material.JavaSourceStructure;
@@ -34,6 +39,7 @@ class SpecialistResultPublisherTest {
     private static final String SHA = "b7a312e0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6";
 
     private final ObjectMapper mapper = new ObjectMapper();
+    private AgentReviewResultItemMapper itemMapper;
     private AgentDatabase db;
     private AgentReviewResultMapper resultMapper;
     private AgentIssueMapper issueMapper;
@@ -46,8 +52,55 @@ class SpecialistResultPublisherTest {
         resultMapper = mock(AgentReviewResultMapper.class);
         issueMapper = mock(AgentIssueMapper.class);
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
+        itemMapper = org.mockito.Mockito.mock(AgentReviewResultItemMapper.class);
+        when(db.mapper(AgentReviewResultItemMapper.class)).thenReturn(itemMapper);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), AgentReviewResultItem.class);
         when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
         publisher = new SpecialistResultPublisher(db, mapper, new SpecialistResultMerger());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {1, 2})
+    void indexWriteFailureEscapesThePublicationTransaction(int failingOrdinal) {
+        var material = material("t1"); var prepared = prepared(material);
+        var first = new SpecialistResults.PatternCandidate("Strategy", "BEHAVIORAL", "context", "why", List.of());
+        var second = new SpecialistResults.PatternCandidate("Facade", "STRUCTURAL", "entry", "why", List.of());
+        var validated = new SpecialistResultValidator.ValidatedResult(
+                new SpecialistResults.PatternResult("summary", List.of(first, second), List.of()), Map.of("t1", material), "1");
+        var failure = new org.springframework.dao.DataIntegrityViolationException("index write failed");
+        when(itemMapper.insert(any(AgentReviewResultItem.class))).thenAnswer(call -> {
+            AgentReviewResultItem row = call.getArgument(0);
+            if (row.getOrdinal() == failingOrdinal) throw failure;
+            return 1;
+        });
+        var transactionFailure = new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        org.mockito.Mockito.doAnswer(call -> {
+            try { return ((java.util.function.Supplier<?>) call.getArgument(0)).get(); }
+            catch (RuntimeException error) { transactionFailure.set(error); throw error; }
+        }).when(db).inTransaction(any());
+        var thrown = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> publisher.publish(task("PATTERN"), target(), prepared, List.of(new SpecialistUnitExecution(
+                        "u1", new SpecialistUnitPlan(1, prepared, List.of(), List.of()), validated, "c1")), true));
+        org.junit.jupiter.api.Assertions.assertSame(failure, thrown);
+        org.junit.jupiter.api.Assertions.assertSame(failure, transactionFailure.get());
+        verify(itemMapper, org.mockito.Mockito.times(failingOrdinal)).insert(any(AgentReviewResultItem.class));
+        // 检查异常传播到事务入口；真实数据库回滚另由 SRF-07 验证。
+    }
+
+    @Test
+    void completePatternsAcquireStableItemsAfterMergeInsidePublicationTransaction() {
+        var material = material("t1"); var prepared = prepared(material);
+        var first = new SpecialistResults.PatternCandidate("Strategy", "BEHAVIORAL", "context", "why", List.of());
+        var second = new SpecialistResults.PatternCandidate("Facade", "STRUCTURAL", "entry", "why", List.of());
+        var validated = new SpecialistResultValidator.ValidatedResult(
+                new SpecialistResults.PatternResult("summary", List.of(first, first, second), List.of()), Map.of("t1", material), "1");
+        String id = publisher.publish(task("PATTERN"), target(), prepared, List.of(new SpecialistUnitExecution(
+                "u1", new SpecialistUnitPlan(1, prepared, List.of(), List.of()), validated, "c1")), true);
+        var rows = ArgumentCaptor.forClass(AgentReviewResultItem.class);
+        verify(itemMapper, org.mockito.Mockito.times(2)).insert(rows.capture());
+        assertEquals(List.of(1, 2), rows.getAllValues().stream().map(AgentReviewResultItem::getOrdinal).toList());
+        assertTrue(rows.getAllValues().stream().allMatch(item -> id.equals(item.getResultId()) && "PATTERN".equals(item.getKind())));
+        verify(db).inTransaction(any());
     }
 
     @Test

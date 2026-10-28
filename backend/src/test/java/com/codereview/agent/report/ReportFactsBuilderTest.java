@@ -21,6 +21,36 @@ class ReportFactsBuilderTest {
     private final ReportFactsBuilder builder = new ReportFactsBuilder(json);
 
     @Test
+    void v2MissingOrMismatchedItemIdentitiesCannotProduceFacts() throws Exception {
+        var snapshot = (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(patternSnapshot());
+        snapshot.put("snapshotVersion", 2);
+        assertThrows(ApiException.class, () -> builder.build(List.of(source(1, "r2", "PATTERN", snapshot.toString()))));
+        var item = snapshot.putArray("items").addObject().put("id", "one").put("kind", "COUPLING").put("ordinal", 1);
+        assertThrows(ApiException.class, () -> builder.build(List.of(source(1, "r2", "PATTERN", snapshot.toString()))));
+        item.put("kind", "PATTERN").put("ordinal", 2);
+        assertThrows(ApiException.class, () -> builder.build(List.of(source(1, "r2", "PATTERN", snapshot.toString()))));
+    }
+
+    @Test
+    void v2FactsSeparateItemsFromLegacyResultsAndKeepTheirAssociation() throws Exception {
+        var snapshot = (com.fasterxml.jackson.databind.node.ObjectNode) json.readTree(patternSnapshot());
+        snapshot.put("snapshotVersion", 2);
+        snapshot.putArray("items").addObject().put("id", "stable-one").put("kind", "PATTERN")
+                .put("ordinal", 1).putObject("feedback").put("assessment", "ACCURATE").put("comment", "item-comment");
+        var facts = builder.build(List.of(source(1, "r2", "PATTERN", snapshot.toString()),
+                source(2, "r2", "PATTERN", patternSnapshot())));
+        assertEquals(1, facts.summaries().get(0).accurate());
+        assertEquals(0, facts.summaries().get(0).unknown());
+        assertEquals(1, facts.summaries().get(1).unknown());
+        String text = facts.facts().get(1).text();
+        assertTrue(text.contains("stable-one（PATTERN #1 策略模式）"), text);
+        assertTrue(text.contains("item-comment"), text);
+        assertTrue(!text.contains("需结合调用方确认"), text);
+        assertTrue(facts.facts().get(0).text().contains("模式候选人工反馈：准确 1"));
+        assertTrue(facts.facts().get(2).text().contains("当时结果级评价与评论"));
+    }
+
+    @Test
     void agentSourcesKeepAnswerStatusUnresolvedItemsAndCitedEvidence() {
         String snapshot = """
                 {"resultId":"r3","taskId":"t3","kind":"AGENT",

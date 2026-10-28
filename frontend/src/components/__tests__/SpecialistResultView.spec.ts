@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SpecialistResultView from '@/components/SpecialistResultView.vue'
+import FeedbackEditor from '@/components/FeedbackEditor.vue'
 import { namedAntStubs } from '@/testUtils/antStubs'
 import type { ResultView } from '@/api/v2'
 
@@ -58,6 +59,20 @@ function issueResult(): ResultView {
 }
 
 describe('专项结果阅读', () => {
+  it('报告预览显式启用条目反馈，公共默认仍保留旧式结果反馈', async () => {
+    const result = issueResult(); result.kind = 'PATTERN'; result.issues = []
+    result.body = { summary: '模式', patterns: [{ name: 'Strategy', family: 'BEHAVIORAL', role: 'context', explanation: 'why', evidence: [] }] }
+    result.items = [{ id: 'stable-pattern', kind: 'PATTERN', ordinal: 1 }]
+    const wrapper = mount(SpecialistResultView, { props: { result, taskId: 't1' }, global: { stubs: { ...namedAntStubs, FeedbackEditor: true } } })
+    expect(wrapper.findComponent(FeedbackEditor).props('subjectKind')).toBe('RESULT')
+    await wrapper.setProps({ itemFeedback: true })
+    expect(wrapper.findAllComponents(FeedbackEditor)).toHaveLength(1)
+    expect(wrapper.findComponent(FeedbackEditor).props()).toMatchObject({ subjectKind: 'PATTERN', subjectId: 'stable-pattern' })
+    await wrapper.setProps({ readOnly: true })
+    expect(wrapper.findAllComponents(FeedbackEditor)).toHaveLength(0)
+    wrapper.unmount()
+  })
+
   it('问题结果展示原因、建议、保存位置并发出打开代码事件', async () => {
     const wrapper = mount(SpecialistResultView, {
       props: { result: issueResult(), taskId: 't1' },

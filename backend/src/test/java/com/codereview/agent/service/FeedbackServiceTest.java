@@ -11,6 +11,8 @@ import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
+import com.codereview.agent.entity.AgentReviewResultItem;
 import com.codereview.agent.support.AgentIds;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
@@ -55,6 +57,8 @@ class FeedbackServiceTest {
     @Mock
     private AgentReviewResultMapper resultMapper;
 
+    private AgentReviewResultItemMapper itemMapper;
+
     private FeedbackService service;
 
     @BeforeEach
@@ -67,6 +71,67 @@ class FeedbackServiceTest {
         when(db.mapper(AgentFeedbackMapper.class)).thenReturn(feedbackMapper);
         when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
+        itemMapper = org.mockito.Mockito.mock(AgentReviewResultItemMapper.class);
+        when(db.mapper(AgentReviewResultItemMapper.class)).thenReturn(itemMapper);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), AgentReviewResultItem.class);
+    }
+
+    @Test
+    void agentResultCannotBeUsedAsLegacyOrNewSpecialistFeedbackSubject() {
+        when(resultMapper.selectById(RESULT_ID)).thenReturn(result("AGENT", "COMPLETE"));
+        assertEquals(ErrorCode.CONFLICT, assertThrows(ApiException.class,
+                () -> service.get("RESULT", RESULT_ID)).errorCode());
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.get("PATTERN", RESULT_ID)).errorCode());
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.get("COUPLING", RESULT_ID)).errorCode());
+        verify(feedbackMapper, never()).insert(any(AgentFeedback.class));
+    }
+
+    @Test
+    void twoConclusionsSaveIndependentlyAndNeverUseTheResultId() {
+        var result = ResultItemIndexTest.result("PATTERN", 2);
+        var first = ResultItemIndexTest.item(result, 1);
+        var second = ResultItemIndexTest.item(result, 2);
+        when(resultMapper.selectById(result.getId())).thenReturn(result);
+        when(itemMapper.selectList(any())).thenReturn(List.of(first, second));
+        when(itemMapper.selectById(first.getId())).thenReturn(first);
+        when(itemMapper.selectById(second.getId())).thenReturn(second);
+        var one = service.save("PATTERN", first.getId(), new FeedbackDtos.Update("ACCURATE", "one", 0));
+        var two = service.save("PATTERN", second.getId(), new FeedbackDtos.Update("INACCURATE", "two", 0));
+        assertEquals(first.getId(), one.subjectId());
+        assertEquals(second.getId(), two.subjectId());
+        assertEquals("ACCURATE", one.assessment());
+        assertEquals("INACCURATE", two.assessment());
+        ArgumentCaptor<AgentFeedback> rows = ArgumentCaptor.forClass(AgentFeedback.class);
+        verify(feedbackMapper, org.mockito.Mockito.times(2)).insert(rows.capture());
+        assertEquals(List.of(first.getId(), second.getId()), rows.getAllValues().stream().map(AgentFeedback::getSubjectId).toList());
+    }
+
+    @Test
+    void itemSubjectsRejectForgedIdsWrongKindsIncompleteAndMissingIndexes() {
+        var result = ResultItemIndexTest.result("COUPLING", 1);
+        var item = ResultItemIndexTest.item(result, 1);
+        assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
+                () -> service.get("COUPLING", item.getId())).errorCode());
+        when(itemMapper.selectById(item.getId())).thenReturn(item);
+        when(resultMapper.selectById(result.getId())).thenReturn(result);
+        assertEquals(ErrorCode.CONFLICT, assertThrows(ApiException.class,
+                () -> service.get("PATTERN", item.getId())).errorCode());
+        result.setCompleteness("INCOMPLETE");
+        assertEquals(ErrorCode.CONFLICT, assertThrows(ApiException.class,
+                () -> service.get("COUPLING", item.getId())).errorCode());
+        result.setCompleteness("COMPLETE");
+        assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class,
+                () -> service.get("COUPLING", item.getId())).errorCode());
+        when(itemMapper.selectList(any())).thenReturn(List.of(item));
+        var current = feedback("UNKNOWN", "remote", 2);
+        when(feedbackMapper.selectOne(any())).thenReturn(current);
+        assertEquals(ErrorCode.REVISION_CONFLICT, assertThrows(ApiException.class,
+                () -> service.save("COUPLING", item.getId(), new FeedbackDtos.Update(null, "local", 1))).errorCode());
+        when(feedbackMapper.update(isNull(), any())).thenReturn(1);
+        assertEquals("only comment", service.save("COUPLING", item.getId(),
+                new FeedbackDtos.Update(null, "only comment", 2)).comment());
     }
 
     @Test

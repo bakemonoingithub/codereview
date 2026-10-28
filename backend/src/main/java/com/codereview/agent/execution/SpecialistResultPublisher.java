@@ -16,6 +16,7 @@ import com.codereview.agent.specialist.protocol.SpecialistProtocol;
 import com.codereview.agent.specialist.protocol.SpecialistResultValidator;
 import com.codereview.agent.specialist.protocol.SpecialistResults;
 import com.codereview.agent.support.AgentIds;
+import com.codereview.agent.service.ResultItemIndex;
 import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -87,6 +88,7 @@ public class SpecialistResultPublisher {
         if (merged instanceof SpecialistResults.IssueResult issueResult) {
             publishIssues(result.getId(), issueResult, executions);
         }
+        new ResultItemIndex(db, mapper).ensure(result);
         return result.getId();
     }
 

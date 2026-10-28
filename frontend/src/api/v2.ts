@@ -478,6 +478,8 @@ export interface TaskStatistics {
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
   issues: FeedbackCounts
   results: FeedbackCounts
+  patterns?: FeedbackCounts
+  couplings?: FeedbackCounts
 }
 
 export interface TaskCopyInput {  projectId: string
@@ -765,6 +767,7 @@ export interface ReportCandidate {
   /** Agent 结果的回答状态；材料不足仍可选择，但报告必须保留限制。 */
   answerStatus?: string | null
   unresolvedCount?: number
+  itemFeedback?: FeedbackCounts | null
   feedback: {
     assessment: 'ACCURATE' | 'INACCURATE' | 'UNKNOWN' | null
     comment: string | null

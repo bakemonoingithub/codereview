@@ -53,6 +53,8 @@ public class ReportFactsBuilder {
         int issueTotal = 0;
         FeedbackCounts issueCounts = new FeedbackCounts();
         FeedbackCounts resultCounts = new FeedbackCounts();
+        FeedbackCounts patternCounts = new FeedbackCounts();
+        FeedbackCounts couplingCounts = new FeedbackCounts();
         for (SourceFact fact : parsed) {
             kinds.merge(fact.kind(), 1, Integer::sum);
             taskIds.add(fact.taskId());
@@ -61,11 +63,13 @@ public class ReportFactsBuilder {
             issueTotal += fact.issueCount();
             issueCounts.add(fact.issueFeedback());
             resultCounts.add(fact.resultFeedback());
+            patternCounts.add(fact.patternFeedback());
+            couplingCounts.add(fact.couplingFeedback());
         }
 
         List<PromptFact> facts = new ArrayList<>();
         facts.add(new PromptFact("SUMMARY", summaryText(parsed, kinds, taskIds.size(),
-                versionKeys.size(), issueTotal, issueCounts, resultCounts)));
+                versionKeys.size(), issueTotal, issueCounts, resultCounts, patternCounts, couplingCounts)));
         for (SourceFact fact : parsed) {
             facts.add(new PromptFact("S" + fact.summary().ordinal(), fact.text()));
         }
@@ -76,7 +80,7 @@ public class ReportFactsBuilder {
 
     private String summaryText(List<SourceFact> sources, Map<String, Integer> kinds, int taskCount,
                                int versionCount, int issueTotal, FeedbackCounts issueCounts,
-                               FeedbackCounts resultCounts) {
+                               FeedbackCounts resultCounts, FeedbackCounts patternCounts, FeedbackCounts couplingCounts) {
         StringBuilder text = new StringBuilder();
         text.append("来源 ").append(sources.size()).append(" 个；任务 ").append(taskCount)
                 .append(" 个；仓库版本 ").append(versionCount).append(" 个；问题 ")
@@ -86,6 +90,8 @@ public class ReportFactsBuilder {
                 .collect(Collectors.joining("、"))).append("。\n");
         text.append("问题级人工反馈：").append(issueCounts.describe()).append("。\n");
         text.append("结果级人工反馈：").append(resultCounts.describe()).append("。\n");
+        text.append("模式候选人工反馈：").append(patternCounts.describe()).append("。\n");
+        text.append("依赖解读人工反馈：").append(couplingCounts.describe()).append("。\n");
         text.append("仓库版本分组：\n");
         Map<String, List<Integer>> groups = new LinkedHashMap<>();
         for (SourceFact source : sources) {
@@ -154,6 +160,11 @@ public class ReportFactsBuilder {
 
         FeedbackCounts issueFeedback = new FeedbackCounts();
         FeedbackCounts resultFeedback = new FeedbackCounts();
+        FeedbackCounts patternFeedback = new FeedbackCounts();
+        FeedbackCounts couplingFeedback = new FeedbackCounts();
+        boolean itemFeedback = snapshot.path("snapshotVersion").asInt(1) >= 2
+                && ("PATTERN".equals(kind) || "COUPLING".equals(kind));
+        if (itemFeedback) validateItems(snapshot, kind, "PATTERN".equals(kind) ? patterns.size() : observations.size());
         for (JsonNode gap : array(provenance.path("materialGaps"))) {
             missing.add(nullToEmpty(text(gap, "code")) + "：" + nullToEmpty(text(gap, "subject"))
                     + " " + nullToEmpty(text(gap, "detail")));
@@ -167,7 +178,14 @@ public class ReportFactsBuilder {
                 collectEvidence(issue.path("evidence"), materials, evidenceKeys, evidence, missing);
             }
         } else {
-            resultFeedback = feedbackCount(snapshot.path("resultFeedback"));
+            if (itemFeedback) {
+                for (JsonNode item : array(snapshot.path("items"))) {
+                    ("PATTERN".equals(kind) ? patternFeedback : couplingFeedback)
+                            .add(feedbackCount(item.path("feedback")));
+                }
+            } else {
+                resultFeedback = feedbackCount(snapshot.path("resultFeedback"));
+            }
             for (JsonNode pattern : patterns) {
                 collectEvidence(pattern.path("evidence"), materials, evidenceKeys, evidence, missing);
             }
@@ -179,7 +197,8 @@ public class ReportFactsBuilder {
         if ("AGENT".equals(kind)) {
             collectEvidence(body.path("citations"), materials, evidenceKeys, evidence, missing);
         }
-        FeedbackCounts sourceFeedback = "ISSUE".equals(kind) ? issueFeedback : resultFeedback;
+        FeedbackCounts sourceFeedback = "ISSUE".equals(kind) ? issueFeedback
+                : itemFeedback ? ("PATTERN".equals(kind) ? patternFeedback : couplingFeedback) : resultFeedback;
         ReportDtos.SourceSummary sourceSummary = new ReportDtos.SourceSummary(
                 row.getOrdinal(), resultId, kind, projectId, projectName, taskId, text(task, "route"),
                 path, headSha, baseSha, displaySummary(summary), issues.size(),
@@ -187,8 +206,19 @@ public class ReportFactsBuilder {
                 sourceFeedback.unassessed);
         String facts = sourceText(projectName, repoUrl, task, path, oldPath, branch, commitSha,
                 baseSha, headSha, summary, issues, patterns, observations, limitations, couplingFacts,
-                resultFeedback, evidence, missing);
-        if (!"ISSUE".equals(kind)) {
+                resultFeedback, evidence, missing, itemFeedback);
+        if (itemFeedback) {
+            facts += ("PATTERN".equals(kind) ? "模式候选反馈：" : "依赖解读反馈：") + sourceFeedback.describe() + "\n";
+            List<JsonNode> conclusions = "PATTERN".equals(kind) ? patterns : observations;
+            for (JsonNode item : array(snapshot.path("items"))) {
+                int ordinal = item.path("ordinal").asInt();
+                String title = ordinal > 0 && ordinal <= conclusions.size()
+                        ? conclusions.get(ordinal - 1).path("PATTERN".equals(kind) ? "name" : "title").asText() : "条目缺失";
+                facts += "条目 " + item.path("id").asText() + "（" + item.path("kind").asText()
+                        + " #" + ordinal + " " + title + "）当时评价与评论："
+                        + feedbackText(item.path("feedback")) + "\n";
+            }
+        } else if (!"ISSUE".equals(kind)) {
             facts += "当时结果级评价与评论：" + feedbackText(snapshot.path("resultFeedback")) + "\n";
         }
         if ("AGENT".equals(kind)) {
@@ -204,7 +234,22 @@ public class ReportFactsBuilder {
             if (!blank(relation)) facts += "问题 " + (index + 1) + " 变更关系：" + relation + "\n";
         }
         return new SourceFact(kind, taskId, versionKey, groupLabel, sourceSummary, issueFeedback,
-                resultFeedback, issues.size(), facts, missing);
+                resultFeedback, patternFeedback, couplingFeedback, issues.size(), facts, missing);
+    }
+
+    private void validateItems(JsonNode snapshot, String kind, int count) {
+        JsonNode items = snapshot.path("items");
+        if (!items.isArray() || items.size() != count) throw invalid("冻结的条目索引缺失或数量不匹配");
+        Set<String> ids = new LinkedHashSet<>();
+        Set<Integer> ordinals = new LinkedHashSet<>();
+        for (JsonNode item : items) {
+            int ordinal = item.path("ordinal").asInt();
+            String id = item.path("id").asText("");
+            if (id.isBlank() || !ids.add(id) || !kind.equals(item.path("kind").asText())
+                    || ordinal < 1 || ordinal > count || !ordinals.add(ordinal)) {
+                throw invalid("冻结的条目标识、类型或序号异常");
+            }
+        }
     }
 
     private String sourceText(String projectName, String repoUrl, JsonNode task, String path,
@@ -213,7 +258,7 @@ public class ReportFactsBuilder {
                               List<JsonNode> patterns, List<JsonNode> observations,
                               List<String> limitations, JsonNode couplingFacts,
                               FeedbackCounts resultFeedback, List<String> evidence,
-                              List<String> missing) {
+                              List<String> missing, boolean itemFeedback) {
         StringBuilder text = new StringBuilder();
         text.append("项目：").append(nullToUnknown(projectName)).append("｜仓库：")
                 .append(nullToUnknown(repoUrl)).append("｜版本：").append(nullToUnknown(headSha));
@@ -291,7 +336,7 @@ public class ReportFactsBuilder {
                 text.append("  - ").append(limitation).append('\n');
             }
         }
-        text.append("结果级反馈：").append(resultFeedback.describe()).append('\n');
+        if (!itemFeedback) text.append("结果级反馈：").append(resultFeedback.describe()).append('\n');
         if (!evidence.isEmpty()) {
             text.append("已保存代码证据：\n");
             for (String item : evidence) {
@@ -515,7 +560,8 @@ public class ReportFactsBuilder {
 
     private record SourceFact(String kind, String taskId, String versionKey, String groupLabel,
                               ReportDtos.SourceSummary summary, FeedbackCounts issueFeedback,
-                              FeedbackCounts resultFeedback, int issueCount, String text,
+                              FeedbackCounts resultFeedback, FeedbackCounts patternFeedback, FeedbackCounts couplingFeedback,
+                              int issueCount, String text,
                               List<String> missing) {
     }
 

@@ -6,6 +6,8 @@ import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.api.PageResponse;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.ReportDtos;
+import com.codereview.agent.dto.TaskDtos;
+import com.codereview.agent.entity.AgentReviewResultItem;
 import com.codereview.agent.entity.AgentFeedback;
 import com.codereview.agent.entity.AgentIssue;
 import com.codereview.agent.entity.AgentMaterial;
@@ -59,7 +61,7 @@ import java.util.stream.Collectors;
 public class ReportInputService {
 
     static final String STATE_INPUT_FROZEN = "INPUT_FROZEN";
-    private static final int SNAPSHOT_VERSION = 1;
+    private static final int SNAPSHOT_VERSION = 2;
     private static final Set<String> KINDS = Set.of("ISSUE", "PATTERN", "COUPLING", "AGENT");
 
     private final AgentDatabase db;
@@ -135,7 +137,7 @@ public class ReportInputService {
                     agentAnswerStatus(result), agentUnresolvedCount(result),
                     feedback == null ? null : new ReportDtos.Feedback(feedback.getAssessment(),
                             feedback.getComment(), feedback.getRevision() == null ? 0 : feedback.getRevision(),
-                            feedback.getUpdatedAt())));
+                            feedback.getUpdatedAt()), candidateItemFeedback(result)));
         }
         return new PageResponse<>(items, page.nextCursor(), page.hasMore());
     }
@@ -318,6 +320,20 @@ public class ReportInputService {
                 issueNode.set("feedback", feedbackNode(feedback));
             }
         }
+        ArrayNode itemNodes = node.putArray("items");
+        List<AgentReviewResultItem> items = new ResultItemIndex(db, mapper).requireItems(result);
+        Map<String, AgentFeedback> itemFeedback = feedback(result.getKind(),
+                items.stream().map(AgentReviewResultItem::getId).toList());
+        for (var item : items) {
+            ObjectNode itemNode = itemNodes.addObject();
+            itemNode.put("id", item.getId());
+            itemNode.put("kind", item.getKind());
+            itemNode.put("ordinal", item.getOrdinal());
+            FeedbackView view = feedback(itemFeedback.get(item.getId()));
+            if (view == null) itemNode.putNull("feedback");
+            else itemNode.set("feedback", feedbackNode(view));
+        }
+        // 保留旧字段的整份结果语义；v2 统计与事实只使用 items，不折算历史评价。
         FeedbackView resultFeedbackView = feedback(resultFeedback);
         if (resultFeedbackView == null) {
             node.putNull("resultFeedback");
@@ -403,6 +419,9 @@ public class ReportInputService {
             for (JsonNode issue : snapshot.path("issues")) {
                 counts.add(issue.path("feedback"));
             }
+        } else if (snapshot.path("snapshotVersion").asInt(1) >= 2
+                && ("PATTERN".equals(kind) || "COUPLING".equals(kind))) {
+            for (JsonNode item : snapshot.path("items")) counts.add(item.path("feedback"));
         } else {
             counts.add(snapshot.path("resultFeedback"));
         }
@@ -428,6 +447,22 @@ public class ReportInputService {
                 unassessed++;
             }
         }
+    }
+
+    private TaskDtos.FeedbackCounts candidateItemFeedback(AgentReviewResult result) {
+        if (!ResultItemIndex.supports(result)) return null;
+        var items = new ResultItemIndex(db, mapper).requireItems(result);
+        var current = feedback(result.getKind(), items.stream()
+                .map(AgentReviewResultItem::getId).toList());
+        FeedbackCounts counts = new FeedbackCounts();
+        for (var item : items) {
+            FeedbackView view = feedback(current.get(item.getId()));
+            counts.add(view == null ? null : feedbackNode(view));
+        }
+        int denominator = counts.accurate + counts.inaccurate;
+        return new TaskDtos.FeedbackCounts(items.size(), counts.accurate,
+                counts.inaccurate, counts.unknown, counts.unassessed,
+                denominator == 0 ? null : Math.round(counts.accurate * 100f / denominator));
     }
 
     private Map<String, Integer> issueCounts(List<String> resultIds) {

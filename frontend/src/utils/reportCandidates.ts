@@ -14,6 +14,10 @@ export function shortSha(sha: string | null) {
 }
 
 export function feedbackText(candidate: ReportCandidate) {
+  if (candidate.itemFeedback) {
+    const counts = candidate.itemFeedback
+    return `准确 ${counts.accurate} · 不准确 ${counts.inaccurate} · 无法判断 ${counts.unknown} · 未反馈 ${counts.unassessed}`
+  }
   if (!candidate.feedback?.assessment) {
     return candidate.feedback?.comment ? '未判定（有评论）' : '未反馈'
   }

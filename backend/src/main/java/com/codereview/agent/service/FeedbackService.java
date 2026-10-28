@@ -12,11 +12,13 @@ import com.codereview.agent.entity.AgentReviewResult;
 import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentTime;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Map;
 import java.time.LocalDateTime;
@@ -96,6 +98,17 @@ public class FeedbackService {
             }
             return new Subject("ISSUE", validId);
         }
+        if ("PATTERN".equals(kind) || "COUPLING".equals(kind)) {
+            var item = db.mapper(AgentReviewResultItemMapper.class).selectById(validId);
+            if (item == null) throw new ApiException(ErrorCode.NOT_FOUND, "结论条目不存在");
+            AgentReviewResult result = db.mapper(AgentReviewResultMapper.class).selectById(item.getResultId());
+            if (!kind.equals(item.getKind()) || result == null || !kind.equals(result.getKind())
+                    || !"COMPLETE".equals(result.getCompleteness())) {
+                throw new ApiException(ErrorCode.CONFLICT, "条目类型不匹配或结果未完整发布");
+            }
+            new ResultItemIndex(db, new ObjectMapper()).requireItems(result);
+            return new Subject(kind, validId);
+        }
         if ("RESULT".equals(kind)) {
             AgentReviewResult result = db.mapper(AgentReviewResultMapper.class).selectById(validId);
             if (result == null) throw new ApiException(ErrorCode.NOT_FOUND, "审查结果不存在");
@@ -105,7 +118,7 @@ public class FeedbackService {
             }
             return new Subject("RESULT", validId);
         }
-        throw new ApiException(ErrorCode.VALIDATION_FAILED, "主体类型只能是 ISSUE 或 RESULT");
+        throw new ApiException(ErrorCode.VALIDATION_FAILED, "主体类型只能是 ISSUE、PATTERN、COUPLING 或 RESULT");
     }
 
     private AgentFeedback find(String kind, String id) {

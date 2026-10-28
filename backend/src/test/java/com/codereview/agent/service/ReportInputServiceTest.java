@@ -23,6 +23,8 @@ import com.codereview.agent.mapper.AgentProjectMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
+import com.codereview.agent.mapper.AgentReviewResultItemMapper;
+import com.codereview.agent.entity.AgentReviewResultItem;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
 import com.codereview.agent.support.AgentIds;
@@ -90,6 +92,8 @@ class ReportInputServiceTest {
     @Mock
     private AgentReportSourceMapper reportSourceMapper;
 
+    private AgentReviewResultItemMapper itemMapper;
+
     private ReportInputService service;
 
     @BeforeEach
@@ -100,6 +104,9 @@ class ReportInputServiceTest {
             TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), entity);
         }
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);
+        itemMapper = org.mockito.Mockito.mock(AgentReviewResultItemMapper.class);
+        when(db.mapper(AgentReviewResultItemMapper.class)).thenReturn(itemMapper);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), AgentReviewResultItem.class);
         when(db.mapper(AgentReviewTaskMapper.class)).thenReturn(taskMapper);
         when(db.mapper(AgentTaskTargetMapper.class)).thenReturn(targetMapper);
         when(db.mapper(AgentProjectMapper.class)).thenReturn(projectMapper);
@@ -119,6 +126,48 @@ class ReportInputServiceTest {
             return work.get();
         });
         service = new ReportInputService(db, json);
+    }
+
+    @Test
+    void v2FreezesItemFeedbackAndCandidateCountsWithoutUsingLegacyAssessment() throws Exception {
+        var result = ResultItemIndexTest.result("COUPLING", 3);
+        result.setTaskId(TASK_1); result.setTargetId(TARGET_1); result.setSchemaVersion("1");
+        result.setProvenance("{}");
+        var first = ResultItemIndexTest.item(result, 1);
+        var second = ResultItemIndexTest.item(result, 2);
+        var third = ResultItemIndexTest.item(result, 3);
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+        when(taskMapper.selectList(any())).thenReturn(List.of(task(TASK_1, PROJECT_1, "SUCCEEDED", "FILES", "main")));
+        when(targetMapper.selectList(any())).thenReturn(List.of(target()));
+        when(projectMapper.selectList(any())).thenReturn(List.of(project()));
+        when(itemMapper.selectList(any())).thenReturn(List.of(first, second, third));
+        var firstFeedback = feedback(first.getId(), "COUPLING", "ACCURATE", "saved-one");
+        var secondFeedback = feedback(second.getId(), "COUPLING", "INACCURATE", "saved-two");
+        when(feedbackMapper.selectList(any())).thenAnswer(call -> {
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<AgentFeedback> query = call.getArgument(0);
+            query.getSqlSegment();
+            return query.getParamNameValuePairs().containsValue("RESULT")
+                    ? List.of(feedback(result.getId(), "RESULT", "UNKNOWN", "legacy-only"))
+                    : List.of(firstFeedback, secondFeedback);
+        });
+        var candidate = service.candidates(null, null, null, null, 20).items().get(0);
+        assertEquals(3, candidate.itemFeedback().total());
+        assertEquals(50, candidate.itemFeedback().accuracyPercent());
+        var frozen = service.freeze(new ReportDtos.FreezeRequest("item report", List.of(result.getId())));
+        var snapshot = frozen.sources().get(0).snapshot();
+        assertEquals(2, snapshot.path("snapshotVersion").asInt());
+        assertEquals(first.getId(), snapshot.path("items").get(0).path("id").asText());
+        assertEquals("COUPLING", snapshot.path("items").get(0).path("kind").asText());
+        firstFeedback.setAssessment("UNKNOWN"); firstFeedback.setComment("newer");
+        assertEquals("ACCURATE", snapshot.path("items").get(0).path("feedback").path("assessment").asText());
+        assertEquals("saved-one", snapshot.path("items").get(0).path("feedback").path("comment").asText());
+        var report = ArgumentCaptor.forClass(AgentReport.class);
+        verify(reportMapper).insert(report.capture());
+        var summary = json.readTree(report.getValue().getFrozenInput()).path("sources").get(0);
+        assertEquals(1, summary.path("accurate").asInt());
+        assertEquals(1, summary.path("inaccurate").asInt());
+        assertEquals(0, summary.path("unknown").asInt());
+        assertEquals(1, summary.path("unassessed").asInt());
     }
 
     @Test
@@ -159,7 +208,7 @@ class ReportInputServiceTest {
         when(resultMapper.selectList(any())).thenReturn(List.of(
                 result(RESULT_1, TASK_1, TARGET_1, "ISSUE",
                         "{\"summary\":\"订单重复扣款\",\"issues\":[{\"title\":\"重复扣款\"}]}"),
-                result(RESULT_2, TASK_2, null, "PATTERN", "{\"summary\":\"策略模式\"}")));
+                result(RESULT_2, TASK_2, null, "PATTERN", "{\"summary\":\"策略模式\",\"patterns\":[]}")));
         when(taskMapper.selectList(any())).thenReturn(List.of(
                 task(TASK_1, PROJECT_1, "PARTIAL", "FILES", "main"),
                 task(TASK_2, PROJECT_1, "SUCCEEDED", "FILES", "main")));

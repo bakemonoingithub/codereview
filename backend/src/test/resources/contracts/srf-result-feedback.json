@@ -1,0 +1,681 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "kind": "ISSUE",
+      "taskId": "01J00000000000000000000021",
+      "targetId": "01J00000000000000000000022",
+      "projectId": "01J00000000000000000000024",
+      "resultView": {
+        "id": "01J00000000000000000000023",
+        "targetId": "01J00000000000000000000022",
+        "kind": "ISSUE",
+        "schemaVersion": "1",
+        "completeness": "COMPLETE",
+        "createdAt": "2026-10-27T10:00:00",
+        "body": {
+          "summary": "SRF 固定契约样本：ISSUE",
+          "limitations": [
+            "只用于工程检查，不是真实审查结论"
+          ],
+          "issues": [
+            {
+              "category": "CORRECTNESS",
+              "severity": "HIGH",
+              "title": "同名问题",
+              "reason": "问题说明 1",
+              "suggestion": "建议 1",
+              "locations": [
+                {
+                  "materialId": "01J00000000000000000000025",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ],
+              "evidence": [],
+              "changeRelation": "与变更关联"
+            },
+            {
+              "category": "CORRECTNESS",
+              "severity": "MEDIUM",
+              "title": "同名问题",
+              "reason": "问题说明 2",
+              "suggestion": "建议 2",
+              "locations": [
+                {
+                  "materialId": "01J00000000000000000000025",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ],
+              "evidence": [],
+              "changeRelation": "与变更关联"
+            },
+            {
+              "category": "CORRECTNESS",
+              "severity": "LOW",
+              "title": "同名问题",
+              "reason": "问题说明 3",
+              "suggestion": "建议 3",
+              "locations": [
+                {
+                  "materialId": "01J00000000000000000000025",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ],
+              "evidence": [],
+              "changeRelation": "与变更关联"
+            },
+            {
+              "category": "CORRECTNESS",
+              "severity": "HIGH",
+              "title": "同名问题",
+              "reason": "问题说明 4",
+              "suggestion": "建议 4",
+              "locations": [
+                {
+                  "materialId": "01J00000000000000000000025",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ],
+              "evidence": [],
+              "changeRelation": "与变更关联"
+            }
+          ]
+        },
+        "issues": [
+          {
+            "id": "01J00000000000000000000110",
+            "ordinal": 1,
+            "category": "CORRECTNESS",
+            "severity": "HIGH",
+            "title": "同名问题",
+            "reason": "问题说明 1",
+            "suggestion": "建议 1",
+            "locations": [
+              {
+                "materialId": "01J00000000000000000000025",
+                "startLine": 3,
+                "endLine": 5
+              }
+            ],
+            "sourceUnits": []
+          },
+          {
+            "id": "01J00000000000000000000111",
+            "ordinal": 2,
+            "category": "CORRECTNESS",
+            "severity": "MEDIUM",
+            "title": "同名问题",
+            "reason": "问题说明 2",
+            "suggestion": "建议 2",
+            "locations": [
+              {
+                "materialId": "01J00000000000000000000025",
+                "startLine": 3,
+                "endLine": 5
+              }
+            ],
+            "sourceUnits": []
+          },
+          {
+            "id": "01J00000000000000000000112",
+            "ordinal": 3,
+            "category": "CORRECTNESS",
+            "severity": "LOW",
+            "title": "同名问题",
+            "reason": "问题说明 3",
+            "suggestion": "建议 3",
+            "locations": [
+              {
+                "materialId": "01J00000000000000000000025",
+                "startLine": 3,
+                "endLine": 5
+              }
+            ],
+            "sourceUnits": []
+          },
+          {
+            "id": "01J00000000000000000000113",
+            "ordinal": 4,
+            "category": "CORRECTNESS",
+            "severity": "HIGH",
+            "title": "同名问题",
+            "reason": "问题说明 4",
+            "suggestion": "建议 4",
+            "locations": [
+              {
+                "materialId": "01J00000000000000000000025",
+                "startLine": 3,
+                "endLine": 5
+              }
+            ],
+            "sourceUnits": []
+          }
+        ],
+        "provenance": {
+          "versions": {
+            "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java"
+          },
+          "materials": [
+            {
+              "id": "01J00000000000000000000025",
+              "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java",
+              "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "side": "AFTER",
+              "role": "TARGET"
+            }
+          ]
+        },
+        "items": []
+      },
+      "feedbacks": [
+        {
+          "subjectKind": "ISSUE",
+          "subjectId": "01J00000000000000000000110",
+          "assessment": "ACCURATE",
+          "comment": "确认准确",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "ISSUE",
+          "subjectId": "01J00000000000000000000111",
+          "assessment": "INACCURATE",
+          "comment": "确认不准确",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "ISSUE",
+          "subjectId": "01J00000000000000000000112",
+          "assessment": "UNKNOWN",
+          "comment": "材料不足",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "ISSUE",
+          "subjectId": "01J00000000000000000000113",
+          "assessment": null,
+          "comment": "只保存评论",
+          "revision": 1,
+          "updatedAt": null
+        }
+      ],
+      "statistics": {
+        "taskId": "01J00000000000000000000021",
+        "specialistType": "ISSUE",
+        "issues": {
+          "total": 4,
+          "accurate": 1,
+          "inaccurate": 1,
+          "unknown": 1,
+          "unassessed": 1,
+          "accuracyPercent": 50
+        },
+        "results": {
+          "total": 0,
+          "accurate": 0,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": null
+        },
+        "patterns": {
+          "total": 0,
+          "accurate": 0,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": null
+        },
+        "couplings": {
+          "total": 0,
+          "accurate": 0,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": null
+        }
+      },
+      "material": {
+        "id": "01J00000000000000000000025",
+        "projectId": "01J00000000000000000000024",
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java",
+        "side": "AFTER",
+        "startLine": 3,
+        "endLine": 5,
+        "content": "class A {\n  B dependency;\n}\n",
+        "contentHash": "fixture-hash",
+        "completeness": "FRAGMENT",
+        "diagnostic": null
+      }
+    },
+    {
+      "kind": "PATTERN",
+      "taskId": "01J00000000000000000000041",
+      "targetId": "01J00000000000000000000042",
+      "projectId": "01J00000000000000000000044",
+      "resultView": {
+        "id": "01J00000000000000000000043",
+        "targetId": "01J00000000000000000000042",
+        "kind": "PATTERN",
+        "schemaVersion": "1",
+        "completeness": "COMPLETE",
+        "createdAt": "2026-10-27T10:00:00",
+        "body": {
+          "summary": "SRF 固定契约样本：PATTERN",
+          "limitations": [
+            "只用于工程检查，不是真实审查结论"
+          ],
+          "patterns": [
+            {
+              "name": "同名模式候选",
+              "family": "BEHAVIORAL",
+              "role": "上下文 1",
+              "explanation": "条目 1 的独立说明。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。",
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000045",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            },
+            {
+              "name": "同名模式候选",
+              "family": "BEHAVIORAL",
+              "role": "上下文 2",
+              "explanation": "条目 2 的独立说明。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。",
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000045",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            },
+            {
+              "name": "同名模式候选",
+              "family": "BEHAVIORAL",
+              "role": "上下文 3",
+              "explanation": "条目 3 的独立说明。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。",
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000045",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            },
+            {
+              "name": "同名模式候选",
+              "family": "BEHAVIORAL",
+              "role": "上下文 4",
+              "explanation": "条目 4 的独立说明。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。用于检查长文本完整保留。",
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000045",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            }
+          ]
+        },
+        "issues": [],
+        "provenance": {
+          "versions": {
+            "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java"
+          },
+          "materials": [
+            {
+              "id": "01J00000000000000000000045",
+              "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java",
+              "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "side": "AFTER",
+              "role": "TARGET"
+            }
+          ]
+        },
+        "items": [
+          {
+            "id": "01J00000000000000000000120",
+            "kind": "PATTERN",
+            "ordinal": 1
+          },
+          {
+            "id": "01J00000000000000000000121",
+            "kind": "PATTERN",
+            "ordinal": 2
+          },
+          {
+            "id": "01J00000000000000000000122",
+            "kind": "PATTERN",
+            "ordinal": 3
+          },
+          {
+            "id": "01J00000000000000000000123",
+            "kind": "PATTERN",
+            "ordinal": 4
+          }
+        ]
+      },
+      "feedbacks": [
+        {
+          "subjectKind": "PATTERN",
+          "subjectId": "01J00000000000000000000120",
+          "assessment": "ACCURATE",
+          "comment": "确认准确",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "PATTERN",
+          "subjectId": "01J00000000000000000000121",
+          "assessment": "INACCURATE",
+          "comment": "确认不准确",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "PATTERN",
+          "subjectId": "01J00000000000000000000122",
+          "assessment": "UNKNOWN",
+          "comment": "材料不足",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "PATTERN",
+          "subjectId": "01J00000000000000000000123",
+          "assessment": null,
+          "comment": "只保存评论",
+          "revision": 1,
+          "updatedAt": null
+        }
+      ],
+      "statistics": {
+        "taskId": "01J00000000000000000000041",
+        "specialistType": "PATTERN",
+        "issues": {
+          "total": 0,
+          "accurate": 0,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": null
+        },
+        "results": {
+          "total": 1,
+          "accurate": 1,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": 100
+        },
+        "patterns": {
+          "total": 4,
+          "accurate": 1,
+          "inaccurate": 1,
+          "unknown": 1,
+          "unassessed": 1,
+          "accuracyPercent": 50
+        },
+        "couplings": {
+          "total": 0,
+          "accurate": 0,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": null
+        }
+      },
+      "material": {
+        "id": "01J00000000000000000000045",
+        "projectId": "01J00000000000000000000044",
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java",
+        "side": "AFTER",
+        "startLine": 3,
+        "endLine": 5,
+        "content": "class A {\n  B dependency;\n}\n",
+        "contentHash": "fixture-hash",
+        "completeness": "FRAGMENT",
+        "diagnostic": null
+      }
+    },
+    {
+      "kind": "COUPLING",
+      "taskId": "01J00000000000000000000061",
+      "targetId": "01J00000000000000000000062",
+      "projectId": "01J00000000000000000000064",
+      "resultView": {
+        "id": "01J00000000000000000000063",
+        "targetId": "01J00000000000000000000062",
+        "kind": "COUPLING",
+        "schemaVersion": "1",
+        "completeness": "COMPLETE",
+        "createdAt": "2026-10-27T10:00:00",
+        "body": {
+          "summary": "SRF 固定契约样本：COUPLING",
+          "limitations": [
+            "只用于工程检查，不是真实审查结论"
+          ],
+          "observations": [
+            {
+              "title": "同名依赖解读",
+              "explanation": "独立依赖说明 1",
+              "dependencyIds": [
+                "D1"
+              ],
+              "suggestion": "调整建议",
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000065",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            },
+            {
+              "title": "同名依赖解读",
+              "explanation": "独立依赖说明 2",
+              "dependencyIds": [
+                "D1"
+              ],
+              "suggestion": null,
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000065",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            },
+            {
+              "title": "同名依赖解读",
+              "explanation": "独立依赖说明 3",
+              "dependencyIds": [
+                "D1"
+              ],
+              "suggestion": "调整建议",
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000065",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            },
+            {
+              "title": "同名依赖解读",
+              "explanation": "独立依赖说明 4",
+              "dependencyIds": [
+                "D1"
+              ],
+              "suggestion": null,
+              "evidence": [
+                {
+                  "materialId": "01J00000000000000000000065",
+                  "startLine": 3,
+                  "endLine": 5
+                }
+              ]
+            }
+          ]
+        },
+        "issues": [],
+        "provenance": {
+          "versions": {
+            "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java"
+          },
+          "materials": [
+            {
+              "id": "01J00000000000000000000065",
+              "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java",
+              "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "side": "AFTER",
+              "role": "TARGET"
+            }
+          ],
+          "couplingFacts": {
+            "resolvedOutgoingCount": 1,
+            "unresolvedTypeCount": 1,
+            "coverage": 0.5,
+            "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "side": "AFTER",
+            "edges": [
+              {
+                "id": "D1",
+                "sourceType": "A",
+                "targetType": "B",
+                "targetPath": "src/B.java",
+                "relation": "FIELD",
+                "line": 3
+              }
+            ],
+            "limitations": [
+              "未定位第三方类型"
+            ]
+          }
+        },
+        "items": [
+          {
+            "id": "01J00000000000000000000130",
+            "kind": "COUPLING",
+            "ordinal": 1
+          },
+          {
+            "id": "01J00000000000000000000131",
+            "kind": "COUPLING",
+            "ordinal": 2
+          },
+          {
+            "id": "01J00000000000000000000132",
+            "kind": "COUPLING",
+            "ordinal": 3
+          },
+          {
+            "id": "01J00000000000000000000133",
+            "kind": "COUPLING",
+            "ordinal": 4
+          }
+        ]
+      },
+      "feedbacks": [
+        {
+          "subjectKind": "COUPLING",
+          "subjectId": "01J00000000000000000000130",
+          "assessment": "ACCURATE",
+          "comment": "确认准确",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "COUPLING",
+          "subjectId": "01J00000000000000000000131",
+          "assessment": "INACCURATE",
+          "comment": "确认不准确",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "COUPLING",
+          "subjectId": "01J00000000000000000000132",
+          "assessment": "UNKNOWN",
+          "comment": "材料不足",
+          "revision": 1,
+          "updatedAt": null
+        },
+        {
+          "subjectKind": "COUPLING",
+          "subjectId": "01J00000000000000000000133",
+          "assessment": null,
+          "comment": "只保存评论",
+          "revision": 1,
+          "updatedAt": null
+        }
+      ],
+      "statistics": {
+        "taskId": "01J00000000000000000000061",
+        "specialistType": "COUPLING",
+        "issues": {
+          "total": 0,
+          "accurate": 0,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": null
+        },
+        "results": {
+          "total": 1,
+          "accurate": 1,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": 100
+        },
+        "patterns": {
+          "total": 0,
+          "accurate": 0,
+          "inaccurate": 0,
+          "unknown": 0,
+          "unassessed": 0,
+          "accuracyPercent": null
+        },
+        "couplings": {
+          "total": 4,
+          "accurate": 1,
+          "inaccurate": 1,
+          "unknown": 1,
+          "unassessed": 1,
+          "accuracyPercent": 50
+        }
+      },
+      "material": {
+        "id": "01J00000000000000000000065",
+        "projectId": "01J00000000000000000000064",
+        "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "path": "src/long-package/long-package/long-package/long-package/long-package/long-package/long-package/long-package/ReviewExecutor.java",
+        "side": "AFTER",
+        "startLine": 3,
+        "endLine": 5,
+        "content": "class A {\n  B dependency;\n}\n",
+        "contentHash": "fixture-hash",
+        "completeness": "FRAGMENT",
+        "diagnostic": null
+      }
+    }
+  ]
+}

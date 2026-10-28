@@ -101,7 +101,7 @@
             <a-spin :spinning="detailLoading">
               <template v-if="activeTab === 'result'">
                 <a-alert v-if="resultError" type="warning" show-icon :message="resultError" />
-                <SpecialistResultView
+                <SpecialistReviewResultTab
                   v-if="result"
                   :task-id="task.id"
                   :result="result"
@@ -250,7 +250,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
-import SpecialistResultView from '@/components/SpecialistResultView.vue'
+import SpecialistReviewResultTab from '@/components/SpecialistReviewResultTab.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
 import MaterialReaderModal from '@/components/MaterialReaderModal.vue'

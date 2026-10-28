@@ -1,0 +1,202 @@
+{
+  "date": "2026-10-27",
+  "timezone": "Asia/Taipei",
+  "phase": "SRF-06",
+  "backend": {
+    "suites": 16,
+    "tests": 125,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "details": [
+      {
+        "suite": "SrfFeedbackContractTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "ResultItemStartupTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "ResultItemIndexTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "SpecialistResultPublisherTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "FeedbackServiceTest",
+        "tests": 15,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "TaskStatisticsServiceTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "ReportInputServiceTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "ReportFactsBuilderTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "TaskDetailReadTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "AgentMigrationContractTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "SpecialistTaskWorkerTest",
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "TaskRecoveryRunnerTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "ReportGenerationServiceTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "ReportExecutionWorkerTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "V2BindingErrorTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "V2ExceptionHandlerTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "frontend": {
+    "files": 11,
+    "tests": 100,
+    "failures": 0,
+    "details": [
+      {
+        "file": "src/components/__tests__/CodeReferenceModal.spec.ts",
+        "tests": 11
+      },
+      {
+        "file": "src/components/__tests__/CodeViewer.spec.ts",
+        "tests": 3
+      },
+      {
+        "file": "src/components/__tests__/FeedbackEditor.spec.ts",
+        "tests": 13
+      },
+      {
+        "file": "src/components/__tests__/ReportResultPickerModal.spec.ts",
+        "tests": 11
+      },
+      {
+        "file": "src/components/__tests__/ReportSourceModal.spec.ts",
+        "tests": 9
+      },
+      {
+        "file": "src/components/__tests__/SpecialistResultView.spec.ts",
+        "tests": 7
+      },
+      {
+        "file": "src/components/__tests__/SpecialistReviewResultTab.spec.ts",
+        "tests": 5
+      },
+      {
+        "file": "src/components/__tests__/SrfContract.spec.ts",
+        "tests": 8
+      },
+      {
+        "file": "src/components/__tests__/TaskAccuracySummary.spec.ts",
+        "tests": 4
+      },
+      {
+        "file": "src/views/__tests__/ReportCreate.spec.ts",
+        "tests": 11
+      },
+      {
+        "file": "src/views/__tests__/TaskDetail.spec.ts",
+        "tests": 18
+      }
+    ]
+  },
+  "typeCheck": {
+    "passed": false,
+    "sameAsEntryBaseline": true,
+    "entryErrors": [
+      "src/views/ProjectDetail.vue(561,58): error TS2769: No overload matches this call.",
+      "src/views/ProjectList.vue(117,1): error TS6133: 'PageNotice' is declared but its value is never read."
+    ],
+    "currentErrors": [
+      "src/views/ProjectDetail.vue(561,58): error TS2769: No overload matches this call.",
+      "src/views/ProjectList.vue(117,1): error TS6133: 'PageNotice' is declared but its value is never read."
+    ]
+  },
+  "isolatedFrontendBuild": {
+    "passed": true,
+    "warning": "Existing large chunks"
+  },
+  "scope": {
+    "persistence": "Stateful test doubles; no database connection",
+    "realModelCalls": 0,
+    "databaseOperations": false,
+    "serviceStartOrStop": false,
+    "screenshots": 0,
+    "pcVisualAcceptance": "Deferred to owner"
+  },
+  "evidenceDirectory": "H:\\myProjects\\aiCodeReview\\.srf06-build-20261027"
+}

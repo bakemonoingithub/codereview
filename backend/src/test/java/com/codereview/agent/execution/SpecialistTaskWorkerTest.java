@@ -142,6 +142,24 @@ class SpecialistTaskWorkerTest {
     }
 
     @Test
+    void persistenceFailureDuringPublicationCannotMarkTargetOrTaskSuccessful() {
+        when(invocation.invoke(any())).thenReturn(success("c1", validIssue()));
+        when(publisher.publish(any(), any(), any(), any(), eq(true)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("item index write failed"));
+        assertEquals(TaskStates.FAILED, worker.execute(task).state());
+        var updates = org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(targetMapper, org.mockito.Mockito.atLeastOnce()).update(any(), updates.capture());
+        var states = new java.util.ArrayList<Object>();
+        for (var query : updates.getAllValues()) {
+            var matcher = java.util.regex.Pattern.compile("state\\s*=\\s*#\\{ew\\.paramNameValuePairs\\.(\\w+)\\}")
+                    .matcher(query.getSqlSet());
+            if (matcher.find()) states.add(query.getParamNameValuePairs().get(matcher.group(1)));
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(states.contains(TaskStates.FAILED));
+        org.junit.jupiter.api.Assertions.assertFalse(states.contains(TaskStates.SUCCEEDED));
+    }
+
+    @Test
     void completeFilePublishesAndSucceedsTheTask() {
         when(invocation.invoke(any())).thenReturn(success("c1", validIssue()));
 

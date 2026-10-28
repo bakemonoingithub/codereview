@@ -338,7 +338,10 @@ public class TaskService {
                 .toList();
         return new TaskDtos.ResultView(row.getId(), row.getTargetId(), row.getKind(),
                 row.getSchemaVersion(), row.getCompleteness(), row.getCreatedAt(),
-                readStoredJson(row.getBody(), false), issueViews, readStoredJson(row.getProvenance(), false));
+                readStoredJson(row.getBody(), false), issueViews, readStoredJson(row.getProvenance(), false),
+                new ResultItemIndex(db, mapper).requireItems(row).stream()
+                        .map(item -> new TaskDtos.ResultItemView(item.getId(), item.getKind(), item.getOrdinal()))
+                        .toList());
     }
 
     /** 目标实际发送过的材料；同一材料被多次调用引用时合并为一条。 */
