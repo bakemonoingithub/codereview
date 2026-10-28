@@ -41,6 +41,22 @@ class AgentToolLoopValidatorTest {
     }
 
     @Test
+    void validationUsesConfiguredPerRoundDeadlineAndOutput() {
+        var p = new com.codereview.agent.invocation.ModelInvocationProperties();
+        p.setToolValidationTimeoutSeconds(600); p.setToolValidationOutputTokens(2048);
+        validator = new AgentToolLoopValidator(invocation, new PromptAssemblyService(), new ObjectMapper(),
+                new ToolLimitProperties(), new com.codereview.agent.execution.AgentBudgetProperties(), p);
+        when(invocation.invoke(any())).thenReturn(textResult("call-1", "no tool"));
+        var started = com.codereview.agent.support.AgentTime.now();
+        validator.validate(model());
+        var request = org.mockito.ArgumentCaptor.forClass(com.codereview.agent.invocation.InvocationRequest.class);
+        verify(invocation).invoke(request.capture());
+        assertEquals(2048, request.getValue().outputReserve());
+        assertTrue(request.getValue().scope().deadlineAt().isAfter(started.plusSeconds(590)));
+        assertTrue(request.getValue().scope().deadlineAt().isBefore(started.plusSeconds(610)));
+    }
+
+    @Test
     void twoRoundsOfRealCallsPass() {
         when(invocation.invoke(any()))
                 .thenReturn(toolCallResult("call-1", "read_code",

@@ -45,13 +45,23 @@ public class RuntimeConfigurationValidation {
         check(!agent.datasource.getExpectedDatabase().isBlank(), "agent.datasource.expected-database", "不能为空白；必须指定期望的数据库名称");
         check(agent.datasource.getMinimumIdle() <= agent.datasource.getMaximumPoolSize(), "agent.datasource.minimum-idle", "不得超过 maximum-pool-size");
         check(agent.datasource.getConnectionTimeoutMillis() >= 250, "agent.datasource.connection-timeout-millis", "至少 250 毫秒");
-        check(agent.model.getTransportRetries() <= 1, "agent.model.transport-retries", "范围为 0–1");
+        check(agent.model.getTransportRetries() <= 10, "agent.model.transport-retries", "范围为 0–10");
+        check(agent.model.getRetryBaseMillis() <= agent.model.getRetryMaxMillis(),
+                "agent.model.retry-base-millis", "不得超过 retry-max-millis");
+        check(agent.model.getRetryMultiplier() >= 1 && agent.model.getRetryMultiplier() <= 10,
+                "agent.model.retry-multiplier", "范围为 1–10");
+        check(agent.model.getRetryJitterRatio() >= 0 && agent.model.getRetryJitterRatio() <= 1,
+                "agent.model.retry-jitter-ratio", "范围为 0–1");
         check(agent.model.getPerTaskConcurrency() <= agent.model.getGlobalConcurrency(), "agent.model.per-task-concurrency", "不得超过全局并发");
         check(agent.budget.getNetworkAttempts() <= agent.model.getTaskCallLimit(), "agent.budget.network-attempts", "不得超过 agent.model.task-call-limit");
         validateBudget(agent.budget);
         check(agent.model.getSafetyReserveRatio() > 0 && agent.model.getSafetyReserveRatio() < 1, "agent.model.safety-reserve-ratio", "范围为 (0,1)");
         validateTools(agent.tools.getLimits());
         check(!ui.getTitle().isBlank() && ui.getTitle().length() <= 100, "app.ui.title", "长度为 1–100");
+        check(ui.getModelValidationTimeoutMillis() > agent.model.getConnectivityValidationTimeoutSeconds() * 1000L,
+                "app.ui.model-validation-timeout-millis", "须大于连通验证总期限，并预留请求和结果保存时间");
+        check(ui.getAgentValidationTimeoutMillis() > agent.model.getToolValidationTimeoutSeconds() * 2000L,
+                "app.ui.agent-validation-timeout-millis", "须大于两轮工具验证总期限，并预留请求和结果保存时间");
         check(ui.getApiBase().matches("(?:/)?[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*"), "app.ui.api-base", "必须为同源路径，不能含主机、查询参数或相对跳转");
         check(!agent.repository.getAllowedExtensions().isEmpty() && agent.repository.getAllowedExtensions().stream().allMatch(x -> x.matches("[a-z0-9]+")), "agent.repository.allowed-extensions", "必须为非空小写后缀集合，不含点");
         check(!agent.tools.getGitExecutable().isBlank(), "agent.tools.git-executable", "不能为空");
@@ -148,7 +158,7 @@ public class RuntimeConfigurationValidation {
                 Object value = field.get(object);
                 check(value != null || key.matches("agent.datasource.(url|username|password)"), key, "不能为空");
                 if (value instanceof Number n) {
-                    boolean zero = key.endsWith("transport-retries") || key.endsWith("max-protocol-errors") || key.endsWith("minimum-idle") || key.endsWith("search-context-lines");
+                    boolean zero = key.endsWith("transport-retries") || key.endsWith("retry-jitter-ratio") || key.endsWith("max-protocol-errors") || key.endsWith("minimum-idle") || key.endsWith("search-context-lines");
                     check(Double.isFinite(n.doubleValue()) && (zero ? n.doubleValue() >= 0 : n.doubleValue() > 0), key, zero ? "必须非负" : "必须为正数");
                 } else if (value != null && value.getClass().getName().startsWith("com.codereview")) positiveFields(value, key);
             } catch (IllegalAccessException e) { throw new IllegalStateException("配置校验失败：" + key); }

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 /**
  * 公共调用参数。
  *
- * <p>传输重试只覆盖明确的暂态失败（429、5xx、连接失败），且每步最多额外一次；
+ * <p>传输重试只覆盖明确的暂态失败（429、5xx、连接失败），次数和等待由运行配置控制；
  * 协议重试由调用方按契约另行控制，不能在这里再放大一轮。
  */
 @Data
@@ -21,10 +21,19 @@ public class ModelInvocationProperties {
     private double safetyReserveRatio = 0.1;
 
 
-    /** 暂态传输重试次数（不含首次）。契约固定为最多额外 1 次。 */
+    /** 暂态传输重试次数（不含首次），允许 0–10。 */
     private int transportRetries = 1;
-    /** 退避基数；429 优先使用 Retry-After，但同样受这个上限约束。 */
+    /** 本地退避的初始等待；Retry-After 是网关要求的最短等待。 */
     private long retryBaseMillis = 500;
+    private long retryMaxMillis = 30000;
+    private double retryMultiplier = 2.0;
+    private double retryJitterRatio = 0.2;
+    private long retryCheckMillis = 1000;
+    /** 连通验证总期限（包含排队、等待及所有重试）。 */
+    private int connectivityValidationTimeoutSeconds = 60;
+    /** 工具验证每一轮的总期限（包含排队和重试），共两轮。 */
+    private int toolValidationTimeoutSeconds = 120;
+    private int toolValidationOutputTokens = 1024;
     /** 单次响应读超时上限（秒）；任务剩余期限更短时取更短者。 */
     private int maxReadTimeoutSeconds = 180;
     /** 非验证调用的默认输出预留（token）；不超过模型最大输出。 */

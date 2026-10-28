@@ -1,119 +1,143 @@
+# 通用参数样例；容器版参考 deploy/config/application.yml.example。
 server:
   port: 8080
-
 spring:
   application:
     name: code-review-backend
   jackson:
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
-
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
-  global-config:
-    banner: false
-    db-config:
-      id-type: assign_id
-      logic-delete-field: isDeleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
-
-# 新路线独立新库（P30.2）。默认不启用：未配置 url 时不创建新库组件，/api/v2 也不注册，
-# 旧功能照常启动。启用时必须指向与 spring.datasource 不同的库；启动会校验库名、
-# 旧链历史（flyway_schema_history）与身份标记（agent_schema_identity），任一项不符即拒绝启动。
-# agent:
-#   datasource:
-#     url: jdbc:mysql://localhost:3306/ai_code_review_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
-#     username: codereview_agent
-#     password: <新库账号密码>
-#     expected-database: ai_code_review_agent
-#     migration-location: classpath:db/agent-migration
-#   # 报告生成参数（均可省略）。报告正文通常长于专项 JSON，输出预留单独设置；
-#   # 仍受模型声明的最大输出限制，完整请求超过窗口时失败而不截断。
-#   report:
-#     output-tokens: 16384
-#     max-body-chars: 1000000
-#     generation-timeout-minutes: 10
-#     dispatch-concurrency: 2
-#     dispatch-queue-capacity: 100
-#   # Agent 只读工具（P33.2，均可省略）。内容搜索要求运行环境有 git；
-#   # 镜像目录沿用 git.gitea.work-dir，Windows 下请保持较短路径（默认 MAX_PATH=260）。
-#   tools:
-#     git-executable: git
-#     mirror-timeout-seconds: 120
-#     search-total-seconds: 10
-#     search-global-concurrency: 2
-#     search-cache-weight-bytes: 33554432
-#     search-cache-minutes: 5
-
-deepseek:
-  base-url: https://api.deepseek.com
-  api-key: ${DEEPSEEK_API_KEY:}
-  model: deepseek-chat
-  # LLM 调用超时（毫秒）。**务必保持有限**：网关挂起时靠它把单元收敛为失败，
-  # 否则记录会永远停在"执行中"并占满并发线程。配 0 或负数会被回退成默认值。
-  connect-timeout-ms: 10000     # 建连超时
-  read-timeout-ms: 300000       # 读超时（单次调用最长等待）
-
-# 审查编排参数（均有默认值，可省略；以下为默认值示例）
-review:
-  concurrency: 4            # 并行限流并发数
-  chunk-max-chars: 140000   # 分块阈值（字符数），超过才按类/方法切分；约 4 万 token（字符/3.5）
-  retry-max: 3              # 单元级最大重试次数
-  retry-base-millis: 1000   # 指数退避基数（1s→2s→4s）
-  task-timeout-minutes: 50  # 单条审查的任务级超时：超时后停止提交新单元、剩余单元记为未执行
-                            # 默认 50，给报告生成留余量（指标 8 要求审查+报告 1 小时内完成）
-  delete-block-minutes: 60  # 删除项目时，"执行中审查"的阻塞窗口（分钟）；超窗视为卡死、允许删除
-
-# 报告生成参数（均有默认值，可省略）。报告要把多条审查记录的结果 JSON 拼进一次 LLM 调用，
-# 没有预算就会无界增长、最后失败在网关侧（错误信息还不指向根因），所以这里必须有硬上限。
-report:
-  prompt-max-chars: 140000  # 单次报告 user prompt 上限（字符，**含**模板与用户补充要求）
-  record-max-chars: 20000   # 单条审查记录在聚合里的上限；超出截断（summary 在最前所以先保留）
-                            # 超出总预算的记录整条省略，并在提示词里写明裁剪了多少条
-
-# GitHub REST API 兜底认证（建议通过环境变量 GITHUB_TOKEN 注入，勿硬编码/明文入库）
-# 项目未填令牌时自动使用；认证后限额 5000 次/小时，匿名仅 60 次/小时/IP
-github:
-  token: ${GITHUB_TOKEN:}
-
-# Git 宿主接入（单实例；均有默认值，通常可省略）
-# api-base / raw-base 原先写死在 GitHubClient 里：部署到内网镜像站或自建企业版时，
-# 只能改代码。现在可用这两个键覆盖（不带尾斜杠）。
-git:
-  api-base: https://api.github.com             # REST API 根（GitHub 用）
-  raw-base: https://raw.githubusercontent.com  # 原始文件根（Contents API 不可用时兜底）
-  cache:
-    commit-detail-max-size: 200   # 单提交详情缓存条数上限
-    raw-file-max-size: 500        # 文件内容缓存条数上限
-    expire-minutes: 30            # 写入后过期时间（分钟）
-
-  # Gitea 1.16.1 接入。**API 根不用配**：按各项目的仓库地址推导
-  # （http://host/gitea/owner/repo → http://host/gitea/api/v1），内网子路径自动带上。
-  # 内网站点（192.104.224.172/gitea）开箱可用：hosts 默认已含 localhost:3000 与 192.104.224.172。
-  gitea:
-    hosts:                        # 哪些 host[:port] 归 Gitea 客户端（白名单，未命中显式报「未接入的仓库宿主」）
-      - localhost:3000            # 本机开发（默认值）
-      - 192.104.224.172           # 内网站点（默认值；只写 host 也能匹配 http://192.104.224.172:80/...）
-    api-base: ""                  # 可选覆盖（含 /api/v1）；仅 git@host:owner/repo 这类地址需要
-    token: ${GITEA_TOKEN:}        # 兜底令牌；项目里填了 credential 时以项目为准（内网只申请了一个只读令牌时用它）
-    local-clone-enabled: true     # Gitea 没有 compare 接口，靠本地 bare 镜像算三点差异；false 则 compare 直接报错
-    work-dir: ${GITEA_MIRROR_DIR:}          # 本地镜像目录；容器部署建议挂持久卷（如 /app/data/git-mirrors），留空用临时目录
-    mirror-timeout-seconds: 120   # 单次克隆/拉取超时（秒）；内网带宽小或仓库大可调大
-    diff-max-bytes: 5242880       # 单个提交 .diff 文本上限；超限则整提交 patch 置空（走全文件兜底）
-
 agent:
   datasource:
-    url: jdbc:mysql://localhost:3306/ai_code_review_agent?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
-    username: root
-    password: <你的数据库密码>
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    expected-database: ai_code_review_agent
+    url: "${DB_URL}"
+    username: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    driver-class-name: "com.mysql.cj.jdbc.Driver"
+    expected-database: "ai_code_review_agent"
+    migration-location: "classpath:db/agent-migration"
+    history-table: "agent_schema_history"
+    maximum-pool-size: 10
+    minimum-idle: 1
+    connection-timeout-millis: 10000
+  tools:
+    git-executable: "git"
+    mirror-timeout-seconds: 120
+    search-total-seconds: 10
+    search-global-concurrency: 2
+    search-cache-weight-bytes: 33554432
+    search-cache-minutes: 5
+    limits:
+      envelope-max-bytes: 32768
+      material-max-bytes: 24576
+      tree-default-depth: 2
+      tree-max-depth: 3
+      tree-default-limit: 100
+      tree-max-limit: 200
+      find-default-limit: 50
+      find-max-limit: 100
+      search-default-limit: 50
+      search-max-limit: 100
+      search-context-lines: 2
+      search-grep-max-hits: 200
+      read-default-lines: 200
+      read-max-lines: 400
+      diff-max-items: 20
+      diff-max-hunks: 10
+      grep-output-max-bytes: 2097152
+  repository:
+    max-file-bytes: 4194304
+    file-cache-weight-bytes: 134217728
+    file-cache-minutes: 30
+    tree-cache-size: 256
+    tree-cache-minutes: 10
+    allowed-extensions: ["java", "kt", "kts", "scala", "js", "ts", "jsx", "tsx", "vue", "py", "go", "cs", "cpp", "c", "h", "rb", "php", "sql", "sh", "bat", "ps1", "r", "swift", "dart", "lua", "pl", "m", "mm", "asm", "s", "xml", "yml", "yaml", "properties", "json", "toml", "ini", "conf", "gradle", "env", "md", "txt", "html", "htm", "css", "less", "scss", "sass", "styl", "jsp", "ftl", "rst", "adoc", "csv", "log"]
+  model:
+    connect-timeout-seconds: 10
+    probe-timeout-seconds: 15
+    probe-connect-timeout-seconds: 5
+    safety-reserve-min-tokens: 1024
+    safety-reserve-ratio: 0.1
+    transport-retries: 1
+    retry-base-millis: 500
+    retry-max-millis: 30000
+    retry-multiplier: 2.0
+    retry-jitter-ratio: 0.2
+    retry-check-millis: 1000
+    connectivity-validation-timeout-seconds: 60
+    tool-validation-timeout-seconds: 120
+    tool-validation-output-tokens: 1024
+    max-read-timeout-seconds: 180
+    output-reserve-tokens: 4096
+    validation-output-tokens: 64
+    task-call-limit: 200
+    global-concurrency: 4
+    per-task-concurrency: 2
+  task:
+    dispatch-queue-capacity: 64
+    deadline-minutes: 30
+    dispatch-concurrency: 4
+    recover-on-start: true
+    sweep-millis: 30000
+  specialist:
+    max-inheritance-depth: 6
+    max-auxiliary-files: 12
+    max-auxiliary-bytes: 262144
+    include-direct-declarations: true
+    max-units-per-file: 32
+    max-block-lines: 200
+    execution:
+      parallel-targets: 4
+  report:
+    max-body-chars: 1000000
+    generation-timeout-minutes: 10
+    dispatch-concurrency: 2
+    dispatch-queue-capacity: 100
+    output-tokens: 16384
+  budget:
+    model-turns: 48
+    network-attempts: 96
+    tool-attempts: 192
+    deadline-minutes: 20
+    output-tokens: 16384
+    model-timeout-seconds: 120
+    context-stop-ratio: 0.8
+    no-progress-turns: 3
+    max-tools-per-turn: 4
+    max-protocol-errors: 2
+git:
+  api-base: "https://api.github.com"
+  raw-base: "https://raw.githubusercontent.com"
+  http:
+    connect-timeout-seconds: 10
+    read-timeout-seconds: 60
+  github:
+    hosts: ["github.com"]
+  gitea:
+    hosts: ["localhost:3000", "192.104.224.172"]
+    api-base: ""
+    token: "${GITEA_TOKEN:}"
+    work-dir: ""
+    local-clone-enabled: true
+    mirror-timeout-seconds: 120
+    diff-max-bytes: 5242880
+  cache:
+    commit-detail-max-size: 200
+    raw-file-max-size: 500
+    expire-minutes: 30
+github:
+  token: "${GITHUB_TOKEN:}"
+app:
+  ui:
+    title: "智能代码分析工具"
+    api-base: "api/v2"
+    request-timeout-millis: 30000
+    model-validation-timeout-millis: 180000
+    agent-validation-timeout-millis: 300000
+    agent-poll-millis: 2000
+    report-poll-millis: 2000
+    specialist-poll-millis: 3000

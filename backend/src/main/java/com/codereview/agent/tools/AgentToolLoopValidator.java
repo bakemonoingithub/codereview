@@ -49,11 +49,20 @@ public class AgentToolLoopValidator {
 
     private ToolLimitProperties limits = new ToolLimitProperties();
     private com.codereview.agent.execution.AgentBudgetProperties budget = new com.codereview.agent.execution.AgentBudgetProperties();
+    private com.codereview.agent.invocation.ModelInvocationProperties modelProperties = new com.codereview.agent.invocation.ModelInvocationProperties();
     @org.springframework.beans.factory.annotation.Autowired
     public AgentToolLoopValidator(ModelInvocationService invocation, PromptAssemblyService assembly,
                                   ObjectMapper mapper, ToolLimitProperties limits,
-                                  com.codereview.agent.execution.AgentBudgetProperties budget) {
+                                  com.codereview.agent.execution.AgentBudgetProperties budget,
+                                  com.codereview.agent.invocation.ModelInvocationProperties modelProperties) {
         this(invocation, assembly, mapper); this.limits = limits; this.budget = budget;
+        this.modelProperties = modelProperties;
+    }
+    public AgentToolLoopValidator(ModelInvocationService invocation, PromptAssemblyService assembly,
+                                  ObjectMapper mapper, ToolLimitProperties limits,
+                                  com.codereview.agent.execution.AgentBudgetProperties budget) {
+        this(invocation, assembly, mapper, limits, budget,
+                new com.codereview.agent.invocation.ModelInvocationProperties());
     }
     public AgentToolLoopValidator(ModelInvocationService invocation,
                                   PromptAssemblyService assembly, ObjectMapper mapper) {
@@ -105,7 +114,8 @@ public class AgentToolLoopValidator {
     private InvocationResult invoke(ModelSnapshot model, com.codereview.agent.prompt.AssembledPrompt prompt,
                                     List<String> callIds) {
         InvocationResult result = invocation.invoke(new InvocationRequest(model, prompt,
-                InvocationScope.standalone(AgentTime.now().plusMinutes(2)), false, null, 1024));
+                InvocationScope.standalone(AgentTime.now().plusSeconds(modelProperties.getToolValidationTimeoutSeconds())),
+                false, null, modelProperties.getToolValidationOutputTokens()));
         callIds.add(result.callId());
         return result;
     }

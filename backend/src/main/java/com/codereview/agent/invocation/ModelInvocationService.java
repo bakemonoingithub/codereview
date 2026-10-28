@@ -36,7 +36,7 @@ import java.util.Map;
  *
  * <p>顺序固定：容量判断 → 额度原子预留 → 请求正文落盘 → 发请求 → 记录结果。
  * 请求正文保存失败时绝不发请求；每次真实网络尝试各有一条 {@code model_call}，
- * 所有尝试都计入任务额度。暂态失败最多额外重试一次，鉴权、配置和协议错误不重试。
+ * 所有尝试都计入任务额度。暂态失败按冻结配置有限重试，鉴权、配置和协议错误不重试。
  *
  * <p>调用层只负责传输与分类；协议结构校验、格式重试和结果发布由专项执行层负责。
  */
@@ -138,7 +138,7 @@ public class ModelInvocationService {
                 permit.close();
             }
             scope = activeScope(scope);
-            waitBeforeRetry(failureRetryAfter(lastFailure), scope, effective);
+            waitBeforeRetry(failureRetryAfter(lastFailure), scope, effective, attempt);
         }
         throw lastFailure == null
                 ? new ApiException(ErrorCode.INTERNAL_ERROR, "模型调用结束但没有结果")
@@ -155,7 +155,7 @@ public class ModelInvocationService {
                 List.of(), List.of(), List.of(), List.of(), null));
         try {
             InvocationResult result = invoke(new InvocationRequest(model, prompt,
-                    InvocationScope.standalone(AgentTime.now().plusMinutes(1))));
+                    InvocationScope.standalone(AgentTime.now().plusSeconds(properties.getConnectivityValidationTimeoutSeconds()))));
             if (result.content() == null || result.content().isBlank()) {
                 return new ValidationOutcome(false, "模型返回正文为空", result.callId());
             }
@@ -352,8 +352,10 @@ public class ModelInvocationService {
                             : Map.of("status", status, "retryAfter", retryAfter));
         }
         if (status >= 500) {
+            Long retryAfter = retryAfterSeconds(response);
             return new ApiException(ErrorCode.MODEL_UNAVAILABLE, "模型网关暂时不可用",
-                    Map.of("status", status));
+                    retryAfter == null ? Map.of("status", status)
+                            : Map.of("status", status, "retryAfter", retryAfter));
         }
         if (status == 400 && looksLikeContextLimit(body)) {
             return new ApiException(ErrorCode.CONTEXT_LIMIT, "模型报告上下文超限",
@@ -404,21 +406,31 @@ public class ModelInvocationService {
         return capped.compareTo(limit) < 0 ? capped : limit;
     }
 
-    private void waitBeforeRetry(Long retryAfterSeconds, InvocationScope scope, ModelInvocationProperties effective) {
-        long wait = retryAfterSeconds != null
-                ? Math.min(retryAfterSeconds * 1000, 3000)
-                : effective.getRetryBaseMillis();
-        if (wait <= 0) {
-            wait = 1;
+    private void waitBeforeRetry(Long retryAfterSeconds, InvocationScope scope,
+                                 ModelInvocationProperties effective, int failedAttempt) {
+        long wait = RetryBackoff.from(effective).delayMillis(effective.getRetryBaseMillis(), failedAttempt,
+                java.util.concurrent.ThreadLocalRandom.current().nextDouble());
+        if (retryAfterSeconds != null && retryAfterSeconds >= 0) {
+            long requested = retryAfterSeconds > Long.MAX_VALUE / 1000 ? Long.MAX_VALUE : retryAfterSeconds * 1000;
+            wait = Math.max(wait, requested);
         }
         if (scope.deadlineAt() != null) {
             long remaining = Duration.between(AgentTime.now(), scope.deadlineAt()).toMillis();
-            if (remaining <= wait + 500) {
+            if (wait >= remaining - 500) {
                 throw new ApiException(ErrorCode.TASK_DEADLINE, "任务剩余期限不足以重试");
             }
         }
         try {
-            Thread.sleep(wait);
+            long started = System.nanoTime();
+            long left = wait;
+            while (left > 0) {
+                Thread.sleep(Math.min(left, effective.getRetryCheckMillis()));
+                scope = activeScope(scope);
+                if (scope.deadlineAt() != null && !AgentTime.now().isBefore(scope.deadlineAt())) {
+                    throw new ApiException(ErrorCode.TASK_DEADLINE, "等待重试时任务已到达期限");
+                }
+                left = wait - Duration.ofNanos(System.nanoTime() - started).toMillis();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ApiException(ErrorCode.MODEL_UNAVAILABLE, "模型重试被中断");
@@ -439,9 +451,17 @@ public class ModelInvocationService {
             return null;
         }
         try {
-            return Long.parseLong(value.trim());
+            long seconds = Long.parseLong(value.trim());
+            return seconds < 0 ? null : seconds;
         } catch (NumberFormatException e) {
-            return null;
+            try {
+                var instant = java.time.ZonedDateTime.parse(value.trim(),
+                        java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
+                return Math.max(0, (long) Math.ceil(Duration.between(
+                        AgentTime.now().toInstant(java.time.ZoneOffset.UTC), instant).toMillis() / 1000.0));
+            } catch (java.time.DateTimeException | ArithmeticException invalidDate) {
+                return null;
+            }
         }
     }
 

@@ -7,7 +7,7 @@
 #    bash scripts/deploy.sh --yes                不交互确认（用于自动化）
 #
 #  流程：初始化工作区 → 体检 → 装载镜像 → 记录上一版本 → 备份数据库
-#        → 启动 → 等健康 → 失败自动回滚
+#        → 启动 → 等健康 → 失败停止应用并保留现场
 # =============================================================================
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/common.sh"
@@ -16,7 +16,7 @@ TAG=""
 ASSUME_YES=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --tag)     TAG="${2:-}"; shift 2 ;;
+    --tag)     TAG="${2:-}"; [ -n "$TAG" ] || die "--tag 缺少版本"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *)         die "未知参数：$1（可用：--tag <版本> / --yes）" ;;
@@ -31,6 +31,11 @@ hr
 
 init_bundle
 info "部署包目录：$BUNDLE"
+
+# 数据库结构升级期间禁止旧应用继续写入。由操作者先处理运行任务并停应用。
+if [ "$(docker inspect --format '{{.State.Running}}' codereview-app 2>/dev/null)" = "true" ]; then
+  die "应用仍在运行。请先等待或取消未完成任务，再在原部署目录执行 docker compose -p codereview stop app，然后重新部署。"
+fi
 
 # ── 步骤 1：工作区初始化 ────────────────────────────────────────────────────
 mkdir -p data/mysql data/git-mirrors backups config
@@ -75,24 +80,14 @@ printf '%s' "$AGENT_DB_PASSWORD" | grep -qE '^[A-Za-z0-9]+$' \
 
 # ── 步骤 2：渲染运行期配置（只做一次，之后升级不再覆盖）────────────────────
 if [ ! -f config/application.yml ]; then
-  info "生成 config/application.yml（配置兼容库、Agent 新库与 AI 网关）"
+  info "生成 config/application.yml（新路线数据库与运行参数）"
   cp config/application.yml.example config/application.yml || die "无法生成 config/application.yml"
 
-  _db_user="$(get_env MYSQL_USER)";      [ -n "$_db_user" ]  || _db_user=codereview
-  _db_pass="$(get_env MYSQL_PASSWORD)"
-  _db_name="$(get_env MYSQL_DATABASE)";  [ -n "$_db_name" ]  || _db_name=code_review
-  _ai_base="$(get_env AI_BASE_URL)";     [ -n "$_ai_base" ]  || _ai_base=http://CHANGE-ME-内网AI网关地址
-  _ai_model="$(get_env AI_MODEL)";       [ -n "$_ai_model" ] || _ai_model=deepseek-chat
 
   sed -i \
-    -e "s|__DB_USER__|${_db_user}|g" \
-    -e "s|__DB_PASSWORD__|${_db_pass}|g" \
-    -e "s|__DB_NAME__|${_db_name}|g" \
     -e "s|__AGENT_DB_USER__|${AGENT_DB_USER}|g" \
     -e "s|__AGENT_DB_PASSWORD__|${AGENT_DB_PASSWORD}|g" \
     -e "s|__AGENT_DB_NAME__|${AGENT_DB_NAME}|g" \
-    -e "s|__AI_BASE_URL__|${_ai_base}|g" \
-    -e "s|__AI_MODEL__|${_ai_model}|g" \
     config/application.yml
 
   # 容器里以 uid 1000 运行，必须能读到这个文件；优先收窄属主而不是放开权限
@@ -111,7 +106,7 @@ else
     fi
     info "现有 config/application.yml 缺少 Agent 新库配置 —— 补入配置模板"
     _agent_tmp="$(mktemp)" || die "无法创建 Agent 配置临时文件"
-    sed -n '/^agent:[[:space:]]*$/,$p' config/application.yml.example \
+    awk '/^agent:[[:space:]]*$/ { emit=1; print; next } emit && /^[^[:space:]#]/ { exit } emit { print }' config/application.yml.example \
       | sed -e "s|__AGENT_DB_USER__|${AGENT_DB_USER}|g" \
             -e "s|__AGENT_DB_PASSWORD__|${AGENT_DB_PASSWORD}|g" \
             -e "s|__AGENT_DB_NAME__|${AGENT_DB_NAME}|g" > "$_agent_tmp"
@@ -132,7 +127,7 @@ fi
 # ── 步骤 3：前置体检 ────────────────────────────────────────────────────────
 hr
 if ! bash scripts/preflight.sh; then
-  die "前置体检未通过，已中止（未做任何改动）"
+  die "前置体检未通过，已中止；尚未装载镜像或启动数据库，已生成的配置保留。"
 fi
 hr
 
@@ -185,6 +180,16 @@ fi
 docker tag "codereview-app:$NEW_TAG" codereview-app:latest || die "为版本打 latest 标签失败"
 set_env APP_TAG "$NEW_TAG"
 
+# 只建立配置检查上下文；不连接数据库、不调用模型，也不执行迁移。
+if ! docker run --rm --network none \
+    --memory "${APP_MEM_LIMIT:-4g}" -e "JAVA_TOOL_OPTIONS=${JAVA_OPTS:--Xms1g -Xmx3g}" \
+    -v "$BUNDLE/config/application.yml:/app/config/application.yml:ro" \
+    -e "GITEA_MIRROR_DIR=${GITEA_MIRROR_DIR:-/app/data/git-mirrors}" \
+    -e "GITEA_TOKEN=${GITEA_TOKEN:-}" -e "GITHUB_TOKEN=${GITHUB_TOKEN:-}" \
+    "codereview-app:$NEW_TAG" --check-config; then
+  die "运行配置校验失败；应用和数据库均未由本次脚本启动，请修正配置后重试。"
+fi
+
 # ── 步骤 6：修正 docker 网段 ────────────────────────────────────────────────
 _cur_subnet="$(get_env CR_SUBNET)"
 _free_subnet="$(pick_free_subnet)"
@@ -226,10 +231,11 @@ confirm "即将启动/更新容器：
       应用内存上限  ${APP_MEM_LIMIT:-4g}
       数据库内存上限 ${MYSQL_MEM_LIMIT:-2g}
       项目名        $PROJECT（只影响本项目的容器，不会动别人的）
-是否继续？" || die "已取消，未做任何改动"
+是否继续？" || die "已取消应用启动；配置、镜像、数据库初始化与备份步骤已执行，请保留现场。"
 hr
 
 if ! compose up -d app; then
+  compose stop app || true
   hr
   err "compose up 失败 —— 下面是相关容器日志（最后 40 行），方便直接定位："
   hr
@@ -241,33 +247,22 @@ if ! compose up -d app; then
   info "  1) 部署目录在 Windows 盘挂载点（/mnt/x）下 -> MySQL 无法初始化数据目录，请移到 ~ 下"
   info "  2) 内存不足被 OOM -> 调小 .env 里的 JAVA_OPTS / MYSQL_BUFFER_POOL"
   info "  3) 端口被占 -> 改 .env 里的 APP_PORT"
-  die "启动失败（若存在上一版本，可执行 bash scripts/rollback.sh 手工回滚）"
+  die "启动失败；请保留日志，按系统运维手册判断数据库与配置兼容性后恢复。"
 fi
 ok "容器已提交启动"
 
-# ── 步骤 9：等健康，失败自动回滚 ────────────────────────────────────────────
+# ── 步骤 10：等健康，失败保留现场 ───────────────────────────────────────────
 if wait_healthy codereview-app 300; then
   ok "应用已就绪"
 else
   err "应用未在 5 分钟内变为 healthy"
   hr
   info "容器最近 60 行日志："
-  compose logs --tail=60 codereview-app || true
+  compose logs --tail=60 app || true
   hr
 
-  if image_exists codereview-app:previous; then
-    warn "自动回滚到上一版本 codereview-app:previous"
-    set_env APP_TAG previous
-    compose up -d || die "回滚启动失败，请人工介入"
-    if wait_healthy codereview-app 300; then
-      err "本次升级失败，已回滚到上一版本。请把上面的日志发给开发排查。"
-      exit 1
-    else
-      die "回滚后仍不健康 —— 请人工介入：$COMPOSE -p $PROJECT logs -f codereview-app"
-    fi
-  else
-    die "没有可回滚的上一版本（首次部署）。排查日志：$COMPOSE -p $PROJECT logs --tail=200 codereview-app"
-  fi
+  compose stop app || true
+  die "本次部署失败，已尝试停止应用并保留数据库。数据库结构可能已变化，不自动回退镜像；请按系统运维手册处理。"
 fi
 
 # ── 结果 ────────────────────────────────────────────────────────────────────
@@ -277,7 +272,7 @@ ok "部署完成 —— 访问地址： http://${IP:-<本机IP>}:${APP_PORT:-180
 hr
 info "查看状态： $COMPOSE -p $PROJECT ps"
 info "查看日志： $COMPOSE -p $PROJECT logs -f codereview-app"
-info "回滚：     bash scripts/rollback.sh"
+info "回退：     先按系统运维手册确认数据库和配置兼容性"
 info "备份目录： $BUNDLE/backups"
 
 if [ "$GEN_PWD" = "1" ]; then

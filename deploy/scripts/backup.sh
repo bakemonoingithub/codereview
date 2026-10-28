@@ -11,6 +11,7 @@
 # =============================================================================
 set -u
 set -o pipefail
+umask 077
 . "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
 init_bundle
@@ -28,6 +29,15 @@ TS="$(date +%Y%m%d-%H%M%S)"
 DBS="${MYSQL_DATABASE:-code_review} ${AGENT_DB_NAME:-ai_code_review_agent}"
 for DB in $DBS; do
   valid_sql_identifier "$DB" || die "数据库名包含不支持的字符，无法安全备份：$DB"
+  EXISTS=$(docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" codereview-mysql \
+    mysql -uroot --batch --skip-column-names -e \
+    "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='$DB'") \
+    || die "无法确认数据库 $DB 是否存在"
+  if [ "$EXISTS" != "1" ]; then
+    [ "$DB" != "${AGENT_DB_NAME:-ai_code_review_agent}" ] || die "业务数据库 $DB 不存在，停止备份"
+    info "兼容库 $DB 不存在，跳过"
+    continue
+  fi
   OUT="backups/${DB}-${TS}.sql.gz"
   # 用 MYSQL_PWD 传密码，避免密码出现在 ps 输出里。
   if ! docker exec -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" codereview-mysql \

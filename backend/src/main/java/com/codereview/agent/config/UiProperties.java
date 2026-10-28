@@ -9,6 +9,8 @@ public class UiProperties {
     private String title = "智能代码分析工具";
     private String apiBase = "api/v2";
     private int requestTimeoutMillis = 30000;
+    private int modelValidationTimeoutMillis = 180000;
+    private int agentValidationTimeoutMillis = 300000;
     private int agentPollMillis = 2000;
     private int reportPollMillis = 2000;
     private int specialistPollMillis = 3000;

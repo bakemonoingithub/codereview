@@ -127,7 +127,8 @@ class AgentTaskWorkerTest {
         config.set("limits", mapper.valueToTree(budget));
         var toolsConfig = new com.codereview.agent.tools.ToolLimitProperties(); toolsConfig.setReadMaxLines(250);
         config.set("toolLimits", mapper.valueToTree(toolsConfig));
-        var policy = new com.codereview.agent.invocation.InvocationPolicy(0, 5, 30, 512, 0.05);
+        var policy = new com.codereview.agent.invocation.InvocationPolicy(0, 5, 30, 512, 0.05,
+                new com.codereview.agent.invocation.RetryBackoff(5000, 3, 0.1, 100));
         config.set("invocationPolicy", mapper.valueToTree(policy));
         task.setConfigSnapshot(mapper.writeValueAsString(config));
         when(invocation.invoke(any())).thenReturn(toolCallResult("call-1", "read_code",

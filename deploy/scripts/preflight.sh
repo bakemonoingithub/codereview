@@ -132,8 +132,8 @@ if [ -f .env ]; then
   fi
 
   if [ -f config/application.yml ]; then
-    if grep -q '__DB_' config/application.yml; then
-      fail "config/application.yml 里还有未替换的占位符（__DB_ 开头），说明它是模板而不是渲染后的文件"
+    if grep -qE '__DB_|__AGENT_DB_|__AI_' config/application.yml; then
+      fail "config/application.yml 中还有未替换的模板占位符"
     else
       pass "config/application.yml 已存在"
     fi
@@ -145,8 +145,8 @@ if [ -f .env ]; then
     else
       fail "config/application.yml 的 agent.datasource 未与 .env 中的 Agent 新库和账号保持一致"
     fi
-    if grep -q 'CHANGE-ME' config/application.yml; then
-      warn "config/application.yml 里的 AI 网关地址还是占位符，大模型调用会失败（页面与分析器不受影响）"
+    if grep -q 'gitea.example.internal' config/application.yml; then
+      fail "请先将 config/application.yml 中的 git.gitea.hosts 填为实际仓库 host[:port]"
     fi
   else
     fail "缺少 config/application.yml（首次部署时 deploy.sh 会自动生成，单独跑体检可忽略这条）"

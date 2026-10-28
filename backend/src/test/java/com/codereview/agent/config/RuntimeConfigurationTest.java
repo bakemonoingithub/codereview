@@ -24,7 +24,12 @@ class RuntimeConfigurationTest {
                 new MockEnvironment().withProperty("agent.budget.model-truns", "12"),
                 new MockEnvironment().withProperty("agent.model.per-task-concurrency", "5"),
                 new MockEnvironment().withProperty("agent.tools.limits.read-max-lines", "100"),
-                new MockEnvironment().withProperty("agent.model.transport-retries", "2"),
+                new MockEnvironment().withProperty("agent.model.transport-retries", "11"),
+                new MockEnvironment().withProperty("agent.model.retry-jitter-ratio", "1.1"),
+                new MockEnvironment().withProperty("agent.model.retry-multiplier", "0.5"),
+                new MockEnvironment().withProperty("agent.model.retry-max-millis", "10"),
+                new MockEnvironment().withProperty("app.ui.model-validation-timeout-millis", "60000"),
+                new MockEnvironment().withProperty("app.ui.agent-validation-timeout-millis", "240000"),
                 new MockEnvironment().withProperty("agent.budget.network-attempts", "201"),
                 new MockEnvironment().withProperty("server.port", "65536"),
                 new MockEnvironment().withProperty("app.ui.api-base", "https://example.test/api") }) {
@@ -67,6 +72,33 @@ class RuntimeConfigurationTest {
                 "--DB_URL=jdbc:mysql://invalid/not-connected", "--DB_USER=test", "--DB_PASSWORD=test",
                 "--spring.main.banner-mode=off" }));
     }
+    @Test void renderedIntranetTemplateBindsAllRetryAndValidationSettings(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        var template = java.nio.file.Files.readString(java.nio.file.Path.of("../deploy/config/application.yml.example"));
+        var rendered = template.replace("__AGENT_DB_NAME__", "ai_code_review_agent")
+                .replace("__AGENT_DB_USER__", "fixture").replace("__AGENT_DB_PASSWORD__", "fixture");
+        var configFile = directory.resolve("application.yml");
+        java.nio.file.Files.writeString(configFile, rendered);
+        assertDoesNotThrow(() -> com.codereview.CodeReviewApplication.checkConfiguration(new String[] {
+                "--check-config", "--spring.config.location=" + configFile.toUri(), "--spring.main.banner-mode=off" }));
+        var yaml = new org.yaml.snakeyaml.Yaml().<java.util.Map<String,Object>>load(rendered);
+        var agent = (java.util.Map<?,?>) yaml.get("agent");
+        var model = (java.util.Map<?,?>) agent.get("model");
+        assertEquals(3, model.get("transport-retries"));
+        assertEquals(600, model.get("max-read-timeout-seconds"));
+        var budget = (java.util.Map<?,?>) agent.get("budget");
+        assertEquals(192, budget.get("network-attempts"));
+    }
+
+    @Test void sourceExampleUsesTheSameKeysWithoutLiveConnections(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) throws Exception {
+        var file = java.nio.file.Files.copy(java.nio.file.Path.of("src/main/resources/application.example.yml"),
+                directory.resolve("application.yml"));
+        assertDoesNotThrow(() -> com.codereview.CodeReviewApplication.checkConfiguration(new String[] {
+                "--check-config", "--spring.config.location=" + file.toUri(), "--DB_URL=jdbc:mysql://invalid/fixture",
+                "--DB_USER=fixture", "--DB_PASSWORD=fixture", "--spring.main.banner-mode=off" }));
+    }
+
     @Test void preflightRunsBeforeSingletonConstruction() {
         new ApplicationContextRunner().withUserConfiguration(RuntimeConfigurationValidation.class)
                 .withPropertyValues("agent.task.dispatch-concurrency=0")
@@ -101,7 +133,7 @@ class RuntimeConfigurationTest {
         UiProperties properties = new UiProperties(); properties.setTitle("内网分析"); properties.setAgentPollMillis(4000);
         var response = new RuntimeConfigController(properties).get();
         var json = new ObjectMapper().valueToTree(response.getBody());
-        assertEquals(7, json.size()); assertEquals("内网分析", json.path("title").asText());
+        assertEquals(9, json.size()); assertEquals("内网分析", json.path("title").asText());
         assertEquals(4000, json.path("agentPollMillis").asInt());
         assertEquals("no-store", response.getHeaders().getCacheControl());
         assertFalse(json.has("datasource")); assertFalse(json.has("credential"));

@@ -153,9 +153,7 @@ public class AgentTaskWorker implements TaskWorker {
                 updateRun(run, run.getTurnNo(), run.getToolAttempts(), run.getNetworkAttempts(), "MODEL_CALL");
                 int remainingRetries = Math.min(execution.policy.transportRetries(),
                         execution.budget.getNetworkAttempts() - run.getNetworkAttempts() - 1);
-                var roundPolicy = new com.codereview.agent.invocation.InvocationPolicy(remainingRetries,
-                        execution.policy.retryBaseMillis(), execution.policy.maxReadTimeoutSeconds(),
-                        execution.policy.safetyReserveMinTokens(), execution.policy.safetyReserveRatio());
+                var roundPolicy = execution.policy.withTransportRetries(remainingRetries);
                 result = invocation.invoke(new InvocationRequest(execution.model, prompt,
                         new InvocationScope(task.getId(), null, null, task.getDeadlineAt()),
                         false, null, execution.budget.getOutputTokens(), turn, execution.budget.getModelTimeoutSeconds(), roundPolicy));

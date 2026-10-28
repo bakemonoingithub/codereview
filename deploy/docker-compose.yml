@@ -73,7 +73,6 @@ services:
       # 令牌走环境变量注入，不写进配置文件、不进镜像（留空则由界面/数据库配置决定）
       GITEA_TOKEN: ${GITEA_TOKEN:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     volumes:
       # 外挂配置：改数据库/换 AI 网关只需改这个文件 + 重启容器，不用重建镜像
       - ./config/application.yml:/app/config/application.yml:ro

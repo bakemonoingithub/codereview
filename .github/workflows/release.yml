@@ -132,7 +132,7 @@ jobs:
           # 1) 部署包本体（脚本 / compose / 配置模板 / 一页纸）
           cp -r deploy/. "$B/"
           cp -f deploy/scripts/env-check.sh "$B/env-check.sh"
-          rm -f "$B/scripts/_selftest.sh"          # 开发自测脚本，不进交付包
+          rm -f "$B/scripts/"_*selftest.sh         # 开发自测脚本，不进交付包
           chmod +x "$B"/*.sh "$B"/scripts/*.sh || true
 
           # 防止发布包遗漏新路线必需的独立数据库配置或自动初始化逻辑。
@@ -141,6 +141,11 @@ jobs:
           grep -q 'AGENT_DB_PASSWORD' "$B/.env.example"
           grep -q 'Agent 新库与独立账号已就绪' "$B/scripts/deploy.sh"
           grep -q 'AGENT_DB_NAME' "$B/scripts/backup.sh"
+          grep -q 'connectivity-validation-timeout-seconds' "$B/config/application.yml.example"
+          grep -q 'retry-jitter-ratio' "$B/config/application.yml.example"
+          test -f "$B/00-先读我.md"
+          test -f "$B/系统部署手册.md"
+          test -f "$B/系统运维手册.md"
 
           # 2) 换行符统一成 LF —— U 盘摆渡最容易踩的坑（CRLF 的 .sh 直接语法报错）
           find "$B" -type f -name '*.sh' -exec sed -i 's/\r$//' {} +

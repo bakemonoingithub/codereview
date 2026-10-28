@@ -78,9 +78,10 @@ FROM ${RUNTIME_IMAGE} AS runtime
 ENV TZ=Asia/Shanghai \
     LANG=C.UTF-8
 
-# curl 仅供容器内 healthcheck 使用（temurin 基础镜像不带 curl）
+# curl 用于健康检查，git 用于 Agent 的代码搜索和 Git 子进程。
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl tzdata \
+ && apt-get install -y --no-install-recommends curl tzdata git \
+ && git --version \
  && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
  && echo "$TZ" > /etc/timezone \
  && rm -rf /var/lib/apt/lists/*
@@ -105,4 +106,4 @@ EXPOSE 8080
 # 部署时由 docker-compose.yml 的 JAVA_TOOL_OPTIONS 覆盖，此处只是兜底。
 ENV JAVA_TOOL_OPTIONS="-Xms1g -Xmx4g -XX:+UseG1GC -XX:-UseTransparentHugePages -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai"
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar", "--spring.config.location=file:/app/config/application.yml"]

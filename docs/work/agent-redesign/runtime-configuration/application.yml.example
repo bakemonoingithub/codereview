@@ -1,4 +1,4 @@
-# CFG-02–05 参数参考；尚未接入正式部署流程。
+# 通用代码默认值参考；容器内网建议值见 deploy/config/application.yml.example。
 # 数据库值由 DB_URL / DB_USER / DB_PASSWORD 提供，不填写真实凭据到版本库。
 # Gitea hosts 沿用当前代码缺省作对照，部署时必须按目标环境覆盖。
 server:
@@ -55,6 +55,13 @@ agent:
     safety-reserve-ratio: 0.1
     transport-retries: 1
     retry-base-millis: 500
+    retry-max-millis: 30000
+    retry-multiplier: 2.0
+    retry-jitter-ratio: 0.2
+    retry-check-millis: 1000
+    connectivity-validation-timeout-seconds: 60
+    tool-validation-timeout-seconds: 120
+    tool-validation-output-tokens: 1024
     max-read-timeout-seconds: 180
     output-reserve-tokens: 4096
     validation-output-tokens: 64
@@ -120,6 +127,8 @@ app:
     title: "智能代码分析工具"
     api-base: "api/v2"
     request-timeout-millis: 30000
+    model-validation-timeout-millis: 180000
+    agent-validation-timeout-millis: 300000
     agent-poll-millis: 2000
     report-poll-millis: 2000
     specialist-poll-millis: 3000

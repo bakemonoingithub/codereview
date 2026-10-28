@@ -15,8 +15,10 @@ public class RuntimeConfigController {
     public ResponseEntity<PublicConfig> get() {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new PublicConfig(1,
                 ui.getTitle(), ui.getApiBase(), ui.getRequestTimeoutMillis(), ui.getAgentPollMillis(),
-                ui.getReportPollMillis(), ui.getSpecialistPollMillis()));
+                ui.getReportPollMillis(), ui.getSpecialistPollMillis(),
+                ui.getModelValidationTimeoutMillis(), ui.getAgentValidationTimeoutMillis()));
     }
     public record PublicConfig(int version, String title, String apiBase, int requestTimeoutMillis,
-                               int agentPollMillis, int reportPollMillis, int specialistPollMillis) {}
+                               int agentPollMillis, int reportPollMillis, int specialistPollMillis,
+                               int modelValidationTimeoutMillis, int agentValidationTimeoutMillis) {}
 }

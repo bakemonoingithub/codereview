@@ -709,10 +709,12 @@ export const modelsApi = {
     }
   ) => v2.put<ModelView>(`/models/${id}`, body).then((r) => r.data),
   remove: (id: string) => v2.delete(`/models/${id}`).then((r) => r.data),
-  validate: (id: string) => v2.post<ModelValidation>(`/models/${id}/validate`).then((r) => r.data),
+  validate: (id: string) => v2.post<ModelValidation>(`/models/${id}/validate`, undefined,
+    { timeout: runtimeConfig().modelValidationTimeoutMillis ?? runtimeConfig().requestTimeoutMillis }).then((r) => r.data),
   /** 原生工具协议验证：真实两轮调用，结果绑定当前配置修订。 */
   validateAgent: (id: string) =>
-    v2.post<ModelValidation>(`/models/${id}/validate-agent`).then((r) => r.data)
+    v2.post<ModelValidation>(`/models/${id}/validate-agent`, undefined,
+      { timeout: runtimeConfig().agentValidationTimeoutMillis ?? runtimeConfig().requestTimeoutMillis }).then((r) => r.data)
 }
 
 export const promptsApi = {

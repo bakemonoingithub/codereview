@@ -1,5 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { loadRuntimeConfig, testDefaults } from '@/runtime/config'
 
 const originalAdapter = axios.defaults.adapter
 let payload: unknown
@@ -15,6 +16,20 @@ afterAll(() => { axios.defaults.adapter = originalAdapter })
 beforeEach(() => { failure = undefined })
 
 describe('v2 客户端的真实响应链', () => {
+  it('模型验证独立使用运行配置的长超时，普通业务请求保持原超时', async () => {
+    const load = (data: unknown) => loadRuntimeConfig(async () => new Response(JSON.stringify(data)))
+    await load({ ...testDefaults, modelValidationTimeoutMillis: 900000, agentValidationTimeoutMillis: 2700000 })
+    try {
+      payload = { result: 'PASSED' }
+      await modelsApi.validate('m1')
+      expect(sent.timeout).toBe(900000)
+      await modelsApi.validateAgent('m1')
+      expect(sent.timeout).toBe(2700000)
+      payload = { items: [] }
+      await projectsApi.list()
+      expect(sent.timeout).toBe(testDefaults.requestTimeoutMillis)
+    } finally { await load(testDefaults) }
+  })
   it('Agent 进度把后端 Long 字符串转换为用量数字，同时保留任务 ID', async () => {
     payload = {
       taskId: '01M5KP4AB5BP9WN66DBQSFFBAW', state: 'SUCCEEDED', turnNo: 29,

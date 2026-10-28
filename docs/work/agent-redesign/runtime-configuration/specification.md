@@ -1,10 +1,10 @@
 # 运行配置规范（CFG-02）
 
-日期：2026-10-26（Asia/Taipei）。依据：[改造计划](README.md)。本规范对应 CFG-02–05 的实现；部署模板和正式内网验收属于 CFG-06／07。
+日期：2026-10-26（Asia/Taipei）。依据：[改造计划](README.md)。本规范对应运行配置实现。2026-10-28 已补充 LLM 重试、验证期限及部署模板；工程证据见[本轮记录](llm-deployment-20261028.md)，目标内网验收仍属 CFG-07。
 
 ## 1. 加载、生效与兼容
 
-- 配置使用 Spring Boot 现有加载机制。标准部署拟以 `--spring.config.location=file:/app/config/application.yml` 指定文件；本轮不修改启动脚本。生产入口的强制外置与镜像排密留在 CFG-06。
+- 配置使用 Spring Boot 现有加载机制。当前 Docker 镜像入口以 `--spring.config.location=file:/app/config/application.yml` 指定外置文件。部署脚本在数据库启动前使用新镜像执行静态配置检查；目标机实际加载与重建验收仍待执行。
 - 在本期涉及的来源中，命令行参数高于 Java 系统属性，系统属性高于环境变量，环境变量高于配置文件；同层外置文件高于打包默认值。显式 `spring.config.location` 替换默认文件搜索位置。本轮以独立配置检查上下文验证文件与命令行覆盖，不把它记为真实部署重启通过。
 - 参数缺省采用类型化配置默认值；所有有效自有参数在数据库、任务调度和外部请求组件构造前校验。YAML／properties／命令行中的未知自有键拒绝启动。环境变量只校验自有命名空间，`GIT_PAGER` 等 Git 进程变量不视为应用配置。
 - Spring 环境变量名称把点改为下划线、删除连字符后大写，例如 `agent.budget.model-turns` 对应 `AGENT_BUDGET_MODELTURNS`，不要写成 `AGENT_BUDGET_MODEL_TURNS`。列表索引可使用 `_0` 后缀。YAML 中的凭据引用建议使用 `DB_URL`／`DB_USER`／`DB_PASSWORD`，或直接使用规范键对应的环境变量覆盖。
@@ -137,12 +137,19 @@
 | 键名 | 类型／单位 | 默认值 | 约束 | 功能 | 敏感 |
 | --- | --- | --- | --- | --- | --- |
 | `agent.model.connect-timeout-seconds` | int／秒 | 10 | 正整数 | 建立 HTTP 连接的最长等待 | 否 |
-| `agent.model.probe-timeout-seconds` | int／秒 | 15 | 正整数 | 模型连通探测响应等待 | 否 |
+| `agent.model.probe-timeout-seconds` | int／秒 | 15 | 正整数 | 轻量 ModelProbe 响应等待；不控制管理界面的公共调用连通验证 | 否 |
 | `agent.model.probe-connect-timeout-seconds` | int／秒 | 5 | 正整数 | 模型连通探测建连等待 | 否 |
 | `agent.model.safety-reserve-min-tokens` | int／token | 1024 | 正整数 | 上下文容量判断的最低安全余量 | 否 |
 | `agent.model.safety-reserve-ratio` | double／比例 | 0.1 | (0, 1) | 按模型窗口比例计算的安全余量，与最低值取大者 | 否 |
-| `agent.model.transport-retries` | int／— | 1 | 0–1 | 暂态失败允许的额外传输重试次数 | 否 |
-| `agent.model.retry-base-millis` | long／毫秒 | 500 | 正整数 | 无 Retry-After 时的重试等待基数 | 否 |
+| `agent.model.transport-retries` | int／— | 1 | 0–10 | 暂态失败允许的额外传输重试次数，不含首次；Agent 还受冻结剩余网络次数限制 | 否 |
+| `agent.model.retry-base-millis` | long／毫秒 | 500 | 正整数，且 ≤ retry-max-millis | 本地递增等待基数 | 否 |
+| `agent.model.retry-max-millis` | long／毫秒 | 30000 | 正整数 | 本地退避等待上限，不截短网关 Retry-After | 否 |
+| `agent.model.retry-multiplier` | double／倍数 | 2.0 | 1–10 | 每次失败后的等待增长倍数 | 否 |
+| `agent.model.retry-jitter-ratio` | double／比例 | 0.2 | 0–1 | 等待时间的对称随机变化比例，0 表示关闭 | 否 |
+| `agent.model.retry-check-millis` | long／毫秒 | 1000 | 正整数 | 等待重试时检查取消和期限的间隔 | 否 |
+| `agent.model.connectivity-validation-timeout-seconds` | int／秒 | 60 | 正整数 | 管理界面普通连通验证总期限，包含排队、等待和重试 | 否 |
+| `agent.model.tool-validation-timeout-seconds` | int／秒 | 120 | 正整数 | 工具准入每轮总期限，包含排队和重试，共两轮 | 否 |
+| `agent.model.tool-validation-output-tokens` | int／token | 1024 | 正整数 | 工具验证输出预留，仍受模型最大输出限制 | 否 |
 | `agent.model.max-read-timeout-seconds` | int／秒 | 180 | 正整数 | 正式模型单次响应等待上限 | 否 |
 | `agent.model.output-reserve-tokens` | int／token | 4096 | 正整数 | 普通调用默认输出预留，受模型最大输出限制 | 否 |
 | `agent.model.validation-output-tokens` | int／token | 64 | 正整数 | 普通模型验证的输出预留 | 否 |
@@ -220,7 +227,9 @@
 | --- | --- | --- | --- | --- | --- |
 | `app.ui.title` | String／— | "智能代码分析工具" | 1–100 字符 | 页面及侧栏的应用名称 | 否 |
 | `app.ui.api-base` | String／— | "api/v2" | 同源路径；不含主机、查询参数或跳转 | 宿主 API 根地址；Gitea 可空并从项目地址推导 | 否 |
-| `app.ui.request-timeout-millis` | int／毫秒 | 30000 | 正整数 | 浏览器业务请求响应超时 | 否 |
+| `app.ui.request-timeout-millis` | int／毫秒 | 30000 | 正整数 | 普通浏览器业务请求响应超时 | 否 |
+| `app.ui.model-validation-timeout-millis` | int／毫秒 | 180000 | 大于后端连通验证总期限的毫秒值 | 浏览器普通模型验证等待，需预留传输和保存时间 | 否 |
+| `app.ui.agent-validation-timeout-millis` | int／毫秒 | 300000 | 大于两轮工具验证期限之和的毫秒值 | 浏览器 Agent 工具验证等待，需预留传输和保存时间 | 否 |
 | `app.ui.agent-poll-millis` | int／毫秒 | 2000 | 正整数 | Agent 详情进度轮询间隔 | 否 |
 | `app.ui.report-poll-millis` | int／毫秒 | 2000 | 正整数 | 报告详情轮询间隔 | 否 |
 | `app.ui.specialist-poll-millis` | int／毫秒 | 3000 | 正整数 | 专项详情轮询间隔 | 否 |
@@ -241,7 +250,7 @@
 ## 3. Agent 快照与工具指纹
 
 - 新 Agent `configSnapshot.version=3`；输入快照保持 version 2，业务输入结构不变。
-- `limits` 保存轮次、网络／工具次数、期限、输出、上下文比例、无进展、每轮工具数及协议错误容忍。`toolLimits` 保存工具限制；`invocationPolicy` 保存重试、退避、读超时和安全余量。
+- `limits` 保存轮次、网络／工具次数、期限、输出、上下文比例、无进展、每轮工具数及协议错误容忍。`toolLimits` 保存工具限制；`invocationPolicy` 保存重试、读超时和安全余量；新增 `retryBackoff` 节点冻结最大本地等待、增长倍数、随机比例和取消检查间隔。旧节点缺少 `retryBackoff` 时使用历史固定等待、不添加随机变化，不读取新进程配置。
 - 执行循环、工具 schema、参数校验、工具分页与返回大小、进度读取使用同一份冻结配置。连接、缓存、搜索槽位等属于进程资源参数。
 - Agent 数据库调用额度直接冻结为 `networkAttempts`，公共配置只作为启动上限校验；每次真实发送继续原子计数。最后一次可用尝试关闭额外重试，不提前丢弃该机会。
 - `limits.maxEstimatedTokenUnits = networkAttempts × (floor(contextWindow × contextStopRatio) + min(outputTokens, model.maxOutput))` 仅为推导资源规模诊断，不能当作已消耗 token。核对正式实现后确认，现有正式额度是请求次数；本期不把实验工具桥的累计 token 保险冒充正式运行能力，也不额外引入货币限额。
@@ -251,7 +260,7 @@
 
 ## 4. 前端公开配置协议
 
-`GET /api/v2/runtime-config` 返回 `Cache-Control: no-store`，正文只有 `version`、`title`、`apiBase`、`requestTimeoutMillis`、`agentPollMillis`、`reportPollMillis`、`specialistPollMillis` 七个字段，version 为 1。不返回任意配置对象、数据库连接、仓库地址或凭据。
+`GET /api/v2/runtime-config` 返回 `Cache-Control: no-store`，正文只有 `version`、`title`、`apiBase`、`requestTimeoutMillis`、`agentPollMillis`、`reportPollMillis`、`specialistPollMillis`、`modelValidationTimeoutMillis`、`agentValidationTimeoutMillis` 九个字段，version 为 1。验证接口使用独立等待时间；读取旧服务器七字段响应时回退到其中的普通请求超时，新字段存在但非法时拒绝加载。不返回任意配置对象、数据库连接、仓库地址或凭据。
 
 页面先通过 `document.baseURI` 相对地址 `api/v2/runtime-config` 加载，再动态导入业务应用、创建 API 客户端和启动轮询。公开业务基址使用同源路径，默认 `api/v2`；引导地址不依赖该字段，也不依赖 VITE 环境变量。静态资源使用相对构建基址，为同源子路径保留部署兼容；反向代理路径改写仍需 CFG-06／07 验证。
 
@@ -271,6 +280,6 @@ java -jar app.jar --check-config --spring.config.location=file:/app/config/appli
 
 ## 6. 配置样例与后续边界
 
-[独立样例](application.yml.example) 可作为参数参考，包含占位凭据。它尚未接入现有部署渲染脚本，不应直接替换正在使用的文件；生产模板清理、强制外置、环境注入、容器端口／日志／挂载和镜像排密在 CFG-06 完成。
+[独立样例](application.yml.example) 可作为参数参考，包含占位凭据。通用样例使用 DB_URL／DB_USER／DB_PASSWORD 环境变量；容器[正式模板](../../../../deploy/config/application.yml.example)使用部署脚本渲染数据库占位符，其余键按同一规范提供。两种方式不能混用而遗漏环境变量。模板不覆盖已有正式 YAML；目标内网端口／挂载、镜像排密及完整部署演练仍需按 CFG-06／07 核对。
 
 内网真实重启、冷镜像、三类业务实际模型调用及回退验收仍属于 CFG-07。本期工程检查和模拟服务结果不能替代这些验收。

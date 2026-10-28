@@ -203,6 +203,80 @@ class ModelInvocationServiceTest {
     }
 
     @Test
+    void configuredThreeRetriesRecordFourAttemptsAndRespectTheLimit() {
+        properties.setTransportRetries(3); properties.setRetryMultiplier(1); properties.setRetryJitterRatio(0);
+        when(transport.post(any(), any(), any(), any())).thenReturn(
+                new ModelTransport.TransportResponse(503, "busy", Map.of(), 5),
+                new ModelTransport.TransportResponse(502, "busy", Map.of(), 5),
+                new ModelTransport.TransportResponse(504, "busy", Map.of(), 5), ok("{}"));
+        var result = service.invoke(request(prompt(100), model(100000, 8000)));
+        assertEquals(4, result.attempts());
+        verify(quotaMapper, times(4)).update(isNull(), any());
+        verify(callMapper, times(4)).insert(any(AgentModelCall.class));
+    }
+
+    @Test
+    void transportFailureStopsAfterConfiguredAttempts() {
+        properties.setTransportRetries(3); properties.setRetryMultiplier(1); properties.setRetryJitterRatio(0);
+        when(transport.post(any(), any(), any(), any())).thenThrow(
+                new ModelTransport.TransportFailure(false, "connection reset", null));
+        assertEquals(ErrorCode.MODEL_UNAVAILABLE, assertThrows(ApiException.class,
+                () -> service.invoke(request(prompt(100), model(100000, 8000)))).errorCode());
+        verify(transport, times(4)).post(any(), any(), any(), any());
+    }
+
+    @Test
+    void gatewayRetryAfterIsNotShortenedToTheLocalBackoffCap() {
+        properties.setRetryMaxMillis(1);
+        task.setDeadlineAt(AgentTime.now().plusSeconds(10));
+        when(transport.post(any(), any(), any(), any())).thenReturn(
+                new ModelTransport.TransportResponse(429, "busy", Map.of("retry-after", "30"), 5));
+        assertEquals(ErrorCode.TASK_DEADLINE, assertThrows(ApiException.class,
+                () -> service.invoke(request(prompt(100), model(100000, 8000)))).errorCode());
+        verify(transport, times(1)).post(any(), any(), any(), any());
+    }
+
+    @Test
+    void httpDateRetryAfterOnServiceUnavailableIsRespected() {
+        String after = AgentTime.now().plusSeconds(40).atZone(java.time.ZoneOffset.UTC)
+                .format(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME);
+        task.setDeadlineAt(AgentTime.now().plusSeconds(10));
+        when(transport.post(any(), any(), any(), any())).thenReturn(
+                new ModelTransport.TransportResponse(503, "busy", Map.of("retry-after", after), 5));
+        assertEquals(ErrorCode.TASK_DEADLINE, assertThrows(ApiException.class,
+                () -> service.invoke(request(prompt(100), model(100000, 8000)))).errorCode());
+        verify(transport, times(1)).post(any(), any(), any(), any());
+    }
+
+    @Test
+    void cancellationDuringBackoffStopsBeforeAnotherNetworkAttempt() {
+        properties.setRetryBaseMillis(1000); properties.setRetryCheckMillis(1);
+        var reads = new java.util.concurrent.atomic.AtomicInteger();
+        when(taskMapper.selectById(TASK_ID)).thenAnswer(invocation -> {
+            // Four guards precede the wait; cancel when its first poll checks again.
+            if (reads.incrementAndGet() >= 5) task.setCancelRequestedAt(AgentTime.now());
+            return task;
+        });
+        when(transport.post(any(), any(), any(), any())).thenReturn(
+                new ModelTransport.TransportResponse(503, "busy", Map.of(), 5));
+        assertEquals(ErrorCode.TASK_CANCELLED, assertThrows(ApiException.class,
+                () -> service.invoke(request(prompt(100), model(100000, 8000)))).errorCode());
+        verify(transport, times(1)).post(any(), any(), any(), any());
+    }
+
+    @Test
+    void connectivityValidationUsesConfiguredDeadlineInsteadOfOneMinute() {
+        properties.setConnectivityValidationTimeoutSeconds(300);
+        properties.setMaxReadTimeoutSeconds(600);
+        when(transport.post(any(), any(), any(), any())).thenReturn(ok("{\"ok\":true}"));
+        assertTrue(service.validate(model(null, null)).passed());
+        var timeout = ArgumentCaptor.forClass(Duration.class);
+        verify(transport).post(any(), any(), any(), timeout.capture());
+        assertTrue(timeout.getValue().getSeconds() > 290);
+        assertTrue(timeout.getValue().getSeconds() < 300);
+    }
+
+    @Test
     void authenticationFailureIsNotRetried() {
         when(transport.post(any(), any(), any(), any())).thenReturn(
                 new ModelTransport.TransportResponse(401, "bad key", Map.of(), 5));
