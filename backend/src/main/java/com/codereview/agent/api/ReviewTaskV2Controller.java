@@ -46,6 +46,12 @@ public class ReviewTaskV2Controller {
                 .body(created);
     }
 
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id, @RequestParam int expectedRevision) {
+        service.delete(id, expectedRevision);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public PageResponse<TaskDtos.Summary> list(@RequestParam(required = false) String projectId,
                                                @RequestParam(required = false) String route,

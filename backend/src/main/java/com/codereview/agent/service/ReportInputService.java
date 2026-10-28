@@ -77,6 +77,7 @@ public class ReportInputService {
         int size = AgentPaging.limit(limit);
         LambdaQueryWrapper<AgentReviewResult> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AgentReviewResult::getCompleteness, "COMPLETE");
+        wrapper.apply("task_id IN (SELECT id FROM review_task WHERE is_deleted = 0)");
         if (projectId != null && !projectId.isBlank()) {
             String id = AgentIds.requireValid(projectId.trim(), "项目 ID");
             wrapper.apply("task_id IN (SELECT id FROM review_task WHERE project_id = {0})", id);
@@ -180,7 +181,8 @@ public class ReportInputService {
                 .filter(java.util.Objects::nonNull).distinct().toList();
         Map<String, AgentReviewTask> tasks = taskIds.isEmpty() ? Map.of()
                 : db.mapper(AgentReviewTaskMapper.class).selectList(
-                        new LambdaQueryWrapper<AgentReviewTask>().in(AgentReviewTask::getId, taskIds))
+                        new LambdaQueryWrapper<AgentReviewTask>().in(AgentReviewTask::getId, taskIds)
+                                .orderByAsc(AgentReviewTask::getId).last("FOR UPDATE"))
                 .stream().collect(Collectors.toMap(AgentReviewTask::getId, Function.identity()));
         Map<String, AgentTaskTarget> targets = targetIds.isEmpty() ? Map.of()
                 : db.mapper(AgentTaskTargetMapper.class).selectList(

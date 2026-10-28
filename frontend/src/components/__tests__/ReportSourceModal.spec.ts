@@ -46,6 +46,18 @@ afterEach(() => {
 })
 
 describe('报告冻结来源', () => {
+  it('原审查删除后隐藏跳转，仍展示冻结结果与代码证据', async () => {
+    const data = { ...snapshot(), originalTaskAvailable: false }
+    vi.mocked(reportsApi.source).mockResolvedValue(data as any)
+    const wrapper = await start()
+    expect(wrapper.find('a.original-detail').exists()).toBe(false)
+    expect(wrapper.text()).toContain('原审查已删除或不可用')
+    expect(wrapper.text()).toContain('问题')
+    expect((wrapper.vm as any).$.setupState.materials).toHaveLength(1)
+    expect(tasksApi.material).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('第 2 版快照在对应模式卡底显示冻结反馈，忽略旧整份评价', async () => {
     const data: any = snapshot()
     data.snapshot.snapshotVersion = 2; data.snapshot.kind = 'PATTERN'; data.snapshot.issues = []

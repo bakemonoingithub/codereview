@@ -65,7 +65,7 @@
                     <dt>原文件路径</dt><dd><code>{{ source.snapshot.target.oldPath }}</code></dd>
                   </template>
                 </dl>
-                <p class="input-note">此快照未保存完整的模型、通用规则和本次要求。可打开原审查详情查看任务配置。</p>
+                <p class="input-note">此快照未保存完整的模型、通用规则和本次要求。<template v-if="originalDetailHref">可打开原审查详情查看任务配置。</template></p>
               </section>
 
               <section class="input-section" aria-label="代码材料">
@@ -103,6 +103,7 @@
       <footer class="reader-footer">
         <a v-if="originalDetailHref" :href="originalDetailHref" target="_blank" rel="noopener noreferrer" class="original-detail">打开原审查详情 ↗</a>
 <!--        <span v-if="originalDetailHref" class="muted small footer-note">查看完整任务配置、实际调用及当前反馈</span>-->
+        <span v-if="source?.originalTaskAvailable === false" class="muted small">原审查已删除或不可用</span>
         <span class="spacer" /><a-button @click="close">关闭</a-button>
       </footer>
     </div>
@@ -143,7 +144,7 @@ onBeforeUnmount(() => { loadEpoch++ })
 
 const readerId = computed(() => `source-${props.reportId}-${props.ordinal}`)
 const originalTaskId = computed<string>(() => source.value?.snapshot?.taskId || source.value?.snapshot?.task?.id || '')
-const originalDetailHref = computed(() => originalTaskId.value ? router.resolve({
+const originalDetailHref = computed(() => originalTaskId.value && source.value?.originalTaskAvailable !== false ? router.resolve({
   name: 'review-detail', params: { id: originalTaskId.value },
   query: source.value?.snapshot?.targetId ? { targetId: source.value.snapshot.targetId } : {}
 }).href : null)

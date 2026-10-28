@@ -40,6 +40,10 @@ public class FeedbackService {
     }
 
     public FeedbackDtos.View save(String subjectKind, String subjectId, FeedbackDtos.Update request) {
+        return db.inTransaction(() -> saveInTransaction(subjectKind, subjectId, request));
+    }
+
+    private FeedbackDtos.View saveInTransaction(String subjectKind, String subjectId, FeedbackDtos.Update request) {
         Subject subject = requireSubject(subjectKind, subjectId);
         if (request.expectedRevision() == null) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "expectedRevision 为必填项");
@@ -96,6 +100,7 @@ public class FeedbackService {
             if (result == null || !"ISSUE".equals(result.getKind()) || !"COMPLETE".equals(result.getCompleteness())) {
                 throw new ApiException(ErrorCode.CONFLICT, "仅完整的问题审查结果允许反馈");
             }
+            requireOwner(result);
             return new Subject("ISSUE", validId);
         }
         if ("PATTERN".equals(kind) || "COUPLING".equals(kind)) {
@@ -107,6 +112,7 @@ public class FeedbackService {
                 throw new ApiException(ErrorCode.CONFLICT, "条目类型不匹配或结果未完整发布");
             }
             new ResultItemIndex(db, new ObjectMapper()).requireItems(result);
+            requireOwner(result);
             return new Subject(kind, validId);
         }
         if ("RESULT".equals(kind)) {
@@ -116,9 +122,21 @@ public class FeedbackService {
                     || !("PATTERN".equals(result.getKind()) || "COUPLING".equals(result.getKind()))) {
                 throw new ApiException(ErrorCode.CONFLICT, "仅完整的模式或耦合结果允许结果级反馈");
             }
+            requireOwner(result);
             return new Subject("RESULT", validId);
         }
         throw new ApiException(ErrorCode.VALIDATION_FAILED, "主体类型只能是 ISSUE、PATTERN、COUPLING 或 RESULT");
+    }
+
+    private void requireOwner(AgentReviewResult result) {
+        var task = RecordVisibility.task(db, result.getTaskId());
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+            var locked = db.mapper(com.codereview.agent.mapper.AgentReviewTaskMapper.class)
+                    .selectIncludingDeletedForUpdate(task.getId());
+            if (locked == null || Integer.valueOf(1).equals(locked.getIsDeleted())) {
+                throw new ApiException(ErrorCode.NOT_FOUND, "审查不存在或已删除");
+            }
+        }
     }
 
     private AgentFeedback find(String kind, String id) {

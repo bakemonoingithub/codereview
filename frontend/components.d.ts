@@ -78,6 +78,7 @@ declare module 'vue' {
     PromptInfoPreview: typeof import('./src/components/PromptInfoPreview.vue')['default']
     PromptVersionSelect: typeof import('./src/components/PromptVersionSelect.vue')['default']
     RawResult: typeof import('./src/components/RawResult.vue')['default']
+    RecordDeleteModal: typeof import('./src/components/RecordDeleteModal.vue')['default']
     ReportMarkdown: typeof import('./src/components/ReportMarkdown.vue')['default']
     ReportPanel: typeof import('./src/components/ReportPanel.vue')['default']
     ReportResultPickerModal: typeof import('./src/components/ReportResultPickerModal.vue')['default']

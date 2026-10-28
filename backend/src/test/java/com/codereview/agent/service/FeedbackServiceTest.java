@@ -68,6 +68,11 @@ class FeedbackServiceTest {
             TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), entity);
         }
         service = new FeedbackService(db);
+        var tasks = org.mockito.Mockito.mock(com.codereview.agent.mapper.AgentReviewTaskMapper.class);
+        when(db.mapper(com.codereview.agent.mapper.AgentReviewTaskMapper.class)).thenReturn(tasks);
+        var task = new AgentReviewTask(); task.setId(TASK_ID);
+        when(tasks.selectById(org.mockito.ArgumentMatchers.any())).thenReturn(task);
+        when(db.inTransaction(any())).thenAnswer(call -> ((java.util.function.Supplier<?>) call.getArgument(0)).get());
         when(db.mapper(AgentFeedbackMapper.class)).thenReturn(feedbackMapper);
         when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
         when(db.mapper(AgentReviewResultMapper.class)).thenReturn(resultMapper);

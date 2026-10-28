@@ -74,9 +74,11 @@
       <a-table-column title="时间" key="time" width="170">
         <template #default="{ record }">{{ formatTime(record.updatedAt || record.createdAt) }}</template>
       </a-table-column>
-      <a-table-column title="操作" key="actions" width="120">
+      <a-table-column title="操作" key="actions" width="180">
         <template #default="{ record }">
           <a-button size="small" type="link" @click="open(record.id)">查看详情 →</a-button>
+          <a-button type="link" size="small" danger :disabled="!canDelete(record.state)"
+            :title="canDelete(record.state) ? '' : '请等待执行结束后再删除'" @click="askDelete(record)">删除</a-button>
         </template>
       </a-table-column>
       <template #emptyText>
@@ -91,10 +93,13 @@
     <div class="table-footer">
       <span>按创建时间排序</span>
     </div>
+    <RecordDeleteModal :open="!!deleteTarget" kind="report" :name="deleteTarget?.title || deleteTarget?.id || ''"
+      :busy="deleting" :error="deleteError" @cancel="deleteTarget = null" @confirm="confirmDelete" />
   </ListPageLayout>
 </template>
 
 <script setup lang="ts">
+import RecordDeleteModal from '@/components/RecordDeleteModal.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { reportsApi, type ReportSummary } from '@/api/v2'
@@ -173,6 +178,31 @@ function stateColor(state: string) {
     SUCCEEDED: 'green',
     FAILED: 'red'
   } as Record<string, string>)[state] || 'default'
+}
+
+const deleteTarget = ref<ReportSummary | null>(null)
+const deleting = ref(false)
+const deleteError = ref('')
+function canDelete(state: string) { return ['INPUT_FROZEN', 'SUCCEEDED', 'FAILED'].includes(state) }
+function askDelete(record: ReportSummary) {
+  if (deleting.value || !canDelete(record.state)) return
+  deleteError.value = ''
+  deleteTarget.value = record
+}
+async function confirmDelete() {
+  const record = deleteTarget.value
+  if (!record || deleting.value) return
+  if (!Number.isInteger(record.revision)) { deleteError.value = '记录版本缺失，请刷新列表后重试'; return }
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await reportsApi.delete(record.id, record.revision!)
+    deleteTarget.value = null
+    if (await refresh()) {
+      if (!reports.value.length && pageNum.value > 1) await fetchPage(pageNum.value - 1)
+    }
+  } catch (failure) { deleteError.value = (failure as Error).message || '删除失败，请重试' }
+  finally { deleting.value = false }
 }
 
 function formatTime(value: string) {

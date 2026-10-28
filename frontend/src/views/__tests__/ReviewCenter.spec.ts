@@ -6,7 +6,7 @@ import ReviewCenter from '@/views/ReviewCenter.vue'
 import { namedAntStubs } from '@/testUtils/antStubs'
 const context = vi.hoisted(() => ({ push: vi.fn(), route: { query: {} as Record<string, string> } }))
 vi.mock('vue-router', () => ({ useRoute: () => context.route, useRouter: () => ({ push: context.push }) }))
-vi.mock('@/api/v2', () => ({ projectsApi: { list: vi.fn() }, tasksApi: { list: vi.fn() } }))
+vi.mock('@/api/v2', () => ({ projectsApi: { list: vi.fn() }, tasksApi: { list: vi.fn(), delete: vi.fn() } }))
 import { projectsApi, tasksApi } from '@/api/v2'
 function deferred<T>() { let resolve!: (v: T) => void
   const promise = new Promise<T>((yes) => { resolve = yes }); return { promise, resolve }
@@ -79,6 +79,49 @@ describe('审查中心列表', () => {
     expect(alert.attributes('type')).toBe('error')
     expect(alert.text()).toContain('服务器内部错误')
     expect(w.findAll('a-button-stub').some((b) => b.text() === '重试')).toBe(true)
+    w.unmount()
+  })
+
+  it('删除成功后刷新列表，空末页回退一页', async () => {
+    const w = await start()
+    const s = state(w)
+    const record = { id: 'delete-me', name: '待删审查', title: '待删报告', state: 'SUCCEEDED', revision: 7 }
+    s.askDelete(record)
+    s.pageNum = 2
+    vi.mocked(tasksApi.delete).mockResolvedValue(undefined)
+    vi.mocked(tasksApi.list).mockResolvedValueOnce({ items: [], pageNum: 2, pageSize: 20, total: 20 } as any)
+      .mockResolvedValueOnce({ items: [{ id: 'previous' }], pageNum: 1, pageSize: 20, total: 20 } as any)
+    await s.confirmDelete()
+    expect(tasksApi.delete).toHaveBeenCalledWith('delete-me', 7)
+    expect(tasksApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ pageNum: 1 }))
+    expect(s.deleteTarget).toBeNull()
+    w.unmount()
+  })
+
+  it('删除失败保留弹窗、记录及错误，允许重试', async () => {
+    const w = await start()
+    const s = state(w)
+    const record = { id: 'delete-me', state: 'SUCCEEDED', revision: 4 }
+    s.askDelete(record)
+    vi.mocked(tasksApi.list).mockClear()
+    vi.mocked(tasksApi.delete).mockRejectedValueOnce(new Error('记录已变更，请刷新'))
+    await s.confirmDelete()
+    expect(s.deleteTarget.id).toBe('delete-me')
+    expect(s.deleteError).toBe('记录已变更，请刷新')
+    expect(tasksApi.list).not.toHaveBeenCalled()
+    expect(s.deleting).toBe(false)
+    w.unmount()
+  })
+
+  it('运行中记录不能打开删除弹窗，缺版本时不发送删除请求', async () => {
+    const w = await start()
+    const s = state(w)
+    s.askDelete({ id: 'running', state: 'RUNNING', revision: 1 })
+    expect(s.deleteTarget).toBeNull()
+    s.askDelete({ id: 'old', state: 'SUCCEEDED' })
+    await s.confirmDelete()
+    expect(tasksApi.delete).not.toHaveBeenCalled()
+    expect(s.deleteError).toContain('版本缺失')
     w.unmount()
   })
 

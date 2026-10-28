@@ -85,6 +85,8 @@ class AgentTaskServiceTest {
                 new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentReviewTask.class);
         TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(
                 new com.baomidou.mybatisplus.core.MybatisConfiguration(), ""), AgentModelValidation.class);
+        when(taskMapper.selectIncludingDeletedForUpdate(org.mockito.ArgumentMatchers.anyString()))
+                .thenAnswer(call -> taskMapper.selectById((String) call.getArgument(0)));
         service = new AgentTaskService(db, mapper, repository, new ModelInvocationProperties());
         project = new AgentProject();
         project.setId(PROJECT_ID);

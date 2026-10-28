@@ -32,6 +32,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 离线清理脚本检查（不连接数据库）
+        run: |
+          bash -n deploy/scripts/purge-deleted-records.sh
+          bash deploy/scripts/_purge_selftest.sh
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -133,6 +138,11 @@ jobs:
           # 1) 部署包本体（脚本 / compose / 配置模板 / 一页纸）
           cp -r deploy/. "$B/"
           cp -f deploy/scripts/env-check.sh "$B/env-check.sh"
+          # 离线清理复用部署包 Shell、Docker 和数据库容器内客户端。
+          mkdir -p "$B/docs"
+          cp docs/work/agent-redesign/record-deletion/operations.md "$B/docs/record-deletion.md"
+          test -s "$B/scripts/purge-deleted-records.sh"
+          test -s "$B/docs/record-deletion.md"
           rm -f "$B/scripts/"_*selftest.sh         # 开发自测脚本，不进交付包
           chmod +x "$B"/*.sh "$B"/scripts/*.sh || true
 

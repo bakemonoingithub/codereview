@@ -22,6 +22,9 @@ public class AgentReport {
     private String body;
     private String errorCode;
     private String errorMessage;
+    @com.baomidou.mybatisplus.annotation.TableLogic
+    private Integer isDeleted = 0;
+    private LocalDateTime deletedAt;
     private Integer revision;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

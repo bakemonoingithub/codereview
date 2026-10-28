@@ -25,6 +25,9 @@ public class AgentReviewTask {
     private String configSnapshot;
     private String idempotencyKey;
     private String requestHash;
+    @com.baomidou.mybatisplus.annotation.TableLogic
+    private Integer isDeleted = 0;
+    private LocalDateTime deletedAt;
     private Integer revision;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

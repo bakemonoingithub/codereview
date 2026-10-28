@@ -6,7 +6,7 @@ import { namedAntStubs, silentStub } from '@/testUtils/antStubs'
 
 const context = vi.hoisted(() => ({ push: vi.fn() }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: context.push }) }))
-vi.mock('@/api/v2', () => ({ reportsApi: { list: vi.fn() } }))
+vi.mock('@/api/v2', () => ({ reportsApi: { list: vi.fn(), delete: vi.fn() } }))
 
 import { reportsApi } from '@/api/v2'
 
@@ -73,4 +73,47 @@ describe('报告列表', () => {
     expect(reportsApi.list).toHaveBeenLastCalledWith({ pageNum: 1, pageSize: 20, q: '订单', state: 'FAILED' })
     wrapper.unmount()
   })
+  it('删除成功后刷新列表，空末页回退一页', async () => {
+    const w = mount(ReportList, { global: { stubs } }); await flushPromises()
+    const s = (w.vm as any).$.setupState
+    const record = { id: 'delete-me', name: '待删审查', title: '待删报告', state: 'SUCCEEDED', revision: 7 }
+    s.askDelete(record)
+    s.pageNum = 2
+    vi.mocked(reportsApi.delete).mockResolvedValue(undefined)
+    vi.mocked(reportsApi.list).mockResolvedValueOnce({ items: [], pageNum: 2, pageSize: 20, total: 20 } as any)
+      .mockResolvedValueOnce({ items: [{ id: 'previous' }], pageNum: 1, pageSize: 20, total: 20 } as any)
+    await s.confirmDelete()
+    expect(reportsApi.delete).toHaveBeenCalledWith('delete-me', 7)
+    expect(reportsApi.list).toHaveBeenLastCalledWith(expect.objectContaining({ pageNum: 1 }))
+    expect(s.deleteTarget).toBeNull()
+    w.unmount()
+  })
+
+  it('删除失败保留弹窗、记录及错误，允许重试', async () => {
+    const w = mount(ReportList, { global: { stubs } }); await flushPromises()
+    const s = (w.vm as any).$.setupState
+    const record = { id: 'delete-me', state: 'SUCCEEDED', revision: 4 }
+    s.askDelete(record)
+    vi.mocked(reportsApi.list).mockClear()
+    vi.mocked(reportsApi.delete).mockRejectedValueOnce(new Error('记录已变更，请刷新'))
+    await s.confirmDelete()
+    expect(s.deleteTarget.id).toBe('delete-me')
+    expect(s.deleteError).toBe('记录已变更，请刷新')
+    expect(reportsApi.list).not.toHaveBeenCalled()
+    expect(s.deleting).toBe(false)
+    w.unmount()
+  })
+
+  it('运行中记录不能打开删除弹窗，缺版本时不发送删除请求', async () => {
+    const w = mount(ReportList, { global: { stubs } }); await flushPromises()
+    const s = (w.vm as any).$.setupState
+    s.askDelete({ id: 'running', state: 'RUNNING', revision: 1 })
+    expect(s.deleteTarget).toBeNull()
+    s.askDelete({ id: 'old', state: 'SUCCEEDED' })
+    await s.confirmDelete()
+    expect(reportsApi.delete).not.toHaveBeenCalled()
+    expect(s.deleteError).toContain('版本缺失')
+    w.unmount()
+  })
+
 })

@@ -447,6 +447,7 @@ export interface TaskView {
 }
 
 export interface TaskSummary {
+  revision?: number
   id: string
   name: string | null
   projectId: string
@@ -627,6 +628,8 @@ export interface CallDetailFull {
 }
 
 export const tasksApi = {
+  delete: (id: string, expectedRevision: number) =>
+    v2.delete(`/review-tasks/${id}`, { params: { expectedRevision } }).then(() => undefined),
   create: (body: TaskCreateInput, idempotencyKey: string) =>
     v2
       .post<TaskView>('/review-tasks', body, { headers: { 'Idempotency-Key': idempotencyKey } })
@@ -829,6 +832,7 @@ export interface ReportCallSummary {
 }
 
 export interface ReportSummary {
+  revision?: number
   id: string
   title: string
   state: string
@@ -855,12 +859,15 @@ export interface ReportDetail extends ReportSummary {
 }
 
 export interface ReportSourceSnapshot {
+  originalTaskAvailable?: boolean
   ordinal: number
   resultId: string
   snapshot: any
 }
 
 export const reportsApi = {
+  delete: (id: string, expectedRevision: number) =>
+    v2.delete(`/reports/${id}`, { params: { expectedRevision } }).then(() => undefined),
   candidates: (params: {
     projectId?: string
     taskId?: string

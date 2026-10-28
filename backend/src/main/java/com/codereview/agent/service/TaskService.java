@@ -97,6 +97,9 @@ public class TaskService {
         AgentProject project = requireProject(req.projectId());
         if (key != null) {
             AgentReviewTask existing = findByKey(project.getId(), key);
+            if (existing == null && db.mapper(AgentReviewTaskMapper.class).selectDeletedByKey(project.getId(), key) != null) {
+                throw new ApiException(ErrorCode.CONFLICT, "该幂等键对应的审查已删除，请使用新的幂等键");
+            }
             if (existing != null) {
                 return replay(existing, requestHash);
             }
@@ -136,6 +139,9 @@ public class TaskService {
                 AgentReviewTask existing = findByKey(project.getId(), key);
                 if (existing != null) {
                     return replay(existing, requestHash);
+                }
+                if (db.mapper(AgentReviewTaskMapper.class).selectDeletedByKey(project.getId(), key) != null) {
+                    throw new ApiException(ErrorCode.CONFLICT, "该幂等键对应的审查已删除，请使用新的幂等键");
                 }
             }
             throw race;
@@ -179,6 +185,10 @@ public class TaskService {
                 .map(task -> summary(task, targets.getOrDefault(task.getId(), List.of())))
                 .toList();
         return page.withItems(summaries);
+    }
+
+    public void delete(String id, int expectedRevision) {
+        new RecordDeletionService(db).task(id, expectedRevision);
     }
 
     public TaskDtos.View detail(String id) {
@@ -303,6 +313,7 @@ public class TaskService {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "part 只能是 request 或 response",
                     Map.of("part", part));
         }
+        RecordVisibility.call(db, call);
         boolean complete = content != null;
         String text = content == null ? "" : content;
         return new TaskDtos.CallDetail(call.getId(), normalized, text,
@@ -419,6 +430,7 @@ public class TaskService {
         if (call == null || !taskId.equals(call.getTaskId())) {
             throw new ApiException(ErrorCode.NOT_FOUND, "调用记录不属于当前任务：" + callId);
         }
+        RecordVisibility.call(db, call);
         return fullCallView(call);
     }
 
@@ -429,6 +441,7 @@ public class TaskService {
         if (call == null) {
             throw new ApiException(ErrorCode.NOT_FOUND, "调用记录不存在：" + callId);
         }
+        RecordVisibility.call(db, call);
         return fullCallView(call);
     }
 
@@ -745,7 +758,7 @@ public class TaskService {
                 task.getProjectId(), task.getRoute(),
                 task.getSpecialistType(), task.getState(), task.getStopReason(),
                 task.getCreatedAt(), task.getDeadlineAt(), targets.size(), succeeded, failed,
-                running, queued);
+                running, queued, task.getRevision());
     }
 
     private Map<String, List<AgentTaskTarget>> targetsByTask(List<String> taskIds) {

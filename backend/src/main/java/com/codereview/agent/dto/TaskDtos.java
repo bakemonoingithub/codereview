@@ -76,7 +76,7 @@ public final class TaskDtos {
     public record Summary(String id, String name, String projectId, String route, String specialistType, String state,
                           String stopReason, LocalDateTime createdAt, LocalDateTime deadlineAt,
                           int targetCount, int succeededCount, int failedCount, int runningCount,
-                          int queuedCount) {
+                          int queuedCount, Integer revision) {
     }
 
     /** 复制参数只给可编辑项；文件任务必须重新观察分支 HEAD，不承诺复用旧 SHA。 */

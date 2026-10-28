@@ -87,10 +87,12 @@
       <a-table-column title="发起时间" key="createdAt" width="170">
         <template #default="{ record }">{{ formatTime(record.createdAt) }}</template>
       </a-table-column>
-      <a-table-column title="操作" key="actions" width="200">
+      <a-table-column title="操作" key="actions" width="260">
         <template #default="{ record }">
           <a-button type="link" size="small" @click="openTask(record.id)">查看详情 →</a-button>
           <a-button type="link" size="small" @click="copyTask(record)">复制参数</a-button>
+          <a-button type="link" size="small" danger :disabled="!canDelete(record.state)"
+            :title="canDelete(record.state) ? '' : '请等待执行结束后再删除'" @click="askDelete(record)">删除</a-button>
         </template>
       </a-table-column>
       <template #emptyText>
@@ -107,10 +109,13 @@
     </div>
     <ReviewLaunch v-if="reviewLaunchOpen" />
     <AgentLaunch v-model:open="agentLaunchOpen" />
+    <RecordDeleteModal :open="!!deleteTarget" kind="review" :name="deleteTarget?.name || deleteTarget?.id || ''"
+      :busy="deleting" :error="deleteError" @cancel="deleteTarget = null" @confirm="confirmDelete" />
   </ListPageLayout>
 </template>
 
 <script setup lang="ts">
+import RecordDeleteModal from '@/components/RecordDeleteModal.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { projectsApi, tasksApi, type ProjectView, type TaskSummary } from '@/api/v2'
@@ -218,7 +223,8 @@ onBeforeUnmount(() => { saveScene(); disposed = true })
 
 async function remember(request: Promise<boolean>) {
   const key = filterKey()
-  if (await request) { loadedFilterKey = key; saveScene() }
+  if (await request) { loadedFilterKey = key; saveScene(); return true }
+  return false
 }
 function load() { return remember(list.load()) }
 function refresh() { return remember(list.refresh()) }
@@ -273,6 +279,31 @@ function stateTone(state: string): 'green' | 'amber' | 'blue' | 'red' | 'default
   if (state === 'RUNNING') return 'blue'
   if (state === 'FAILED') return 'red'
   return 'default'
+}
+
+const deleteTarget = ref<TaskSummary | null>(null)
+const deleting = ref(false)
+const deleteError = ref('')
+function canDelete(state: string) { return ['SUCCEEDED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(state) }
+function askDelete(record: TaskSummary) {
+  if (deleting.value || !canDelete(record.state)) return
+  deleteError.value = ''
+  deleteTarget.value = record
+}
+async function confirmDelete() {
+  const record = deleteTarget.value
+  if (!record || deleting.value) return
+  if (!Number.isInteger(record.revision)) { deleteError.value = '记录版本缺失，请刷新列表后重试'; return }
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await tasksApi.delete(record.id, record.revision!)
+    deleteTarget.value = null
+    if (await refresh()) {
+      if (!tasks.value.length && pageNum.value > 1) await changePage(pageNum.value - 1, pageSize.value)
+    }
+  } catch (failure) { deleteError.value = (failure as Error).message || '删除失败，请重试' }
+  finally { deleting.value = false }
 }
 
 function formatTime(value: string): string {

@@ -65,6 +65,12 @@ public class ReportV2Controller {
         return inputService.frozenInput(id);
     }
 
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id, @RequestParam int expectedRevision) {
+        generationService.delete(id, expectedRevision);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public PageResponse<ReportDtos.ReportSummary> list(
             @RequestParam(required = false) String q,

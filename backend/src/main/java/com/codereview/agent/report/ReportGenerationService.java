@@ -133,6 +133,10 @@ public class ReportGenerationService {
         return page.withItems(page.items().stream().map(this::summary).toList());
     }
 
+    public void delete(String id, int expectedRevision) {
+        new com.codereview.agent.service.RecordDeletionService(db).report(id, expectedRevision);
+    }
+
     public ReportDtos.ReportDetail detail(String reportId) {
         AgentReport report = require(reportId);
         JsonNode frozen = readObject(report.getFrozenInput());
@@ -161,10 +165,14 @@ public class ReportGenerationService {
         if (snapshot == null) {
             throw new ApiException(ErrorCode.INTERNAL_ERROR, "保存的报告来源数据损坏，无法读取");
         }
-        return new ReportDtos.FrozenSource(row.getOrdinal(), row.getResultId(), snapshot);
+        String taskId = snapshot.path("taskId").asText(snapshot.path("task").path("id").asText(""));
+        boolean available = !taskId.isBlank() && db.mapper(com.codereview.agent.mapper.AgentReviewTaskMapper.class)
+                .selectById(taskId) != null;
+        return new ReportDtos.FrozenSource(row.getOrdinal(), row.getResultId(), snapshot, available);
     }
 
     public List<ReportDtos.CallSummary> calls(String reportId) {
+        require(reportId);
         String id = AgentIds.requireValid(reportId, "报告 ID");
         return db.mapper(AgentModelCallMapper.class).selectList(
                         new LambdaQueryWrapper<AgentModelCall>()
@@ -204,7 +212,7 @@ public class ReportGenerationService {
                 report.getErrorCode(), report.getErrorMessage(), model == null ? null : model.name(),
                 sourceCount(frozen, 0), taskCount(frozen), versionCount(frozen), kinds(frozen),
                 report.getCreatedAt(), report.getUpdatedAt(), report.getStartedAt(),
-                report.getFinishedAt());
+                report.getFinishedAt(), report.getRevision());
     }
 
     private List<ReportDtos.SourceSummary> sourceSummaries(AgentReport report, JsonNode frozen) {

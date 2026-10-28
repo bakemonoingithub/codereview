@@ -36,7 +36,10 @@ public final class ReportDtos {
             List<@NotBlank(message = "审查结果 ID 不能为空") String> resultIds) {
     }
 
-    public record FrozenSource(int ordinal, String resultId, JsonNode snapshot) {
+    public record FrozenSource(int ordinal, String resultId, JsonNode snapshot, boolean originalTaskAvailable) {
+        public FrozenSource(int ordinal, String resultId, JsonNode snapshot) {
+            this(ordinal, resultId, snapshot, true);
+        }
     }
 
     /** 冻结结果读取视图；snapshot 是生成时保存的完整来源，不随最新数据变化。 */
@@ -81,7 +84,7 @@ public final class ReportDtos {
                                 String errorMessage, String modelName, int sourceCount,
                                 int taskCount, int versionCount, Map<String, Integer> kindCounts,
                                 LocalDateTime createdAt, LocalDateTime updatedAt,
-                                LocalDateTime startedAt, LocalDateTime finishedAt) {
+                                LocalDateTime startedAt, LocalDateTime finishedAt, Integer revision) {
     }
 
     /**

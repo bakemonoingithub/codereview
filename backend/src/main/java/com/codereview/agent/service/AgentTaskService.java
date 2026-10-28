@@ -108,6 +108,9 @@ public class AgentTaskService {
         AgentProject project = requireProject(req.projectId());
         if (key != null) {
             AgentReviewTask existing = findByKey(project.getId(), key);
+            if (existing == null && db.mapper(AgentReviewTaskMapper.class).selectDeletedByKey(project.getId(), key) != null) {
+                throw new ApiException(ErrorCode.CONFLICT, "该幂等键对应的审查已删除，请使用新的幂等键");
+            }
             if (existing != null) {
                 return replay(existing, requestHash);
             }
@@ -141,6 +144,12 @@ public class AgentTaskService {
 
         try {
             db.inTransaction(() -> {
+                if (reference != null) {
+                    var owner = db.mapper(AgentReviewTaskMapper.class).selectIncludingDeletedForUpdate(reference.taskId());
+                    if (owner == null || Integer.valueOf(1).equals(owner.getIsDeleted())) {
+                        throw new ApiException(ErrorCode.NOT_FOUND, "参考审查不存在或已删除");
+                    }
+                }
                 db.mapper(AgentReviewTaskMapper.class).insert(task);
                 insertQuota(task.getId());
                 return null;
@@ -150,6 +159,9 @@ public class AgentTaskService {
                 AgentReviewTask existing = findByKey(project.getId(), key);
                 if (existing != null) {
                     return replay(existing, requestHash);
+                }
+                if (db.mapper(AgentReviewTaskMapper.class).selectDeletedByKey(project.getId(), key) != null) {
+                    throw new ApiException(ErrorCode.CONFLICT, "该幂等键对应的审查已删除，请使用新的幂等键");
                 }
             }
             throw race;
