@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none" role="img" aria-labelledby="title">
+  <title id="title">智能代码分析：代码与审查</title>
+  <defs>
+    <linearGradient id="blue" x1="4" y1="0" x2="44" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4388ff" />
+      <stop offset="1" stop-color="#2563eb" />
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="14" fill="url(#blue)" />
+  <path d="M17 13h-5v22h5M31 13h5v22h-5" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="m19 24 4 4 7-9" stroke="#c4ffe8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>系统标志与侧边栏预览</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #17243a; background: #f4f6fa; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+    button { font: inherit; cursor: pointer; }
+    .page { max-width: 1140px; margin: 0 auto; padding: 40px 32px; }
+    .eyebrow { color: #2563eb; font-size: 11px; font-weight: 700; letter-spacing: 2px; }
+    h1 { margin: 10px 0; font-size: 28px; font-weight: 650; letter-spacing: -1px; }
+    .intro { margin: 0 0 26px; color: #6b778b; font-size: 14px; line-height: 1.8; }
+    .preview { display: flex; min-height: 570px; overflow: hidden; border: 1px solid #e0e6ef; border-radius: 18px; background: #f8faff; box-shadow: 0 16px 50px #263e6510; }
+    .sider { flex: 0 0 240px; width: 240px; border-right: 1px solid #e7ebf1; background: white; transition: width .2s, flex-basis .2s; }
+    .sider-inner { display: flex; flex-direction: column; height: 100%; padding: 28px 16px 8px; }
+    .logo { display: flex; flex: none; align-items: center; gap: 12px; min-height: 34px; margin: 0 8px 30px; }
+    .logo-mark { display: block; flex: none; width: 34px; height: 34px; }
+    .logo-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 19px; font-weight: 700; letter-spacing: -.4px; }
+    .group { padding: 16px 12px 10px; color: #95a0b1; font-size: 10px; font-weight: 600; letter-spacing: 1.7px; }
+    .nav { display: flex; align-items: center; gap: 12px; height: 44px; margin: 4px 0; padding: 0 12px; border-radius: 12px; color: #53637b; white-space: nowrap; font-size: 14px; }
+    .nav svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .nav.active { color: #2563eb; background: #edf4ff; font-weight: 600; }
+    .toggle { display: grid; flex: none; place-items: center; width: 100%; min-height: 40px; margin-top: auto; border: 0; border-radius: 8px; color: #68778f; background: #f7f9fc; }
+    .toggle:hover { color: #2563eb; background: #edf4ff; }
+    .sider.collapsed { flex-basis: 64px; width: 64px; }
+    .collapsed .sider-inner { padding-right: 0; padding-left: 0; }
+    .collapsed .logo { justify-content: center; margin-right: 0; margin-left: 0; }
+    .collapsed .logo-text, .collapsed .group, .collapsed .nav span { display: none; }
+    .collapsed .nav { justify-content: center; margin: 4px 8px; padding: 0; }
+    .main { min-width: 0; flex: 1; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 72px; padding: 0 28px; border-bottom: 1px solid #e7ebf1; background: #ffffffb8; color: #758199; font-size: 13px; }
+    .header b { color: #26364d; font-weight: 500; }
+    .state { flex: none; padding: 5px 10px; border-radius: 20px; background: #edf4ff; color: #2563eb; font-size: 12px; }
+    .content { padding: 28px; }
+    .design { display: flex; align-items: center; gap: 24px; min-height: 190px; padding: 30px; border: 1px solid #e4eaf2; border-radius: 14px; background: white; }
+    .hero-logo { width: 96px; height: 96px; flex: none; }
+    h2 { margin: 0 0 10px; font-size: 21px; font-weight: 650; }
+    .design p { margin: 0; color: #738095; font-size: 13px; line-height: 1.9; }
+    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 18px; }
+    .card { min-width: 0; padding: 22px; border: 1px solid #e4eaf2; border-radius: 14px; background: #fff; }
+    h3 { margin: 0 0 18px; color: #6a7890; font-size: 12px; font-weight: 500; }
+    .sizes { display: flex; align-items: end; gap: 24px; }
+    figure { display: grid; justify-items: center; gap: 12px; margin: 0; }
+    figcaption { color: #8a96a8; font-size: 11px; }
+    .dimension { display: flex; align-items: baseline; gap: 6px; margin-top: 12px; color: #2563eb; }
+    .dimension strong { font-size: 30px; font-weight: 600; }
+    .dimension span { color: #8190a5; font-size: 12px; }
+    .note { margin: 18px 0 0; color: #7a879a; font-size: 12px; line-height: 1.8; }
+    .actions { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+    .primary { padding: 10px 18px; border: 0; border-radius: 9px; background: #2563eb; color: #fff; font-size: 13px; }
+    .actions span { color: #8792a4; font-size: 12px; }
+    @media (max-width: 800px) { .page { padding: 24px 12px; } .content { padding: 16px; } .header { padding: 0 16px; } .design { flex-direction: column; align-items: flex-start; padding: 22px; } .details { grid-template-columns: 1fr; } .actions span { display: none; } }
+    @media (prefers-reduced-motion: reduce) { .sider { transition: none; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="eyebrow">AI CODE REVIEW / BRAND</div>
+    <h1>代码与审查，一个清晰的标记</h1>
+    <p class="intro">蓝色圆角底、代码括号与审查勾。展开显示系统名称，收起保留完整图形。</p>
+    <section class="preview" aria-label="侧边栏交互预览">
+      <aside class="sider" id="sider" aria-label="系统导航预览">
+        <div class="sider-inner">
+          <div class="logo" title="智能代码分析工具">
+            <img class="logo-mark" src="logo.svg" alt="智能代码分析工具" width="34" height="34">
+            <span class="logo-text">智能代码分析</span>
+          </div>
+          <div class="group">WORKSPACE</div>
+          <div class="nav active" title="审查中心"><svg viewBox="0 0 24 24"><path d="M8 4H5v16h14V4h-3M9 3h6v4H9zM8 12l3 3 5-5"/></svg><span>审查中心</span></div>
+          <div class="nav" title="代码浏览"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="m7 9 4 3-4 3m7 0h3"/></svg><span>代码浏览</span></div>
+          <div class="nav" title="报告"><svg viewBox="0 0 24 24"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8m-8 4h6"/></svg><span>报告</span></div>
+          <div class="group">MANAGE</div>
+          <div class="nav" title="项目管理"><svg viewBox="0 0 24 24"><path d="M3 6h7l2 3h9v11H3z"/></svg><span>项目管理</span></div>
+          <div class="nav" title="模型管理"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M12 3v4M8 12v2m8-2v2m-8 3h8"/></svg><span>模型管理</span></div>
+          <div class="nav" title="提示词管理"><svg viewBox="0 0 24 24"><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8m-8 4h8"/></svg><span>提示词管理</span></div>
+          <button class="toggle" type="button" aria-controls="sider" aria-expanded="true" aria-label="收起侧边栏">‹</button>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="header"><span>工作空间 / <b>标志预览</b></span><span class="state" id="state">展开 · 240px</span></div>
+        <div class="content">
+          <div class="design"><img class="hero-logo" src="logo.svg" alt="代码括号与审查勾标志"><div><h2>智能代码分析</h2><p>括号表达代码，勾形表达审查。<br>沿用系统蓝色，小尺寸也能辨认。</p></div></div>
+          <div class="details">
+            <div class="card"><h3>实际尺寸</h3><div class="sizes"><figure><img src="logo.svg" alt="16px 标志" width="16" height="16"><figcaption>16px</figcaption></figure><figure><img src="logo.svg" alt="24px 标志" width="24" height="24"><figcaption>24px</figcaption></figure><figure><img src="logo.svg" alt="34px 标志" width="34" height="34"><figcaption>34px</figcaption></figure></div></div>
+            <div class="card"><h3>收起后的图标</h3><div class="dimension"><strong>34</strong><span>/ 64px 侧栏</span></div><p class="note">居中显示，左右各约 15px 留白。</p></div>
+          </div>
+          <div class="actions"><button class="primary" id="switch" type="button" aria-controls="sider" aria-expanded="true">收起侧边栏</button><span>底部箭头也可切换</span></div>
+        </div>
+      </div>
+    </section>
+    <p class="note">独立设计预览，待确认后替换正式页面左上角标志。侧栏宽度沿用现有 240px / 64px。</p>
+  </main>
+  <script>
+    const sider = document.querySelector('#sider');
+    const buttons = [document.querySelector('.toggle'), document.querySelector('#switch')];
+    function toggle() {
+      const collapsed = sider.classList.toggle('collapsed');
+      const label = collapsed ? '展开侧边栏' : '收起侧边栏';
+      buttons.forEach(button => { button.setAttribute('aria-expanded', String(!collapsed)); button.setAttribute('aria-label', label); });
+      buttons[0].textContent = collapsed ? '›' : '‹';
+      buttons[1].textContent = label;
+      document.querySelector('#state').textContent = collapsed ? '收起 · 64px' : '展开 · 240px';
+    }
+    buttons.forEach(button => button.addEventListener('click', toggle));
+  </script>
+</body>
+</html>

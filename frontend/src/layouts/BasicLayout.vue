@@ -16,13 +16,11 @@
     >
       <div class="sider-inner">
         <!--
-          品牌区：方块标记常在，文字仅在展开时出现。
+          品牌区：SVG 标记常在，文字仅在展开时出现。
           折叠到 64px 时不再渲染文字，避免汉字被从中间裁开。
         -->
-        <div class="logo">
-          <span class="logo-badge">
-            <img class="logo-mark" :src="logoUrl" :alt="runtimeConfig().title" />
-          </span>
+        <div class="logo" :title="runtimeConfig().title">
+          <img class="logo-mark" :src="logoUrl" :alt="runtimeConfig().title" width="34" height="34" />
           <span v-if="!collapsed" class="logo-text">{{ runtimeConfig().title === '智能代码分析工具' ? '智能代码分析' : runtimeConfig().title }}</span>
         </div>
         <a-menu theme="light" mode="inline" :selected-keys="selectedKeys">
@@ -71,7 +69,7 @@
 
 <script setup lang="ts">
 import { runtimeConfig } from '@/runtime/config'
-const logoUrl = new URL('favicon.svg', document.baseURI).href
+import logoUrl from '@/assets/system-logo.svg'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { activeMenuKey, menuGroups, menuItems } from '@/router'
@@ -123,28 +121,30 @@ const parentCrumb = computed(() => {
 
 .logo {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 12px;
+  min-width: 0;
   min-height: 34px;
   margin: 0 8px 30px;
-  overflow: hidden;
-}
-
-.logo-badge {
-  display: inline-grid;
-  flex: none;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  box-shadow: 0 6px 14px #2563eb40;
 }
 
 .logo-mark {
-  width: 18px;
-  height: 18px;
-  filter: brightness(0) invert(1);
+  display: block;
+  flex: none;
+  width: 34px;
+  height: 34px;
+}
+
+.app-sider.ant-layout-sider-collapsed .sider-inner {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.app-sider.ant-layout-sider-collapsed .logo {
+  justify-content: center;
+  margin-right: 0;
+  margin-left: 0;
 }
 
 .logo-text {

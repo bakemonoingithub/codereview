@@ -76,7 +76,7 @@ describe('侧边栏品牌区', () => {
   it('展开时同时显示 logo 与文字', () => {
     const wrapper = mountLayout()
 
-    expect(wrapper.find('.logo-mark').attributes('src')).toBe('/favicon.svg')
+    expect(wrapper.find('.logo-mark').attributes('src')).toContain('system-logo.svg')
     expect(wrapper.find('.logo-text').exists()).toBe(true)
     expect(wrapper.find('.logo-text').text()).toBe('智能代码分析')
   })
