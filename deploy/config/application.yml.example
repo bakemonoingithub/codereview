@@ -60,7 +60,7 @@ agent:
     tree-cache-minutes: 10
     allowed-extensions: ["java", "kt", "kts", "scala", "js", "ts", "jsx", "tsx", "vue", "py", "go", "cs", "cpp", "c", "h", "rb", "php", "sql", "sh", "bat", "ps1", "r", "swift", "dart", "lua", "pl", "m", "mm", "asm", "s", "xml", "yml", "yaml", "properties", "json", "toml", "ini", "conf", "gradle", "env", "md", "txt", "html", "htm", "css", "less", "scss", "sass", "styl", "jsp", "ftl", "rst", "adoc", "csv", "log"]
   model:
-    connect-timeout-seconds: 30
+    connect-timeout-seconds: 60
     probe-timeout-seconds: 15
     probe-connect-timeout-seconds: 5
     safety-reserve-min-tokens: 1024
@@ -97,7 +97,7 @@ agent:
       parallel-targets: 2
   report:
     max-body-chars: 1000000
-    generation-timeout-minutes: 30
+    generation-timeout-minutes: 120
     dispatch-concurrency: 1
     dispatch-queue-capacity: 100
     output-tokens: 16384
@@ -121,7 +121,7 @@ git:
   github:
     hosts: ["github.com"]
   gitea:
-    hosts: ["gitea.example.internal"] # 部署前填写实际 Gitea host[:port]
+    hosts: ["192.104.224.172"] # /gitea 子路径从项目仓库地址推导
     api-base: ""
     token: "${GITEA_TOKEN:}"
     work-dir: "${GITEA_MIRROR_DIR:/app/data/git-mirrors}"
