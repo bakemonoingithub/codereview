@@ -16,7 +16,15 @@ hr
 info "前置体检开始（只读）"
 hr
 
-init_bundle
+if [ "$#" -eq 2 ] && [ "$1" = --install ]; then
+  BUNDLE="$(cd -- "$2" && pwd -P)" || die "原部署目录不存在"
+  cd -- "$BUNDLE" || die "无法进入原部署目录"
+  [ -f docker-compose.yml ] || die "原部署目录缺少 docker-compose.yml"
+elif [ "$#" -eq 0 ]; then
+  init_bundle
+else
+  die "用法：bash scripts/preflight.sh [--install 原部署目录]"
+fi
 info "部署包目录：$BUNDLE"
 
 # ── 0. 部署目录所在文件系统 ─────────────────────────────────────────────────

@@ -5,6 +5,7 @@
 #    bash scripts/deploy.sh                      自动识别 images/ 里的镜像包
 #    bash scripts/deploy.sh --tag 20261022-a1b2c3d   指定版本
 #    bash scripts/deploy.sh --yes                不交互确认（用于自动化）
+#    bash scripts/deploy.sh --tag <版本> --exact-tag  仅导入并使用指定应用版本
 #
 #  流程：初始化工作区 → 体检 → 装载镜像 → 记录上一版本 → 备份数据库
 #        → 启动 → 等健康 → 失败停止应用并保留现场
@@ -13,15 +14,18 @@ set -u
 . "$(cd "$(dirname "$0")" && pwd)/common.sh"
 
 TAG=""
+EXACT_TAG=0
 ASSUME_YES=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --tag)     TAG="${2:-}"; [ -n "$TAG" ] || die "--tag 缺少版本"; shift 2 ;;
     --yes|-y)  ASSUME_YES=1; shift ;;
+    --exact-tag) EXACT_TAG=1; shift ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *)         die "未知参数：$1（可用：--tag <版本> / --yes）" ;;
   esac
 done
+[ "$EXACT_TAG" = 0 ] || [ -n "$TAG" ] || die "--exact-tag 必须同时指定 --tag"
 
 GEN_PWD=0
 
@@ -135,6 +139,9 @@ hr
 LOADED=0
 for t in images/*.tar.gz images/*.tar; do
   [ -f "$t" ] || continue
+  if [ "$EXACT_TAG" = 1 ]; then
+    [ "$t" = "images/codereview-app-$TAG.tar.gz" ] || [ "$t" = "images/codereview-app-$TAG.tar" ] || continue
+  fi
   info "装载镜像：$t"
   docker load -i "$t" || die "镜像装载失败：$t"
   LOADED=$((LOADED + 1))
@@ -145,6 +152,7 @@ done
 if [ -n "$TAG" ] && image_exists "codereview-app:$TAG"; then
   NEW_TAG="$TAG"
 else
+  [ "$EXACT_TAG" = 0 ] || die "指定的目标镜像不存在，禁止自动选择其他版本"
   if [ -n "$TAG" ]; then
     warn "指定的版本 codereview-app:$TAG 在本机不存在，改为自动识别"
   fi
@@ -179,6 +187,8 @@ if image_exists "codereview-app:latest"; then
 fi
 docker tag "codereview-app:$NEW_TAG" codereview-app:latest || die "为版本打 latest 标签失败"
 set_env APP_TAG "$NEW_TAG"
+# Compose 优先读取进程环境；同步 load_env 先前导出的旧值，确保启动目标版本。
+export APP_TAG="$NEW_TAG"
 
 # 只建立配置检查上下文；不连接数据库、不调用模型，也不执行迁移。
 if ! docker run --rm --network none \
@@ -196,6 +206,7 @@ if [ -z "$_free_subnet" ]; then
 elif [ "$_cur_subnet" != "$_free_subnet" ]; then
   info "网段调整：${_cur_subnet:-（空）} -> $_free_subnet（避开本机已有容器网络）"
   set_env CR_SUBNET "$_free_subnet"
+  export CR_SUBNET="$_free_subnet"
 fi
 
 # ── 步骤 7：启动数据库并确保 Agent 新库存在 ─────────────────────────────────

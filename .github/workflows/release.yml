@@ -37,6 +37,15 @@ jobs:
           bash -n deploy/scripts/purge-deleted-records.sh
           bash deploy/scripts/_purge_selftest.sh
 
+      - name: 自动升级脚本检查（不连接 Docker 或数据库）
+        run: |
+          bash -n deploy/scripts/update.sh
+          bash -n deploy/scripts/backup.sh
+          bash -n deploy/scripts/deploy.sh
+          bash -n deploy/scripts/preflight.sh
+          bash deploy/scripts/_update_selftest.sh
+          bash deploy/scripts/_upgrade_selftest.sh
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -142,6 +151,7 @@ jobs:
           mkdir -p "$B/docs"
           cp docs/work/agent-redesign/record-deletion/operations.md "$B/docs/record-deletion.md"
           test -s "$B/scripts/purge-deleted-records.sh"
+          test -s "$B/scripts/update.sh"
           test -s "$B/docs/record-deletion.md"
           rm -f "$B/scripts/"_*selftest.sh         # 开发自测脚本，不进交付包
           chmod +x "$B"/*.sh "$B"/scripts/*.sh || true
