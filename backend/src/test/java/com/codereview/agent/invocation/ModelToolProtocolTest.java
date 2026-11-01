@@ -7,10 +7,12 @@ import com.codereview.agent.entity.AgentModelCall;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.prompt.AssembledPrompt;
 import com.codereview.agent.prompt.PromptAssemblyService;
-import com.codereview.agent.tools.AgentToolSchema;
 import com.codereview.agent.tools.AgentToolScope;
 import com.codereview.agent.tools.ToolArgumentParser;
 import com.codereview.agent.tools.ToolInvocation;
+import com.codereview.agent.tools.ToolLimitProperties;
+import com.codereview.agent.tools.capability.AgentToolCapabilities;
+import com.codereview.agent.tools.capability.ToolCapability;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +38,8 @@ import static org.mockito.Mockito.when;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ModelToolProtocolTest {
 
-    private static final List<Map<String, Object>> TOOLS = AgentToolSchema.definitions();
+    private static final List<ToolCapability> TOOLS =
+            AgentToolCapabilities.readOnly(new ToolLimitProperties());
 
     @Mock
     private AgentDatabase db;

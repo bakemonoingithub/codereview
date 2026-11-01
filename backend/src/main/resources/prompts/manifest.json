@@ -203,6 +203,34 @@
       "version": "1",
       "path": "prompts/retry/excerpt-header.txt",
       "variables": []
+    },
+    {
+      "id": "correction.MODEL_OUTPUT_INVALID",
+      "kind": "CORRECTION",
+      "version": "1",
+      "path": "prompts/correction/output-invalid.txt",
+      "variables": ["diagnostic"]
+    },
+    {
+      "id": "correction.MISSING_TOOL_CALL",
+      "kind": "CORRECTION",
+      "version": "1",
+      "path": "prompts/correction/no-tool-call.txt",
+      "variables": []
+    },
+    {
+      "id": "correction.INVALID_TOOL_BATCH",
+      "kind": "CORRECTION",
+      "version": "1",
+      "path": "prompts/correction/invalid-batch.txt",
+      "variables": ["maxToolsPerTurn"]
+    },
+    {
+      "id": "correction.REPEATED_TOOL_CALLS",
+      "kind": "CORRECTION",
+      "version": "1",
+      "path": "prompts/correction/repeated-calls.txt",
+      "variables": []
     }
   ]
 }

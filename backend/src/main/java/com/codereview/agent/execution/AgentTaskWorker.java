@@ -22,6 +22,7 @@ import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentRunMapper;
 import com.codereview.agent.mapper.AgentToolCallMapper;
+import com.codereview.agent.prompt.AgentCorrection;
 import com.codereview.agent.prompt.AgentPromptInput;
 import com.codereview.agent.prompt.AssembledPrompt;
 import com.codereview.agent.prompt.PromptAssemblyService;
@@ -32,12 +33,12 @@ import com.codereview.agent.support.AgentTime;
 import com.codereview.agent.tools.AgentProtocolException;
 import com.codereview.agent.tools.AgentSubmission;
 import com.codereview.agent.tools.AgentToolNames;
-import com.codereview.agent.tools.AgentToolSchema;
 import com.codereview.agent.tools.AgentToolScope;
 import com.codereview.agent.tools.ReadOnlyToolService;
 import com.codereview.agent.tools.ToolEnvelope;
 import com.codereview.agent.tools.ToolEnvelopes;
 import com.codereview.agent.tools.ToolFailure;
+import com.codereview.agent.tools.capability.AgentToolCapabilities;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -143,7 +144,7 @@ public class AgentTaskWorker implements TaskWorker {
                 return limit(execution, run, TaskStates.STOP_NETWORK_LIMIT);
             }
             AssembledPrompt prompt = assembly.assembleAgent(execution.input,
-                    execution.history, AgentToolSchema.agentTools(execution.scope.limits()));
+                    execution.history, AgentToolCapabilities.agent(execution.scope.limits()));
             if (!withinContext(execution, prompt)) {
                 return limit(execution, run, TaskStates.STOP_CONTEXT_LIMIT);
             }
@@ -168,7 +169,7 @@ public class AgentTaskWorker implements TaskWorker {
                         return limit(execution, run, TaskStates.STOP_MODEL_OUTPUT_INVALID);
                     }
                     execution.history.add(new PromptMessage("user",
-                            "上一轮输出不可用（" + e.getMessage() + "）。请重新给出工具调用或提交结果。"));
+                            assembly.correction(new AgentCorrection.ModelOutputInvalid(e.getMessage()))));
                     updateRun(run, turn, run.getToolAttempts(),
                             run.getNetworkAttempts(), "PROTOCOL_RETRY");
                     continue;
@@ -186,11 +187,8 @@ public class AgentTaskWorker implements TaskWorker {
                     return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);
                 }
                 execution.history.add(new PromptMessage("assistant", result.content()));
-                execution.history.add(new PromptMessage("user", """
-                        上一轮只有正文、没有工具调用。请二选一：
-                        - 调用只读工具继续调查；
-                        - 调用 submit_result 提交结果。
-                        不要只回复计划或说明。"""));
+                execution.history.add(new PromptMessage("user",
+                        assembly.correction(new AgentCorrection.MissingToolCall())));
                 updateRun(run, turn, run.getToolAttempts(), run.getNetworkAttempts(),
                         "PROTOCOL_RETRY");
                 continue;
@@ -202,8 +200,8 @@ public class AgentTaskWorker implements TaskWorker {
                     return limit(execution, run, TaskStates.STOP_PROTOCOL_INVALID);
                 }
                 execution.history.add(PromptMessage.assistantToolCalls(calls, result.content()));
-                String batchError = "上一轮工具批次不合法：单轮最多 " + execution.budget.getMaxToolsPerTurn() + " 个工具；submit_result 必须单独调用，"
-                        + "不能与其他工具同批。本批工具没有执行。";
+                String batchError = assembly.correction(
+                        new AgentCorrection.InvalidToolBatch(execution.budget.getMaxToolsPerTurn()));
                 for (int index = 0; index < calls.size(); index++) {
                     ToolCall call = calls.get(index);
                     ToolEnvelope rejected = ToolEnvelope.failure(call.id(),
@@ -253,9 +251,8 @@ public class AgentTaskWorker implements TaskWorker {
             if (repeated) {
                 execution.repeats++;
                 if (execution.repeats == 1) {
-                    execution.history.add(new PromptMessage("user", """
-                            上一轮工具调用与返回完全相同，且没有新增材料。请换查询、翻页或结束调查；
-                            重复同一请求不会得到更多信息。"""));
+                    execution.history.add(new PromptMessage("user",
+                            assembly.correction(new AgentCorrection.RepeatedToolCalls())));
                 }
                 if (execution.repeats >= execution.budget.getNoProgressTurns() - 1) {
                     return limit(execution, run, TaskStates.STOP_NO_PROGRESS_LIMIT);

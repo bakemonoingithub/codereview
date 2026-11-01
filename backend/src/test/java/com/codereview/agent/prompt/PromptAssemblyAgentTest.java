@@ -1,10 +1,11 @@
 package com.codereview.agent.prompt;
 
-import com.codereview.agent.tools.AgentToolSchema;
+import com.codereview.agent.tools.ToolLimitProperties;
+import com.codereview.agent.tools.capability.AgentToolCapabilities;
+import com.codereview.agent.tools.capability.ToolCapability;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PromptAssemblyAgentTest {
 
     private final PromptAssemblyService assembly = new PromptAssemblyService();
-    private final List<Map<String, Object>> tools = AgentToolSchema.definitions();
+    private final List<ToolCapability> tools = AgentToolCapabilities.readOnly(new ToolLimitProperties());
 
     @Test
     void firstTurnCarriesRequirementsScopeVersionsAndTools() {

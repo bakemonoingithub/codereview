@@ -10,6 +10,8 @@ import com.codereview.agent.prompt.PromptAssemblyService;
 import com.codereview.agent.prompt.ToolCall;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentTime;
+import com.codereview.agent.tools.capability.AgentToolCapabilities;
+import com.codereview.agent.tools.capability.ToolCapability;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -74,7 +76,7 @@ public class AgentToolLoopValidator {
     public String currentOptionsHash(ModelSnapshot model) { return optionsHash(model, limits, budget); }
 
     public Outcome validate(ModelSnapshot model) {
-        List<Map<String, Object>> tools = AgentToolSchema.definitions(limits);
+        List<ToolCapability> tools = AgentToolCapabilities.readOnly(limits);
         List<String> callIds = new ArrayList<>();
         try {
             InvocationResult first = invoke(model, assembly.assembleToolCheck(tools), callIds);

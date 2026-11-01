@@ -1,5 +1,6 @@
 package com.codereview.agent.tools;
 
+import com.codereview.agent.tools.capability.AgentToolCapabilities;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -79,14 +80,14 @@ class AgentToolSchemaTest {
     void submissionExamplesPassTheActualParserAndEvidenceValidator() {
         ObjectMapper mapper = new ObjectMapper();
         AgentSubmission answered = AgentSubmission.parse(mapper,
-                AgentToolSchema.ANSWERED_EXAMPLE.replace("<实际materialId>", "m1"));
+                AgentToolCapabilities.ANSWERED_EXAMPLE.replace("<实际materialId>", "m1"));
         var sent = Map.of("m1", new AgentSubmission.SentMaterial("m1", "src/A.java", "FILE",
                 "a".repeat(40), 10, 20, "hash"));
         AgentSubmission checked = AgentSubmission.validate(answered, sent);
         assertTrue(checked.answered());
         assertEquals(1, checked.citations().size());
 
-        AgentSubmission insufficient = AgentSubmission.parse(mapper, AgentToolSchema.INSUFFICIENT_EVIDENCE_EXAMPLE);
+        AgentSubmission insufficient = AgentSubmission.parse(mapper, AgentToolCapabilities.INSUFFICIENT_EVIDENCE_EXAMPLE);
         AgentSubmission withoutEvidence = AgentSubmission.validate(insufficient, Map.of());
         assertFalse(withoutEvidence.answered());
         assertEquals(1, withoutEvidence.unresolved().size());

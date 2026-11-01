@@ -4,6 +4,8 @@ import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.prompt.template.PromptTemplateRegistry;
 import com.codereview.agent.specialist.protocol.SpecialistProtocol;
+import com.codereview.agent.tools.capability.ToolCapability;
+import com.codereview.agent.tools.protocol.OpenAiChatToolAdapter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -75,17 +77,41 @@ public class PromptAssemblyService {
         return templates.require("agent.TOOL_CHECK_USER").body();
     }
 
+    /**
+     * 把执行器报告的纠正事件渲染为模型消息正文。
+     *
+     * <p>触发条件、计数、插入位置与消息角色由执行器决定；组装层只选择正文。同一事件
+     * 若同时出现在工具返回诊断中（非法批次），执行器复用本方法的返回值，避免两处文案分叉。
+     */
+    public String correction(AgentCorrection event) {
+        if (event instanceof AgentCorrection.ModelOutputInvalid invalid) {
+            return templates.render("correction.MODEL_OUTPUT_INVALID",
+                    Map.of("diagnostic", invalid.diagnostic()));
+        }
+        if (event instanceof AgentCorrection.MissingToolCall) {
+            return templates.require("correction.MISSING_TOOL_CALL").body();
+        }
+        if (event instanceof AgentCorrection.InvalidToolBatch batch) {
+            return templates.render("correction.INVALID_TOOL_BATCH",
+                    Map.of("maxToolsPerTurn", String.valueOf(batch.maxToolsPerTurn())));
+        }
+        if (event instanceof AgentCorrection.RepeatedToolCalls) {
+            return templates.require("correction.REPEATED_TOOL_CALLS").body();
+        }
+        throw new IllegalArgumentException("未知纠正事件：" + event);
+    }
+
     /** 工具协议验证第一轮：带工具定义，要求模型先调用只读工具。 */
-    public AssembledPrompt assembleToolCheck(List<Map<String, Object>> tools) {
+    public AssembledPrompt assembleToolCheck(List<ToolCapability> capabilities) {
         String system = systemPrompt(PromptPurpose.AGENT_TOOL_CHECK);
         String user = toolCheckUser();
         List<PromptMessage> messages = List.of(new PromptMessage("system", system),
                 new PromptMessage("user", user));
-        return buildToolCheck(messages, system, user, tools);
+        return buildToolCheck(messages, system, user, OpenAiChatToolAdapter.tools(capabilities));
     }
 
     /** 工具协议验证第二轮：回放 assistant 工具调用与 tool 返回；模型应给出最终文本。 */
-    public AssembledPrompt assembleToolCheckFollowUp(List<Map<String, Object>> tools,
+    public AssembledPrompt assembleToolCheckFollowUp(List<ToolCapability> capabilities,
                                                      ToolCall call, String toolResult) {
         String system = systemPrompt(PromptPurpose.AGENT_TOOL_CHECK);
         String user = toolCheckUser();
@@ -94,7 +120,7 @@ public class PromptAssemblyService {
                 new PromptMessage("user", user),
                 PromptMessage.assistantToolCalls(List.of(call), null),
                 PromptMessage.toolResult(call.id(), toolResult));
-        return buildToolCheck(messages, system, user, tools);
+        return buildToolCheck(messages, system, user, OpenAiChatToolAdapter.tools(capabilities));
     }
 
     private AssembledPrompt buildToolCheck(List<PromptMessage> messages, String system, String user,
@@ -130,7 +156,7 @@ public class PromptAssemblyService {
      * 首轮与后续轮使用同一入口，避免执行层自行拼消息。
      */
     public AssembledPrompt assembleAgent(AgentPromptInput input, List<PromptMessage> history,
-                                         List<Map<String, Object>> tools) {
+                                         List<ToolCapability> capabilities) {
         String system = systemPrompt(PromptPurpose.AGENT);
         StringBuilder user = new StringBuilder();
         section(user, "本次要求");
@@ -187,6 +213,7 @@ public class PromptAssemblyService {
         if (history != null) {
             messages.addAll(history);
         }
+        List<Map<String, Object>> tools = OpenAiChatToolAdapter.tools(capabilities);
         int bytes = toolsBytes(tools);
         for (PromptMessage message : messages) {
             bytes += utf8Bytes(message.content());

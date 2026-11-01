@@ -2,18 +2,26 @@ package com.codereview.agent.tools;
 
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.repository.RepositoryPaths;
+import com.codereview.agent.tools.capability.AgentToolCapabilities;
+import com.codereview.agent.tools.capability.ToolCapability;
+import com.codereview.agent.tools.capability.ToolParameter;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * 工具参数的严格解析。
+ *
+ * <p>参数名、必填项、类型与取值范围来自 {@link AgentToolCapabilities} 的同一份能力定义，
+ * 模型看到的工具描述也由这份定义生成，schema 与运行时校验不会各写一套约束。
  *
  * <p>不做宽松类型转换、不忽略未知字段、不把越界整数悄悄夹到边界：
  * 参数不合格就返回 {@code INVALID_ARGUMENT}，由模型自己修正。
@@ -31,93 +39,58 @@ public class ToolArgumentParser {
         if (tool == null || tool.isBlank()) {
             throw ToolFailure.invalid("UNKNOWN_TOOL", "缺少工具名");
         }
-        if (!AgentToolNames.isReadOnly(tool)) {
-            throw ToolFailure.invalid("UNKNOWN_TOOL", "不支持的工具：" + tool);
-        }
-        StrictObject args = StrictObject.parse(mapper, rawArguments);
-        return switch (tool) {
-            case AgentToolNames.TREE -> parseTree(args, scope);
-            case AgentToolNames.FIND_FILES -> parseFind(args, scope);
-            case AgentToolNames.SEARCH_CODE -> parseSearch(args, scope);
-            case AgentToolNames.READ_CODE -> parseRead(args, scope);
-            case AgentToolNames.READ_DIFF -> parseDiff(args, scope);
-            default -> throw ToolFailure.invalid("UNKNOWN_TOOL", "不支持的工具：" + tool);
-        };
-    }
-
-    private ToolInvocation parseTree(StrictObject args, AgentToolScope scope) {
-        args.allow("version", "path", "depth", "limit", "cursor");
-        String versionRef = args.require("version").text(16);
-        String sha = requireVersion(scope, versionRef);
-        String path = args.optional("path").path();
-        int depth = args.optional("depth").integer(scope.limits().getTreeDefaultDepth(), 1, scope.limits().getTreeMaxDepth());
-        int limit = args.optional("limit").integer(scope.limits().getTreeDefaultLimit(), 1, scope.limits().getTreeMaxLimit());
-        String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
-        args.requireNoUnknown();
-        return new ToolInvocation(AgentToolNames.TREE, versionRef, sha, null, path, depth, limit,
-                cursor, null, null, List.of(), null, null);
-    }
-
-    private ToolInvocation parseFind(StrictObject args, AgentToolScope scope) {
-        args.allow("version", "glob", "path", "limit", "cursor");
-        String versionRef = args.require("version").text(16);
-        String sha = requireVersion(scope, versionRef);
-        String glob = args.require("glob").glob();
-        String path = args.optional("path").path();
-        int limit = args.optional("limit").integer(scope.limits().getFindDefaultLimit(), 1, scope.limits().getFindMaxLimit());
-        String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
-        args.requireNoUnknown();
-        return new ToolInvocation(AgentToolNames.FIND_FILES, versionRef, sha, null, path, null, limit,
-                cursor, glob, null, List.of(), null, null);
-    }
-
-    private ToolInvocation parseSearch(StrictObject args, AgentToolScope scope) {
-        args.allow("version", "query", "path", "extensions", "limit", "cursor");
-        String versionRef = args.require("version").text(16);
-        String sha = requireVersion(scope, versionRef);
-        String query = args.require("query").text(ToolLimits.SEARCH_QUERY_MAX_CHARS);
-        if (query.isBlank()) {
-            throw ToolFailure.invalid("QUERY_EMPTY", "搜索内容不能为空");
-        }
-        if (query.indexOf('\n') >= 0 || query.indexOf('\r') >= 0) {
-            throw ToolFailure.invalid("QUERY_INVALID", "搜索内容只能是单行字面量");
-        }
-        String path = args.optional("path").path();
-        List<String> extensions = args.optional("extensions").textArray(
-                ToolLimits.SEARCH_MAX_EXTENSIONS, "^[.A-Za-z0-9_+-]{1,20}$");
-        int limit = args.optional("limit").integer(scope.limits().getSearchDefaultLimit(), 1, scope.limits().getSearchMaxLimit());
-        String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
-        args.requireNoUnknown();
-        return new ToolInvocation(AgentToolNames.SEARCH_CODE, versionRef, sha, null, path, null, limit,
-                cursor, null, query, extensions, null, null);
-    }
-
-    private ToolInvocation parseRead(StrictObject args, AgentToolScope scope) {
-        args.allow("version", "path", "start", "end");
-        String versionRef = args.require("version").text(16);
-        String sha = requireVersion(scope, versionRef);
-        String path = args.require("path").path();
-        Integer start = args.optional("start").integerOrNull(1, 10_000_000);
-        Integer end = args.optional("end").integerOrNull(1, 10_000_000);
-        if (start != null && end != null && end < start) {
-            throw ToolFailure.invalid("RANGE_INVALID", "结束行不能小于开始行");
+        ToolCapability capability = AgentToolCapabilities.readOnly(scope.limits()).stream()
+                .filter(candidate -> candidate.name().equals(tool))
+                .findFirst()
+                .orElseThrow(() -> ToolFailure.invalid("UNKNOWN_TOOL", "不支持的工具：" + tool));
+        StrictObject args = StrictObject.parse(mapper, rawArguments,
+                new LinkedHashSet<>(capability.parameterNames()));
+        ParsedArguments parsed = new ParsedArguments();
+        for (ToolParameter parameter : capability.parameters()) {
+            JsonNode node = parameter.required()
+                    ? args.require(parameter.name()) : args.optional(parameter.name());
+            read(parameter, node, scope, parsed);
         }
         args.requireNoUnknown();
-        return new ToolInvocation(AgentToolNames.READ_CODE, versionRef, sha, null, path, null,
-                scope.limits().getReadMaxLines(), null, null, null, List.of(), start, end);
+        Map<String, Object> values = parsed.values;
+        return new ToolInvocation(tool, text(values, "version"), parsed.sha,
+                text(values, "comparisonId"), text(values, "path"), (Integer) values.get("depth"),
+                limit(tool, values, scope), text(values, "cursor"), text(values, "glob"),
+                text(values, "query"), extensions(values), (Integer) values.get("start"),
+                readEnd(tool, values));
     }
 
-    private ToolInvocation parseDiff(StrictObject args, AgentToolScope scope) {
-        args.allow("comparisonId", "path", "cursor");
-        String comparisonId = args.require("comparisonId").text(16);
-        if (scope.comparison(comparisonId) == null) {
-            throw ToolFailure.invalid("UNKNOWN_COMPARISON", "未知比较关系：" + comparisonId);
+    /** 逐项校验并写入结果；版本与比较关系在这里立即解析，保持原有错误先后顺序。 */
+    private static void read(ToolParameter parameter, JsonNode node, AgentToolScope scope,
+                             ParsedArguments parsed) {
+        if (parameter instanceof ToolParameter.IntegerValue integer) {
+            Integer value = integer(node, integer);
+            parsed.values.put(parameter.name(), value == null ? integer.defaultValue() : value);
+            return;
         }
-        String path = args.optional("path").path();
-        String cursor = args.optional("cursor").text(ToolLimits.CURSOR_MAX_CHARS);
-        args.requireNoUnknown();
-        return new ToolInvocation(AgentToolNames.READ_DIFF, null, null, comparisonId, path, null,
-                scope.limits().getDiffMaxHunks(), cursor, null, null, List.of(), null, null);
+        if (parameter instanceof ToolParameter.Array array) {
+            parsed.values.put(parameter.name(), textArray(node, array));
+            return;
+        }
+        ToolParameter.Text text = (ToolParameter.Text) parameter;
+        switch (text.role()) {
+            case VERSION_REF -> {
+                String reference = text(node, text);
+                parsed.sha = requireVersion(scope, reference);
+                parsed.values.put(parameter.name(), reference);
+            }
+            case COMPARISON_REF -> {
+                String comparisonId = text(node, text);
+                if (scope.comparison(comparisonId) == null) {
+                    throw ToolFailure.invalid("UNKNOWN_COMPARISON", "未知比较关系：" + comparisonId);
+                }
+                parsed.values.put(parameter.name(), comparisonId);
+            }
+            case PATH -> parsed.values.put(parameter.name(), path(node, text));
+            case GLOB -> parsed.values.put(parameter.name(), glob(node, text));
+            case QUERY -> parsed.values.put(parameter.name(), query(node, text));
+            case CURSOR, PLAIN -> parsed.values.put(parameter.name(), text(node, text));
+        }
     }
 
     private static String requireVersion(AgentToolScope scope, String versionRef) {
@@ -128,17 +101,158 @@ public class ToolArgumentParser {
         return sha;
     }
 
+    /** 读取类工具没有 limit 参数：单次行数上限由冻结限额决定。 */
+    private static int limit(String tool, Map<String, Object> values, AgentToolScope scope) {
+        if (AgentToolNames.READ_CODE.equals(tool)) {
+            return scope.limits().getReadMaxLines();
+        }
+        if (AgentToolNames.READ_DIFF.equals(tool)) {
+            return scope.limits().getDiffMaxHunks();
+        }
+        return (Integer) values.get("limit");
+    }
+
+    private static Integer readEnd(String tool, Map<String, Object> values) {
+        Integer start = (Integer) values.get("start");
+        Integer end = (Integer) values.get("end");
+        if (AgentToolNames.READ_CODE.equals(tool) && start != null && end != null && end < start) {
+            throw ToolFailure.invalid("RANGE_INVALID", "结束行不能小于开始行");
+        }
+        return end;
+    }
+
+    private static List<String> extensions(Map<String, Object> values) {
+        Object extensions = values.get("extensions");
+        return extensions instanceof List<?> list
+                ? list.stream().map(String.class::cast).toList() : List.of();
+    }
+
+    private static String text(Map<String, Object> values, String name) {
+        return (String) values.get(name);
+    }
+
+    private static String text(JsonNode node, ToolParameter.Text spec) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isTextual()) {
+            throw ToolFailure.invalid("ARGUMENT_TYPE", spec.name() + " 必须是字符串");
+        }
+        String value = node.asText();
+        if (spec.maxChars() != null && value.length() > spec.maxChars()) {
+            throw ToolFailure.invalid("ARGUMENT_TOO_LONG", spec.name() + " 超过 " + spec.maxChars() + " 字符");
+        }
+        return value;
+    }
+
+    /** 仓库内相对路径；与读取入口使用同一套校验，避免两处规则分叉。 */
+    private static String path(JsonNode node, ToolParameter.Text spec) {
+        String value = text(node, spec);
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith(":")) {
+            throw ToolFailure.invalid("ARGUMENT_INVALID", "路径不能以 : 开头：" + trimmed);
+        }
+        try {
+            return RepositoryPaths.requireSafePath(trimmed);
+        } catch (ApiException e) {
+            throw ToolFailure.invalid("ARGUMENT_INVALID", e.getMessage());
+        }
+    }
+
+    private static String glob(JsonNode node, ToolParameter.Text spec) {
+        String value = text(node, spec);
+        if (value == null || value.isBlank()) {
+            throw ToolFailure.invalid("ARGUMENT_MISSING", "缺少必填参数：" + spec.name());
+        }
+        String pattern = value.trim();
+        if (pattern.startsWith("/") || pattern.startsWith("\\") || pattern.contains("\\")) {
+            throw ToolFailure.invalid("ARGUMENT_INVALID", "glob 只能是仓库内相对模式：" + pattern);
+        }
+        for (String segment : pattern.split("/")) {
+            if ("..".equals(segment) || ".".equals(segment)) {
+                throw ToolFailure.invalid("ARGUMENT_INVALID", "glob 不能含 . 或 .. 段：" + pattern);
+            }
+        }
+        return pattern;
+    }
+
+    private static String query(JsonNode node, ToolParameter.Text spec) {
+        String value = text(node, spec);
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
+            throw ToolFailure.invalid("QUERY_EMPTY", "搜索内容不能为空");
+        }
+        if (value.indexOf('\n') >= 0 || value.indexOf('\r') >= 0) {
+            throw ToolFailure.invalid("QUERY_INVALID", "搜索内容只能是单行字面量");
+        }
+        return value;
+    }
+
+    private static Integer integer(JsonNode node, ToolParameter.IntegerValue spec) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (!node.isIntegralNumber() || !node.canConvertToInt()) {
+            throw ToolFailure.invalid("ARGUMENT_TYPE", spec.name() + " 必须是整数");
+        }
+        int value = node.intValue();
+        if ((spec.minimum() != null && value < spec.minimum())
+                || (spec.maximum() != null && value > spec.maximum())) {
+            throw ToolFailure.invalid("ARGUMENT_OUT_OF_RANGE",
+                    spec.name() + " 必须在 " + spec.minimum() + " 到 " + spec.maximum() + " 之间");
+        }
+        return value;
+    }
+
+    private static List<String> textArray(JsonNode node, ToolParameter.Array spec) {
+        if (node == null || node.isNull()) {
+            return List.of();
+        }
+        if (!node.isArray()) {
+            throw ToolFailure.invalid("ARGUMENT_TYPE", spec.name() + " 必须是数组");
+        }
+        if (spec.maxItems() != null && node.size() > spec.maxItems()) {
+            throw ToolFailure.invalid("ARGUMENT_TOO_LONG", spec.name() + " 最多 " + spec.maxItems() + " 项");
+        }
+        ToolParameter.Text item = (ToolParameter.Text) spec.items();
+        List<String> values = new ArrayList<>();
+        for (JsonNode element : node) {
+            if (!element.isTextual()) {
+                throw ToolFailure.invalid("ARGUMENT_TYPE", spec.name() + " 必须是字符串数组");
+            }
+            String value = element.asText();
+            if (item.pattern() != null && !value.matches(item.pattern())) {
+                throw ToolFailure.invalid("ARGUMENT_INVALID", spec.name() + " 含非法值：" + value);
+            }
+            values.add(value);
+        }
+        return List.copyOf(values);
+    }
+
+    /** 一次解析的中间结果：按参数名保存值，版本标识额外记录解析出的 SHA。 */
+    private static final class ParsedArguments {
+
+        private final Map<String, Object> values = new LinkedHashMap<>();
+        private String sha;
+    }
+
     /** 只接受 JSON 对象、单值、无尾随内容；未知字段显式拒绝。 */
     private static final class StrictObject {
 
         private final JsonNode node;
-        private final Set<String> allowed = new LinkedHashSet<>();
+        private final Set<String> allowed;
 
-        private StrictObject(JsonNode node) {
+        private StrictObject(JsonNode node, Set<String> allowed) {
             this.node = node;
+            this.allowed = allowed;
         }
 
-        static StrictObject parse(ObjectMapper mapper, String raw) {
+        static StrictObject parse(ObjectMapper mapper, String raw, Set<String> allowed) {
             if (raw == null || raw.isBlank()) {
                 throw ToolFailure.invalid("ARGUMENTS_MISSING", "缺少工具参数");
             }
@@ -157,27 +271,21 @@ public class ToolArgumentParser {
             if (!root.isObject()) {
                 throw ToolFailure.invalid("ARGUMENTS_INVALID", "工具参数必须是 JSON 对象");
             }
-            return new StrictObject(root);
+            return new StrictObject(root, allowed);
         }
 
-        void allow(String... fields) {
-            for (String field : fields) {
-                allowed.add(field);
-            }
-        }
-
-        Field require(String field) {
+        JsonNode require(String field) {
             checkKnown(field);
             JsonNode value = node.get(field);
             if (value == null || value.isNull()) {
                 throw ToolFailure.invalid("ARGUMENT_MISSING", "缺少必填参数：" + field);
             }
-            return new Field(field, value);
+            return value;
         }
 
-        Field optional(String field) {
+        JsonNode optional(String field) {
             checkKnown(field);
-            return new Field(field, node.get(field));
+            return node.get(field);
         }
 
         private void checkKnown(String field) {
@@ -193,113 +301,6 @@ public class ToolArgumentParser {
                     throw ToolFailure.invalid("ARGUMENT_UNKNOWN", "不认识的参数：" + name);
                 }
             });
-        }
-
-        private final class Field {
-
-            private final String name;
-            private final JsonNode node;
-
-            private Field(String name, JsonNode node) {
-                this.name = name;
-                this.node = node;
-            }
-
-            String text(int maxChars) {
-                if (node == null || node.isNull()) {
-                    return null;
-                }
-                if (!node.isTextual()) {
-                    throw typeError("字符串");
-                }
-                String value = node.asText();
-                if (value.length() > maxChars) {
-                    throw ToolFailure.invalid("ARGUMENT_TOO_LONG", name + " 超过 " + maxChars + " 字符");
-                }
-                return value;
-            }
-
-            int integer(int defaultValue, int min, int max) {
-                Integer value = integerOrNull(min, max);
-                return value == null ? defaultValue : value;
-            }
-
-            Integer integerOrNull(int min, int max) {
-                if (node == null || node.isNull()) {
-                    return null;
-                }
-                if (!node.isIntegralNumber() || !node.canConvertToInt()) {
-                    throw typeError("整数");
-                }
-                int value = node.intValue();
-                if (value < min || value > max) {
-                    throw ToolFailure.invalid("ARGUMENT_OUT_OF_RANGE",
-                            name + " 必须在 " + min + " 到 " + max + " 之间");
-                }
-                return value;
-            }
-
-            /** 仓库内相对路径；与读取入口使用同一套校验，避免两处规则分叉。 */
-            String path() {
-                String value = text(ToolLimits.PATH_MAX_CHARS);
-                if (value == null) {
-                    return null;
-                }
-                String trimmed = value.trim();
-                if (trimmed.startsWith(":")) {
-                    throw ToolFailure.invalid("ARGUMENT_INVALID", "路径不能以 : 开头：" + trimmed);
-                }
-                try {
-                    return RepositoryPaths.requireSafePath(trimmed);
-                } catch (ApiException e) {
-                    throw ToolFailure.invalid("ARGUMENT_INVALID", e.getMessage());
-                }
-            }
-
-            String glob() {
-                String value = text(ToolLimits.GLOB_MAX_CHARS);
-                if (value == null || value.isBlank()) {
-                    throw ToolFailure.invalid("ARGUMENT_MISSING", "缺少必填参数：" + name);
-                }
-                String pattern = value.trim();
-                if (pattern.startsWith("/") || pattern.startsWith("\\") || pattern.contains("\\")) {
-                    throw ToolFailure.invalid("ARGUMENT_INVALID", "glob 只能是仓库内相对模式：" + pattern);
-                }
-                for (String segment : pattern.split("/")) {
-                    if ("..".equals(segment) || ".".equals(segment)) {
-                        throw ToolFailure.invalid("ARGUMENT_INVALID", "glob 不能含 . 或 .. 段：" + pattern);
-                    }
-                }
-                return pattern;
-            }
-
-            List<String> textArray(int maxItems, String itemPattern) {
-                if (node == null || node.isNull()) {
-                    return List.of();
-                }
-                if (!node.isArray()) {
-                    throw typeError("数组");
-                }
-                if (node.size() > maxItems) {
-                    throw ToolFailure.invalid("ARGUMENT_TOO_LONG", name + " 最多 " + maxItems + " 项");
-                }
-                List<String> values = new ArrayList<>();
-                for (JsonNode item : node) {
-                    if (!item.isTextual()) {
-                        throw typeError("字符串数组");
-                    }
-                    String value = item.asText();
-                    if (!value.matches(itemPattern)) {
-                        throw ToolFailure.invalid("ARGUMENT_INVALID", name + " 含非法值：" + value);
-                    }
-                    values.add(value);
-                }
-                return List.copyOf(values);
-            }
-
-            private ToolFailure typeError(String expected) {
-                return ToolFailure.invalid("ARGUMENT_TYPE", name + " 必须是" + expected);
-            }
         }
     }
 }

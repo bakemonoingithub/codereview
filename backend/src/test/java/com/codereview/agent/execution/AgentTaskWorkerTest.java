@@ -476,6 +476,91 @@ class AgentTaskWorkerTest {
         verify(publisher).publish(eq(TASK_ID), any(), any(), any(), anyInt());
     }
 
+    @Test
+    void contentOnlyReplyIsCorrectedWithTheAssemblyMessage() {
+        when(invocation.invoke(any())).thenReturn(textResult("call-1", "我先说明一下计划。"));
+
+        assertEquals(TaskStates.STOP_PROTOCOL_INVALID, worker.execute(task).stopReason());
+
+        ArgumentCaptor<InvocationRequest> requests = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation, org.mockito.Mockito.times(3)).invoke(requests.capture());
+        List<PromptMessage> messages = requests.getAllValues().get(1).prompt().messages();
+        PromptMessage last = messages.get(messages.size() - 1);
+        assertEquals("user", last.role());
+        assertEquals("上一轮只有正文、没有工具调用。请二选一：\n"
+                + "- 调用只读工具继续调查；\n"
+                + "- 调用 submit_result 提交结果。\n"
+                + "不要只回复计划或说明。", last.content());
+    }
+
+    @Test
+    void invalidModelOutputIsCorrectedWithTheProviderDiagnostic() {
+        when(invocation.invoke(any()))
+                .thenThrow(new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, "不是合法 JSON", Map.of("attempt", 1)))
+                .thenReturn(toolCallResult("call-1", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-2", "submit_result", submitJson()));
+
+        assertEquals(TaskStates.SUCCEEDED, worker.execute(task).state());
+
+        ArgumentCaptor<InvocationRequest> requests = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation, org.mockito.Mockito.times(3)).invoke(requests.capture());
+        List<PromptMessage> messages = requests.getAllValues().get(1).prompt().messages();
+        PromptMessage last = messages.get(messages.size() - 1);
+        assertEquals("user", last.role());
+        assertEquals("上一轮输出不可用（不是合法 JSON）。请重新给出工具调用或提交结果。", last.content());
+    }
+
+    @Test
+    void invalidToolBatchSharesOneDiagnosticBetweenToolResultsAndCorrection() throws Exception {
+        List<ToolCall> oversized = java.util.stream.IntStream.range(0, 8)
+                .mapToObj(index -> new ToolCall("bad-" + index, "read_code", "{}"))
+                .toList();
+        when(invocation.invoke(any()))
+                .thenReturn(toolCallResult("call-invalid", oversized))
+                .thenReturn(toolCallResult("call-read", "read_code",
+                        "{\"version\":\"V1\",\"path\":\"src/A.java\"}"))
+                .thenReturn(toolCallResult("call-submit", "submit_result", submitJson()));
+
+        assertEquals(TaskStates.SUCCEEDED, worker.execute(task).state());
+
+        String expected = "上一轮工具批次不合法：单轮最多 4 个工具；submit_result 必须单独调用，"
+                + "不能与其他工具同批。本批工具没有执行。";
+        ArgumentCaptor<InvocationRequest> requests = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation, org.mockito.Mockito.times(3)).invoke(requests.capture());
+        List<PromptMessage> messages = requests.getAllValues().get(1).prompt().messages();
+        PromptMessage last = messages.get(messages.size() - 1);
+        assertEquals("user", last.role());
+        assertEquals(expected, last.content());
+
+        ArgumentCaptor<AgentToolCall> records = ArgumentCaptor.forClass(AgentToolCall.class);
+        verify(toolCallMapper, atLeastOnce()).insert(records.capture());
+        List<AgentToolCall> rejected = records.getAllValues().stream()
+                .filter(record -> "REJECTED_BATCH".equals(record.getStatus())).toList();
+        assertEquals(8, rejected.size());
+        for (AgentToolCall record : rejected) {
+            assertEquals(expected, mapper.readTree(record.getEnvelope()).path("diagnostic").asText());
+        }
+    }
+
+    @Test
+    void repeatedCallsGetExactlyOneAssemblyCorrection() {
+        when(invocation.invoke(any())).thenReturn(toolCallResult("call-x", "read_code",
+                "{\"version\":\"V1\",\"path\":\"src/A.java\"}"));
+
+        assertEquals(TaskStates.STOP_NO_PROGRESS_LIMIT, worker.execute(task).stopReason());
+
+        ArgumentCaptor<InvocationRequest> requests = ArgumentCaptor.forClass(InvocationRequest.class);
+        verify(invocation, org.mockito.Mockito.times(3)).invoke(requests.capture());
+        String expected = "上一轮工具调用与返回完全相同，且没有新增材料。请换查询、翻页或结束调查；\n"
+                + "重复同一请求不会得到更多信息。";
+        long corrections = requests.getAllValues().stream()
+                .flatMap(request -> request.prompt().messages().stream())
+                .filter(message -> "user".equals(message.role()) && expected.equals(message.content()))
+                .count();
+        assertEquals(1, corrections);
+    }
+
     private InvocationResult toolCallResult(String callId, String name, String arguments) {
         return new InvocationResult(callId, null, null, "tool_calls", 1, 100, 1024, "m", "v",
                 List.of(new ToolCall("p1", name, arguments)));

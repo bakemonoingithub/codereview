@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-01 PAR-04 完成：Agent 四类纠正消息已改为类型化事件，由 `PromptAssemblyService` 按 `resources/prompts/correction` 模板选择正文，触发条件、计数、插入位置及 `user` 角色不变，非法批次的 envelope 诊断与纠正消息共用同一段文字；工具描述拆为中立能力定义（`tools/capability`）与 OpenAI Chat 协议适配（`tools/protocol`），`ToolArgumentParser` 读取同一份参数约束。改造前工具 JSON、序列化字节数与 schema 版本指纹已冻结比较，PAR-02 的 20 组固定请求仍逐字一致；定向 23 个套件 220 项及后端全量 991 项通过（跳过 11 项既有探针；首次全量的一次 Windows 临时目录清理错误单独复跑通过，不记为回归），打包产物含新增纠正模板。未启动服务、未调用真实模型、未操作数据库；PAR-05 todo，无本工作包 active。详见[PAR-04 记录](work/prompt-assembly-refactor/par-04-convergence.md)。
+
 2026-11-01 PAR-03 完成：内置提示词正文已从 PromptPurpose、SpecialistProtocol、PromptAssemblyService 迁到 `backend/src/main/resources/prompts`（26 份模板＋清单），新增清单校验与单次变量替换层，缺失资源、变量不一致或重复标识在启动时直接失败；模板标识不进入模型正文。固定 20 组请求基线逐字一致，18 个相关套件 179 项通过，打包产物含全部模板；模板目录在 `.gitattributes` 固定 LF，检出模拟字节一致。未启动服务、未调用真实模型、未操作数据库；PAR-04–05 todo，无本工作包 active。详见[PAR-03 记录](work/prompt-assembly-refactor/par-03-templates.md)。
 
 2026-11-01 PAR-02 完成：已保存 20 组改造前完整请求及容量基线，补齐运行入口、提示片段、四类 Agent 纠正事件和工具描述清单，见[基线记录](work/prompt-assembly-refactor/baseline.md)与[改造指南](work/prompt-assembly-refactor/implementation-guide.md)。定向工程检查通过，具体统计及限制见基线记录。PAR-01、02 done，PAR-03–05 todo，无本工作包 active；未修改生产代码、调用模型或操作服务。

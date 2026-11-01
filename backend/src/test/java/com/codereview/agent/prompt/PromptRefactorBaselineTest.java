@@ -1,6 +1,7 @@
 package com.codereview.agent.prompt;
 import com.codereview.agent.invocation.*;
-import com.codereview.agent.tools.AgentToolSchema;
+import com.codereview.agent.tools.capability.AgentToolCapabilities;
+import com.codereview.agent.tools.ToolLimitProperties;
 import com.fasterxml.jackson.databind.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -24,7 +25,7 @@ class PromptRefactorBaselineTest {
      rich?"报告标题":null,rich?"说明边界":null)));
    }
   }
-  var tools=AgentToolSchema.definitions();
+  var tools=AgentToolCapabilities.readOnly(new ToolLimitProperties());
   var call=new ToolCall("call-1","read_code","{\"version\":\"V1\",\"path\":\"src/A.java\"}");
   for(String scope:List.of("TEXT","FILES","COMMITS")) {
    var input=new AgentPromptInput("检查重试",scope,"dev","head","范围",List.of("src/A.java"),

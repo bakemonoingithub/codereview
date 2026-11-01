@@ -2,17 +2,19 @@
 
 ## PAR 提示词组装与工具描述重构（2026-11-01）
 
-负责人要求将调查结论及后续插件扩展边界落盘，见[重构计划](work/prompt-assembly-refactor/README.md)。PAR-01–03 已完成：基线与改造指南见[基线与验证](work/prompt-assembly-refactor/baseline.md)、[改造指南](work/prompt-assembly-refactor/implementation-guide.md)，内置正文抽取见[PAR-03 记录](work/prompt-assembly-refactor/par-03-templates.md)。正文已迁到 classpath 模板，请求正文由固定基线逐字校验。采用独立模板资源与版本标识，暂不建设系统模板在线版本管理；保留现有用户提示词管理。以改造前请求、容量及执行行为基线保护现有功能，不同时优化提示词。
+负责人要求将调查结论及后续插件扩展边界落盘，见[重构计划](work/prompt-assembly-refactor/README.md)。PAR-01–04 已完成：基线与改造指南见[基线与验证](work/prompt-assembly-refactor/baseline.md)、[改造指南](work/prompt-assembly-refactor/implementation-guide.md)，内置正文抽取见[PAR-03 记录](work/prompt-assembly-refactor/par-03-templates.md)，纠正事件与工具描述边界见[PAR-04 记录](work/prompt-assembly-refactor/par-04-convergence.md)。正文已迁到 classpath 模板，请求正文由固定基线逐字校验；工具描述改为中立能力定义经协议适配生成，参数校验读取同一份约束。采用独立模板资源与版本标识，暂不建设系统模板在线版本管理；保留现有用户提示词管理。以改造前请求、容量及执行行为基线保护现有功能，不同时优化提示词。
 
 | ID | 工作项 | status | depends_on |
 | --- | --- | --- | --- |
 | PAR-01 | 调查、范围及保护计划落盘 | done | - |
 | PAR-02 | 调用清单与改造前基线 | done | PAR-01 |
 | PAR-03 | 内置正文抽取与资源加载 | done | PAR-02 |
-| PAR-04 | 组装边界与工具描述收敛 | todo | PAR-03 |
+| PAR-04 | 组装边界与工具描述收敛 | done | PAR-03 |
 | PAR-05 | 回归、使用验证与交付 | todo | PAR-04 |
 
-关闭条件及验证矩阵以重构计划第 4、5 节为准。当前 PAR-04–05 待启动，无本工作包 active；不实施插件框架，不改变既有业务契约及其他工作包状态。
+关闭条件及验证矩阵以重构计划第 4、5 节为准。当前 PAR-05 待启动，无本工作包 active；不实施插件框架，不改变既有业务契约及其他工作包状态。
+
+2026-11-01 PAR-04 边界收敛：Agent 四类纠正消息改为类型化事件，由组装层按模板选择正文，非法批次的 envelope 诊断与纠正消息共用同一段文字；工具描述拆为中立能力定义与 OpenAI Chat 协议适配，`ToolArgumentParser` 读取同一份参数约束。改造前工具 JSON、序列化字节数与 schema 版本指纹已冻结比较，PAR-02 的 20 组固定请求仍逐字一致；定向 23 个套件 220 项及后端全量 991 项通过（跳过 11 项既有探针，首次全量的一次临时目录清理错误单独复跑通过），打包产物含新增纠正模板。未启动服务、未调用真实模型、未操作数据库，真实使用与交付留 PAR-05。详见[PAR-04 记录](work/prompt-assembly-refactor/par-04-convergence.md)。
 
 2026-11-01 PAR-03 模板抽取：内置指令、输出协议、系统提示词与 Agent 用户段已迁到 `resources/prompts`，以清单声明标识、路径、版本与变量，加载即校验缺失资源、变量不一致与重复标识；固定基线 20 组请求逐字一致，18 个相关套件 179 项通过，打包产物含全部模板；模板目录在 `.gitattributes` 固定 LF，避免 Windows 检出把正文改成 CRLF。未启动服务、未调用真实模型、未操作数据库，后端全量回归与真实使用留给 PAR-05。详见[PAR-03 记录](work/prompt-assembly-refactor/par-03-templates.md)。
 
