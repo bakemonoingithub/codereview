@@ -12,15 +12,17 @@ public record ModelSnapshot(String id, String name, String baseUrl, String model
                             String credential, Integer contextWindow, Integer maxOutput,
                             String tokenizer, String protocol, Integer revision) {
 
+    public static final String DEFAULT_PROTOCOL = "OPENAI_CHAT";
+
     public static ModelSnapshot from(AgentModelConfig config) {
         return new ModelSnapshot(config.getId(), config.getName(), config.getBaseUrl(),
                 config.getModelName(), config.getCredential(), config.getContextWindow(),
                 config.getMaxOutput(), config.getTokenizer(),
-                config.getProtocol() == null ? "OPENAI_CHAT" : config.getProtocol(),
+                config.getProtocol() == null ? DEFAULT_PROTOCOL : config.getProtocol(),
                 config.getRevision());
     }
 
     public boolean openAiCompatible() {
-        return protocol == null || "OPENAI_CHAT".equals(protocol);
+        return protocol == null || DEFAULT_PROTOCOL.equals(protocol);
     }
 }

@@ -30,6 +30,8 @@ import com.codereview.agent.repository.RepositoryPaths;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.repository.RepositorySnapshots;
 import com.codereview.agent.support.AgentIds;
+import com.codereview.agent.support.ModelConfigSnapshots;
+import com.codereview.agent.support.PromptVersionResolver;
 import com.codereview.agent.support.PromptApplicability;
 import com.codereview.agent.support.AgentTime;
 import com.codereview.agent.tools.AgentToolLoopValidator;
@@ -489,14 +491,8 @@ public class AgentTaskService {
     private String configSnapshot(AgentModelConfig model, FrozenPrompt guidance) {
         ObjectNode root = mapper.createObjectNode();
         root.put("version", 3);
-        ObjectNode modelNode = root.putObject("model");
-        modelNode.put("id", model.getId());
-        modelNode.put("name", model.getName());
-        modelNode.put("modelName", model.getModelName());
-        modelNode.put("protocol", model.getProtocol());
-        modelNode.put("revision", model.getRevision());
-        putNullable(modelNode, "contextWindow", model.getContextWindow());
-        putNullable(modelNode, "maxOutput", model.getMaxOutput());
+        ObjectNode modelNode = ModelConfigSnapshots.agent(model);
+        root.set("model", modelNode);
         modelNode.put("adapterVersion", PromptAssemblyService.ADAPTER_VERSION);
         modelNode.put("toolSchemaVersion", AgentToolSchema.version(toolLimits));
         modelNode.put("optionsHash", AgentToolLoopValidator.optionsHash(ModelSnapshot.from(model), toolLimits, budget));

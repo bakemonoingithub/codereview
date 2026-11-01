@@ -16,11 +16,12 @@ import com.codereview.agent.entity.AgentReportSource;
 import com.codereview.agent.mapper.AgentModelCallMapper;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentPromptMapper;
-import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
 import com.codereview.agent.support.AgentIds;
+import com.codereview.agent.support.ModelConfigSnapshots;
 import com.codereview.agent.support.PromptApplicability;
+import com.codereview.agent.support.PromptVersionResolver;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -80,7 +81,7 @@ public class ReportGenerationService {
 
         LocalDateTime now = AgentTime.now();
         String instruction = request.instruction() == null ? null : request.instruction().strip();
-        ObjectNode modelSnapshot = modelSnapshot(model);
+        ObjectNode modelSnapshot = ModelConfigSnapshots.report(model);
         ObjectNode instructionSnapshot = instructionSnapshot(instruction, promptSnapshot);
         int changed = db.mapper(AgentReportMapper.class).update(null,
                 new LambdaUpdateWrapper<AgentReport>()
@@ -273,20 +274,6 @@ public class ReportGenerationService {
         }
     }
 
-    private ObjectNode modelSnapshot(AgentModelConfig model) {
-        ObjectNode node = mapper.createObjectNode();
-        node.put("id", model.getId());
-        node.put("name", model.getName());
-        node.put("baseUrl", model.getBaseUrl());
-        node.put("modelName", model.getModelName());
-        node.put("contextWindow", model.getContextWindow());
-        node.put("maxOutput", model.getMaxOutput());
-        node.put("tokenizer", model.getTokenizer());
-        node.put("protocol", model.getProtocol() == null ? "OPENAI_CHAT" : model.getProtocol());
-        node.put("revision", model.getRevision());
-        return node;
-    }
-
     private ObjectNode instructionSnapshot(String instruction, ObjectNode promptSnapshot) {
         ObjectNode node = mapper.createObjectNode();
         node.put("version", ReportFactsBuilder.FACTS_VERSION);
@@ -299,6 +286,10 @@ public class ReportGenerationService {
         return node;
     }
 
+    /**
+     * 报告允许提示词与版本两项均不选；一旦选择，两项必须同时显式提供。
+     * 版本存在、归属和正文基础检查由共同解析器负责，报告保留自己的空正文错误分类。
+     */
     private ObjectNode promptSnapshot(String promptId, String promptVersionId) {
         if (promptId == null && promptVersionId == null) {
             return null;
@@ -317,15 +308,8 @@ public class ReportGenerationService {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
                     "所选提示词须为报告生成或通用用途");
         }
-        AgentPromptVersion version = db.mapper(AgentPromptVersionMapper.class).selectById(promptVersionId);
-        if (version == null || !promptId.equals(version.getPromptId())) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "所选提示词版本不属于该报告通用规则");
-        }
-        if (version.getContent() == null || version.getContent().isBlank()) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                    "所选报告通用规则版本正文不能为空");
-        }
+        AgentPromptVersion version = PromptVersionResolver.resolveExplicit(db, prompt, promptVersionId,
+                ErrorCode.VALIDATION_FAILED, "所选报告通用规则版本正文不能为空");
         ObjectNode snapshot = mapper.createObjectNode();
         snapshot.put("id", prompt.getId());
         snapshot.put("name", prompt.getName());

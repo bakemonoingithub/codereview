@@ -33,6 +33,8 @@
 | BRC-M04 路径、查询、读取范围和完整性语义 | [ToolArgumentParser](../../../backend/src/main/java/com/codereview/agent/tools/ToolArgumentParser.java)、[RepositoryPaths](../../../backend/src/main/java/com/codereview/agent/repository/RepositoryPaths.java)、各工具实现 | AgentToolCapabilities 参数／用途说明；prompts/agent/tool-usage.txt | [ToolArgumentParserTest](../../../backend/src/test/java/com/codereview/agent/tools/ToolArgumentParserTest.java) 及对应工具测试；BRC-04 核对 |
 | BRC-M05 游标与查询绑定 | [ToolCursor](../../../backend/src/main/java/com/codereview/agent/tools/ToolCursor.java)、ToolInvocation.fingerprint | AgentToolCapabilities.CURSOR_DESCRIPTION、分页相关诊断 | [ToolCursorTest](../../../backend/src/test/java/com/codereview/agent/tools/ToolCursorTest.java)；变更指纹字段须检查说明中的查询参数列表，BRC-04 核对 |
 | BRC-M06 工具批次、重复调用及终止处理 | [AgentTaskWorker](../../../backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java) | prompts/correction、AgentToolCapabilities 总说明、prompts/agent/tool-usage.txt | [AgentTaskWorkerTest](../../../backend/src/test/java/com/codereview/agent/execution/AgentTaskWorkerTest.java)；数量读取冻结预算，其他控制语义不改为提示词配置，BRC-04 核对 |
+| BRC-M07 提示词版本存在、归属、正文与回退策略 | [PromptVersionResolver](../../../backend/src/main/java/com/codereview/agent/support/PromptVersionResolver.java) | 各入口默认与错误分类：专项／Agent 的 null→当前版本与 CONFIG_INCOMPLETE；报告不选规则、显式选择与 VALIDATION_FAILED | [PromptVersionResolverTest](../../../backend/src/test/java/com/codereview/agent/support/PromptVersionResolverTest.java)、TaskServiceTest、AgentTaskServiceTest、ReportGenerationServiceTest；报告两项均 null 不视为选择，显式空白不回退 |
+| BRC-M08 模型快照共同字段、null、默认协议与凭据排除 | [ModelConfigSnapshots](../../../backend/src/main/java/com/codereview/agent/support/ModelConfigSnapshots.java) | 场景布局：专项连接字段及原协议、报告默认协议、Agent 精简字段；默认协议取自 [ModelSnapshot](../../../backend/src/main/java/com/codereview/agent/invocation/ModelSnapshot.java) | [ModelConfigSnapshotsTest](../../../backend/src/test/java/com/codereview/agent/support/ModelConfigSnapshotsTest.java)、TaskServiceTest、AgentTaskServiceTest、ReportGenerationServiceTest；不改历史快照，不写入凭据 |
 
 ## 4. 第三档与既有差异
 
@@ -42,7 +44,8 @@
 
 - materialId 的工具 Schema 最大长度与运行时材料资格校验不同，不擅自统一。
 - 提交字段的非空白检查不等同于 Schema 的 required／maxLength；整数边界也可能在后续业务阶段检查，保持现有拒绝阶段和错误分类。
-- 报告提示词及版本均为 null 时允许不选规则；单项缺失或显式空白不等同于该入口。BRC-02 只共用存在／归属／正文基础检查，保留各入口默认与错误分类。
+- 报告提示词及版本均为 null 时允许不选规则；单项缺失或显式空白不等同于该入口。BRC-02 只共用存在／归属／正文基础检查，保留各入口默认、空正文错误分类及报告不选规则。
+- 专项／Agent 仅在版本 ID 为 null 时使用当前版本；显式空白不回退。模型快照的字段顺序、字段存在性、null 表达及协议处理按入口保留，不因共用构造入口统一。
 - 部分行号默认／边界在 Schema、参数解析、实际读取及业务校验分阶段处理；BRC-04 确认权威默认后再共用。
 - changeRelation 的文件审查说明写为 null，既有校验也接受空白文本；当前不收紧。将来改变接受范围须单独说明并核对正式契约。
 - 可选数组缺失／null 与数组中的 null 元素不是同一条件；保留既有错误分类，见 SpecialistOutputContractsTest、AgentContractMaintenanceTest。

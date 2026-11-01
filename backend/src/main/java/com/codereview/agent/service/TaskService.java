@@ -42,6 +42,8 @@ import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.PromptApplicability;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
+import com.codereview.agent.support.ModelConfigSnapshots;
+import com.codereview.agent.support.PromptVersionResolver;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -653,16 +655,7 @@ public class TaskService {
         ObjectNode root = mapper.createObjectNode();
         root.put("schemaVersion", 2);
         AgentModelConfig model = config.model();
-        ObjectNode modelNode = root.putObject("model");
-        modelNode.put("id", model.getId());
-        modelNode.put("name", model.getName());
-        modelNode.put("baseUrl", model.getBaseUrl());
-        modelNode.put("modelName", model.getModelName());
-        putNullable(modelNode, "contextWindow", model.getContextWindow());
-        putNullable(modelNode, "maxOutput", model.getMaxOutput());
-        putNullable(modelNode, "tokenizer", model.getTokenizer());
-        modelNode.put("protocol", model.getProtocol());
-        modelNode.put("revision", model.getRevision());
+        root.set("model", ModelConfigSnapshots.specialist(model));
         if (config.prompt() != null) {
             ObjectNode promptNode = root.putObject("prompt");
             promptNode.put("id", config.prompt().getId());

@@ -36,6 +36,7 @@ import org.mockito.quality.Strictness;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -95,7 +96,21 @@ class ReportGenerationServiceTest {
                 new ReportDtos.GenerateRequest(MODEL_ID, " 优先说明风险 "));
 
         assertEquals("QUEUED", detail.state());
+        assertNull(detail.prompt());
+        assertNull(detail.instruction());
         verify(dispatcher).dispatch(REPORT_ID);
+    }
+
+    @Test
+    void rejectsBlankPromptVersionWhenPromptIsSelected() {
+        when(reportMapper.selectById(REPORT_ID)).thenReturn(report(ReportStates.INPUT_FROZEN));
+
+        ApiException error = assertThrows(ApiException.class, () -> service.start(REPORT_ID,
+                new ReportDtos.GenerateRequest(MODEL_ID, null, PROMPT_ID, "  ")));
+
+        assertEquals(ErrorCode.VALIDATION_FAILED, error.errorCode());
+        verify(reportMapper, never()).update(any(), any());
+        verify(dispatcher, never()).dispatch(any());
     }
 
     @Test
