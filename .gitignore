@@ -4,8 +4,7 @@
 *.iml
 
 # backend（backend/ 内另有更细的 .gitignore）
-backend/target/
-backend/target-cfg/
+backend/target*
 
 # frontend
 frontend/node_modules/
