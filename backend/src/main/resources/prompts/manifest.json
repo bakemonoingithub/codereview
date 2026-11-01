@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "id": "instruction.ISSUE_FILE",
+      "kind": "INSTRUCTION",
+      "purpose": "ISSUE_FILE",
+      "version": "1",
+      "path": "prompts/instruction/issue-file.txt",
+      "variables": []
+    },
+    {
+      "id": "instruction.ISSUE_DIFF",
+      "kind": "INSTRUCTION",
+      "purpose": "ISSUE_DIFF",
+      "version": "1",
+      "path": "prompts/instruction/issue-diff.txt",
+      "variables": []
+    },
+    {
+      "id": "instruction.PATTERN",
+      "kind": "INSTRUCTION",
+      "purpose": "PATTERN",
+      "version": "1",
+      "path": "prompts/instruction/pattern.txt",
+      "variables": []
+    },
+    {
+      "id": "instruction.COUPLING",
+      "kind": "INSTRUCTION",
+      "purpose": "COUPLING",
+      "version": "1",
+      "path": "prompts/instruction/coupling.txt",
+      "variables": []
+    },
+    {
+      "id": "instruction.REPORT",
+      "kind": "INSTRUCTION",
+      "purpose": "REPORT",
+      "version": "1",
+      "path": "prompts/instruction/report.txt",
+      "variables": []
+    },
+    {
+      "id": "instruction.AGENT",
+      "kind": "INSTRUCTION",
+      "purpose": "AGENT",
+      "version": "1",
+      "path": "prompts/instruction/agent.txt",
+      "variables": []
+    },
+    {
+      "id": "instruction.AGENT_TOOL_CHECK",
+      "kind": "INSTRUCTION",
+      "purpose": "AGENT_TOOL_CHECK",
+      "version": "1",
+      "path": "prompts/instruction/agent-tool-check.txt",
+      "variables": []
+    },
+    {
+      "id": "instruction.VALIDATION",
+      "kind": "INSTRUCTION",
+      "purpose": "VALIDATION",
+      "version": "1",
+      "path": "prompts/instruction/validation.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.ISSUE_FILE",
+      "kind": "SCHEMA",
+      "purpose": "ISSUE_FILE",
+      "version": "1",
+      "path": "prompts/protocol/issue-file.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.ISSUE_DIFF",
+      "kind": "SCHEMA",
+      "purpose": "ISSUE_DIFF",
+      "version": "1",
+      "path": "prompts/protocol/issue-diff.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.PATTERN",
+      "kind": "SCHEMA",
+      "purpose": "PATTERN",
+      "version": "1",
+      "path": "prompts/protocol/pattern.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.COUPLING",
+      "kind": "SCHEMA",
+      "purpose": "COUPLING",
+      "version": "1",
+      "path": "prompts/protocol/coupling.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.REPORT",
+      "kind": "SCHEMA",
+      "purpose": "REPORT",
+      "version": "1",
+      "path": "prompts/protocol/report.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.AGENT",
+      "kind": "SCHEMA",
+      "purpose": "AGENT",
+      "version": "1",
+      "path": "prompts/protocol/agent.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.AGENT_TOOL_CHECK",
+      "kind": "SCHEMA",
+      "purpose": "AGENT_TOOL_CHECK",
+      "version": "1",
+      "path": "prompts/protocol/agent-tool-check.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.VALIDATION",
+      "kind": "SCHEMA",
+      "purpose": "VALIDATION",
+      "version": "1",
+      "path": "prompts/protocol/validation.txt",
+      "variables": []
+    },
+    {
+      "id": "protocol.suffix",
+      "kind": "PROTOCOL_SUFFIX",
+      "version": "1",
+      "path": "prompts/protocol/suffix.txt",
+      "variables": ["protocolVersion", "purpose", "schema"]
+    },
+    {
+      "id": "system.SPECIALIST",
+      "kind": "SYSTEM",
+      "purpose": "SPECIALIST",
+      "version": "1",
+      "path": "prompts/system/specialist.txt",
+      "variables": ["instruction", "protocol"]
+    },
+    {
+      "id": "system.REPORT",
+      "kind": "SYSTEM",
+      "purpose": "REPORT",
+      "version": "1",
+      "path": "prompts/system/report.txt",
+      "variables": ["instruction", "protocol"]
+    },
+    {
+      "id": "system.AGENT",
+      "kind": "SYSTEM",
+      "purpose": "AGENT",
+      "version": "1",
+      "path": "prompts/system/agent.txt",
+      "variables": ["instruction", "protocol"]
+    },
+    {
+      "id": "system.AGENT_TOOL_CHECK",
+      "kind": "SYSTEM",
+      "purpose": "AGENT_TOOL_CHECK",
+      "version": "1",
+      "path": "prompts/system/tool-check.txt",
+      "variables": ["instruction", "protocol"]
+    },
+    {
+      "id": "agent.TOOL_CHECK_USER",
+      "kind": "USER_GUIDE",
+      "purpose": "AGENT_TOOL_CHECK",
+      "version": "1",
+      "path": "prompts/agent/tool-check-user.txt",
+      "variables": []
+    },
+    {
+      "id": "agent.FIXED_FILE_GUIDANCE",
+      "kind": "USER_GUIDE",
+      "version": "1",
+      "path": "prompts/agent/fixed-file-guidance.txt",
+      "variables": []
+    },
+    {
+      "id": "agent.TOOL_USAGE",
+      "kind": "USER_GUIDE",
+      "version": "1",
+      "path": "prompts/agent/tool-usage.txt",
+      "variables": []
+    },
+    {
+      "id": "retry.DIAGNOSTIC",
+      "kind": "FORMAT_RETRY",
+      "version": "1",
+      "path": "prompts/retry/diagnostic.txt",
+      "variables": ["attempt", "errorCode"]
+    },
+    {
+      "id": "retry.EXCERPT_HEADER",
+      "kind": "FORMAT_RETRY",
+      "version": "1",
+      "path": "prompts/retry/excerpt-header.txt",
+      "variables": []
+    }
+  ]
+}

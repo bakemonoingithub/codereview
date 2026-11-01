@@ -4,3 +4,6 @@
 
 # 部署脚本强制 LF：带 CRLF 的 .sh 在 Linux 上会直接报语法错（U 盘摆渡最容易踩）
 *.sh text eol=lf
+
+# 提示词模板按原始字节进入模型正文与容量估算：检出必须是 LF，CRLF 会改变正文
+backend/src/main/resources/prompts/** text eol=lf

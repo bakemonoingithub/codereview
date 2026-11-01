@@ -1,0 +1,2 @@
+通过 submit_result 提交 Markdown 正文和 citations 数组；引用 ID 使用 E1、E2 等格式，
+正文引用标记必须与 citations 数组中的 id 完全一致；每条引用只能指向实际返回材料的 materialId 与原始行号。

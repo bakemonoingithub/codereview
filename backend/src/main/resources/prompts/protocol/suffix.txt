@@ -1,0 +1,4 @@
+
+
+输出协议（protocolVersion={{protocolVersion}}，purpose={{purpose}}）：
+{{schema}}

@@ -2,6 +2,7 @@ package com.codereview.agent.prompt;
 
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
+import com.codereview.agent.prompt.template.PromptTemplateRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -134,6 +135,21 @@ class PromptAssemblyServiceTest {
                 < prompt.userPrompt().indexOf("冻结来源事实"));
         assertTrue(prompt.systemPrompt().contains("3. 用户消息中的通用规则"));
         assertTrue(prompt.systemPrompt().contains("不得更改这些事实、材料不足状态或来源引用"));
+    }
+
+    @Test
+    void systemPromptsEmbedTemplatesButNeverExposeTheirIdentifiers() {
+        PromptTemplateRegistry templates = PromptTemplateRegistry.loadDefault();
+        for (PromptPurpose purpose : PromptPurpose.values()) {
+            String system = service.systemPrompt(purpose);
+            assertTrue(system.contains(templates.require("instruction." + purpose.wireName()).body()),
+                    "system 必须包含该用途的内置指令正文：" + purpose);
+            assertTrue(system.contains(templates.require("protocol." + purpose.wireName()).body()),
+                    "system 必须包含该用途的协议正文：" + purpose);
+            for (String id : templates.ids()) {
+                assertFalse(system.contains(id), "模板标识不能进入模型正文：" + id);
+            }
+        }
     }
 
     private static PromptInput input(PromptPurpose purpose, PromptMaterial target) {

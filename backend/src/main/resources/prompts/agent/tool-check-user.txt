@@ -1,0 +1,5 @@
+请完成一次工具协议验证：
+1. 调用 read_code，version 使用 V1，path 使用 fixture/Fixture.java，start=1，end=3；
+2. 收到工具结果后，用一句中文说明你收到了第几行到第几行。
+
+只执行这两步，不分析代码内容，不调用其他工具。

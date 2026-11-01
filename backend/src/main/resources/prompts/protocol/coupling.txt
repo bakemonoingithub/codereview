@@ -1,0 +1,3 @@
+只输出一个 JSON 对象：
+{"summary":"一句话结论","observations":[{"title":"短标题","explanation":"只解释给定依赖事实","dependencyIds":["dep-1"],"evidence":[{"materialId":"target-1","startLine":1,"endLine":2}],"suggestion":"可选建议"}],"limitations":[]}
+dependencyIds 必须来自给定事实；observations 可为空；不要输出未知字段。

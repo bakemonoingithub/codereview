@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-01 PAR-03 完成：内置提示词正文已从 PromptPurpose、SpecialistProtocol、PromptAssemblyService 迁到 `backend/src/main/resources/prompts`（26 份模板＋清单），新增清单校验与单次变量替换层，缺失资源、变量不一致或重复标识在启动时直接失败；模板标识不进入模型正文。固定 20 组请求基线逐字一致，18 个相关套件 179 项通过，打包产物含全部模板；模板目录在 `.gitattributes` 固定 LF，检出模拟字节一致。未启动服务、未调用真实模型、未操作数据库；PAR-04–05 todo，无本工作包 active。详见[PAR-03 记录](work/prompt-assembly-refactor/par-03-templates.md)。
+
 2026-11-01 PAR-02 完成：已保存 20 组改造前完整请求及容量基线，补齐运行入口、提示片段、四类 Agent 纠正事件和工具描述清单，见[基线记录](work/prompt-assembly-refactor/baseline.md)与[改造指南](work/prompt-assembly-refactor/implementation-guide.md)。定向工程检查通过，具体统计及限制见基线记录。PAR-01、02 done，PAR-03–05 todo，无本工作包 active；未修改生产代码、调用模型或操作服务。
 
 2026-11-01 提示词组装与工具描述重构：按负责人要求落盘[重构计划](work/prompt-assembly-refactor/README.md)，同步 ROADMAP 的 PAR 工作包。明确正文抽取、场景规则与工具描述分离、插件扩展边界及请求／容量／执行行为等价验证；采用轻量版本标识，不建设系统模板在线版本管理。PAR-01 done，PAR-02–05 todo，无本工作包 active；本轮仅文档，未修改业务代码或启动插件框架实施，其他工作包状态不变。
