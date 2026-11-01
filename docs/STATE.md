@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-01 后端规则同源维护规划完成：按负责人要求将范围限定于后端重复表达，前后端一致性由文档约束。已记录[改造规划](work/backend-rule-consolidation/README.md)，评估为中等偏小的维护性重构；BRC-01 输出契约、BRC-02 版本解析与模型快照、BRC-03 集成回归与交付均为 todo，无本工作包 active。验收以相关测试和后端全量回归通过为准，资源变化补必要检查，不设真实模型、页面或部署验收。本轮只改文档，未改业务代码、运行测试或操作服务；PAR-01–05 完成状态不变。
+
 2026-11-01 PAR-05 完成：以 dev `835122d` 为源码基线完成工程回归、打包资源检查和一次真实使用验证。后端全量 134 个套件 994 项，失败 0、异常 0、跳过 11 项既有探针，48 个相关套件 355 项，失败 0、异常 0、跳过 2 项 live 取消探针；打包产物含清单与 30 份模板，逐文件字节与源文件一致。按负责人当日授权启动本机打包应用（8081）并连接现有库，使用项目 `codereview` 与 `deepseek-flash` 修订 0 完成问题审查、设计模式、耦合度、代码 Agent、四来源混合报告及连通／工具协议两类验证，全部成功；6 次业务模型调用共 19887 token，报告下载与正文一致，五个用途的实际 system 正文与模板逐字一致且未泄漏模板标识。验证后已停止服务并释放端口，写入现有库的任务、报告与验证记录保留；启动时既有 Flyway 流程将库从 v9 升至 v10（record deletion）。未执行部署、手工 SQL、迁移回退或数据清理；纠正事件、材料不足、取消与硬限制、专用／COMMON 规则报告、页面视觉及跨环境加载等边界见记录。PAR-01–05 全部 done，无本工作包 active。详见[PAR-05 记录](work/prompt-assembly-refactor/par-05-delivery.md)及[真实使用证据](work/prompt-assembly-refactor/evidence/par-05-real-usage.json)。
 
 2026-11-01 PAR-04 完成：Agent 四类纠正消息已改为类型化事件，由 `PromptAssemblyService` 按 `resources/prompts/correction` 模板选择正文，触发条件、计数、插入位置及 `user` 角色不变，非法批次的 envelope 诊断与纠正消息共用同一段文字；工具描述拆为中立能力定义（`tools/capability`）与 OpenAI Chat 协议适配（`tools/protocol`），`ToolArgumentParser` 读取同一份参数约束。改造前工具 JSON、序列化字节数与 schema 版本指纹已冻结比较，PAR-02 的 20 组固定请求仍逐字一致；定向 23 个套件 223 项及后端全量 994 项通过（跳过 11 项既有探针；首次全量的一次 Windows 临时目录清理错误单独复跑通过，不记为回归），打包产物含新增纠正模板。未启动服务、未调用真实模型、未操作数据库；PAR-05 随后完成，见上。详见[PAR-04 记录](work/prompt-assembly-refactor/par-04-convergence.md)。

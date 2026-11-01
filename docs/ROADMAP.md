@@ -1,5 +1,18 @@
 # ROADMAP - 专项审查与 Agent 分析
 
+## BRC 后端规则同源维护（2026-11-01）
+
+已完成范围评估与[改造规划](work/backend-rule-consolidation/README.md)。本次为中等偏小的后端维护性重构：输出契约是主要工作量，另收敛提示词版本解析和模型快照；不新增业务模块，不改前端、数据库或 API。前后端一致性由业务契约及相关接口文档约束。当前规划完成，实施 todo，无本工作包 active。
+
+| ID | 工作项 | status | depends_on |
+| --- | --- | --- | --- |
+| BRC-01 | 专项、Agent 和报告输出契约同源 | todo | - |
+| BRC-02 | 提示词版本解析与模型快照复用 | todo | - |
+| BRC-03 | 集成回归与交付记录 | todo | BRC-01, BRC-02 |
+
+建议按表顺序实施，测试并入各任务，不设置大型阶段里程碑。验收以相关测试及最终后端全量回归通过为准；资源变化补必要加载／打包检查。不要求真实模型、页面、服务启停、数据库或部署验收。兼容原则、测试范围及冲突处理见规划第 4、5 节。PAR-01–05 已完成状态保持不变；本轮仅编写文档，未启动代码实施。
+
+
 ## PAR 提示词组装与工具描述重构（2026-11-01）
 
 负责人要求将调查结论及后续插件扩展边界落盘，见[重构计划](work/prompt-assembly-refactor/README.md)。PAR-01–05 已完成：基线与改造指南见[基线与验证](work/prompt-assembly-refactor/baseline.md)、[改造指南](work/prompt-assembly-refactor/implementation-guide.md)，内置正文抽取见[PAR-03 记录](work/prompt-assembly-refactor/par-03-templates.md)，纠正事件与工具描述边界见[PAR-04 记录](work/prompt-assembly-refactor/par-04-convergence.md)，回归与真实使用见[PAR-05 记录](work/prompt-assembly-refactor/par-05-delivery.md)。正文已迁到 classpath 模板，请求正文由固定基线逐字校验；工具描述改为中立能力定义经协议适配生成，参数校验读取同一份约束。采用独立模板资源与版本标识，暂不建设系统模板在线版本管理；保留现有用户提示词管理。以改造前请求、容量及执行行为基线保护现有功能，不同时优化提示词。
