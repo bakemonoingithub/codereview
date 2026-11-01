@@ -2,6 +2,8 @@
 
 [插件 JSON](gitea-1.16.1-basic.plugin.json)用于讨论并验证插件框架的输入契约。`schemaVersion=0.1.0-draft` 是本次提出的草案版本，不是已存在的系统标准。当前仓库尚无对应插件导入器、请求执行器或权限执行实现，不能宣称该文件已可在现有页面导入使用。
 
+整体方向、统一执行器职责及与 Agent／MCP 的关系见[设计讨论](../README.md)。本页只维护 Gitea 样例的接口与验证边界。
+
 ## 接口依据
 
 - [Gitea 官方 v1.16.1 Swagger 定义](https://github.com/go-gitea/gitea/blob/v1.16.1/templates/swagger/v1_json.tmpl)

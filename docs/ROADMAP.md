@@ -16,6 +16,7 @@
 
 2026-11-01 PAR-03 模板抽取：内置指令、输出协议、系统提示词与 Agent 用户段已迁到 `resources/prompts`，以清单声明标识、路径、版本与变量，加载即校验缺失资源、变量不一致与重复标识；固定基线 20 组请求逐字一致，18 个相关套件 179 项通过，打包产物含全部模板；模板目录在 `.gitattributes` 固定 LF，避免 Windows 检出把正文改成 CRLF。未启动服务、未调用真实模型、未操作数据库，后端全量回归与真实使用留给 PAR-05。详见[PAR-03 记录](work/prompt-assembly-refactor/par-03-templates.md)。
 
+2026-11-01 设计讨论归档：负责人要求落盘「JSON 形式插件＋统一插件执行器」，见[设计讨论](work/plugin-framework/README.md)。文档区分负责人方向、实施建议和待确认事项，关联 Gitea 1.16.1 样例；不新增已批准实施阶段，不启动框架开发，不改变下方工作包状态。
 
 2026-10-29 负责人实际验证：已确认增量更新和物理删除脚本均有效，分别记录为两项实际使用验证通过，见[增量更新确认](work/agent-redesign/runtime-configuration/automatic-update-20261029.md#5-负责人实际验证2026-10-29)及[物理清理确认](work/agent-redesign/record-deletion/README.md#8-负责人实际验证2026-10-29)。此结论不扩大为恢复演练、异常回滚、并发、全部业务流程或正式页面视觉验收通过；CFG-06／07、DEL-05 的其余验收项保持待核对。
 
