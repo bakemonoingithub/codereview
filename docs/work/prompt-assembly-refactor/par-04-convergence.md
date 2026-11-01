@@ -18,21 +18,23 @@
   - `ToolParameter`（`Text`／`IntegerValue`／`Array`／`Object`，`Text` 带 `Role` 语义：版本、比较关系、路径、glob、查询、游标）。
   - `ToolCapability`：名称、用途说明、参数声明顺序与必填项。
   - `AgentToolCapabilities`：五类只读工具与 `submit_result` 的中立定义，含参数说明、枚举、上限与提交示例；数值来自 `ToolLimits` 与冻结的 `ToolLimitProperties`。
-- 新增 `tools/protocol/OpenAiChatToolAdapter`：把能力定义转成当前 OpenAI Chat `tools` JSON。属性顺序沿用改造前序列化顺序，因为工具定义会随请求发送并计入容量估算。协议字段（`type=function`、`function.parameters`）只出现在适配层。
+  - 模型可见约束与解析器约束分开声明：`Text.schemaMaxLength` 只决定是否输出 `maxLength`，`Text.maxChars` 只约束参数解析；`IntegerValue.schemaDefault` 是描述里的默认值，`parserDefault` 是解析器省略时填入的值（读取起始行在描述中声明默认 1，但解析结果仍为 `null`）。`description` 只控制说明文字，不决定其他约束是否输出。
+- 新增 `tools/protocol/OpenAiChatToolAdapter`：把能力定义转成当前 OpenAI Chat `tools` JSON，每个已声明约束独立输出，属性顺序沿用改造前序列化顺序（历史字段顺序单独保留，不作为新抽象的一般规则）。协议字段（`type=function`、`function.parameters`）只出现在适配层。
 - `AgentToolSchema` 收敛为兼容入口，只保留 `version()`、`definitions()`、`agentTools()`，实现改为「能力定义 + 适配器」；schema 版本指纹算法未变。
-- `ToolArgumentParser` 改为读取同一份能力定义：参数名、必填项、类型、`min`／`max`、默认值、`maxItems` 与数组项 `pattern` 均来自 `ToolCapability`。错误码、提示文案、未知字段拒绝和校验先后顺序（版本与比较关系在读取该参数后立即解析）保持原样。
+- `ToolArgumentParser` 改为读取同一份能力定义：参数名、必填项、类型、`min`／`max`、解析默认值、`maxItems` 与数组项 `pattern` 均来自 `ToolCapability`。错误码、提示文案、未知字段拒绝与校验先后顺序保持原样：版本与比较关系在读取该参数后立即解析；读取行范围检查先于未知字段检查；省略 `start` 时解析结果仍为 `null`。
 - `PromptAssemblyService.assembleAgent`／`assembleToolCheck`／`assembleToolCheckFollowUp` 改为接收 `List<ToolCapability>`，工具 JSON 在组装层内由适配器生成；保留按任务注入能力集合与指导内容的入口，未接入插件发现、授权、MCP 或插件执行。`AgentTaskWorker` 与 `AgentToolLoopValidator` 传入各自冻结限额下的能力集合。
 
 ## 2. 等价性证据
 
 - 新增冻结基线 `backend/src/test/resources/tool-baseline/tools.json`：在改造前实现上以一次性捕获测试导出 `definitions()`、`agentTools()`、两者序列化字节数（6529／9850）、默认与自定义限额下的 schema 版本指纹；捕获测试已删除，且有覆盖保护。正式检查 `ToolDefinitionBaselineTest` 只读比较，不重新捕获。
 - 适配器一致性检查同时断言：每个工具的 JSON 属性顺序等于能力定义声明顺序，`required` 等于能力定义的必填项，`additionalProperties=false`，且不输出空说明。
-- PAR-02 固定请求基线 20 组仍逐字一致（system／user 正文、消息角色与顺序、工具定义、完整请求体与容量估算），基线文件未重捕获。
+- 适配器组合检查：无说明但声明默认值与范围的整数仍输出 `default`／`minimum`／`maximum`；无说明的正则仍输出 `pattern`；说明与正则并存时 `maxLength` 不丢失；无说明的枚举、数组与数组项长度约束照常输出，说明缺失不会连带丢弃约束。
+- PAR-02 固定请求基线 20 组仍逐字一致（system／user 正文、消息角色与顺序、工具定义、完整请求体与容量估算），基线文件未重捕获；工具序列化字节数仍为 6529／9850。
 - 新增 `PromptCorrectionTest`：以改造前文案字面量断言四类纠正正文、批次数值替换、诊断原样插入，并检查清单变量声明与缺变量失败。
 - `AgentTaskWorkerTest` 新增 4 项：只有正文时的纠正、模型输出非法时的纠正、非法批次 envelope 诊断与纠正消息同文、重复调用只补一次纠正；原有插入顺序、计数与终止阈值断言未改。
-- `ToolArgumentParserTest` 新增边界一致性检查：描述中写出的上限就是解析器实际上限（`depth`、`limit`、`extensions`、`query`、`path`、`glob`、`cursor`、版本标识长度），避免 schema 与校验各自维护一套约束。
-- 定向复验：23 个相关套件 220 项，失败 0、异常 0、跳过 0（提示词组装与基线、纠正事件、工具描述、参数解析、Agent 与专项执行、报告、工具协议、容量及模板检查）。日志中的异常堆栈为既有负向用例输出。
-- 后端全量：991 项，失败 0、异常 0，跳过 11（既有真实网关／宿主探针）。首次全量出现 1 次 `GitMirrorTest` 临时目录清理错误（Windows 占用 git pack），该用例单独复跑通过，第二次及最终全量均通过；不记为代码回归，也不据此宣称全量稳定。
+- `ToolArgumentParserTest` 新增边界一致性检查：描述中写出的上限就是解析器实际上限（`depth`、`limit`、`extensions`、`query`、`path`、`glob`、`cursor`、版本标识长度），避免 schema 与校验各自维护一套约束；另加省略 `start` 仍为 `null`、行范围错误先于未知字段两项诊断等价检查。
+- 定向复验：23 个相关套件 223 项，失败 0、异常 0、跳过 0（提示词组装与基线、纠正事件、工具描述、参数解析、Agent 与专项执行、报告、工具协议、容量及模板检查）。日志中的异常堆栈为既有负向用例输出。
+- 后端全量：994 项，失败 0、异常 0，跳过 11（既有真实网关／宿主探针）。首次全量出现 1 次 `GitMirrorTest` 临时目录清理错误（Windows 占用 git pack），该用例单独复跑通过，随后两轮全量均通过；不记为代码回归，也不据此宣称全量稳定。
 - 打包检查：`mvn -DskipTests package` 产物内 `BOOT-INF/classes/prompts/correction/` 含四份模板（169／170／92／154 字节，与源文件一致），`manifest.json` 为 5961 字节；新增正文随应用发布，不依赖开发机路径。
 
 ## 3. 未验证与边界
@@ -42,6 +44,16 @@
 - 工具描述与纠正正文仍为中文单语；没有新增工具、插件来源或工具说明的在线管理。
 - `submit_result` 的参数校验仍由 `AgentSubmission` 执行，本轮只统一了它的描述来源，没有把提交校验并入工具参数解析器。
 - 纠正事件的触发条件与次数由执行器测试覆盖，未在真实模型下逐一复现四类事件。
+- `ToolParameter.Role` 表示当前代码 Agent 的参数语义（版本、比较关系、路径、glob、查询、游标），不是完整的通用插件参数模型；接入插件或接口证据时需要另行扩展，不能直接宣称已覆盖。
+
+## 5. 审阅意见处理（2026-11-01）
+
+对提交 `6c5b213` 的独立审阅提出两项应修问题，均已确认并修正，见紧随其后的 `fix(prompt): 修正工具 schema 约束输出与解析诊断顺序` 提交：
+
+1. 协议适配器按说明文字是否存在丢弃约束：原 `integerSchema` 只有 `description != null` 才输出上限与默认值，字符串带 `pattern` 或枚举后提前返回，会忽略其他已声明约束。现改为每个已声明约束独立输出，`description` 只控制说明字段；历史上不重复输出 `maxLength` 的版本标识改由 `schemaMaxLength` 显式表达，读取起始行的「描述默认 1、解析保持 null」由 `schemaDefault`／`parserDefault` 分开表达。历史字段顺序只为兼容冻结基线而保留，不作为一般规则；新增组合测试覆盖无说明的默认值与范围、正则加长度、枚举、数组项长度。
+2. 解析诊断顺序偏差：原实现先检查行范围再检查未知字段，且省略 `start` 时结果为 `null`；重构后曾变成先查未知字段、`start` 填 1。现已恢复行范围先于未知字段、省略 `start` 仍为 `null`，并新增两项回归，指纹与诊断与原实现一致。
+
+审阅认可以下的取舍保持成立：纠正事件抽象未提前建设事件总线；能力定义与协议适配分离；版本解析、路径安全与范围关联校验留在执行边界，提交与证据校验仍由 `AgentSubmission` 负责。本轮不因此扩大范围或改动业务契约。
 
 ## 4. 回退
 

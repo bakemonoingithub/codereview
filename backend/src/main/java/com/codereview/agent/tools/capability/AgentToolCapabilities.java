@@ -97,7 +97,7 @@ public final class AgentToolCapabilities {
                         ToolParameter.array("extensions", false,
                                 "至多 " + ToolLimits.SEARCH_MAX_EXTENSIONS + " 个后缀过滤，例如 .java",
                                 ToolLimits.SEARCH_MAX_EXTENSIONS,
-                                ToolParameter.pattern(null, false, null, EXTENSION_PATTERN, null)),
+                                ToolParameter.pattern(null, false, null, EXTENSION_PATTERN)),
                         ToolParameter.integer("limit", "最多返回命中数，默认 " + limits.getSearchDefaultLimit(),
                                 limits.getSearchDefaultLimit(), 1, limits.getSearchMaxLimit()),
                         ToolParameter.cursor(CURSOR_DESCRIPTION)));
@@ -114,11 +114,11 @@ public final class AgentToolCapabilities {
                         ToolParameter.versionRef("version", "固定版本标识"),
                         ToolParameter.path("path", true, relativePath(
                                 "必填的具体文件路径，不能省略或传空字符串、\".\"。")),
-                        ToolParameter.integer("start", "起始行，默认 1", 1, 1, 10_000_000),
+                        ToolParameter.documentedInteger("start", "起始行，默认 1", 1, 1, 10_000_000),
                         new ToolParameter.IntegerValue("end", false,
                                 "包含在读取范围内的结束行，不能小于起始行；省略时为 start+"
                                         + (limits.getReadDefaultLines() - 1),
-                                null, 1, 10_000_000)));
+                                null, null, 1, 10_000_000)));
     }
 
     private static ToolCapability readDiff(ToolLimitProperties limits) {
@@ -138,17 +138,17 @@ public final class AgentToolCapabilities {
         List<ToolParameter> citationProperties = List.of(
                 ToolParameter.pattern("id", true,
                         "本次结果内唯一的引用编号，如 E1、E2，不带方括号；正文中写 [E1]、[E2]，不要使用 S1。",
-                        "^E[0-9]{1,3}$", null),
+                        "^E[0-9]{1,3}$"),
                 ToolParameter.text("materialId", true,
                         "原样填写本次任务只读工具返回并已送入模型的材料 ID；不能编造，也不能从参考结果或其他任务复制。",
                         26),
                 new ToolParameter.IntegerValue("startLine", true,
                         "引用起始行，包含端点，必须位于该 materialId 的实际返回行范围内。",
-                        null, 1, null),
+                        null, null, 1, null),
                 new ToolParameter.IntegerValue("endLine", true,
                         "引用结束行，包含端点，不能小于 startLine，也不能超出该材料末行。"
                                 + "不能把同一文件的多份材料范围拼到一个 materialId 上；需要更大范围时先调用 read_code。",
-                        null, 1, null));
+                        null, null, 1, null));
         return new ToolCapability(AgentToolNames.SUBMIT_RESULT,
                 "结束调查并提交结果，必须单独调用，不能与其他工具同批。"
                         + "citations.id 使用 E1、E2，markdown 中必须写成 [E1]、[E2]，不能只填写引用数组。"

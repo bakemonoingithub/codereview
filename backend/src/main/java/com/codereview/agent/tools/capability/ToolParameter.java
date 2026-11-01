@@ -43,9 +43,16 @@ public sealed interface ToolParameter
         CURSOR
     }
 
+    /**
+     * 字符串参数。
+     *
+     * <p>{@code maxChars} 只约束参数解析，{@code schemaMaxLength} 决定是否向模型输出
+     * {@code maxLength}；两者分开是因为版本标识的长度已由 {@code pattern} 表达，
+     * 历史上不重复输出 {@code maxLength}。{@code description} 只控制说明，不决定其他约束是否输出。
+     */
     record Text(String name, boolean required, String description, Role role,
-                Integer maxChars, Integer minLength, String pattern, List<String> enumValues)
-            implements ToolParameter {
+                Integer maxChars, Integer schemaMaxLength, Integer minLength, String pattern,
+                List<String> enumValues) implements ToolParameter {
 
         public Text {
             role = role == null ? Role.PLAIN : role;
@@ -53,9 +60,16 @@ public sealed interface ToolParameter
         }
     }
 
+    /**
+     * 整数参数。
+     *
+     * <p>{@code schemaDefault} 是描述里写给模型的默认值，{@code parserDefault} 是解析器
+     * 在参数省略时自行填入的值；两者分开是因为读取起始行在描述里声明默认 1，但解析结果
+     * 仍保持省略为 {@code null}，由读取实现决定默认行为。
+     */
     record IntegerValue(String name, boolean required, String description,
-                        Integer defaultValue, Integer minimum, Integer maximum)
-            implements ToolParameter {
+                        Integer schemaDefault, Integer parserDefault, Integer minimum,
+                        Integer maximum) implements ToolParameter {
     }
 
     record Array(String name, boolean required, String description,
@@ -72,52 +86,62 @@ public sealed interface ToolParameter
         }
     }
 
-    static Text text(String name, boolean required, String description, Integer maxChars) {
-        return new Text(name, required, description, Role.PLAIN, maxChars, null, null, List.of());
-    }
-
-    static Text pattern(String name, boolean required, String description,
-                        String pattern, Integer maxChars) {
-        return new Text(name, required, description, Role.PLAIN, maxChars, null, pattern, List.of());
-    }
-
-    static Text enumText(String name, boolean required, String description, List<String> values) {
-        return new Text(name, required, description, Role.PLAIN, null, null, null, values);
-    }
-
-    static Text versionRef(String name, String description) {
-        return new Text(name, true, description, Role.VERSION_REF, 16, null, "^[A-Za-z0-9_-]{1,16}$",
+    /** 只向模型输出的字符串约束（不进入参数解析）；{@code schemaMaxLength} 可为 {@code null}。 */
+    static Text text(String name, boolean required, String description, Integer schemaMaxLength) {
+        return new Text(name, required, description, Role.PLAIN, null, schemaMaxLength, null, null,
                 List.of());
     }
 
+    /** 字符串 + 正则；长度约束由 pattern 表达，不额外输出 maxLength。 */
+    static Text pattern(String name, boolean required, String description, String pattern) {
+        return new Text(name, required, description, Role.PLAIN, null, null, null, pattern, List.of());
+    }
+
+    static Text enumText(String name, boolean required, String description, List<String> values) {
+        return new Text(name, required, description, Role.PLAIN, null, null, null, null, values);
+    }
+
+    static Text versionRef(String name, String description) {
+        return new Text(name, true, description, Role.VERSION_REF, 16, null, null,
+                "^[A-Za-z0-9_-]{1,16}$", List.of());
+    }
+
     static Text comparisonRef(String name, String description) {
-        return new Text(name, true, description, Role.COMPARISON_REF, 16, null,
+        return new Text(name, true, description, Role.COMPARISON_REF, 16, null, null,
                 "^[A-Za-z0-9_-]{1,16}$", List.of());
     }
 
     static Text path(String name, boolean required, String description) {
-        return new Text(name, required, description, Role.PATH, ToolLimits.PATH_MAX_CHARS, null,
-                null, List.of());
+        return new Text(name, required, description, Role.PATH, ToolLimits.PATH_MAX_CHARS,
+                ToolLimits.PATH_MAX_CHARS, null, null, List.of());
     }
 
     static Text glob(String name, boolean required, String description) {
-        return new Text(name, required, description, Role.GLOB, ToolLimits.GLOB_MAX_CHARS, null,
-                null, List.of());
+        return new Text(name, required, description, Role.GLOB, ToolLimits.GLOB_MAX_CHARS,
+                ToolLimits.GLOB_MAX_CHARS, null, null, List.of());
     }
 
     static Text query(String name, String description) {
-        return new Text(name, true, description, Role.QUERY, ToolLimits.SEARCH_QUERY_MAX_CHARS, 1,
-                null, List.of());
+        return new Text(name, true, description, Role.QUERY, ToolLimits.SEARCH_QUERY_MAX_CHARS,
+                ToolLimits.SEARCH_QUERY_MAX_CHARS, 1, null, List.of());
     }
 
     static Text cursor(String description) {
         return new Text("cursor", false, description, Role.CURSOR, ToolLimits.CURSOR_MAX_CHARS,
-                null, null, List.of());
+                ToolLimits.CURSOR_MAX_CHARS, null, null, List.of());
     }
 
+    /** 解析器在参数省略时使用同一个默认值。 */
     static IntegerValue integer(String name, String description, Integer defaultValue,
                                 Integer minimum, Integer maximum) {
-        return new IntegerValue(name, false, description, defaultValue, minimum, maximum);
+        return new IntegerValue(name, false, description, defaultValue, defaultValue, minimum,
+                maximum);
+    }
+
+    /** 描述里声明默认值，但解析结果保持省略为 {@code null}，由读取实现决定默认行为。 */
+    static IntegerValue documentedInteger(String name, String description, Integer schemaDefault,
+                                          Integer minimum, Integer maximum) {
+        return new IntegerValue(name, false, description, schemaDefault, null, minimum, maximum);
     }
 
     static Array array(String name, boolean required, String description, Integer maxItems,

@@ -63,60 +63,61 @@ public final class OpenAiChatToolAdapter {
 
     private static Map<String, Object> textSchema(ToolParameter.Text text) {
         Map<String, Object> schema = new LinkedHashMap<>();
-        if (text.role() == ToolParameter.Role.QUERY) {
-            schema.put("maxLength", text.maxChars());
+        if (text.minLength() != null) {
+            putBound(schema, "maxLength", text.schemaMaxLength());
             schema.put("type", "string");
             schema.put("minLength", text.minLength());
-            schema.put("description", text.description());
-            return schema;
-        }
-        if (!text.enumValues().isEmpty()) {
-            schema.put("description", text.description());
-            schema.put("type", "string");
-            schema.put("enum", text.enumValues());
-            return schema;
-        }
-        if (text.pattern() != null) {
-            if (text.description() != null) {
-                schema.put("description", text.description());
-                schema.put("type", "string");
-                schema.put("pattern", text.pattern());
-            } else {
-                schema.put("pattern", text.pattern());
-                schema.put("type", "string");
-            }
+            putDescription(schema, text.description());
             return schema;
         }
         if (text.description() != null) {
             schema.put("description", text.description());
             schema.put("type", "string");
-            if (text.maxChars() != null) {
-                schema.put("maxLength", text.maxChars());
-            }
+            putPattern(schema, text);
+            putEnum(schema, text);
+            putBound(schema, "maxLength", text.schemaMaxLength());
             return schema;
         }
-        schema.put("maxLength", text.maxChars());
+        putPattern(schema, text);
+        putBound(schema, "maxLength", text.schemaMaxLength());
         schema.put("type", "string");
+        putEnum(schema, text);
         return schema;
+    }
+
+    private static void putPattern(Map<String, Object> schema, ToolParameter.Text text) {
+        if (text.pattern() != null) {
+            schema.put("pattern", text.pattern());
+        }
+    }
+
+    private static void putEnum(Map<String, Object> schema, ToolParameter.Text text) {
+        if (!text.enumValues().isEmpty()) {
+            schema.put("enum", text.enumValues());
+        }
+    }
+
+    private static void putDescription(Map<String, Object> schema, String description) {
+        if (description != null) {
+            schema.put("description", description);
+        }
     }
 
     private static Map<String, Object> integerSchema(ToolParameter.IntegerValue integer) {
         Map<String, Object> schema = new LinkedHashMap<>();
-        if (integer.description() != null && integer.defaultValue() != null) {
+        if (integer.schemaDefault() != null) {
             schema.put("type", "integer");
-            schema.put("description", integer.description());
+            putDescription(schema, integer.description());
             putBound(schema, "maximum", integer.maximum());
             putBound(schema, "minimum", integer.minimum());
-            schema.put("default", integer.defaultValue());
-        } else if (integer.description() != null && integer.maximum() != null) {
+            schema.put("default", integer.schemaDefault());
+        } else if (integer.maximum() != null) {
             schema.put("type", "integer");
             schema.put("maximum", integer.maximum());
             putBound(schema, "minimum", integer.minimum());
-            schema.put("description", integer.description());
+            putDescription(schema, integer.description());
         } else {
-            if (integer.description() != null) {
-                schema.put("description", integer.description());
-            }
+            putDescription(schema, integer.description());
             putBound(schema, "minimum", integer.minimum());
             schema.put("type", "integer");
         }

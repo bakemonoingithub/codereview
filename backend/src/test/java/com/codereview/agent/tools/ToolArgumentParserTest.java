@@ -204,6 +204,26 @@ class ToolArgumentParserTest {
         }
     }
 
+    /** 起始行省略时保持 null，由读取实现决定默认值；指纹也与改造前一致。 */
+    @Test
+    void omittedReadStartStaysAbsentInsteadOfBeingFilledIn() {
+        ToolInvocation invocation = parser.parse(AgentToolNames.READ_CODE,
+                "{\"version\":\"V1\",\"path\":\"A.java\"}", scope);
+
+        assertNull(invocation.start());
+        assertNull(invocation.end());
+        assertTrue(invocation.fingerprint().contains("|-|-"), invocation.fingerprint());
+    }
+
+    /** 行范围错误先于未知字段：与原实现一样返回 RANGE_INVALID。 */
+    @Test
+    void rangeErrorIsReportedBeforeUnknownFields() {
+        assertEquals("RANGE_INVALID", assertThrows(ToolFailure.class,
+                () -> parser.parse(AgentToolNames.READ_CODE,
+                        "{\"version\":\"V1\",\"path\":\"A.java\",\"start\":10,\"end\":5,\"bogus\":1}",
+                        scope)).code());
+    }
+
     private static String extensions(int count) {
         return java.util.stream.IntStream.range(0, count)
                 .mapToObj(index -> "\".x" + index + "\"")

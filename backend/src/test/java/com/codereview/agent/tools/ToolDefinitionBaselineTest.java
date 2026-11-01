@@ -3,6 +3,7 @@ package com.codereview.agent.tools;
 import com.codereview.agent.tools.capability.AgentToolCapabilities;
 import com.codereview.agent.tools.capability.ToolCapability;
 import com.codereview.agent.tools.capability.ToolParameter;
+import com.codereview.agent.tools.protocol.OpenAiChatToolAdapter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,53 @@ class ToolDefinitionBaselineTest {
                 assertNotNull(properties.get(parameter.name()));
             }
         }
+    }
+
+    @Test
+    void everyDeclaredConstraintIsEmittedEvenWithoutDescription() {
+        ToolParameter.IntegerValue defaulted = new ToolParameter.IntegerValue(
+                "count", false, null, 5, null, 1, 10);
+        ToolParameter.IntegerValue bounded = new ToolParameter.IntegerValue(
+                "range", false, null, null, null, 2, 8);
+        ToolParameter.Text patterned = new ToolParameter.Text("id", true, "说明",
+                ToolParameter.Role.PLAIN, null, 32, null, "^x$", List.of());
+        ToolParameter.Text enumerated = new ToolParameter.Text("mode", true, null,
+                ToolParameter.Role.PLAIN, null, null, null, null, List.of("A", "B"));
+        ToolParameter.Array array = ToolParameter.array("items", false, null, 3,
+                ToolParameter.text(null, false, null, 12));
+        ToolCapability capability = new ToolCapability("combo", "组合参数",
+                List.of(defaulted, bounded, patterned, enumerated, array));
+
+        Map<?, ?> generatedProperties = (Map<?, ?>) ((Map<?, ?>) ((Map<?, ?>) OpenAiChatToolAdapter
+                .tools(List.of(capability)).get(0)).get("function")).get("parameters");
+        generatedProperties = (Map<?, ?>) generatedProperties.get("properties");
+
+        Map<?, ?> count = (Map<?, ?>) generatedProperties.get("count");
+        assertEquals(5, count.get("default"));
+        assertEquals(1, count.get("minimum"));
+        assertEquals(10, count.get("maximum"));
+        assertFalse(count.containsKey("description"));
+
+        Map<?, ?> range = (Map<?, ?>) generatedProperties.get("range");
+        assertEquals(2, range.get("minimum"));
+        assertEquals(8, range.get("maximum"));
+        assertFalse(range.containsKey("description"));
+        assertFalse(range.containsKey("default"));
+
+        Map<?, ?> id = (Map<?, ?>) generatedProperties.get("id");
+        assertEquals("^x$", id.get("pattern"));
+        assertEquals(32, id.get("maxLength"));
+        assertEquals("说明", id.get("description"));
+
+        Map<?, ?> mode = (Map<?, ?>) generatedProperties.get("mode");
+        assertEquals(List.of("A", "B"), mode.get("enum"));
+        assertFalse(mode.containsKey("description"));
+
+        Map<?, ?> items = (Map<?, ?>) generatedProperties.get("items");
+        assertEquals(3, items.get("maxItems"));
+        assertFalse(items.containsKey("description"));
+        Map<?, ?> itemSchema = (Map<?, ?>) items.get("items");
+        assertEquals(12, itemSchema.get("maxLength"));
     }
 
     private static int serializedBytes(ObjectMapper mapper, List<Map<String, Object>> tools) throws Exception {

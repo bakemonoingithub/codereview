@@ -51,13 +51,14 @@ public class ToolArgumentParser {
                     ? args.require(parameter.name()) : args.optional(parameter.name());
             read(parameter, node, scope, parsed);
         }
-        args.requireNoUnknown();
         Map<String, Object> values = parsed.values;
+        // 读取范围检查先于未知字段检查，保持改造前的诊断顺序。
+        Integer end = readEnd(tool, values);
+        args.requireNoUnknown();
         return new ToolInvocation(tool, text(values, "version"), parsed.sha,
                 text(values, "comparisonId"), text(values, "path"), (Integer) values.get("depth"),
                 limit(tool, values, scope), text(values, "cursor"), text(values, "glob"),
-                text(values, "query"), extensions(values), (Integer) values.get("start"),
-                readEnd(tool, values));
+                text(values, "query"), extensions(values), (Integer) values.get("start"), end);
     }
 
     /** 逐项校验并写入结果；版本与比较关系在这里立即解析，保持原有错误先后顺序。 */
@@ -65,7 +66,7 @@ public class ToolArgumentParser {
                              ParsedArguments parsed) {
         if (parameter instanceof ToolParameter.IntegerValue integer) {
             Integer value = integer(node, integer);
-            parsed.values.put(parameter.name(), value == null ? integer.defaultValue() : value);
+            parsed.values.put(parameter.name(), value == null ? integer.parserDefault() : value);
             return;
         }
         if (parameter instanceof ToolParameter.Array array) {
