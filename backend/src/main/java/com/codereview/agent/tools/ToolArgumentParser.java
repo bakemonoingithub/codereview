@@ -26,6 +26,11 @@ import java.util.Set;
  * <p>不做宽松类型转换、不忽略未知字段、不把越界整数悄悄夹到边界：
  * 参数不合格就返回 {@code INVALID_ARGUMENT}，由模型自己修正。
  * 版本与比较关系只认 {@link AgentToolScope} 里冻结的标识，模型不能直接给 SHA。
+ *
+ * <p>维护关联 BRC-M04：路径、查询、读取范围和完整性语义由本类、
+ * {@link com.codereview.agent.repository.RepositoryPaths} 及各工具实现负责；修改时核对
+ * AgentToolCapabilities 的参数说明、tool-usage 模板与 maintenance-map.md。
+ * 默认值和数值限额属于第一档，仍只从 ToolParameter、ToolLimits 及冻结配置读取。
  */
 public class ToolArgumentParser {
 

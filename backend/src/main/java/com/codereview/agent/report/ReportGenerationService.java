@@ -46,6 +46,9 @@ import static com.codereview.agent.report.ReportStates.QUEUED;
  * <p>P32.3 的冻结来源是不可变材料；这里只选择模型和补充要求，把 {@code INPUT_FROZEN}
  * 条件更新为 {@code QUEUED} 后交给后台执行。失败保留冻结来源与错误，不覆盖正文，
  * 也不把程序事实草稿当成完成报告。
+ *
+ * <p>维护关联 BRC-M03：来源资格、冻结与事实保留由本类和 ReportCitationValidator 负责；
+ * 修改时核对报告 instruction／system／protocol 模板、对应测试及 maintenance-map.md。
  */
 @Service
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")

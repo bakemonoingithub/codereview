@@ -17,6 +17,10 @@ import java.util.List;
  *
  * <p>数值约束来自 {@link ToolLimits} 与任务冻结的 {@link ToolLimitProperties}，
  * 与解析器、工具实现使用同一来源；取值范围变化会同时反映在描述与校验上。
+ *
+ * <p>维护关联 BRC-M04／M05：参数说明中的路径、查询、分页和完整性措辞由本类维护，
+ * 语义校验在 ToolArgumentParser、ToolCursor 及各工具实现；修改时核对
+ * tool-usage 模板、对应工具测试和 maintenance-map.md。
  */
 public final class AgentToolCapabilities {
 

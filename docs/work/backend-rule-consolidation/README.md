@@ -1,6 +1,6 @@
 # 后端规则同源维护改造
 
-日期：2026-11-01。状态：BRC-01 done（三档复审调整完成），BRC-02 done（版本解析与模型快照复用完成），BRC-03／04 todo。基于 dev `146139f` 的静态检查；业务语义以[业务契约](../agent-redesign/business-contract.md)为准，前后端一致性通过该契约及相关接口文档约束。
+日期：2026-11-01。状态：BRC-01 done（三档复审调整完成），BRC-02 done（版本解析与模型快照复用完成），BRC-04 done（只读工具机械约束与维护关联核对完成），BRC-03 done（集成回归与交付记录完成）。基于 dev `146139f` 的静态检查；业务语义以[业务契约](../agent-redesign/business-contract.md)为准，前后端一致性通过该契约及相关接口文档约束。
 
 ## 1. 范围与规模
 
@@ -57,14 +57,14 @@ Agent：工具定义与 AgentSubmission.parse 共用结构。状态名、引用�
 
 提取三类入口共同的模型快照构造逻辑。保留每个场景的外层快照结构、字段顺序、字段存在性、null 表达、默认协议和版本字段；确有差异时显式表示，不用统一默认值覆盖。凭据仍不写入快照；不改历史快照、不新增快照迁移。此项不顺带统一各场景模型准入要求。
 
-### 3.4 五类只读工具（BRC-04，新增计划）
+### 3.4 五类只读工具（BRC-04）
 
-本项补上原计划遗漏，当前只做规划，暂不实施。审阅 tree、find_files、search_code、read_code、read_diff：
+本项补上原计划遗漏；BRC-04 已完成核对，没有改工具行为、限额值或检索算法。审阅 tree、find_files、search_code、read_code、read_diff：
 
-- 第一档：核对 ToolParameter 的声明、工具 Schema 与实际执行限额；优先处理默认起始行、默认读取范围、版本／比较标识长度和模式、条目／行数／字节上限。证明同义后再共用，保留 parserDefault 与执行默认等已知差异。
+- 第一档：ToolParameter 的声明、工具 Schema 与实际执行限额已逐项核对；默认起始行、默认读取范围、版本／比较标识长度和模式、条目／行数／字节上限均由同一份冻结限额或参数声明驱动。保留 parserDefault 与执行默认等已知差异。
 - 第二档：路径、单行字面量查询、游标查询绑定、零命中／截断、版本权限及批次约束只明确权威实现、相关说明与正反例；不要求生成全部语义说明。已有事件参数驱动的批次数量提示继续复用。
 - 第三档：用途、查询示例、调查建议及结果解读保留可读文本。工具名、明示数量和格式可插值，其余说明不做机械拆分。
-- 复用现有工具／执行器测试和工具请求基线；不改检索算法、工具行为、限额值或执行循环。发现说明与实际行为冲突时，列出输入与两端结果，再按兼容原则处理。
+- 复用现有工具／执行器测试和工具请求基线；未发现说明与实际行为冲突，未改检索算法、工具行为、限额值或执行循环。
 
 ## 4. 兼容与基线
 
@@ -76,16 +76,18 @@ Agent：工具定义与 AgentSubmission.parse 共用结构。状态名、引用�
 
 兼容差异必须显式记录：materialId 的 Schema 长度与运行时材料资格检查、行号边界的 Schema 与业务报错、可选数组的 null、缺失／null 元素错误分类等，不通过通用校验器默默统一。基线逐字一致只证明请求未变化，不能代替第二档业务正反例。
 
+只读工具另有已核对并保留的差异：read_code 的起始行在说明与 Schema 中写默认 1，参数解析保持省略为 null，由读取实现取 1，不改成 parserDefault；版本／比较标识的 Schema 模式只约束 1–16 位标识形状，运行时仍只接受作用域冻结的 V1…Vm／C1…Cn；路径、查询、游标、完整性和批次语义保留在 ToolArgumentParser、RepositoryPaths、ToolCursor、各工具实现及执行器，只建立维护关联，不从说明生成程序规则。
+
 ## 5. 工作安排与验收
 
 | ID | 工作项 | status | depends_on | 完成条件 |
 | --- | --- | --- | --- | --- |
 | BRC-01 | 专项、Agent 和报告输出契约分档维护 | done | - | 第一档共同声明，第二档关联清楚且业务回归通过，第三档可读；兼容与边界检查通过 |
 | BRC-02 | 提示词版本解析与模型快照复用 | done | - | 共同逻辑复用，场景策略及快照兼容测试通过 |
-| BRC-04 | 五类只读工具的机械约束与语义维护关联 | todo | - | 第一档重复声明收敛，第二档维护关联及正反例具备，工具基线与执行行为保持 |
-| BRC-03 | 集成回归与交付记录 | todo | BRC-01, BRC-02, BRC-04 | 后端全量回归、资源与兼容差异检查通过，维护索引完整，记录改动及同步状态 |
+| BRC-04 | 五类只读工具的机械约束与语义维护关联 | done | - | 第一档重复声明收敛，第二档维护关联及正反例具备，工具基线与执行行为保持 |
+| BRC-03 | 集成回归与交付记录 | done | BRC-01, BRC-02, BRC-04 | 后端全量回归、资源与兼容差异检查通过，维护索引完整，记录改动及同步状态 |
 
-建议先完成 BRC-01 调整，再完成 BRC-02 与 BRC-04，最后 BRC-03 集成；BRC-02 与 BRC-04 无强制代码依赖。任务内按专项、Agent、报告逐步改造和检查，不另拆设计、原型、真实使用等里程碑。BRC-01 分档复审调整及 BRC-02 已完成，历史记录见第 6、7 节，当前交付见第 8、9 节；BRC-03／04 尚未启动。
+建议先完成 BRC-01 调整，再完成 BRC-02 与 BRC-04，最后 BRC-03 集成；BRC-02 与 BRC-04 无强制代码依赖。任务内按专项、Agent、报告逐步改造和检查，不另拆设计、原型、真实使用等里程碑。BRC-01 历史记录见第 6、7 节，分档复审及 BRC-02／04／03 交付见第 8–11 节；本工作包已完成。
 
 必要测试范围：
 
@@ -152,12 +154,12 @@ Agent：工具定义与 AgentSubmission.parse 共用结构。状态名、引用�
 
 ## 8. 三档复审与调整（2026-11-01）
 
-当前状态：本轮调整 done。本节取代第 6、7 节对当时实现边界的判断；当时 BRC-02／03／04 为 todo，BRC-02 已在第 9 节完成。
+当前状态：本轮调整 done。本节取代第 6、7 节对当时实现边界的判断；当时 BRC-02／03／04 为 todo，后续分别在第 9、11、10 节完成。
 
 | 复审发现 | 分档与决定 | 本轮处理 |
 | --- | --- | --- |
 | 原计划要求所有条件说明与校验同处一个归属位置，且所有条件文字均从契约插入 | 第二档强调语义一致与维护提醒；第三档保持自然语言 | 改写第 3.1 节及完成条件，增加维护索引 |
-| 只读工具默认起始行等机械规则未纳入 BRC | 第一档进入后续实施；其余语义按第二／三档维护 | 新增 BRC-04，纳入 BRC-03 集成依赖，当前只规划 |
+| 只读工具默认起始行等机械规则未纳入 BRC | 第一档进入后续实施；其余语义按第二／三档维护 | 新增 BRC-04，纳入 BRC-03 集成依赖；后按第 10 节完成 |
 | 为共置文案而新增 SpecialistEvidenceRules、AgentSubmissionRules，并让原入口委托 | 材料资格、范围、侧、事实集合属于第二档，整段搬迁无独立价值 | 校验回归既有入口，保留结构契约、数字声明及关联注释 |
 | CompletionRule 根据数量字段推断状态语义，并测试并未支持的任意组合 | 状态名和最低数量是第一档；状态适用与资格判断是第二档 | 保留共同常量，使用明确业务分支；移除泛化规则对象与对应构造测试 |
 | evidence 总数驱动目标依据最低数及整段说明回调 | 两者含义不同，不应因初值相同而绑定 | 分开结构数量与目标数量；删除 JsonContract 的业务文案回调，补混合目标／辅助依据回归 |
@@ -175,7 +177,7 @@ Agent：工具定义与 AgentSubmission.parse 共用结构。状态名、引用�
 - 20 组固定请求、工具 JSON／字节数／指纹基线未更新并通过。打包内清单加 30 份提示词模板共 31 个资源与源码逐字节一致；产物不含已移除的两个间接规则类。
 - 接受范围与错误分类保持；空 evidence 的诊断由“目标依据”调整为“代码依据”，明确数组总数与目标资格不是同一含义。原 null 元素修复保留。
 - 计划及维护索引的本地链接、UTF-8 无 BOM／LF 和 git diff --check 已检查。本轮未调用真实模型、操作现有数据库、启停业务服务或提交／发布；第 7 节历史探针事件保留。
-- BRC-04 为新增待实施计划；BRC-02 当时未实施，后按第 9 节完成；BRC-03 等待 BRC-01、02、04 后集成，不以本轮全量通过提前完成其他工作项。
+- BRC-04 当时为新增待实施计划，后按第 10 节完成；BRC-02 当时未实施，后按第 9 节完成；BRC-03 等待 BRC-01、02、04 后集成，后按第 11 节完成，不以本轮全量通过提前完成其他工作项。
 
 
 ## 9. BRC-02 交付记录（2026-11-01）
@@ -199,3 +201,50 @@ Agent：工具定义与 AgentSubmission.parse 共用结构。状态名、引用�
 - 定向 5 个套件 69 项通过，含新增 PromptVersionResolverTest 6 项、ModelConfigSnapshotsTest 3 项及报告、专项、Agent 入口回归。
 - 后端全量：在 backend 下清除测试子进程 DEEPSEEK_API_KEY、GITEA_TEST_BASE_URL，使用当前环境 JDK 17 执行 `./mvnw.cmd '-Ddeepseek.api-key=' '-Dbackend.buildDirectory=target-brc02-final' test`：139 个套件、1019 项，失败 0、异常 0，跳过 11 项既有真实探针。
 - 未启动服务、未连接数据库、未调用真实模型，未执行页面或部署验收；未更新请求及工具基线。BRC-03／04 状态不变。
+
+
+## 10. BRC-04 交付记录（2026-11-01）
+
+状态：done。范围仅五类只读工具的机械约束与维护关联核对；未改工具行为、限额值、检索算法、执行循环、前端、数据库或 API。
+
+权威入口：
+
+- 声明：[ToolParameter](../../../backend/src/main/java/com/codereview/agent/tools/capability/ToolParameter.java)、[ToolLimits](../../../backend/src/main/java/com/codereview/agent/tools/ToolLimits.java) 与冻结 [ToolLimitProperties](../../../backend/src/main/java/com/codereview/agent/tools/ToolLimitProperties.java) 声明参数形状、默认值、范围和长度；[AgentToolCapabilities](../../../backend/src/main/java/com/codereview/agent/tools/capability/AgentToolCapabilities.java) 只保留用途和可读说明。
+- 消费：[OpenAiChatToolAdapter](../../../backend/src/main/java/com/codereview/agent/tools/protocol/OpenAiChatToolAdapter.java) 生成模型可见 Schema，[ToolArgumentParser](../../../backend/src/main/java/com/codereview/agent/tools/ToolArgumentParser.java) 读取同一份能力定义执行解析；各工具实现读取同一份冻结限额。
+- 第二档维护关联：[ToolArgumentParser](../../../backend/src/main/java/com/codereview/agent/tools/ToolArgumentParser.java)（路径、查询、读取范围与完整性）、[ToolCursor](../../../backend/src/main/java/com/codereview/agent/tools/ToolCursor.java) 与 [ToolInvocation](../../../backend/src/main/java/com/codereview/agent/tools/ToolInvocation.java)（游标查询绑定）、[AgentTaskWorker](../../../backend/src/main/java/com/codereview/agent/execution/AgentTaskWorker.java)（批次、重复调用与终止）。新增 BRC-M04／M05／M06 关联注释，索引见[维护索引](maintenance-map.md)。
+
+同源结论：
+
+- 强制同源：默认深度／条数、最小与最大值、路径／glob／query／cursor 长度、extensions 数量与后缀模式、单次行数与字节上限，均由声明或冻结限额驱动说明、Schema、解析及执行。
+- 不强制同源：路径安全、单行查询、游标与查询绑定、零命中／截断的含义、版本权限、完整性和批次诊断保留在明确业务入口，通过注释、正反例和索引关联，不生成通用语义规则。
+- 保留差异：read_code 的起始行在说明与 Schema 中写默认 1，解析结果省略为 null，由读取实现取 1；版本／比较标识的 Schema 模式只约束标识形状，运行时仍只接受作用域冻结的 V1…Vm／C1…Cn。
+
+验证与边界：
+
+- 定向 4 个套件 28 项通过，含新增 ToolContractMaintenanceTest 2 项：自定义冻结限额同时驱动工具说明和参数解析，省略起始行仍保持 null。
+- 工具定义基线、参数解析、游标、工具执行及后端全量回归均通过；共同工具基线未重新捕获，未改基线内容。
+- 未启动服务、未连接数据库、未调用真实模型，未执行页面或部署验收。
+
+
+## 11. BRC-03 交付记录（2026-11-01）
+
+状态：done。范围为 BRC-01、BRC-02、BRC-04 的集成回归、兼容差异核对、维护索引补全与交付记录；未新增业务模块、运行依赖或通用规则引擎。
+
+集成核对：
+
+- 第一档强制同源：专项字段／类型／枚举／必填数组，Agent 提交字段／长度／数组上限／状态枚举／引用格式，报告引用标记／来源范围／最低数量，工具默认值与机械限额，分别由共同声明生成模型说明并驱动运行时检查；载体字段、工具属性顺序及引用格式仍由既有测试核对。
+- 第二档只维护关联：材料资格、行号与范围、目标／辅助角色、差异侧、依赖事实、版本权限、游标绑定、批次与终止条件保留在明确业务入口，不把整段中文说明搬进校验类，也不为文案建立执行规则对象。
+- 第三档保持自然语言：分析建议、写作要求、示例与诊断保留在模板或工具说明；没有为整段文案新增同源断言。
+
+兼容性结论：
+
+- 未改提示词正文、工具 JSON、请求顺序、容量计量、解析接受／拒绝范围、错误分类或执行控制；20 组固定请求及工具 JSON／字节数／指纹基线未更新并通过。
+- 保留历史差异：materialId 的 Schema 长度与运行时材料资格检查、行号分阶段处理、可选数组 null、缺失／null 元素错误分类、changeRelation 空白接受范围、报告不选规则及版本空正文错误分类均未统一。
+- 维护索引已补齐 BRC-M04–M08 的权威实现、说明位置、正反例与修改提醒，并在对应源码加入关联注释；第二档仍以业务语义和审查为准，不建设自动语义检查器。
+
+验证：
+
+- 定向 12 个套件 96 项通过，覆盖专项契约与校验、Agent 提交与工具 Schema、报告引用、提示词与工具基线、版本解析与模型快照入口及新增工具维护检查。
+- 后端全量：在 `backend` 下清除测试子进程 `DEEPSEEK_API_KEY`、`GITEA_TEST_BASE_URL`，显式使用空 `deepseek.api-key`，使用 JDK 21 执行 `./mvnw.cmd '-Ddeepseek.api-key=' '-Dbackend.buildDirectory=target-brc03-final2' test`：140 个套件、1021 项，失败 0、异常 0，跳过 11 项既有真实探针。
+- 打包检查：使用 `target-brc03-package2` 生成 jar，`BOOT-INF/classes/prompts` 下 31 个资源与源码逐字节一致，包含清单文件。
+- 未启动服务、未连接数据库、未调用真实模型，未执行页面、发布或部署验收；本轮未操作现有数据。

@@ -11,6 +11,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * <p>外层快照结构、字段顺序及场景差异仍由各入口保留：专项冻结接口地址和分词器，
  * 报告使用相同字段但在未声明协议时冻结默认协议，Agent 只冻结执行所需字段。
  * 凭据不属于任何快照。
+ *
+ * <p>维护关联 BRC-M08：字段顺序、字段存在性、null 表达和默认协议按入口保持；
+ * 修改时核对 ModelConfigSnapshotsTest 及 maintenance-map.md，不改写历史快照。
  */
 public final class ModelConfigSnapshots {
 

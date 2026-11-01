@@ -65,6 +65,10 @@ import java.util.Set;
  * <p>硬限制在每轮与每次工具执行前检查：48 轮、96 次网络尝试、192 次工具、20 分钟任务期限、
  * 上下文 80%、连续 3 轮无进展。命中限制时保留已发生的调用与材料，不追加总结调用，
  * 也不发布完整结果。
+ *
+ * <p>维护关联 BRC-M06：批次、重复调用、终止与纠正条件的权威实现是本类及冻结预算；
+ * 修改时核对 correction 模板、AgentTaskWorkerTest 和 maintenance-map.md。
+ * 这些控制语义不改成提示词配置。
  */
 @Component
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")

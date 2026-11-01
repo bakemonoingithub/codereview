@@ -11,6 +11,10 @@ import java.util.HexFormat;
  *
  * <p>游标里没有任务、项目或 SHA，只保留查询指纹；查询指纹由规范化参数算出，
  * 所以换查询、换版本或换 schema 后旧游标一律失效，不能借它读取别的范围。
+ *
+ * <p>维护关联 BRC-M05：查询绑定的权威实现是 {@link ToolInvocation#fingerprint()}；
+ * 变更指纹字段时核对 AgentToolCapabilities.CURSOR_DESCRIPTION 中的参数列表及
+ * ToolCursorTest、maintenance-map.md。
  */
 public record ToolCursor(String tool, String fingerprint, int offset) {
 

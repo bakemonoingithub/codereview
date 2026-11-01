@@ -16,6 +16,10 @@ import java.util.Objects;
  * <p>专项与 Agent 在版本 ID 为 null 时可使用当前版本；报告等显式选择入口使用
  * {@link #resolveExplicit}，不隐式回退当前版本。正文为空时的错误码由调用入口显式传入，
  * 不把场景差异藏进共同默认值。
+ *
+ * <p>维护关联 BRC-M07：各入口的默认、不选规则场景和空正文错误分类仍由
+ * TaskService、AgentTaskService、ReportGenerationService 显式决定；修改时核对
+ * PromptVersionResolverTest 及 maintenance-map.md。
  */
 public final class PromptVersionResolver {
 
