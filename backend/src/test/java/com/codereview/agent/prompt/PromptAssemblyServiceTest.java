@@ -6,6 +6,7 @@ import com.codereview.agent.prompt.template.PromptTemplateRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -142,14 +143,28 @@ class PromptAssemblyServiceTest {
         PromptTemplateRegistry templates = PromptTemplateRegistry.loadDefault();
         for (PromptPurpose purpose : PromptPurpose.values()) {
             String system = service.systemPrompt(purpose);
-            assertTrue(system.contains(templates.require("instruction." + purpose.wireName()).body()),
+            assertTrue(system.contains(templates.render("instruction." + purpose.wireName(),
+                    purpose == PromptPurpose.REPORT
+                            ? Map.of("citationRequirement", com.codereview.agent.report.ReportCitationContract.citationRequirement())
+                            : com.codereview.agent.specialist.protocol.SpecialistOutputContracts.instructionValues(purpose))),
                     "system 必须包含该用途的内置指令正文：" + purpose);
-            assertTrue(system.contains(templates.require("protocol." + purpose.wireName()).body()),
-                    "system 必须包含该用途的协议正文：" + purpose);
+            assertTrue(system.contains(service.protocolBody(purpose)),
+                    "system 必须包含该用途渲染后的协议正文：" + purpose);
             for (String id : templates.ids()) {
                 assertFalse(system.contains(id), "模板标识不能进入模型正文：" + id);
             }
         }
+    }
+
+    @Test
+    void reportCitationMarkerComesFromTheContract() {
+        String system = service.systemPrompt(PromptPurpose.REPORT);
+        String protocol = service.protocolBody(PromptPurpose.REPORT);
+
+        assertTrue(system.contains("每个来源引用使用 "
+                + com.codereview.agent.report.ReportCitationContract.MARKER_EXAMPLE + " 形式"));
+        assertTrue(protocol.contains("引用使用 "
+                + com.codereview.agent.report.ReportCitationContract.MARKER_EXAMPLE + " 形式"));
     }
 
     private static PromptInput input(PromptPurpose purpose, PromptMaterial target) {

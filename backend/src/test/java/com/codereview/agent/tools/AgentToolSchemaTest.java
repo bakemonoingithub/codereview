@@ -80,17 +80,58 @@ class AgentToolSchemaTest {
     void submissionExamplesPassTheActualParserAndEvidenceValidator() {
         ObjectMapper mapper = new ObjectMapper();
         AgentSubmission answered = AgentSubmission.parse(mapper,
-                AgentToolCapabilities.ANSWERED_EXAMPLE.replace("<实际materialId>", "m1"));
+                AgentSubmissionContract.ANSWERED_EXAMPLE.replace("<实际materialId>", "m1"));
         var sent = Map.of("m1", new AgentSubmission.SentMaterial("m1", "src/A.java", "FILE",
                 "a".repeat(40), 10, 20, "hash"));
         AgentSubmission checked = AgentSubmission.validate(answered, sent);
         assertTrue(checked.answered());
         assertEquals(1, checked.citations().size());
 
-        AgentSubmission insufficient = AgentSubmission.parse(mapper, AgentToolCapabilities.INSUFFICIENT_EVIDENCE_EXAMPLE);
+        AgentSubmission insufficient = AgentSubmission.parse(mapper,
+                AgentSubmissionContract.INSUFFICIENT_EVIDENCE_EXAMPLE);
         AgentSubmission withoutEvidence = AgentSubmission.validate(insufficient, Map.of());
         assertFalse(withoutEvidence.answered());
         assertEquals(1, withoutEvidence.unresolved().size());
+    }
+
+    @Test
+    void submitResultSchemaIsProjectedFromTheSubmissionContract() {
+        var contract = AgentSubmissionContract.contract();
+        Map<String, Object> submit = AgentToolSchema.agentTools().stream()
+                .filter(tool -> ((Map<?, ?>) tool.get("function")).get("name")
+                        .equals(AgentToolNames.SUBMIT_RESULT))
+                .findFirst().orElseThrow();
+        Map<?, ?> properties = (Map<?, ?>) ((Map<?, ?>) ((Map<?, ?>) submit.get("function"))
+                .get("parameters")).get("properties");
+
+        for (com.codereview.agent.contract.ContractField field : contract.fields()) {
+            Map<?, ?> schema = (Map<?, ?>) properties.get(field.name());
+            assertTrue(schema != null, field.name());
+            if (field instanceof com.codereview.agent.contract.ContractField.TextField text) {
+                if (text.schemaMaxLength() != null) {
+                    assertEquals(text.schemaMaxLength(), schema.get("maxLength"), field.name());
+                }
+                if (text.pattern() != null) {
+                    assertEquals(text.pattern(), schema.get("pattern"), field.name());
+                }
+            } else if (field instanceof com.codereview.agent.contract.ContractField.EnumField enumeration) {
+                assertEquals(enumeration.values(), schema.get("enum"), field.name());
+            } else if (field instanceof com.codereview.agent.contract.ContractField.ArrayField array) {
+                assertEquals(array.maxItems(), schema.get("maxItems"), field.name());
+                if (array.items() instanceof com.codereview.agent.contract.ContractField.ObjectField item) {
+                    Map<?, ?> itemProperties = (Map<?, ?>) ((Map<?, ?>) schema.get("items"))
+                            .get("properties");
+                    for (com.codereview.agent.contract.ContractField nested : item.fields()) {
+                        Map<?, ?> nestedSchema = (Map<?, ?>) itemProperties.get(nested.name());
+                        assertTrue(nestedSchema != null, nested.name());
+                        if (nested instanceof com.codereview.agent.contract.ContractField.TextField text
+                                && text.pattern() != null) {
+                            assertEquals(text.pattern(), nestedSchema.get("pattern"), nested.name());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static Map<String, Map<?, ?>> propertiesByTool() {

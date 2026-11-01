@@ -7,7 +7,7 @@
       "purpose": "ISSUE_FILE",
       "version": "1",
       "path": "prompts/instruction/issue-file.txt",
-      "variables": []
+      "variables": ["minimumLocations"]
     },
     {
       "id": "instruction.ISSUE_DIFF",
@@ -23,7 +23,7 @@
       "purpose": "PATTERN",
       "version": "1",
       "path": "prompts/instruction/pattern.txt",
-      "variables": []
+      "variables": ["minimumTargetEvidence", "otherFamily"]
     },
     {
       "id": "instruction.COUPLING",
@@ -39,7 +39,7 @@
       "purpose": "REPORT",
       "version": "1",
       "path": "prompts/instruction/report.txt",
-      "variables": []
+      "variables": ["citationRequirement"]
     },
     {
       "id": "instruction.AGENT",
@@ -71,7 +71,7 @@
       "purpose": "ISSUE_FILE",
       "version": "1",
       "path": "prompts/protocol/issue-file.txt",
-      "variables": []
+      "variables": ["schema"]
     },
     {
       "id": "protocol.ISSUE_DIFF",
@@ -79,7 +79,7 @@
       "purpose": "ISSUE_DIFF",
       "version": "1",
       "path": "prompts/protocol/issue-diff.txt",
-      "variables": []
+      "variables": ["schema"]
     },
     {
       "id": "protocol.PATTERN",
@@ -87,7 +87,7 @@
       "purpose": "PATTERN",
       "version": "1",
       "path": "prompts/protocol/pattern.txt",
-      "variables": []
+      "variables": ["schema"]
     },
     {
       "id": "protocol.COUPLING",
@@ -95,7 +95,7 @@
       "purpose": "COUPLING",
       "version": "1",
       "path": "prompts/protocol/coupling.txt",
-      "variables": []
+      "variables": ["schema"]
     },
     {
       "id": "protocol.REPORT",
@@ -103,7 +103,7 @@
       "purpose": "REPORT",
       "version": "1",
       "path": "prompts/protocol/report.txt",
-      "variables": []
+      "variables": ["citationMarker"]
     },
     {
       "id": "protocol.AGENT",
@@ -111,7 +111,7 @@
       "purpose": "AGENT",
       "version": "1",
       "path": "prompts/protocol/agent.txt",
-      "variables": []
+      "variables": ["submitTool", "citationsField", "citationIdExample", "materialIdField"]
     },
     {
       "id": "protocol.AGENT_TOOL_CHECK",
@@ -150,7 +150,7 @@
       "purpose": "REPORT",
       "version": "1",
       "path": "prompts/system/report.txt",
-      "variables": ["instruction", "protocol"]
+      "variables": ["instruction", "protocol", "citationMarker"]
     },
     {
       "id": "system.AGENT",

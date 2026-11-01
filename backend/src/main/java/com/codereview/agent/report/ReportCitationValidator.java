@@ -7,18 +7,17 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * 报告引用校验。
  *
- * <p>只接受统一组装协议约定的 {@code [S1]} 形式；引用序号必须落在冻结来源范围内。
- * 至少要求一处引用，避免正文看似完整却没有可追溯来源。这里不判断结论真伪，
- * 也不允许把未知来源自动改写成最近来源。
+ * <p>标记形式、来源序号范围与最低引用数量来自 {@link ReportCitationContract}，与协议正文
+ * 使用同一规则。这里只检查可追溯性，不判断结论真伪。
+ *
+ * <p>维护关联 BRC-M03：来源资格或冻结语义变化时核对 ReportGenerationService、
+ * instruction/report、system/report、protocol/report；位置及回归见 maintenance-map.md。
  */
 public final class ReportCitationValidator {
-
-    private static final Pattern CITATION = Pattern.compile("\\[S(\\d+)]");
 
     private ReportCitationValidator() {
     }
@@ -27,7 +26,7 @@ public final class ReportCitationValidator {
         if (body == null || body.isBlank()) {
             throw new ApiException(ErrorCode.MODEL_OUTPUT_INVALID, "模型没有返回报告正文");
         }
-        Matcher matcher = CITATION.matcher(body);
+        Matcher matcher = ReportCitationContract.MARKER_PATTERN.matcher(body);
         Set<Integer> cited = new LinkedHashSet<>();
         while (matcher.find()) {
             int ordinal;
@@ -36,14 +35,14 @@ public final class ReportCitationValidator {
             } catch (NumberFormatException e) {
                 throw invalid(matcher.group(), sourceCount);
             }
-            if (ordinal < 1 || ordinal > sourceCount) {
+            if (!ReportCitationContract.inRange(ordinal, sourceCount)) {
                 throw invalid(matcher.group(), sourceCount);
             }
             cited.add(ordinal);
         }
-        if (cited.isEmpty()) {
+        if (cited.size() < ReportCitationContract.MINIMUM_CITED_SOURCES) {
             throw new ApiException(ErrorCode.REPORT_CITATION_INVALID,
-                    "报告正文没有引用任何冻结来源，不能作为完成报告", Map.of("sourceCount", sourceCount));
+                    ReportCitationContract.missingCitationMessage(), Map.of("sourceCount", sourceCount));
         }
         return cited.size();
     }

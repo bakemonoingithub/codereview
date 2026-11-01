@@ -1,7 +1,7 @@
 package com.codereview.agent.tools.capability;
 
+import com.codereview.agent.tools.AgentSubmissionContract;
 import com.codereview.agent.tools.AgentToolNames;
-import com.codereview.agent.tools.AgentSubmission;
 import com.codereview.agent.tools.ToolLimitProperties;
 import com.codereview.agent.tools.ToolLimits;
 
@@ -12,25 +12,13 @@ import java.util.List;
  *
  * <p>返回中立的能力定义：工具名称、用途说明、参数与约束。模型协议 JSON 由
  * {@code com.codereview.agent.tools.protocol.OpenAiChatToolAdapter} 生成；参数校验由
- * {@code ToolArgumentParser} 读取同一份参数定义执行。文案只解释用法，不扩大执行权限。
+ * {@code ToolArgumentParser} 读取同一份参数定义执行。{@code submit_result} 的字段、
+ * 长度与数量上限由 {@link AgentSubmissionContract} 统一声明，工具定义与提交解析共用。
  *
  * <p>数值约束来自 {@link ToolLimits} 与任务冻结的 {@link ToolLimitProperties}，
  * 与解析器、工具实现使用同一来源；取值范围变化会同时反映在描述与校验上。
  */
 public final class AgentToolCapabilities {
-
-    /** 仅演示提交结构；调用方必须替换材料 ID 和行号。 */
-    public static final String ANSWERED_EXAMPLE = """
-            {"title":"定位结果","summary":"结论由已读取材料支持。","answerStatus":"ANSWERED",
-             "markdown":"结论由已读取材料支持。[E1]",
-             "citations":[{"id":"E1","materialId":"<实际materialId>","startLine":12,"endLine":13}],
-             "unresolved":[]}
-            """;
-    public static final String INSUFFICIENT_EVIDENCE_EXAMPLE = """
-            {"title":"材料不足","summary":"尚缺关键实现材料。","answerStatus":"INSUFFICIENT_EVIDENCE",
-             "markdown":"未取得关键实现，无法确认结论。","citations":[],
-             "unresolved":["尚未读取到关键实现。"]}
-            """;
 
     static final String CURSOR_DESCRIPTION = "第一页省略 cursor；翻页只原样使用上一页返回的 nextCursor，"
             + "其他查询参数保持一致，包括本工具使用的 version/comparisonId、path、depth、limit、glob、query、extensions。"
@@ -135,44 +123,7 @@ public final class AgentToolCapabilities {
 
     /** 显式提交动作：只在执行循环里暴露，不进入只读工具参数解析。 */
     public static ToolCapability submitResult() {
-        List<ToolParameter> citationProperties = List.of(
-                ToolParameter.pattern("id", true,
-                        "本次结果内唯一的引用编号，如 E1、E2，不带方括号；正文中写 [E1]、[E2]，不要使用 S1。",
-                        "^E[0-9]{1,3}$"),
-                ToolParameter.text("materialId", true,
-                        "原样填写本次任务只读工具返回并已送入模型的材料 ID；不能编造，也不能从参考结果或其他任务复制。",
-                        26),
-                new ToolParameter.IntegerValue("startLine", true,
-                        "引用起始行，包含端点，必须位于该 materialId 的实际返回行范围内。",
-                        null, null, 1, null),
-                new ToolParameter.IntegerValue("endLine", true,
-                        "引用结束行，包含端点，不能小于 startLine，也不能超出该材料末行。"
-                                + "不能把同一文件的多份材料范围拼到一个 materialId 上；需要更大范围时先调用 read_code。",
-                        null, null, 1, null));
-        return new ToolCapability(AgentToolNames.SUBMIT_RESULT,
-                "结束调查并提交结果，必须单独调用，不能与其他工具同批。"
-                        + "citations.id 使用 E1、E2，markdown 中必须写成 [E1]、[E2]，不能只填写引用数组。"
-                        + "引用必须来自本次任务实际返回且已送入模型的材料，行号不得超出该 materialId 的返回范围。"
-                        + "ANSWERED 至少一个正文实际使用的有效引用；INSUFFICIENT_EVIDENCE 必须填写非空 unresolved。"
-                        + "以下示例仅演示格式，materialId 占位符和行号必须替换为本次实际材料值，不能照抄："
-                        + ANSWERED_EXAMPLE
-                        + "未取得证据时的提交示例：" + INSUFFICIENT_EVIDENCE_EXAMPLE,
-                List.of(
-                        ToolParameter.text("title", true, null, 200),
-                        ToolParameter.text("summary", true, null, 1000),
-                        ToolParameter.enumText("answerStatus", true,
-                                "ANSWERED 要求至少一项有效引用且正文实际使用；INSUFFICIENT_EVIDENCE 要求 unresolved 非空，可无引用。",
-                                List.of(AgentSubmission.ANSWERED, AgentSubmission.INSUFFICIENT_EVIDENCE)),
-                        ToolParameter.text("markdown", true,
-                                "结果正文；引用写在正文中，必须使用英文半角方括号，如：结论。[E1]。"
-                                        + "多项写作 [E1][E2]，不能写成（E1）、见 E1 或 [E1,E2]；每个标记必须对应 citations 中有效的同名 id。",
-                                24000),
-                        ToolParameter.array("citations", false,
-                                "引用定义；ANSWERED 必须提供至少一项有效定义，并在 markdown 中以 [E1] 等标记实际引用。只填数组不算正文引用；正文未使用的定义不会发布。",
-                                100, ToolParameter.object(null, false, null, citationProperties)),
-                        ToolParameter.array("unresolved", false,
-                                "具体缺失材料或无法确认的问题；INSUFFICIENT_EVIDENCE 至少填写一项非空文本，无未解决事项时填空数组。",
-                                20, ToolParameter.text(null, false, null, 1000))));
+        return AgentSubmissionContract.tool();
     }
 
     private static String relativePath(String description) {

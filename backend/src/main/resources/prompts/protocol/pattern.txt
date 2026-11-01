@@ -1,3 +1,2 @@
 只输出一个 JSON 对象：
-{"summary":"一句话结论","patterns":[{"name":"模式名","family":"CREATIONAL|STRUCTURAL|BEHAVIORAL|OTHER","role":"目标承担的角色","explanation":"可见结构与模式对应关系","evidence":[{"materialId":"target-1","startLine":1,"endLine":2}]}],"limitations":[]}
-每个候选至少一处目标依据；patterns 可为空；不要输出未知字段。
+{{schema}}

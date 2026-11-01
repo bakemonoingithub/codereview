@@ -2,51 +2,31 @@ package com.codereview.agent.specialist.protocol;
 
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
-import com.codereview.agent.specialist.material.SpecialistMaterials;
 import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import static com.codereview.agent.specialist.material.SpecialistMaterials.Material;
 import static com.codereview.agent.specialist.material.SpecialistMaterials.Side;
 
 /**
- * 三类专项协议的结构与位置校验。
- *
- * <p>只检查可观察事实：字段类型、枚举、必填、目标/辅助角色和原始行号范围。
- * 不做语义真伪、模式合理性或耦合解释质量判断；结构合规也不代表结论正确。
- *
- * <p>位置规则：
- * <ul>
- *   <li>问题 {@code locations} 必须是目标材料；辅助文件只能出现在 {@code evidence}；</li>
- *   <li>模式每个候选至少一处目标依据；</li>
- *   <li>差异新增文件不能用 BEFORE，删除文件不能用 AFTER；</li>
- *   <li>差异问题必须有 changeRelation，文件审查必须为 null。</li>
- * </ul>
+ * 专项材料与场景校验。结构已由 SpecialistResultParser 按契约检查。
+ * 维护关联 BRC-M02：材料归属、目标角色、行范围、差异侧、依赖事实属于第二档；
+ * 修改语义时核对 protocol/instruction 专项模板及 SpecialistOutputContracts 的说明。
+ * 正反例见 SpecialistResultValidatorTest，完整索引见 maintenance-map.md。
  */
 @Component
 public class SpecialistResultValidator {
-
-    private static final Set<String> CATEGORIES = Set.of("CORRECTNESS", "SECURITY", "RELIABILITY",
-            "PERFORMANCE", "MAINTAINABILITY", "RULE");
-    private static final Set<String> SEVERITIES = Set.of("HIGH", "MEDIUM", "LOW");
-    private static final Set<String> FAMILIES = Set.of("CREATIONAL", "STRUCTURAL", "BEHAVIORAL",
-            "OTHER");
+    // 第一档数量；仅约束目标依据，不与 evidence 数组总数混为同一规则。
+    static final int MINIMUM_PATTERN_TARGETS = 1;
 
     public ValidatedResult validate(SpecialistResults.Result result, ValidationContext context) {
         if (result == null) {
             throw invalid("EMPTY_RESULT", "缺少专项结果");
         }
         Map<String, Material> materials = materials(context);
-        requireText(result.summary(), "summary");
-        requireList(result.limitations(), "limitations");
-        for (String limitation : result.limitations()) {
-            requireText(limitation, "limitations[]");
-        }
         if (result instanceof SpecialistResults.IssueResult issueResult) {
             validateIssues(issueResult, context, materials);
         } else if (result instanceof SpecialistResults.PatternResult patternResult) {
@@ -59,23 +39,13 @@ public class SpecialistResultValidator {
         return new ValidatedResult(result, Map.copyOf(materials), SpecialistProtocol.VERSION);
     }
 
-    private void validateIssues(SpecialistResults.IssueResult result, ValidationContext context,
+    private static void validateIssues(SpecialistResults.IssueResult result, ValidationContext context,
                                 Map<String, Material> materials) {
-        requireList(result.issues(), "issues");
         int index = 0;
         for (SpecialistResults.Issue issue : result.issues()) {
             String field = "issues[" + index + "]";
             if (issue == null) {
                 throw invalid("NULL_ITEM", field + " 不能为 null");
-            }
-            requireEnum(issue.category(), CATEGORIES, field + ".category");
-            requireEnum(issue.severity(), SEVERITIES, field + ".severity");
-            requireText(issue.title(), field + ".title");
-            requireText(issue.reason(), field + ".reason");
-            requireText(issue.suggestion(), field + ".suggestion");
-            requireList(issue.locations(), field + ".locations");
-            if (issue.locations().isEmpty()) {
-                throw invalid("MISSING_TARGET", field + " 至少需要一个目标位置");
             }
             for (int i = 0; i < issue.locations().size(); i++) {
                 location(issue.locations().get(i), true, context, materials,
@@ -92,39 +62,29 @@ public class SpecialistResultValidator {
         }
     }
 
-    private void validatePatterns(SpecialistResults.PatternResult result, ValidationContext context,
+    private static void validatePatterns(SpecialistResults.PatternResult result, ValidationContext context,
                                  Map<String, Material> materials) {
-        requireList(result.patterns(), "patterns");
         int index = 0;
         for (SpecialistResults.PatternCandidate pattern : result.patterns()) {
             String field = "patterns[" + index + "]";
             if (pattern == null) {
                 throw invalid("NULL_ITEM", field + " 不能为 null");
             }
-            requireText(pattern.name(), field + ".name");
-            requireEnum(pattern.family(), FAMILIES, field + ".family");
-            requireText(pattern.role(), field + ".role");
-            requireText(pattern.explanation(), field + ".explanation");
-            requireList(pattern.evidence(), field + ".evidence");
-            if (pattern.evidence().isEmpty()) {
-                throw invalid("MISSING_TARGET", field + " 至少需要一处目标依据");
-            }
-            boolean targetEvidence = false;
+            int targetEvidence = 0;
             for (int i = 0; i < pattern.evidence().size(); i++) {
                 Material material = location(pattern.evidence().get(i), false, context, materials,
                         field + ".evidence[" + i + "]");
-                targetEvidence |= material.target();
+                if (material.target()) targetEvidence++;
             }
-            if (!targetEvidence) {
+            if (targetEvidence < MINIMUM_PATTERN_TARGETS) {
                 throw invalid("MISSING_TARGET", field + " 的依据必须包含目标材料，不能只有辅助材料");
             }
             index++;
         }
     }
 
-    private void validateCoupling(SpecialistResults.CouplingResult result,
+    private static void validateCoupling(SpecialistResults.CouplingResult result,
                                   ValidationContext context, Map<String, Material> materials) {
-        requireList(result.observations(), "observations");
         Set<String> facts = context.dependencyIds() == null ? Set.of() : context.dependencyIds();
         int index = 0;
         for (SpecialistResults.CouplingObservation observation : result.observations()) {
@@ -132,18 +92,11 @@ public class SpecialistResultValidator {
             if (observation == null) {
                 throw invalid("NULL_ITEM", field + " 不能为 null");
             }
-            requireText(observation.title(), field + ".title");
-            requireText(observation.explanation(), field + ".explanation");
-            requireList(observation.dependencyIds(), field + ".dependencyIds");
             for (String dependencyId : observation.dependencyIds()) {
                 if (!facts.contains(dependencyId)) {
                     throw invalid("UNKNOWN_DEPENDENCY",
                             field + " 引用了未计算出的 dependencyId：" + dependencyId);
                 }
-            }
-            requireList(observation.evidence(), field + ".evidence");
-            if (observation.evidence().isEmpty()) {
-                throw invalid("MISSING_TARGET", field + " 至少需要一处代码依据");
             }
             for (int i = 0; i < observation.evidence().size(); i++) {
                 location(observation.evidence().get(i), false, context, materials,
@@ -153,7 +106,7 @@ public class SpecialistResultValidator {
         }
     }
 
-    private Material location(SpecialistResults.Location location, boolean targetOnly,
+    private static Material location(SpecialistResults.Location location, boolean targetOnly,
                               ValidationContext context, Map<String, Material> materials,
                               String field) {
         if (location == null) {
@@ -183,7 +136,7 @@ public class SpecialistResultValidator {
         return material;
     }
 
-    private void validateSide(Material material, ValidationContext context, String field) {
+    private static void validateSide(Material material, ValidationContext context, String field) {
         if ("FILES".equals(context.sourceKind())) {
             if (material.side() != Side.FILE) {
                 throw invalid("SIDE_NOT_AVAILABLE",
@@ -199,7 +152,7 @@ public class SpecialistResultValidator {
         }
     }
 
-    private void validateChangeRelation(String changeRelation, ValidationContext context,
+    private static void validateChangeRelation(String changeRelation, ValidationContext context,
                                         String field) {
         if ("DIFF".equals(context.sourceKind())) {
             requireText(changeRelation, field);
@@ -222,19 +175,6 @@ public class SpecialistResultValidator {
     private static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw invalid("MISSING_FIELD", field + " 不能为空");
-        }
-    }
-
-    private static void requireList(List<?> value, String field) {
-        if (value == null) {
-            throw invalid("MISSING_FIELD", field + " 必须是数组");
-        }
-    }
-
-    private static void requireEnum(String value, Set<String> allowed, String field) {
-        if (value == null || !allowed.contains(value)) {
-            throw invalid("INVALID_ENUM", field + " 只能是 " + String.join("/", allowed)
-                    + "，实际为 " + value);
         }
     }
 

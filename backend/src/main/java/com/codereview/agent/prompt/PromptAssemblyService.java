@@ -3,7 +3,10 @@ package com.codereview.agent.prompt;
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.prompt.template.PromptTemplateRegistry;
+import com.codereview.agent.report.ReportCitationContract;
+import com.codereview.agent.specialist.protocol.SpecialistOutputContracts;
 import com.codereview.agent.specialist.protocol.SpecialistProtocol;
+import com.codereview.agent.tools.AgentSubmissionContract;
 import com.codereview.agent.tools.capability.ToolCapability;
 import com.codereview.agent.tools.protocol.OpenAiChatToolAdapter;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -227,7 +231,10 @@ public class PromptAssemblyService {
     }
 
     public String systemPrompt(PromptPurpose purpose) {
-        String instruction = templates.require("instruction." + purpose.wireName()).body();
+        String instruction = templates.render("instruction." + purpose.wireName(),
+                purpose == PromptPurpose.REPORT
+                        ? Map.of("citationRequirement", ReportCitationContract.citationRequirement())
+                        : SpecialistOutputContracts.instructionValues(purpose));
         String protocol = protocolSuffix(purpose);
         String templateId = switch (purpose) {
             case REPORT -> "system.REPORT";
@@ -235,7 +242,32 @@ public class PromptAssemblyService {
             case AGENT_TOOL_CHECK -> "system.AGENT_TOOL_CHECK";
             default -> "system.SPECIALIST";
         };
-        return templates.render(templateId, Map.of("instruction", instruction, "protocol", protocol));
+        Map<String, String> values = new LinkedHashMap<>();
+        values.put("instruction", instruction);
+        values.put("protocol", protocol);
+        if (purpose == PromptPurpose.REPORT) {
+            values.put("citationMarker", ReportCitationContract.MARKER_EXAMPLE);
+        }
+        return templates.render(templateId, values);
+    }
+
+    /**
+     * 协议正文：模板只保留段落编排，字段、枚举、数量与引用标记由对应契约提供片段。
+     *
+     * <p>专项协议段来自 {@link SpecialistOutputContracts}，Agent 提交段来自
+     * {@link AgentSubmissionContract}，报告引用标记来自 {@link ReportCitationContract}；
+     * 模板中不再另写一份字段或枚举清单。
+     */
+    public String protocolBody(PromptPurpose purpose) {
+        String templateId = "protocol." + purpose.wireName();
+        return switch (purpose) {
+            case ISSUE_FILE, ISSUE_DIFF, PATTERN, COUPLING -> templates.render(templateId,
+                    Map.of("schema", SpecialistOutputContracts.forPurpose(purpose).protocolBlock()));
+            case REPORT -> templates.render(templateId,
+                    Map.of("citationMarker", ReportCitationContract.MARKER_EXAMPLE));
+            case AGENT -> templates.render(templateId, AgentSubmissionContract.protocolValues());
+            default -> templates.require(templateId).body();
+        };
     }
 
     /** 协议段：协议版本与用途沿用既有正文，模板标识与模板版本不进入模型正文。 */
@@ -243,7 +275,7 @@ public class PromptAssemblyService {
         return templates.render("protocol.suffix", Map.of(
                 "protocolVersion", SpecialistProtocol.VERSION,
                 "purpose", purpose.wireName(),
-                "schema", templates.require("protocol." + purpose.wireName()).body()));
+                "schema", protocolBody(purpose)));
     }
 
     private static void appendGeneralRule(StringBuilder user, PromptInput input) {

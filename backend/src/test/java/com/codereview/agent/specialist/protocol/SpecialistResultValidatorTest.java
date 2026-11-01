@@ -145,6 +145,21 @@ class SpecialistResultValidatorTest {
     }
 
     @Test
+    void patternAcceptsOneTargetAlongsideSeveralAuxiliaryLocations() {
+        var result = parser.parse("""
+                {"summary":"s","patterns":[{"name":"n","family":"OTHER","role":"r",
+                "explanation":"e","evidence":[
+                  {"materialId":"a1","startLine":1,"endLine":2},
+                  {"materialId":"a1","startLine":3,"endLine":4},
+                  {"materialId":"t1","startLine":1,"endLine":2}]}],"limitations":[]}
+                """, "PATTERN");
+        var checked = validator.validate(result, new SpecialistResultValidator.ValidationContext(
+                "PATTERN", "FILES", SHA, null, "src/Order.java", null, false, false,
+                List.of(target, auxiliary), Set.of()));
+        assertEquals(3, checked.resolvedLocations().size());
+    }
+
+    @Test
     void couplingCanOnlyReferenceComputedDependencyIds() {
         SpecialistResults.Result result = parser.parse("""
                 {"summary":"x","observations":[{"title":"t","explanation":"e",

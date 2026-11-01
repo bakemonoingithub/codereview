@@ -46,10 +46,15 @@ class PromptTemplateRegistryTest {
     @Test
     void protocolSuffixKeepsVersionAndPurposeInBody() {
         for (PromptPurpose purpose : PromptPurpose.values()) {
+            PromptTemplate template = registry.require("protocol." + purpose.wireName());
+            Map<String, String> values = new LinkedHashMap<>();
+            for (String variable : template.variables()) {
+                values.put(variable, "<" + variable + ">");
+            }
             String expected = "\n\n输出协议（protocolVersion=" + SpecialistProtocol.VERSION
                     + "，purpose=" + purpose.wireName() + "）：\n"
-                    + registry.require("protocol." + purpose.wireName()).body();
-            assertEquals(expected, renderSuffix(purpose));
+                    + registry.render(template.id(), values);
+            assertEquals(expected, renderSuffix(purpose, values));
         }
     }
 
@@ -189,11 +194,11 @@ class PromptTemplateRegistryTest {
         assertEquals(body.replace("{{name}}", "值"), custom.render("system.EXACT", Map.of("name", "值")));
     }
 
-    private String renderSuffix(PromptPurpose purpose) {
+    private String renderSuffix(PromptPurpose purpose, Map<String, String> templateValues) {
         return registry.render("protocol.suffix", Map.of(
                 "protocolVersion", SpecialistProtocol.VERSION,
                 "purpose", purpose.wireName(),
-                "schema", registry.require("protocol." + purpose.wireName()).body()));
+                "schema", registry.render("protocol." + purpose.wireName(), templateValues)));
     }
 
     private static String manifest(String entry) {

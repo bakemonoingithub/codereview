@@ -238,4 +238,63 @@ class AgentSubmissionTest {
         assertEquals(error.getMessage().indexOf("read_code"), error.getMessage().lastIndexOf("read_code"));
         assertTrue(ToolEnvelopes.size(mapper, envelope) <= ToolLimits.ENVELOPE_MAX_BYTES);
     }
+
+    @Test
+    void contractBoundsAreEnforcedBeforeCitationValidation() {
+        String title = "标".repeat(201);
+        assertCode("RESULT_INVALID", () -> AgentSubmission.parse(mapper,
+                "{\"title\":\"" + title + "\",\"summary\":\"s\",\"answerStatus\":\"ANSWERED\","
+                        + "\"markdown\":\"m\"}"));
+
+        StringBuilder citations = new StringBuilder();
+        for (int index = 1; index <= 101; index++) {
+            if (index > 1) citations.append(',');
+            citations.append("{\"id\":\"E").append(index)
+                    .append("\",\"materialId\":\"m1\",\"startLine\":10,\"endLine\":10}");
+        }
+        assertCode("RESULT_INVALID", () -> AgentSubmission.parse(mapper,
+                "{\"title\":\"t\",\"summary\":\"s\",\"answerStatus\":\"ANSWERED\",\"markdown\":\"m\","
+                        + "\"citations\":[" + citations + "]}"));
+
+        StringBuilder unresolved = new StringBuilder();
+        for (int index = 1; index <= 21; index++) {
+            if (index > 1) unresolved.append(',');
+            unresolved.append("\"缺口").append(index).append('"');
+        }
+        assertCode("RESULT_INVALID", () -> AgentSubmission.parse(mapper,
+                "{\"title\":\"t\",\"summary\":\"s\",\"answerStatus\":\"INSUFFICIENT_EVIDENCE\","
+                        + "\"markdown\":\"m\",\"unresolved\":[" + unresolved + "]}"));
+
+        assertCode("RESULT_INVALID", () -> AgentSubmission.parse(mapper, """
+                {"title":"t","summary":"s","answerStatus":"INSUFFICIENT_EVIDENCE",
+                 "markdown":"m","unresolved":["  "]}
+                """));
+        assertCode("RESULT_INVALID", () -> AgentSubmission.parse(mapper, """
+                {"title":"t","summary":"s","answerStatus":"ANSWERED","markdown":"[E1]",
+                 "citations":[{"id":"E1","materialId":"m1","startLine":10,"endLine":10,"path":"x"}]}
+                """));
+    }
+
+    @Test
+    void contractFieldNamesMatchTheSubmissionRecordAndToolSchema() {
+        var contract = AgentSubmissionContract.contract();
+        var expected = java.util.Arrays.stream(AgentSubmission.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName).toList();
+        assertEquals(expected, contract.fields().stream().map(field -> field.name()).toList());
+
+        var submit = AgentToolSchema.agentTools().stream()
+                .filter(tool -> ((java.util.Map<?, ?>) tool.get("function")).get("name")
+                        .equals(AgentToolNames.SUBMIT_RESULT))
+                .findFirst().orElseThrow();
+        var parameters = (java.util.Map<?, ?>) ((java.util.Map<?, ?>) submit.get("function"))
+                .get("parameters");
+        var properties = (java.util.Map<?, ?>) parameters.get("properties");
+        assertEquals(contract.fields().stream().map(field -> field.name()).toList(),
+                new java.util.ArrayList<>(properties.keySet()));
+    }
+
+    private static void assertCode(String expected, org.junit.jupiter.api.function.Executable action) {
+        AgentProtocolException error = assertThrows(AgentProtocolException.class, action);
+        assertEquals(expected, error.code());
+    }
 }
