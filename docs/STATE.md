@@ -4,6 +4,11 @@
 
 ## 当前状态
 
+2026-11-01 PAR-02 完成：已保存 20 组改造前完整请求及容量基线，补齐运行入口、提示片段、四类 Agent 纠正事件和工具描述清单，见[基线记录](work/prompt-assembly-refactor/baseline.md)与[改造指南](work/prompt-assembly-refactor/implementation-guide.md)。定向工程检查通过，具体统计及限制见基线记录。PAR-01、02 done，PAR-03–05 todo，无本工作包 active；未修改生产代码、调用模型或操作服务。
+
+2026-11-01 提示词组装与工具描述重构：按负责人要求落盘[重构计划](work/prompt-assembly-refactor/README.md)，同步 ROADMAP 的 PAR 工作包。明确正文抽取、场景规则与工具描述分离、插件扩展边界及请求／容量／执行行为等价验证；采用轻量版本标识，不建设系统模板在线版本管理。PAR-01 done，PAR-02–05 todo，无本工作包 active；本轮仅文档，未修改业务代码或启动插件框架实施，其他工作包状态不变。
+
+
 2026-10-29 负责人实际验证：已确认增量更新和物理删除脚本均有效，分别记录为两项实际使用验证通过，见[增量更新确认](work/agent-redesign/runtime-configuration/automatic-update-20261029.md#5-负责人实际验证2026-10-29)及[物理清理确认](work/agent-redesign/record-deletion/README.md#8-负责人实际验证2026-10-29)。此结论不扩大为恢复演练、异常回滚、并发、全部业务流程或正式页面视觉验收通过；CFG-06／07、DEL-05 的其余验收项保持待核对。
 
 2026-10-29 自动升级入口：按负责人确认方案新增新包 `scripts/update.sh`，支持明确目录／版本、只读检查和可选旧镜像导出；停机前检查配置、任务及原挂载，独立封存后复用部署入口，失败停止应用并保留现场。28 项自动升级、6 项既有部署及 15 项清理替身检查通过，语法检查通过；未操作真实 Docker／数据库、启停服务、构建或发布离线包。范围、限制及接续见[交付记录](work/agent-redesign/runtime-configuration/automatic-update-20261029.md)。CFG-06／07 及其他实际环境验收状态保持不变。

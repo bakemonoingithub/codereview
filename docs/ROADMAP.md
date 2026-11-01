@@ -1,5 +1,20 @@
 # ROADMAP - 专项审查与 Agent 分析
 
+## PAR 提示词组装与工具描述重构（2026-11-01）
+
+负责人要求将调查结论及后续插件扩展边界落盘，见[重构计划](work/prompt-assembly-refactor/README.md)。PAR-02 已完成，见[基线与验证](work/prompt-assembly-refactor/baseline.md)和[改造指南](work/prompt-assembly-refactor/implementation-guide.md)；未启动生产代码重构。采用独立模板资源与版本标识，暂不建设系统模板在线版本管理；保留现有用户提示词管理。以改造前请求、容量及执行行为基线保护现有功能，不同时优化提示词。
+
+| ID | 工作项 | status | depends_on |
+| --- | --- | --- | --- |
+| PAR-01 | 调查、范围及保护计划落盘 | done | - |
+| PAR-02 | 调用清单与改造前基线 | done | PAR-01 |
+| PAR-03 | 内置正文抽取与资源加载 | todo | PAR-02 |
+| PAR-04 | 组装边界与工具描述收敛 | todo | PAR-03 |
+| PAR-05 | 回归、使用验证与交付 | todo | PAR-04 |
+
+关闭条件及验证矩阵以重构计划第 4、5 节为准。当前无本工作包 active，等待明确启动；不实施插件框架，不改变既有业务契约及其他工作包状态。
+
+
 2026-10-29 负责人实际验证：已确认增量更新和物理删除脚本均有效，分别记录为两项实际使用验证通过，见[增量更新确认](work/agent-redesign/runtime-configuration/automatic-update-20261029.md#5-负责人实际验证2026-10-29)及[物理清理确认](work/agent-redesign/record-deletion/README.md#8-负责人实际验证2026-10-29)。此结论不扩大为恢复演练、异常回滚、并发、全部业务流程或正式页面视觉验收通过；CFG-06／07、DEL-05 的其余验收项保持待核对。
 
 2026-10-29 自动升级入口：按负责人确认方案新增新包 `scripts/update.sh`，支持明确目录／版本、只读检查和可选旧镜像导出；停机前检查配置、任务及原挂载，独立封存后复用部署入口，失败停止应用并保留现场。28 项自动升级、6 项既有部署及 15 项清理替身检查通过，语法检查通过；未操作真实 Docker／数据库、启停服务、构建或发布离线包。范围、限制及接续见[交付记录](work/agent-redesign/runtime-configuration/automatic-update-20261029.md)。CFG-06／07 及其他实际环境验收状态保持不变。
