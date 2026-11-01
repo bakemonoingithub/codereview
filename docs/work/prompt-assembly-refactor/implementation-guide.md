@@ -1,6 +1,6 @@
 # PAR 后续改造指南
 
-本指南在 PAR-02 时编写，供后续 Agent 接续 PAR-03–05；只在负责人启动相应工作后实施。第 2 节已按原样抽取完成，见[模板抽取记录](par-03-templates.md)；PAR-04 已按第 3 节完成，见[边界收敛记录](par-04-convergence.md)；PAR-05 按第 4 节执行。先读工作区 AGENTS、STATE、ROADMAP、本目录计划、baseline.md 及对应记录。
+本指南在 PAR-02 时编写，供后续 Agent 接续 PAR-03–05；只在负责人启动相应工作后实施。第 2 节已按原样抽取完成，见[模板抽取记录](par-03-templates.md)；PAR-04 已按第 3 节完成，见[边界收敛记录](par-04-convergence.md)；PAR-05 已按第 4 节完成，见[回归交付记录](par-05-delivery.md)。先读工作区 AGENTS、STATE、ROADMAP、本目录计划、baseline.md 及对应记录。
 
 ## 1. 建立起点
 

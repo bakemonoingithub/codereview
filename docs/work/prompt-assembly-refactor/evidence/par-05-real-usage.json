@@ -1,0 +1,204 @@
+{
+  "capturedAt": "2026-11-01T13:07:00+08:00",
+  "environment": {
+    "sourceCommit": "835122d",
+    "java": "17.0.20.1",
+    "os": "Windows",
+    "artifact": "backend/target-par05/backend-0.0.1-SNAPSHOT.jar",
+    "port": 8081,
+    "startedAndStopped": true
+  },
+  "project": {
+    "id": "01M5VNTMAMXP5EFT7RZCFV7XZ9",
+    "name": "codereview",
+    "branch": "dev",
+    "headSha": "9b5b393652c76fbfd27a4ccab90ffdcb165c8659",
+    "targetPath": "backend/src/main/java/com/codereview/agent/prompt/PromptFact.java"
+  },
+  "model": {
+    "id": "01M5VNQDTC9JEMTXQ9YYFGWZEM",
+    "name": "deepseek",
+    "modelName": "deepseek-flash",
+    "revision": 0
+  },
+  "specialists": [
+    {
+      "purpose": "ISSUE_FILE",
+      "taskId": "01M6AQZDJ818NTHMNBQHF0TKFB",
+      "targetId": "01M6AQZDJMXV4TX8Q7BEETFX2P",
+      "resultId": "01M6AQZEXXEGX7TDANNE7J4QYA",
+      "state": "SUCCEEDED",
+      "completeness": "COMPLETE",
+      "issueCount": 0,
+      "summary": "PromptFact 记录类实现简洁，构造器对 id 和 text 做了非空校验，未发现可由材料直接说明的问题。",
+      "usage": {
+        "totalTokens": 947,
+        "promptTokens": 877,
+        "completionTokens": 70,
+        "reasoningTokens": null
+      },
+      "systemPromptExactTemplate": true,
+      "templateIdentifiersPresent": false,
+      "requestBodySha256": "a3fae2f41701a6d6d3982cae17793fd8fa9d97aaa6a936cff15b5e0c751bb8e3"
+    },
+    {
+      "purpose": "PATTERN",
+      "taskId": "01M6AQZNSBXHK3ZNA8M7F0S5QB",
+      "targetId": "01M6AQZNSF78EWBM3RY4TMQ4QJ",
+      "resultId": "01M6AQZQQ52YRRAWY3G4RFWD35",
+      "state": "SUCCEEDED",
+      "completeness": "COMPLETE",
+      "issueCount": 0,
+      "summary": "PromptFact 是一个带紧凑构造器校验的不可变值对象，未体现经典设计模式的角色协作。",
+      "usage": {
+        "totalTokens": 1016,
+        "promptTokens": 799,
+        "completionTokens": 217,
+        "reasoningTokens": null
+      },
+      "systemPromptExactTemplate": true,
+      "templateIdentifiersPresent": false,
+      "requestBodySha256": "8d8b344453d57195dbf5864b5f850af8a90ac59f32003c446cd84c5f15e54d20"
+    },
+    {
+      "purpose": "COUPLING",
+      "taskId": "01M6AQZP8FG7CSEJ53YSSN18EW",
+      "targetId": "01M6AQZP8MYY3A3AHSYSM5GJPY",
+      "resultId": "01M6AQZQRP29H6PJEB0T86D209",
+      "state": "SUCCEEDED",
+      "completeness": "COMPLETE",
+      "issueCount": 0,
+      "summary": "PromptFact 是仅含 id/text 的只读事实记录，服务端计算的依赖事实显示无已解析出向依赖且覆盖率 0.0，无法据此判断耦合关系。",
+      "usage": {
+        "totalTokens": 1106,
+        "promptTokens": 959,
+        "completionTokens": 147,
+        "reasoningTokens": null
+      },
+      "systemPromptExactTemplate": true,
+      "templateIdentifiersPresent": false,
+      "requestBodySha256": "e1632e738e23fa25a8f4bec8bbcb5d9a3cdc86efe806311815f925a4bbc5aa69"
+    }
+  ],
+  "agent": {
+    "taskId": "01M6AQZZES1S7DMY3DSYH2W636",
+    "resultId": "01M6AR06AJYV3BQDTFZ7V9FE5E",
+    "state": "SUCCEEDED",
+    "turnNo": 2,
+    "toolAttempts": 1,
+    "networkAttempts": 2,
+    "answerStatus": "ANSWERED",
+    "citationCount": 1,
+    "unresolvedCount": 1,
+    "resultSummary": "PromptFact 为含 id、text 两个组件的 record（第 9 行），紧凑构造器（第 11-18 行）对 id 与 text 分别做 null 与 isBlank 校验，任一不满足即抛 IllegalArgumentException；text 的异常消息拼接了已校验的 id。文件共 19 行，已完整读取，无遗漏校验分支。",
+    "calls": [
+      {
+        "callId": "01M6AR00QAD6HHBCXHEY62DJ1S",
+        "purpose": "AGENT",
+        "state": "SUCCEEDED",
+        "requestBodySha256": "81e57365437bd902503867483f580b4f97f2b94f379e13519096cd0e4b2724eb",
+        "usage": {
+          "totalTokens": 5140,
+          "promptTokens": 4202,
+          "completionTokens": 938,
+          "reasoningTokens": 146
+        },
+        "systemPromptExactTemplate": true,
+        "templateIdentifiersPresent": false
+      },
+      {
+        "callId": "01M6AQZZGWJVYCZZDM88PBV75Q",
+        "purpose": "AGENT",
+        "state": "SUCCEEDED",
+        "requestBodySha256": "e36c65c1b15179f797c26f0ee5b4205fa45990e0478633b12a086085acb06c89",
+        "usage": {
+          "totalTokens": 3706,
+          "promptTokens": 3598,
+          "completionTokens": 108,
+          "reasoningTokens": 0
+        },
+        "systemPromptExactTemplate": true,
+        "templateIdentifiersPresent": false
+      }
+    ],
+    "tools": [
+      {
+        "toolName": "read_code",
+        "turnNo": 1,
+        "status": "OK"
+      },
+      {
+        "toolName": "submit_result",
+        "turnNo": 2,
+        "status": "OK"
+      }
+    ]
+  },
+  "report": {
+    "reportId": "01M6AR0ZWAE1KBXP59A43J7708",
+    "state": "SUCCEEDED",
+    "sourceCount": 4,
+    "taskCount": 4,
+    "versionCount": 1,
+    "kindCounts": {
+      "ISSUE": 1,
+      "PATTERN": 1,
+      "COUPLING": 1,
+      "AGENT": 1
+    },
+    "bodyLength": 2895,
+    "downloadBytes": 5975,
+    "downloadEqualsBody": true,
+    "sourceTags": 61,
+    "requestBodySha256": "865bf1188aec683e5a4a7e6e993336fc7599113682078740d0903e0fb8c260bb",
+    "systemPromptExactTemplate": true,
+    "templateIdentifiersPresent": false,
+    "usage": {
+      "totalTokens": 7972,
+      "promptTokens": 2342,
+      "completionTokens": 5630,
+      "reasoningTokens": 3913
+    }
+  },
+  "modelValidations": [
+    {
+      "scope": "CONNECTIVITY",
+      "result": "PASSED",
+      "configRevision": 0,
+      "detail": "连通成功，模型返回了最小 JSON"
+    },
+    {
+      "scope": "AGENT_TOOL_LOOP_V1",
+      "result": "PASSED",
+      "configRevision": 0,
+      "detail": "双轮工具协议通过：第 1 轮调用 read_code，第 2 轮返回 41 字符"
+    }
+  ],
+  "verification": {
+    "systemPromptMatchedPackagedTemplateFor": [
+      "ISSUE_FILE",
+      "PATTERN",
+      "COUPLING",
+      "AGENT",
+      "REPORT"
+    ],
+    "toolNames": [
+      "tree",
+      "find_files",
+      "search_code",
+      "read_code",
+      "read_diff",
+      "submit_result"
+    ],
+    "templateIdentifiersPresent": false,
+    "placeholderPresent": false,
+    "downloadEqualsBody": true
+  },
+  "database": {
+    "flywayBefore": 9,
+    "flywayAfter": 10,
+    "migration": "V10 - record deletion",
+    "appliedByExistingFlywayOnStartup": true,
+    "manualSql": false
+  }
+}
