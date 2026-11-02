@@ -1,0 +1,8 @@
+{
+  "candidateId": "86fbae43fae6d467d162c576f5ba1006cd5ac0703e833390f721de254adcdfa4",
+  "filesVerified": 553,
+  "archiveSha256": "29a7127f2abdfa15ee0931bc49e6cb79d9593075ec74a62221ef59cf4769565f",
+  "patchSha256": "ed4c06e20670aea5caac9d5a4d79ebe550fb381d0d4f19c7bb14bb1472954b37",
+  "before": "H:\\myProjects\\aiCodeReview\\code\\backend\\target-pas02\\before",
+  "after": "H:\\myProjects\\aiCodeReview\\code\\backend\\target-pas02\\after"
+}

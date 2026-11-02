@@ -1,0 +1,34 @@
+{
+  "cases": 279,
+  "byteEqual": true,
+  "bytes": 3408981,
+  "sha256": "91f2bdb77456b7ef21acbd20400494743ea13fbbc7e513d804fb8b4481704ba7",
+  "runs": [
+    {
+      "tree": "before",
+      "exit": 0,
+      "command": [
+        "mvnw.cmd",
+        "-q",
+        "-Ddeepseek.api-key=",
+        "-Dagent.live.cancel=false",
+        "-Dtest=Pas02DifferentialTest",
+        "-Dbackend.buildDirectory=target-pas02-differential",
+        "test"
+      ]
+    },
+    {
+      "tree": "after",
+      "exit": 0,
+      "command": [
+        "mvnw.cmd",
+        "-q",
+        "-Ddeepseek.api-key=",
+        "-Dagent.live.cancel=false",
+        "-Dtest=Pas02DifferentialTest",
+        "-Dbackend.buildDirectory=target-pas02-differential",
+        "test"
+      ]
+    }
+  ]
+}

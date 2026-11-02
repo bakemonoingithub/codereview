@@ -1,0 +1,56 @@
+{
+  "os": "nt",
+  "maven": "Apache Maven 3.9.9 (8e8579a9e76f7d015ee5ec7bfcdc97d260186937)\nMaven home: C:\\Users\\ysx\\.m2\\wrapper\\dists\\apache-maven-3.9.9-bin\\33b4b2b4\\apache-maven-3.9.9\nJava version: 17.0.20.1, vendor: Azul Systems, Inc., runtime: C:\\Users\\ysx\\.jdks\\azul-17.0.20.1\nDefault locale: zh_TW, platform encoding: GBK\nOS name: \"windows 11\", version: \"10.0\", arch: \"amd64\", family: \"windows\"\n",
+  "java": "openjdk version \"17.0.20.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Zulu17.68+203-CA (build 17.0.20.1+1-LTS)\nOpenJDK 64-Bit Server VM Zulu17.68+203-CA (build 17.0.20.1+1-LTS, mixed mode, sharing)\n",
+  "changesIgnoringCheckoutCRLF": [
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/AgentCorrectionRenderer.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/AgentPromptStrategy.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/PromptAssemblyService.java",
+      "change": "modified"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/PromptInputStrategy.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/PromptMessageFactory.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/PromptSections.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/PromptSystemRenderer.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/ReportPromptStrategy.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/SpecialistPromptStrategy.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/StandardPromptStrategy.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/main/java/com/codereview/agent/prompt/ToolCheckPromptStrategy.java",
+      "change": "added"
+    },
+    {
+      "path": "backend/src/test/java/com/codereview/agent/prompt/PromptAssemblyCompositionTest.java",
+      "change": "added"
+    }
+  ],
+  "note": "Two PAS-01 supplementary files were copied into before for baseline reproduction; compare handoff for added-test inventory."
+}

@@ -53,6 +53,8 @@
 
 ## 5. 验证前置检查
 
+PAS-01 组装职责迁移：调用方仍经 `prompt/PromptAssemblyService` 门面；系统指令及协议片段由 `prompt/PromptSystemRenderer` 消费本表的权威契约，普通材料格式及重试片段由 `prompt/PromptSections` 渲染，Agent 四类纠正事件由 `prompt/AgentCorrectionRenderer` 渲染。场景编排分别在 Specialist／Standard、Report、Agent、ToolCheckPromptStrategy，公共消息计量在 `prompt/PromptMessageFactory`。BRC-M01–M08 的业务权威入口及触发条件不变，迁移后仍需核对固定请求、工具定义及对应契约回归，不在策略内复制字段和限额规则。
+
 固定回归前检查真实探针开关，在测试子进程清除 DEEPSEEK_API_KEY、GITEA_TEST_BASE_URL，并显式传空 deepseek.api-key，不输出密钥。不将环境自动触发的真实探针作为业务验收；此前发生的调用见计划第 7 节。
 
 BRC-03 验收已核对本表路径、源码关联注释、业务正反例和资源；未新增仅验证整段中文相同的第二档测试，也未靠修改构造出来的虚拟业务规则证明同源。交付记录见[计划第 10 节](README.md#10-brc-04-交付记录2026-11-01)及[第 11 节](README.md#11-brc-03-交付记录2026-11-01)。

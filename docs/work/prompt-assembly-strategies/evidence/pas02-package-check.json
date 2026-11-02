@@ -1,0 +1,53 @@
+{
+  "candidateId": "86fbae43fae6d467d162c576f5ba1006cd5ac0703e833390f721de254adcdfa4",
+  "jar": "H:\\myProjects\\aiCodeReview\\code\\backend\\target-pas02\\after\\backend\\target-pas02-after-package\\backend-0.0.1-SNAPSHOT.jar",
+  "jarSha256": "206630f32a47a36212b329f116ffa83deb9b6adddf26b116b52c1745cfc0c4e2",
+  "promptResources": {
+    "prompts/agent/fixed-file-guidance.txt": "3cd31e37813660eb50bcf2f56364c850ad1a52cf637907d68183fcc00a5ea2e9",
+    "prompts/agent/tool-check-user.txt": "f1c9c6f09379a2ea9e45782f7bc16336518793130cafd5e17518871f8c07fd16",
+    "prompts/agent/tool-usage.txt": "34f0bc1bf1bba939f9badbe5b349f351350fc2bc59425d668f500160c4e595e1",
+    "prompts/correction/invalid-batch.txt": "69a5bdaaa0400ceaf6b351d1c265aa313d22a0d7e8f949f3dce2746bfb90b7da",
+    "prompts/correction/no-tool-call.txt": "86489ae65bbf4f516a3910a36544e5e7322069d9f12cbe5bb057d5aa340a1b79",
+    "prompts/correction/output-invalid.txt": "d50cc3e6891f687e3f3dbc3945ec4a4246e4c52f3d80abdde01aaf1066492cc9",
+    "prompts/correction/repeated-calls.txt": "205106ab42aa34dcec65d6eceb33b30200372879ee17d1aa5e4971947b331924",
+    "prompts/instruction/agent-tool-check.txt": "4ec5b3813f562061ebd18131ff85caca7f99b4369698b1f31267b1f980c060cc",
+    "prompts/instruction/agent.txt": "e13feb8e1dddf2e46caa45b95a80b5e735e45866ddcb427b4b35398077df7179",
+    "prompts/instruction/coupling.txt": "c507d79d627f457610684135bf29042151ad939d7e5364cdba8ccf2e3d0d9ab4",
+    "prompts/instruction/issue-diff.txt": "9daf9f8939ebe5f4a62d1c77c6b2e7d9d071c71ccadf5c156916a19ea92e0d93",
+    "prompts/instruction/issue-file.txt": "715f0d1e2db5cea3e154940c0b8f542a6239fa794bc821af2912c0c32d01a23f",
+    "prompts/instruction/pattern.txt": "25acd21ca3e28597f398005e4fe10a9c46acead16af3a57c0f17b8ebbcf199b4",
+    "prompts/instruction/report.txt": "df19456267754225097f3e7d6bc31b2b95776f8433ad4d9f3b24307ef7c98b9a",
+    "prompts/instruction/validation.txt": "0324e5db218b9fec74876d121b0e60a98d77c0f2d6f1a97f8931819bd02bbcda",
+    "prompts/manifest.json": "c9ac94aa70d9ccba99cc97188e59829e48e145ca7fbc64a1f92e2b6e2d3bf3cc",
+    "prompts/protocol/agent-tool-check.txt": "d3f3211223cb233ef9420e87c620c8d5cecf8d2c25a6fd0e400ceb1ba9006445",
+    "prompts/protocol/agent.txt": "e39cf41c9127f1871b58aade14db25e4c27712f6e5d4ec714dc0688d3d612810",
+    "prompts/protocol/coupling.txt": "16f52c3c706693745d9d528b2544acb0b92d0bf8e0f5751c1129430ca02c163c",
+    "prompts/protocol/issue-diff.txt": "4f36cc93d34508e07ef96ac72a1ff1476f1b105b6432acd06206e5bb3b138dd6",
+    "prompts/protocol/issue-file.txt": "4f36cc93d34508e07ef96ac72a1ff1476f1b105b6432acd06206e5bb3b138dd6",
+    "prompts/protocol/pattern.txt": "16f52c3c706693745d9d528b2544acb0b92d0bf8e0f5751c1129430ca02c163c",
+    "prompts/protocol/report.txt": "4737413634fad327f48e527d440fc73a6985f22a3db0da470d81ea57c1dc5f91",
+    "prompts/protocol/suffix.txt": "65c1ff8b6c537b5b975e927c008601f252f08965f010e013933bc2d4fc4584a0",
+    "prompts/protocol/validation.txt": "bf537a419b0d0321b219d080e6e5f5b1161f2b64816760500f2db98b931cd4d4",
+    "prompts/retry/diagnostic.txt": "fbfa4c866a696e5fc63b83e3454a7efac1100c1ea6425af94248bc258eaec96b",
+    "prompts/retry/excerpt-header.txt": "86be67d094d98f15bfe2e6be8964c026f6d08034f6df25bb65650cbc40f0a57b",
+    "prompts/system/agent.txt": "f81f68a54555ab027d9b3aeda9eeec81c9968e23fd1c48089719b1b3fa551c97",
+    "prompts/system/report.txt": "7888f6de2a50240b33c1fa258f22f7d7b21061b68dfd38742d04b193df9db529",
+    "prompts/system/specialist.txt": "c0b9fef45b573a4a6ee0ae6c7d4881ea8b44fe4ba8be0515e9e89e79de2f405a",
+    "prompts/system/tool-check.txt": "7b7204beeea7bbfbc2bbee0a15b3138423c90d27dd8bd7c9f81c07c79a25180e"
+  },
+  "baselineHashes": {
+    "backend/src/test/resources/prompt-baseline/requests.json": {
+      "originalWorkingTreeSha256": "c8a05aab6b4a76c5cc97dccafc700eeeaf70da4a9b48647de77c5b4df73cdee4",
+      "candidateSha256": "c8a05aab6b4a76c5cc97dccafc700eeeaf70da4a9b48647de77c5b4df73cdee4",
+      "gitArchiveSha256": "3a999b3353577d0ca36aa14edd7962961377f4870a6729ea343398dbc28a89cf",
+      "note": "Git archive stores LF; candidate retains frozen original working-tree bytes. Only export line endings differ."
+    },
+    "backend/src/test/resources/tool-baseline/tools.json": {
+      "originalWorkingTreeSha256": "2d32ae40159a13b5a90a9a83c4e6333c60f75cdc4c4c8388ff1834f21d942f89",
+      "candidateSha256": "2d32ae40159a13b5a90a9a83c4e6333c60f75cdc4c4c8388ff1834f21d942f89",
+      "gitArchiveSha256": "e2464558436155dbe9911718ad074b8e9b8963f7d890598b4c27c6764ac77b2b",
+      "note": "Git archive stores LF; candidate retains frozen original working-tree bytes. Only export line endings differ."
+    }
+  },
+  "sourceRecheck": 553
+}

@@ -1,0 +1,1412 @@
+[
+  {
+    "label": "before-core",
+    "command": [
+      "mvnw.cmd",
+      "-q",
+      "-Ddeepseek.api-key=",
+      "-Dagent.live.cancel=false",
+      "-Dbackend.buildDirectory=target-pas02-before-core",
+      "-Dtest=PromptRefactorBaselineTest,ToolDefinitionBaselineTest,PromptAssemblyBoundaryBaselineTest,PromptAssemblyServiceTest,PromptAssemblyAgentTest,PromptCorrectionTest,PromptTemplateRegistryTest,SpecialistPromptBuilderTest,AgentToolSchemaTest,ModelCapacityServiceTest,SpecialistSplitPlannerTest,SpecialistResultMergerTest,AgentTaskWorkerTest,SpecialistTaskWorkerTest,ReportExecutionWorkerTest,AgentToolLoopValidatorTest,ModelInvocationServiceTest,SpecialistResultValidatorTest,ReportCitationValidatorTest,AgentSubmissionTest,AgentContractMaintenanceTest,ToolContractMaintenanceTest,SpecialistOutputContractsTest",
+      "test"
+    ],
+    "exit": 0,
+    "seconds": 41.7,
+    "suites": [
+      {
+        "name": "com.codereview.agent.execution.AgentTaskWorkerTest",
+        "tests": "22",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.SpecialistTaskWorkerTest",
+        "tests": "14",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelCapacityServiceTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelInvocationServiceTest",
+        "tests": "31",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyAgentTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyBoundaryBaselineTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyServiceTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptCorrectionTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptRefactorBaselineTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.template.PromptTemplateRegistryTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportCitationValidatorTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportExecutionWorkerTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.capacity.SpecialistResultMergerTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.capacity.SpecialistSplitPlannerTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistOutputContractsTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistPromptBuilderTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistResultValidatorTest",
+        "tests": "12",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentContractMaintenanceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentSubmissionTest",
+        "tests": "18",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentToolLoopValidatorTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentToolSchemaTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolContractMaintenanceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolDefinitionBaselineTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ],
+    "skipped": [],
+    "totals": {
+      "tests": 194,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  {
+    "label": "after-core",
+    "command": [
+      "mvnw.cmd",
+      "-q",
+      "-Ddeepseek.api-key=",
+      "-Dagent.live.cancel=false",
+      "-Dbackend.buildDirectory=target-pas02-after-core",
+      "-Dtest=PromptRefactorBaselineTest,ToolDefinitionBaselineTest,PromptAssemblyBoundaryBaselineTest,PromptAssemblyServiceTest,PromptAssemblyAgentTest,PromptCorrectionTest,PromptTemplateRegistryTest,SpecialistPromptBuilderTest,AgentToolSchemaTest,ModelCapacityServiceTest,SpecialistSplitPlannerTest,SpecialistResultMergerTest,AgentTaskWorkerTest,SpecialistTaskWorkerTest,ReportExecutionWorkerTest,AgentToolLoopValidatorTest,ModelInvocationServiceTest,SpecialistResultValidatorTest,ReportCitationValidatorTest,AgentSubmissionTest,AgentContractMaintenanceTest,ToolContractMaintenanceTest,SpecialistOutputContractsTest,PromptAssemblyCompositionTest",
+      "test"
+    ],
+    "exit": 0,
+    "seconds": 45.2,
+    "suites": [
+      {
+        "name": "com.codereview.agent.execution.AgentTaskWorkerTest",
+        "tests": "22",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.SpecialistTaskWorkerTest",
+        "tests": "14",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelCapacityServiceTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelInvocationServiceTest",
+        "tests": "31",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyAgentTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyBoundaryBaselineTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyCompositionTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyServiceTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptCorrectionTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptRefactorBaselineTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.template.PromptTemplateRegistryTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportCitationValidatorTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportExecutionWorkerTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.capacity.SpecialistResultMergerTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.capacity.SpecialistSplitPlannerTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistOutputContractsTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistPromptBuilderTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistResultValidatorTest",
+        "tests": "12",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentContractMaintenanceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentSubmissionTest",
+        "tests": "18",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentToolLoopValidatorTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentToolSchemaTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolContractMaintenanceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolDefinitionBaselineTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ],
+    "skipped": [],
+    "totals": {
+      "tests": 197,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  {
+    "label": "after-full",
+    "command": [
+      "mvnw.cmd",
+      "-q",
+      "-Ddeepseek.api-key=",
+      "-Dagent.live.cancel=false",
+      "-Dbackend.buildDirectory=target-pas02-after-full",
+      "test"
+    ],
+    "exit": 1,
+    "seconds": 87.2,
+    "suites": [
+      {
+        "name": "com.codereview.agent.api.PromptPurposeValidationTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.api.SrfFeedbackContractTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.api.V2BindingErrorTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.api.V2ExceptionHandlerTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.config.RuntimeConfigurationTest",
+        "tests": "20",
+        "failures": "7",
+        "errors": "1",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.contract.CitationFormatTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.db.AgentFoundationMigrationContractTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.db.AgentMigrationContractTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.db.AgentOnlyStartupTest",
+        "tests": "1",
+        "failures": "1",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.db.AgentSchemaGuardTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.db.ResultItemStartupTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.AgentCancellationLiveTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "2"
+      },
+      {
+        "name": "com.codereview.agent.execution.AgentResultPublisherTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.AgentTaskWorkerTest",
+        "tests": "22",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.SpecialistResultPublisherTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.SpecialistTaskWorkerTest",
+        "tests": "14",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.TaskDeadlineSweeperTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.TaskDispatchServiceTest",
+        "tests": "11",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.execution.TaskRecoveryRunnerTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.HttpModelTransportTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelCallConcurrencyLimiterTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelCapacityServiceTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelInvocationServiceTest",
+        "tests": "31",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.ModelToolProtocolTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.invocation.RetryBackoffTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.model.HttpModelProbeTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.Pas02DifferentialTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyAgentTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyBoundaryBaselineTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyCompositionTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptAssemblyServiceTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptCorrectionTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptMeteringSampleTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.PromptRefactorBaselineTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.prompt.template.PromptTemplateRegistryTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportCitationValidatorTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportDispatchServiceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportExecutionWorkerTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportFactsBuilderTest",
+        "tests": "11",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.report.ReportGenerationServiceTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.repository.RepositoryReadServiceTest",
+        "tests": "22",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.AgentListPaginationTest",
+        "tests": "12",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.AgentModelServiceTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.AgentProjectServiceTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.AgentPromptServiceTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.AgentReadServiceTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.AgentTaskServiceTest",
+        "tests": "19",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.FeedbackServiceTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.RecordDeletionMapperTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.RecordDeletionServiceTest",
+        "tests": "17",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.ReportInputServiceTest",
+        "tests": "11",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.ResultItemIndexTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.TaskDetailReadTest",
+        "tests": "12",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.TaskServiceTest",
+        "tests": "26",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.service.TaskStatisticsServiceTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.capacity.SpecialistResultMergerTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.capacity.SpecialistSplitPlannerTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.coupling.CouplingFactsBuilderTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.material.DeclarationEnhancementServiceTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.material.DeclarationResolverTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.material.JavaStructureParserTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.material.MaterialPreparationServiceTest",
+        "tests": "13",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistOutputContractsTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistPromptBuilderTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistProtocolPolicyTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistResultParserTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.protocol.SpecialistResultValidatorTest",
+        "tests": "12",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.specialist.SpecialistBoundaryRegressionTest",
+        "tests": "27",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.support.AgentCursorTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.support.AgentIdsTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.support.ModelConfigSnapshotsTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.support.PromptApplicabilityTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.support.PromptVersionResolverTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentContractMaintenanceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentSubmissionTest",
+        "tests": "18",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentToolLoopValidatorTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.AgentToolSchemaTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.GitGrepRunnerTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ReadCodeToolTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ReadDiffToolTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ReadOnlyToolServiceTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.SearchCodePaginationTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.SearchCodeToolTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolArgumentParserTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolContractMaintenanceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolCursorTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolDefinitionBaselineTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolGlobsTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.agent.tools.ToolPatchTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.analyzer.ApiReviewAnalyzerTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.analyzer.CouplingAnalyzerTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.analyzer.DiffReviewAnalyzerTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.analyzer.LlmReviewAnalyzerDeadlineTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.chunk.ChunkerTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.chunk.TokenEstimatorTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.common.ReviewableFilesTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.common.TextDiffTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.common.TextWindowTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.config.MybatisPlusConfigTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.db.MigrationContractTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.diff.DiffUnitBuilderTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.diff.UnifiedDiffParserTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.entity.ProjectSerializationTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.gateway.AiGatewayProbeTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "2"
+      },
+      {
+        "name": "com.codereview.git.GitCacheTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GitDiffModelTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GiteaClientLiveTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "5"
+      },
+      {
+        "name": "com.codereview.git.GiteaClientTest",
+        "tests": "26",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GiteaDiffParserTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GiteaGitMirrorTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GiteaReadBoundaryTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GitHostClientRegistryTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GitHubClientBranchEncodingTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GitHubClientTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GitMirrorTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GitRepoRefTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.git.GitResponseParserTest",
+        "tests": "11",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.llm.LlmClientTimeoutTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.material.DepGraphTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.material.ModuleGraphTest",
+        "tests": "10",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.material.StructureExtractorTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.probe.JavaParserProbeTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "1"
+      },
+      {
+        "name": "com.codereview.probe.StructureLlmProbeTest",
+        "tests": "1",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "1"
+      },
+      {
+        "name": "com.codereview.review.RetryPolicyTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.review.ReviewStatusTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.IssueMarkServiceMarkTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.IssueMarkServiceTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ModelConfigServiceTest",
+        "tests": "7",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ProjectServiceCreateTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ProjectServiceDeleteTest",
+        "tests": "13",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ProjectServiceDetailTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ProjectServiceFileViewTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ProjectServiceListTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.PromptServiceTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReportAggregationBuilderTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReportExecutorTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReportServiceListTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReviewExecutorDeadlineTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReviewExecutorResilienceTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReviewExecutorScopeTest",
+        "tests": "4",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReviewServiceListTest",
+        "tests": "9",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReviewServiceRetryTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "com.codereview.service.ReviewStrategyServiceTest",
+        "tests": "15",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ],
+    "skipped": [
+      "com.codereview.agent.execution.AgentCancellationLiveTest.publishFirst",
+      "com.codereview.agent.execution.AgentCancellationLiveTest.cancelFirst",
+      "com.codereview.gateway.AiGatewayProbeTest.structuredJsonReview",
+      "com.codereview.gateway.AiGatewayProbeTest.connectivity",
+      "com.codereview.git.GiteaClientLiveTest.comparesTwoCommitsThroughTheLocalMirror",
+      "com.codereview.git.GiteaClientLiveTest.readsCommitDetailWithPerFilePatchesFromRawDiff",
+      "com.codereview.git.GiteaClientLiveTest.readsBranchesAndSlashedBranchHead",
+      "com.codereview.git.GiteaClientLiveTest.readsTreePaginatedAndRawFile",
+      "com.codereview.git.GiteaClientLiveTest.readsCommitPageWithLimitAndHasMore",
+      "com.codereview.probe.JavaParserProbeTest.parseRealProject",
+      "com.codereview.probe.StructureLlmProbeTest.analyzeAniSonManageStructure"
+    ],
+    "totals": {
+      "tests": 1026,
+      "failures": 8,
+      "errors": 1,
+      "skipped": 11
+    }
+  }
+]
