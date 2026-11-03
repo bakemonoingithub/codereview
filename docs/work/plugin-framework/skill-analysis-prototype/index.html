@@ -1,0 +1,1865 @@
+<!doctype html>
+<!--
+  =============================================================================
+  约束 · Skill 分析 UX 原型（给实现与其他 agent）
+  -----------------------------------------------------------------------------
+  - 本文件仅用于 UX / 流程示意与评审，不是前端实现稿，不是视觉设计源。
+  - 禁止按本页布局、样式、弹窗/抽屉实现、表单控件去修改正式 Vue / Ant Design 代码。
+  - 正式 UI、组件弹出方式以仓库当前主干 / 现网 Agent 相关页面为准。
+  - 本页与系统最新 UI 不一致属已知偏差；不得据此「对齐」产品代码。
+  - 仅可参考屏幕结构、字段、Tab、证据点击等产品流程；实现须复用现有组件体系。
+  - 未经用户确认，勿提交进 src/；勿以本文件为凭发起对正式前端的样式改动。
+  =============================================================================
+-->
+<html lang="zh-CN">
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>代码审查 · Skill 分析原型（仅示意·非实现稿）</title>
+<style>
+:root{--ink:#0f172a;--muted:#64748b;--line:#e8edf3;--bg:#f8fafc;--blue:#2563eb;--soft:#eff4ff;--green:#059669;--amber:#b45309;--red:#dc2626;--nav:#ffffff;--radius:20px;--shadow:0 1px 2px #0f172a0a,0 4px 16px #0f172a08}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);font:14px/1.65 "Inter","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",system-ui,sans-serif;background:var(--bg);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}button,a,input,select,textarea{outline-offset:3px}:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+button{cursor:pointer;border:1px solid #e2e8f0;border-radius:12px;background:white;color:var(--ink);padding:9px 16px;white-space:nowrap;font-weight:600;font-size:13px;box-shadow:0 1px 2px #0f172a0d;transition:background .15s,border-color .15s,box-shadow .15s}
+button:hover:not(:disabled){border-color:#cbd5e1;background:#f8fafc}button:disabled{cursor:not-allowed;opacity:.48}
+.primary{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 6px 16px #2563eb38}.primary:hover:not(:disabled){background:#1d4ed8;border-color:#1d4ed8}
+.quiet,.linklike,.close,.source-link,.cite-mark{box-shadow:none}.quiet{border-color:transparent;background:transparent;color:var(--blue)}.danger{color:var(--red)}
+input,select,textarea{border:1px solid #e2e8f0;border-radius:12px;padding:9px 12px;background:#f8fafc;color:var(--ink);max-width:100%}
+input:focus,select:focus,textarea:focus{background:#fff;border-color:#93b4f5;box-shadow:0 0 0 3px #2563eb1f;outline:0}
+textarea{resize:vertical;width:100%;min-height:70px}label{cursor:pointer}h1,h2,h3,p{margin:0}
+h1{font-size:32px;font-weight:700;letter-spacing:-.8px;line-height:1.3}h2{font-size:18px;font-weight:700}h3{font-size:14px;font-weight:650}
+.muted{color:var(--muted)}.small{font-size:12px}.mono,code,pre{font-family:Consolas,"Cascadia Code",monospace}
+code{font-size:12px;background:#f1f5f9;padding:2px 5px;border-radius:6px;border:1px solid #e2e8f0;color:#334155}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font-size:12px;line-height:1.9}
+a{color:var(--blue)}.hidden{display:none!important}.spacer{flex:1}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh}
+.sidebar{position:fixed;inset:0 auto 0 0;width:240px;background:#fff;border-right:1px solid var(--line);color:#475569;padding:28px 16px;display:flex;flex-direction:column}
+.brand{color:var(--ink);font-size:19px;font-weight:700;padding:0 8px 30px;display:flex;align-items:center}
+.brand b{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 6px 14px #2563eb40;margin-right:12px;font-size:17px}
+.nav-label{font-size:10px;letter-spacing:1.7px;color:#94a3b8;font-weight:600;padding:16px 12px 10px}
+.sidebar button{background:transparent;border:0;color:#475569;text-align:left;padding:11px 14px;margin-bottom:5px;width:100%;display:flex;gap:11px;align-items:center;border-radius:12px;font-weight:500;box-shadow:none}
+.sidebar button:hover{background:#f1f5f9;color:var(--ink)}.sidebar button.active{background:var(--soft);color:var(--blue);font-weight:650}
+.sidebar .foot{margin-top:auto;padding:16px;background:#f8fafc;border:1px solid var(--line);border-radius:16px;font-size:12px;color:#64748b}
+.sidebar .foot strong{display:block;color:var(--ink);font-weight:650}
+.workspace{grid-column:2;min-width:0}
+.topbar{height:72px;background:#ffffffcc;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:0 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+.breadcrumbs{color:var(--muted);font-size:13px}.breadcrumbs span{margin:0 9px;color:#cbd5e1}
+.prototype-label{font-size:11px;padding:4px 12px;background:var(--soft);border:1px solid #dbe6fe;border-radius:999px;color:var(--blue);font-weight:600}
+.avatar{display:inline-grid;place-items:center;width:36px;height:36px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:50%;font-size:11px;margin-left:15px;color:#334155;font-weight:700}
+.content{padding:40px 40px 56px;max-width:1750px;margin:auto}
+.heading{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:32px}.heading p{color:var(--muted);margin-top:8px;font-size:15px}
+.actions,.row,.filters{display:flex;align-items:center;gap:10px}.wrap{flex-wrap:wrap}
+.card{background:white;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.pad{padding:20px 23px}.section-top{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;background:#eef2f7;color:#5d6c80}
+.badge.green{background:#eaf7ef;color:var(--green)}.badge.amber{background:#fff4e5;color:var(--amber)}.badge.blue{background:var(--soft);color:var(--blue)}.badge.red{background:#fff0ef;color:var(--red)}.badge.indigo{background:#eef2ff;color:#4f46e5}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:32px}
+.stat{padding:24px 26px;background:white;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.stat .value{font-size:36px;font-weight:700;margin:10px 0 4px;letter-spacing:-1.2px}
+.stat .value small{font-size:14px;font-weight:400;color:var(--muted);letter-spacing:0;margin-left:7px}
+.filters{padding:20px 24px;flex-wrap:wrap;border-bottom:1px solid var(--line);gap:12px}
+.filters input{min-width:240px;flex:1}.filters select{min-width:120px}
+.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}
+th{background:#fafbfc;color:#64748b;font-size:12px;font-weight:600;padding:14px 24px;border-bottom:1px solid var(--line)}
+td{padding:20px 24px;border-bottom:1px solid #edf1f6;font-size:14px}td strong{font-weight:650}td .muted{display:block;font-size:11px;margin-top:3px}
+tr:last-child td{border-bottom:0}tbody tr{transition:background .12s}tbody tr:hover td{background:#f8fafc}
+.table-footer{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+.notice{border:1px solid #d8e6fb;background:#f3f7ff;color:#46628a;padding:13px 16px;border-radius:14px;font-size:12px;margin-bottom:16px}
+.notice.amber{background:#fffaf0;color:#946b2c;border-color:#efdfbd}.notice.red{background:#fff6f5;color:#ad4840;border-color:#f0d6d1}
+.tabbar{display:flex;gap:28px;padding:0 24px;border-bottom:1px solid var(--line);background:white}
+.tabbar button{border:0;border-radius:0;background:none;padding:15px 0;font-size:13px;color:var(--muted);box-shadow:none;font-weight:500}
+.tabbar button.active{color:var(--blue);border-bottom:2px solid var(--blue);font-weight:600}
+.empty{text-align:center;padding:48px 25px;color:var(--muted)}
+.modal{border:0;border-radius:24px;padding:0;width:min(720px,calc(100vw - 48px));max-height:90vh;box-shadow:0 30px 80px #0f172a33;color:var(--ink)}
+.modal::backdrop{background:#0f172a59;backdrop-filter:blur(4px)}
+.modal.wide{width:min(960px,calc(100vw - 48px))}
+.modal.drawer{width:min(560px,calc(100vw - 48px));margin:0 0 0 auto;height:100vh;max-height:100vh;border-radius:24px 0 0 24px}
+.modal-head{padding:22px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.modal-head h2{font-size:20px}.modal-body{padding:24px 28px;max-height:calc(90vh - 156px);overflow:auto}
+.modal.drawer .modal-body{max-height:calc(100vh - 156px)}
+.modal-foot{padding:18px 28px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;background:#f8fafc}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px 24px}
+.field label{display:block;font-size:12px;font-weight:550;margin-bottom:6px}
+.field input:not([type=checkbox]),.field select{width:100%}.full{grid-column:1/-1}
+.step{display:flex;align-items:center;gap:9px;margin:22px 0 14px;font-weight:600}.step:first-child{margin-top:0}
+.step .num{background:var(--blue);color:#fff;border-radius:50%;width:23px;height:23px;display:grid;place-items:center;font-size:12px}
+.preview-code{max-height:330px;overflow:auto;background:#f6f8fc;border:1px solid var(--line);padding:16px;border-radius:14px}
+.scenario{margin-top:32px;padding:16px 20px;border:1px solid var(--line);border-radius:16px;background:#fff;color:#64748b;display:flex;gap:8px;align-items:center;font-size:11px;flex-wrap:wrap}
+.scenario button{font-size:11px;padding:4px 12px;border-radius:999px;font-weight:500}
+.scenario button.active{color:var(--blue);background:var(--soft);border-color:#bfd2fb}
+.toast{position:fixed;bottom:26px;left:calc(50% + 120px);transform:translateX(-50%);background:var(--ink);color:white;padding:12px 22px;border-radius:14px;box-shadow:0 8px 30px #14253b33;z-index:20;font-size:13px;max-width:80vw}
+.close{font-size:20px;padding:0 7px;color:var(--muted);border:0}.linklike{font-size:13px;color:var(--blue);padding:0;border:0;background:none}
+.error-text{color:var(--red);font-size:12px;margin-top:8px}
+.source-link{border:0;color:var(--blue);background:var(--soft);padding:3px 7px;font:12px Consolas,monospace;border-radius:6px}
+.cite-mark{border:0;color:var(--blue);background:var(--soft);padding:1px 6px;font:11px Consolas,monospace;border-radius:999px;margin:0 2px;font-weight:650;cursor:pointer}
+.cite-mark.call{background:#eef2ff;color:#4f46e5}
+.cite-mark:hover{filter:brightness(.96)}
+.codeview{background:#fcfdfe;overflow:auto;min-width:0;border:1px solid var(--line);border-radius:14px}
+.codebar{padding:12px 20px;background:white;border-bottom:1px solid var(--line);font-size:12px;display:flex;gap:12px;align-items:center}
+.code-lines{padding:15px 0;min-width:480px;font:12px/1.95 Consolas,monospace}
+.code-line{white-space:pre;display:flex}.code-line .ln{color:#9ca9b9;min-width:55px;text-align:right;padding:0 15px;user-select:none}
+.code-line.marked{background:#eff4ff;border-left:3px solid var(--blue)}.code-line .source{color:#34516e}
+.agent-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}.agent-layout>*{min-width:0}
+.agent-article{padding:28px 32px;line-height:1.95}
+.agent-article h2{font-size:20px;margin:4px 0 14px}.agent-article h3{font-size:15px;margin:24px 0 10px}
+.agent-article p{margin:10px 0;font-size:13px}.agent-article li{font-size:13px;margin:8px 0}
+.agent-article ul{padding-left:20px}.agent-article blockquote{margin:18px 0;padding:10px 16px;background:#f8fafc;border-left:3px solid #cbd5e1;color:var(--muted);font-size:12px}
+.agent-side .pad{padding:18px 22px}.agent-side dl{margin:0;font-size:12px}
+.agent-side dt{color:var(--muted);margin-top:14px}.agent-side dt:first-child{margin-top:0}
+.agent-side dd{margin:4px 0 0;overflow-wrap:anywhere}
+.agent-meters{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:0 0 24px}
+.agent-meter{border:1px solid var(--line);border-radius:16px;background:white;padding:16px 20px}
+.agent-meter strong{display:block;margin:7px 0;font-size:18px}.agent-meter small{font-size:11px;font-weight:400;color:var(--muted)}
+.agent-meter progress{height:5px;width:100%;accent-color:var(--blue)}
+.agent-call-layout{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:420px}
+.agent-call-list{border-right:1px solid var(--line);max-height:610px;overflow:auto}
+.agent-call-list button{display:block;width:100%;white-space:normal;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:16px 20px;font-weight:500}
+.agent-call-list button.active{background:var(--soft);color:var(--blue)}
+.agent-call-list button.flash{animation:flashBg .9s ease}
+.agent-call-list small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.agent-call-content{padding:20px;min-width:0}.agent-call-content .preview-code{max-height:470px}
+.agent-evidence{display:block;text-align:left;padding:13px 0;border-bottom:1px solid var(--line);font-size:12px}
+.agent-evidence:last-child{border-bottom:0}.agent-evidence .source-link{white-space:normal;text-align:left;line-height:1.7}
+.agent-main-tabs{margin-bottom:24px;border:1px solid var(--line);border-radius:16px;overflow:auto}
+.skill-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#eef2ff;color:#4f46e5;font-size:12px;font-weight:650}
+.skill-list{display:grid;gap:14px}
+.skill-card{padding:20px 22px;border:1px solid var(--line);border-radius:16px;background:white;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.skill-card:hover{border-color:#bfd2fb;box-shadow:var(--shadow)}
+.skill-card .meta{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.req{color:var(--red);font-weight:600}.hint{font-size:11px;color:var(--muted);margin-top:5px}
+.dynamic-block{margin-top:8px;padding:16px;border:1px dashed #cbd5e1;border-radius:14px;background:#fafbfc}
+@keyframes flashBg{0%,100%{background:var(--soft)}50%{background:#dbe6fe}}
+@media(max-width:1250px){.agent-layout{grid-template-columns:minmax(0,1fr) 260px}.agent-meters{gap:10px}.agent-meter{padding:14px}.agent-article{padding:24px}.agent-call-layout{grid-template-columns:180px minmax(0,1fr)}}
+@media(max-width:1100px){.layout{grid-template-columns:200px minmax(0,1fr)}.sidebar{width:200px}.content{padding:28px 24px}.topbar{padding:0 24px}.stats{gap:12px}.stat .value{font-size:28px}.form-grid{grid-template-columns:1fr}}
+@media(max-width:1000px){.agent-layout{grid-template-columns:1fr}.agent-meters{grid-template-columns:repeat(2,1fr)}.agent-side{display:grid;grid-template-columns:1fr 1fr;gap:16px}.agent-call-layout{grid-template-columns:1fr}.agent-call-list{display:flex;max-height:none;border-right:0;border-bottom:1px solid var(--line);overflow:auto}.agent-call-list button{min-width:170px;border-right:1px solid var(--line)}}
+@media(max-width:760px){.layout{display:block}.sidebar{position:static;width:100%;border-right:0;border-bottom:1px solid var(--line);padding:12px;display:block}.brand{padding:0 8px 8px}.nav-label,.sidebar .foot{display:none}.sidebar button{display:inline-flex;width:auto;margin:0;padding:7px 10px}.workspace{width:100%}.stats{grid-template-columns:1fr}.content{padding:20px 14px}.topbar{padding:0 14px}.toast{left:50%}h1{font-size:26px}.heading{flex-wrap:wrap}.agent-side{display:block}.filters input{min-width:0}.modal{width:calc(100vw - 20px)}.modal.drawer{width:100%;border-radius:24px 24px 0 0;margin:auto 0 0}}
+.proto-warn{margin:0 40px 20px;padding:12px 16px;border-radius:14px;border:1px solid #efdfbd;background:#fffaf0;color:#946b2c;font-size:12px;line-height:1.55}.proto-warn strong{color:#7a5418}</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar" aria-label="主导航">
+  <div class="brand"><b>⌘</b> CodeReview</div>
+  <div class="nav-label">WORKSPACE</div>
+  <button type="button" data-nav="center" onclick="go('center')"><span>▦</span> 审查中心</button>
+  <button type="button" disabled title="本原型未包含"><span>⌑</span> 代码浏览</button>
+  <button type="button" disabled title="本原型未包含"><span>▤</span> 报告</button>
+  <div class="nav-label">MANAGE</div>
+  <button type="button" data-nav="skills" onclick="go('skills')"><span>◈</span> Skill 管理</button>
+  <button type="button" data-nav="plugins" onclick="go('plugins')"><span>⬡</span> 插件管理</button>
+  <button type="button" disabled title="本原型未包含"><span>⌂</span> 项目管理</button>
+  <div class="foot"><strong>Skill 分析原型</strong>第一批 UX 审查 · 无后端<br><span class="small">演示数据 · 2026.11</span></div>
+</aside>
+<div class="workspace">
+  <header class="topbar">
+    <div class="breadcrumbs">工作空间<span>/</span><b id="crumb" style="font-weight:500;color:#334760">审查中心</b></div>
+    <div class="row"><span class="prototype-label">原型 · Skill 分析</span><span class="avatar">YS</span></div>
+  </header>
+  <main id="app" class="content"></main>
+</div>
+</div>
+
+<dialog class="modal" id="skill-form-dialog" aria-labelledby="skill-form-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="skill-form-title">发起 Skill 分析</h2>
+      <p class="muted small">选择 Skill 并填写动态字段。连接由 Skill 依赖自动绑定，无需挑选。</p>
+    </div>
+    <button type="button" class="close" aria-label="关闭发起表单" onclick="closeSkillForm()">×</button>
+  </div>
+  <div class="modal-body" id="skill-form-body"></div>
+  <div class="modal-foot">
+    <span class="muted small">提交后创建任务并进入详情</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="closeSkillForm()">取消</button>
+    <button type="button" class="primary" id="submit-skill" onclick="submitSkillForm()">开始分析</button>
+  </div>
+</dialog>
+
+<dialog class="modal wide" id="code-dialog" aria-labelledby="code-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="code-title">代码证据</h2>
+      <div id="code-subtitle" class="muted small"></div>
+    </div>
+    <button type="button" class="close" aria-label="关闭代码阅读器" onclick="closeCode()">×</button>
+  </div>
+  <div class="modal-body" id="code-body"></div>
+  <div class="modal-foot">
+    <span class="muted small">固定版本快照 · 演示内容</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="closeCode()">关闭</button>
+  </div>
+</dialog>
+
+<dialog class="modal drawer" id="skill-drawer" aria-labelledby="drawer-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="drawer-title">Skill 详情</h2>
+      <p class="muted small">只读预览 · 本原型不提供编辑</p>
+    </div>
+    <button type="button" class="close" aria-label="关闭 Skill 抽屉" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="modal-body" id="drawer-body"></div>
+  <div class="modal-foot">
+    <span class="muted small">依赖检查与启停在正式版中操作</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="closeDrawer()">关闭</button>
+  </div>
+</dialog>
+
+<dialog class="modal drawer" id="plugin-drawer" aria-labelledby="plugin-drawer-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="plugin-drawer-title">插件详情</h2>
+      <p class="muted small">只读预览 · 本原型不提供编辑</p>
+    </div>
+    <button type="button" class="close" aria-label="关闭插件抽屉" onclick="closePluginDrawer()">×</button>
+  </div>
+  <div class="modal-body" id="plugin-drawer-body"></div>
+  <div class="modal-foot">
+    <span class="muted small">一插件一连接 · jira-issue 为 Server Basic/OAuth（非 JWT）</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="closePluginDrawer()">关闭</button>
+  </div>
+</dialog>
+
+<dialog class="modal wide" id="install-skill-dialog" aria-labelledby="install-skill-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="install-skill-title">安装 Skill</h2>
+      <p class="muted small">管理员录入结构化 Skill 定义。本原型仅 mock 保存到内存列表，无后端。</p>
+    </div>
+    <button type="button" class="close" aria-label="关闭安装 Skill" onclick="closeInstallSkill()">×</button>
+  </div>
+  <div class="modal-body" id="install-skill-body"></div>
+  <div class="modal-foot">
+    <span class="muted small">必填：标识、显示名称、定义正文</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="closeInstallSkill()">取消</button>
+    <button type="button" class="primary" id="save-install-skill" onclick="submitInstallSkill()">保存</button>
+  </div>
+</dialog>
+
+<dialog class="modal wide" id="create-plugin-dialog" aria-labelledby="create-plugin-title">
+  <div class="modal-head">
+    <div>
+      <h2 id="create-plugin-title">新建插件</h2>
+      <p class="muted small">仅可新建业务插件。系统内置（如 code-repo）为预装只读，不可在此创建。本原型仅 mock 追加到内存列表，无后端。</p>
+    </div>
+    <button type="button" class="close" aria-label="关闭新建插件" onclick="closeCreatePlugin()">×</button>
+  </div>
+  <div class="modal-body" id="create-plugin-body"></div>
+  <div class="modal-foot">
+    <span class="muted small">一插件一连接 · 发起分析时不暴露插件勾选器</span>
+    <span class="spacer"></span>
+    <button type="button" onclick="closeCreatePlugin()">取消</button>
+    <button type="button" class="primary" id="save-create-plugin" onclick="submitCreatePlugin()">创建</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const badge = (text, color='') => `<span class="badge ${color}"><i class="dot"></i>${esc(text)}</span>`;
+const opts = (values, labels, current) => values.map((v,i)=>`<option value="${esc(v)}" ${v===current?'selected':''}>${esc(labels[i])}</option>`).join('');
+
+const codeSamples = {
+  'OrderService.java': [
+    'package com.shop.order;',
+    '',
+    'import com.shop.payment.PaymentGateway;',
+    'import com.shop.order.OrderRepository;',
+    '',
+    'public class OrderService {',
+    '    private final PaymentGateway paymentGateway;',
+    '    private final OrderRepository repository;',
+    '',
+    '    public void submit(Order order) {',
+    '        repository.save(order);',
+    '        paymentGateway.charge(order.getPayment());',
+    '    }',
+    '',
+    '    public void retryPayment(Order order) {',
+    '        // 直接再次扣款，未见幂等键',
+    '        paymentGateway.charge(order.getPayment());',
+    '    }',
+    '}'
+  ],
+  'PaymentGateway.java': [
+    'package com.shop.order;',
+    '',
+    'import com.shop.payment.Payment;',
+    '',
+    '/** 支付策略接口。 */',
+    'public interface PaymentGateway {',
+    '',
+    '    /**',
+    '     * 发起支付请求。',
+    '     * 调用方负责处理失败与超时。',
+    '     * 本接口未约定幂等保证。',
+    '     */',
+    '    void charge(Payment payment);',
+    '}'
+  ]
+};
+
+const skills = [
+  {
+    id: 'issue-code-impact',
+    name: '根据 Issue 评估代码改动点',
+    version: '1.0.0',
+    status: '已启用',
+    depsOk: true,
+    deps: ['jira-issue', 'code-repo'],
+    connection: '研发 Jira',
+    summary: '读取 Issue 描述与验收条件，结合仓库代码定位可能的改动文件与方法。',
+    schema: null, // 编辑时回落到默认 Schema 示意
+    yaml: `id: issue-code-impact
+name: 根据 Issue 评估代码改动点
+version: 1.0.0
+description: |
+  根据 Jira Issue 评估相关代码改动点。
+requires:
+  connections:
+    - jira
+inputs:
+  - key: issueKey
+    label: Issue 编号
+    required: true
+  - key: project
+    label: 仓库/项目
+    type: select
+  - key: branch
+    label: 分支
+  - key: commit
+    label: 提交 hash
+tools:
+  - jira.get_issue
+  - code.search_code
+  - code.read_code`
+  },
+  {
+    id: 'api-compat-check',
+    name: '接口兼容性快速扫描',
+    version: '0.9.0',
+    status: '已启用',
+    depsOk: true,
+    deps: ['code-repo'],
+    connection: '研发 Git',
+    summary: '对照 OpenAPI / 接口声明，扫描破坏性变更候选（本原型仅展示入口）。',
+    schema: null,
+    disabledInForm: true,
+    yaml: `id: api-compat-check
+name: 接口兼容性快速扫描
+version: 0.9.0
+status: enabled
+note: 第二批 Skill，本原型表单中暂不可选`
+  }
+];
+
+
+const plugins = [
+  {
+    id: 'jira-issue',
+    name: 'Jira Issue',
+    kind: '业务',
+    status: '已启用',
+    statusColor: 'green',
+    auth: 'Basic / OAuth（Legacy REST）',
+    authMode: 'Legacy REST',
+    authDetail: {
+      baseUrl: 'https://jira.example.com',
+      credNote: 'HTTP Basic 用户名+密码（SSL）或 OAuth（首选）；备选 POST /rest/auth/1/session Cookie',
+      compat: 'Jira Server 8.7.1 · REST api/2 · 非 Cloud / 非 JWT / 非 PAT'
+    },
+    toolsShort: 'get_issue · search_issues · get_comments · get_myself',
+    tools: ['get_issue', 'search_issues', 'get_comments', 'get_myself'],
+    toolsText: 'get_issue — GET /rest/api/2/issue/{issueIdOrKey}\nsearch_issues — GET|POST /rest/api/2/search (JQL)\nget_comments — GET /rest/api/2/issue/{issueIdOrKey}/comment\nget_myself — GET /rest/api/2/myself',
+    connection: '研发 Jira',
+    version: '1.2.0',
+    apiNote: 'Jira Server 8.7.1 · REST api/2',
+    planned: false,
+    summary: '对接 Jira Server/Data Center 8.7.1 只读 REST（/rest/api/2）；由 Skill 依赖引用，发起分析时用户不直接勾选。',
+    manifest: `id: jira-issue
+name: Jira Issue
+version: 1.2.0
+kind: business
+status: enabled
+target:
+  product: Jira Server / Data Center
+  version: "8.7.1"
+  apiVersion: 2
+  baseUrl: "{baseUrl}"   # 例如 https://jira.example.com
+  note: 非 Cloud（非 /rest/api/3）；非 JWT；非 PAT（PAT 自 8.14+）
+auth:
+  type: basic_or_oauth     # HTTP Basic（SSL）或 OAuth（首选）
+  session_alt: POST /rest/auth/1/session  # 浏览器 Cookie/Session 备选
+  forbidden: [cloud_api_token, jwt, personal_access_token]
+connection:
+  binding: one_plugin_one_connection
+  snapshot: 研发 Jira
+defaults:
+  fields: "summary,status,assignee,description,comment"
+  expand: "names,renderedFields"   # 可选再加 changelog
+  search:
+    pagination: startAt / maxResults / total
+    validateQuery: true
+endpoints:
+  - tool: get_issue
+    method: GET
+    path: /rest/api/2/issue/{issueIdOrKey}
+    query: [fields, expand]
+  - tool: search_issues
+    method: GET|POST
+    path: /rest/api/2/search
+    body_or_query: [jql, startAt, maxResults, fields, expand, validateQuery]
+  - tool: get_comments
+    method: GET
+    path: /rest/api/2/issue/{issueIdOrKey}/comment
+    note: 单条可用 GET .../comment/{id}
+  - tool: get_myself
+    method: GET
+    path: /rest/api/2/myself
+    note: 连通性 / 鉴权 sanity check
+tools:
+  - name: get_issue
+    description: "GET /rest/api/2/issue/{issueIdOrKey} — 读取 Issue（fields/expand）"
+  - name: search_issues
+    description: "GET|POST /rest/api/2/search — JQL 搜索（分页 startAt/maxResults）"
+  - name: get_comments
+    description: "GET /rest/api/2/issue/{issueIdOrKey}/comment — 评论列表"
+  - name: get_myself
+    description: "GET /rest/api/2/myself — 连通性检查"
+planned_readonly_disabled:
+  - name: add_comment
+    method: POST
+    path: /rest/api/2/issue/{issueIdOrKey}/comment
+    status: 一期未开放
+notes: |
+  一期只读。一插件一连接。发起分析时不暴露插件勾选器。
+  Server 8.7.1：无 Cloud API token；无 8.14+ Personal Access Token。`
+  },
+  {
+    id: 'code-repo',
+    name: '代码仓库',
+    kind: '系统内置',
+    status: '已启用',
+    statusColor: 'green',
+    auth: '内置工具集',
+    toolsShort: 'tree / find / search / read / diff',
+    tools: ['tree', 'find', 'search_code', 'read_code', 'diff'],
+    connection: '系统内置（无外部连接）',
+    version: '1.0.0',
+    planned: false,
+    summary: '系统内置代码浏览与检索能力；固定版本快照上的 tree/find/search/read/diff。',
+    manifest: `id: code-repo
+name: 代码仓库
+version: 1.0.0
+kind: system
+status: enabled
+auth:
+  type: builtin
+connection:
+  binding: none
+  note: 系统内置，不占用业务连接槽
+tools:
+  - name: tree
+  - name: find
+  - name: search_code
+  - name: read_code
+  - name: diff
+notes: |
+  一插件一连接原则对系统内置工具集不适用（无外部连接）。`
+  },
+  {
+    id: 'gitea-api',
+    name: 'Gitea API',
+    kind: '业务',
+    status: '规划中',
+    statusColor: 'amber',
+    auth: 'Token / OAuth（规划）',
+    authMode: 'JWT',
+    authDetail: {
+      baseUrl: 'https://gitea.example.com',
+      tokenUrl: 'https://gitea.example.com/login/oauth/access_token',
+      clientId: 'gitea-demo-client',
+      renew: '执行器自动续期'
+    },
+    toolsShort: 'PR / Issue / Commit（规划）',
+    tools: ['listPullRequests', 'getIssue', 'getCommit', 'listCommits'],
+    toolsText: 'listPullRequests — 列出 PR\ngetIssue — 读取 Issue\ngetCommit — 读取 Commit\nlistCommits — 列出 Commits',
+    connection: '未绑定',
+    version: '0.1.0-draft',
+    planned: true,
+    summary: '业务插件（PR / Issue / Commit）；本阶段示意为「规划中」，不可用于发起分析。',
+    manifest: `id: gitea-api
+name: Gitea API
+version: 0.1.0-draft
+kind: business
+status: planned
+auth:
+  type: token_or_oauth
+  note: 规划中，本原型仅展示灰态
+connection:
+  binding: one_plugin_one_connection
+  snapshot: 未绑定
+tools:
+  - name: listPullRequests
+    status: planned
+  - name: getIssue
+    status: planned
+  - name: getCommit
+    status: planned
+  - name: listCommits
+    status: planned
+notes: |
+  一插件一连接。规划中插件不可被 Skill 引用发起。`
+  }
+];
+
+const toolCalls = [
+  {
+    id: 'C1',
+    name: 'jira.get_issue',
+    note: 'GET /rest/api/2/issue/ORD-1281 — 读取标题、描述与状态',
+    status: 'success',
+    elapsed: 0.8,
+    request: {
+      tool: 'jira.get_issue',
+      http: { method: 'GET', path: '/rest/api/2/issue/ORD-1281' },
+      args: {
+        issueIdOrKey: 'ORD-1281',
+        fields: 'summary,status,assignee,description,comment',
+        expand: 'names,renderedFields'
+      }
+    },
+    response: {
+      expand: 'renderedFields,names',
+      id: '1281',
+      self: 'https://jira.example.com/rest/api/2/issue/1281',
+      key: 'ORD-1281',
+      fields: {
+        summary: '支付重试需幂等',
+        status: { name: '处理中', statusCategory: { key: 'indeterminate', name: '处理中' } },
+        assignee: { name: 'dev.li', displayName: '李开发', active: true },
+        description: '客户端或调度器重试支付时，不得重复扣款。需在订单服务重试路径引入稳定请求标识。\n\n验收：\n- 同一订单重复 retryPayment 只产生一次有效扣款\n- 失败与超时后可查询支付状态',
+        comment: {
+          startAt: 0,
+          maxResults: 1,
+          total: 1,
+          comments: [
+            { id: '10101', author: { displayName: '产品王' }, body: '请对齐支付网关幂等约定后再合入。', created: '2026-10-28T11:20:00.000+0800' }
+          ]
+        }
+      }
+    }
+  },
+  {
+    id: 'C2',
+    name: 'code.search_code',
+    note: '按「retryPayment / charge」搜索订单服务',
+    status: 'success',
+    elapsed: 1.4,
+    request: { tool: 'code.search_code', args: { repo: 'order-service', query: 'retryPayment OR charge', ref: 'b7a312e' } },
+    response: {
+      hits: [
+        { path: 'src/main/java/com/shop/order/OrderService.java', lines: '15-17' },
+        { path: 'src/main/java/com/shop/order/PaymentGateway.java', lines: '8-13' }
+      ],
+      truncated: false
+    }
+  },
+  {
+    id: 'C3',
+    name: 'code.read_code',
+    note: '读取 OrderService.retryPayment',
+    status: 'success',
+    elapsed: 0.6,
+    request: { tool: 'code.read_code', args: { path: 'src/main/java/com/shop/order/OrderService.java', ref: 'b7a312e', start: 15, end: 18 } },
+    response: { sha: 'b7a312e', path: 'src/main/java/com/shop/order/OrderService.java', content: 'public void retryPayment(Order order) {\n    paymentGateway.charge(order.getPayment());\n}' }
+  },
+  {
+    id: 'C4',
+    name: 'code.read_code',
+    note: '读取 PaymentGateway.charge 契约',
+    status: 'success',
+    elapsed: 0.5,
+    request: { tool: 'code.read_code', args: { path: 'src/main/java/com/shop/order/PaymentGateway.java', ref: 'b7a312e', start: 8, end: 13 } },
+    response: { sha: 'b7a312e', path: 'src/main/java/com/shop/order/PaymentGateway.java', note: '接口未约定幂等保证' }
+  }
+];
+
+const codeEvidence = [
+  { id: 'E1', file: 'OrderService.java', path: 'src/main/java/com/shop/order/OrderService.java', sha: 'b7a312e', start: 15, end: 17, role: '重试入口' },
+  { id: 'E2', file: 'PaymentGateway.java', path: 'src/main/java/com/shop/order/PaymentGateway.java', sha: 'b7a312e', start: 8, end: 13, role: '支付契约' }
+];
+
+const callEvidence = [
+  { id: 'C1', callId: 'C1', note: 'Jira Issue 原文确认需求为「支付重试需幂等」' },
+  { id: 'C2', callId: 'C2', note: '搜索命中 OrderService / PaymentGateway' },
+  { id: 'C3', callId: 'C3', note: '确认 retryPayment 直接再次 charge' }
+];
+
+const resultMarkdownBlocks = [
+  { type: 'h2', text: 'Issue ORD-1281 · 支付重试需幂等' },
+  { type: 'p', text: '根据 Issue 描述与仓库固定版本 b7a312e，本次分析定位到订单支付重试路径缺少稳定幂等标识。主要改动点集中在 OrderService.retryPayment 与 PaymentGateway 契约。' },
+  { type: 'h3', text: '结论摘要' },
+  { type: 'p', html: true, text: '建议在重试路径引入与订单绑定的请求标识，并在调用前核对支付状态。Issue 验收条件与当前代码缺口一致。' },
+  { type: 'h3', text: '建议改动点' },
+  { type: 'ul', items: [
+    'OrderService.retryPayment：当前直接再次调用 charge，未见幂等键或状态门禁。引用 [E1] 与工具核对 [C3]。',
+    'PaymentGateway.charge：接口声明未承诺幂等，调用方需自行保证。引用 [E2]。',
+    '需求来源：ORD-1281「支付重试需幂等」，由 [C1] 读取。'
+  ]},
+  { type: 'h3', text: '边界' },
+  { type: 'blockquote', text: '第三方支付实现与真实幂等行为未取得；本结论仅覆盖仓库内可见声明与重试入口。搜索范围见 [C2]。' }
+];
+
+const demoTasks = [
+  {
+    id: 'sk-completed',
+    name: 'ORD-1281 · 支付重试改动点评估',
+    type: 'SKILL',
+    skillId: 'issue-code-impact',
+    skillName: '根据 Issue 评估代码改动点',
+    skillVersion: '1.0.0',
+    project: '订单服务',
+    range: 'Issue ORD-1281 · main · b7a312e',
+    status: '已完成',
+    color: 'green',
+    time: '11-03 13:42',
+    version: 'b7a312e',
+    form: {
+      issueKey: 'ORD-1281',
+      project: '订单服务',
+      branch: 'main',
+      commit: 'b7a312e',
+      requirements: '请根据 Issue 评估支付重试相关的代码改动点，并给出证据。'
+    },
+    connection: '研发 Jira',
+    integrity: '完整',
+    meters: { steps: 4, time: 18, tokens: 12640, context: 42 },
+    running: false
+  },
+  {
+    id: 'sk-running',
+    name: 'ORD-1281 · 支付重试改动点评估（执行中）',
+    type: 'SKILL',
+    skillId: 'issue-code-impact',
+    skillName: '根据 Issue 评估代码改动点',
+    skillVersion: '1.0.0',
+    project: '订单服务',
+    range: 'Issue ORD-1281 · main · b7a312e',
+    status: '执行中',
+    color: 'blue',
+    time: '11-03 14:05',
+    version: 'b7a312e',
+    form: {
+      issueKey: 'ORD-1281',
+      project: '订单服务',
+      branch: 'main',
+      commit: 'b7a312e',
+      requirements: '请根据 Issue 评估支付重试相关的代码改动点，并给出证据。'
+    },
+    connection: '研发 Jira',
+    integrity: '完整',
+    meters: { steps: 2, time: 7, tokens: 4820, context: 28 },
+    running: true
+  },
+  {
+    id: 'sp-1',
+    name: '订单提交与支付重试',
+    type: 'ISSUE',
+    project: '订单服务',
+    range: '文件内容 · 3 个文件',
+    status: '部分完成',
+    color: 'amber',
+    time: '10-20 10:42',
+    version: 'b7a312e'
+  }
+];
+
+const state = {
+  page: 'center',
+  filterType: 'ALL',
+  filterState: 'ALL',
+  project: 'ALL',
+  query: '',
+  scenario: 'completed', // completed | running | empty
+  detailId: 'sk-completed',
+  detailTab: 'result',
+  callIndex: 0,
+  form: {
+    skillId: 'issue-code-impact',
+    name: '',
+    requirements: '请根据 Issue 评估支付重试相关的代码改动点，并给出证据。',
+    issueKey: 'ORD-1281',
+    project: '订单服务',
+    branch: 'main',
+    commit: 'b7a312e'
+  },
+  newNotice: false,
+  toastTimer: null
+};
+
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(() => el.classList.add('hidden'), 3200);
+}
+
+function typeLabel(t) {
+  return ({ SKILL: 'Skill 分析', ISSUE: '问题审查', PATTERN: '设计模式', AGENT: 'Agent 分析' })[t] || t;
+}
+
+function go(page) {
+  state.page = page;
+  if (page !== 'detail') state.newNotice = false;
+  render();
+  window.scrollTo(0, 0);
+}
+
+function setScenario(s) {
+  state.scenario = s;
+  if (s === 'running') {
+    state.detailId = 'sk-running';
+    state.detailTab = 'result';
+    state.page = 'detail';
+  } else if (s === 'completed') {
+    state.detailId = 'sk-completed';
+    if (state.page === 'detail') state.detailTab = 'result';
+  }
+  render();
+  toast(s === 'empty' ? '已切换空列表情境' : s === 'running' ? '已切换执行中情境' : '已切换已完成情境');
+}
+
+function currentTasks() {
+  let list = demoTasks.filter(t => {
+    if (state.scenario === 'completed' && t.id === 'sk-running') return false;
+    if (state.scenario === 'running' && t.id === 'sk-completed') return false;
+    if (state.scenario === 'empty') return false;
+    return true;
+  });
+  list = list.filter(t =>
+    (state.filterType === 'ALL' || t.type === state.filterType) &&
+    (state.filterState === 'ALL' || t.status === state.filterState) &&
+    (state.project === 'ALL' || t.project === state.project) &&
+    t.name.includes(state.query)
+  );
+  return list;
+}
+
+function activeTask() {
+  return demoTasks.find(t => t.id === state.detailId) || demoTasks[0];
+}
+
+function render() {
+  document.querySelectorAll('[data-nav]').forEach(el => {
+    const active = el.dataset.nav === state.page || (state.page === 'detail' && el.dataset.nav === 'center');
+    el.classList.toggle('active', active);
+  });
+  $('#crumb').textContent = ({ center: '审查中心', detail: 'Skill 任务详情', skills: 'Skill 管理', plugins: '插件管理' })[state.page] || '审查中心';
+  const map = { center: renderCenter, detail: renderDetail, skills: renderSkills, plugins: renderPlugins };
+  $('#app').innerHTML = map[state.page]();
+}
+
+function scenarioBar() {
+  return `<div class="scenario" role="group" aria-label="演示情境">
+    <span>评审情境</span>
+    <button type="button" class="${state.scenario==='completed'?'active':''}" onclick="setScenario('completed')">已完成任务</button>
+    <button type="button" class="${state.scenario==='running'?'active':''}" onclick="setScenario('running')">执行中</button>
+    <button type="button" class="${state.scenario==='empty'?'active':''}" onclick="setScenario('empty')">空列表</button>
+  </div>`;
+}
+
+function renderCenter() {
+  const list = currentTasks();
+  const skillCount = demoTasks.filter(t => t.type === 'SKILL' && !(state.scenario==='completed' && t.id==='sk-running') && !(state.scenario==='running' && t.id==='sk-completed')).length;
+  return `
+  <div class="heading">
+    <div>
+      <h1>审查中心</h1>
+      <p>统一查看专项审查与 Skill 分析任务。本原型重点演示 Skill 发起与结果阅读。</p>
+    </div>
+    <div class="actions wrap">
+      <button type="button" onclick="toast('专项审查入口为本原型占位，暂未接入')">发起专项审查</button>
+      <button type="button" onclick="toast('Agent 分析入口为本原型占位，暂未接入')">发起 Agent</button>
+      <button type="button" class="primary" onclick="openSkillForm()">＋ 发起 Skill 分析</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span class="muted small">全部任务</span><div class="value">${state.scenario==='empty'?0:list.length}<small>条</small></div><span class="muted small">含专项与 Skill</span></div>
+    <div class="stat"><span class="muted small">Skill 任务</span><div class="value">${state.scenario==='empty'?0:skillCount}<small>条</small></div><span class="muted small">issue-code-impact</span></div>
+    <div class="stat"><span class="muted small">已启用 Skill</span><div class="value">2<small>个</small></div><span class="muted small">依赖检查通过</span></div>
+  </div>
+  ${state.newNotice ? '<div class="notice">新 Skill 任务已受理。演示环境下可切换「执行中 / 已完成」情境查看详情形态。</div>' : ''}
+  <section class="card">
+    <div class="filters">
+      <input aria-label="搜索任务" placeholder="搜索任务名称" value="${esc(state.query)}" onchange="state.query=this.value;render()">
+      <select aria-label="项目筛选" onchange="state.project=this.value;render()">${opts(['ALL','订单服务'],['全部项目','订单服务'],state.project)}</select>
+      <select aria-label="类型筛选" onchange="state.filterType=this.value;render()">${opts(['ALL','SKILL','ISSUE'],['全部类型','Skill 分析','问题审查'],state.filterType)}</select>
+      <select aria-label="状态筛选" onchange="state.filterState=this.value;render()">${opts(['ALL','已完成','执行中','部分完成'],['全部状态','已完成','执行中','部分完成'],state.filterState)}</select>
+      <span class="spacer"></span>
+      <span class="muted small">Skill · 专项</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>审查任务</th><th>类型 / 范围</th><th>状态</th><th>代码版本</th><th>发起时间</th><th></th></tr></thead>
+        <tbody>
+          ${list.map(t => `
+            <tr>
+              <td><strong>${esc(t.name)}</strong><span class="muted">${esc(t.project)}${t.skillName ? ' · ' + esc(t.skillName) : ''}</span></td>
+              <td>${typeLabel(t.type)}<span class="muted">${esc(t.range)}</span></td>
+              <td>${badge(t.status, t.color)}</td>
+              <td><code>${esc(t.version)}</code></td>
+              <td>${esc(t.time)}</td>
+              <td>${t.type === 'SKILL'
+                ? `<button type="button" class="quiet" onclick="openSkillTask('${t.id}')">查看详情 →</button>`
+                : `<button type="button" class="quiet" onclick="toast('专项详情不在本 Skill 原型范围内')">查看详情 →</button>`}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${!list.length ? `<div class="empty">没有符合条件的审查任务。<br><button type="button" class="quiet" onclick="state.query='';state.filterType='ALL';state.filterState='ALL';state.project='ALL';setScenario('completed')">重置筛选 / 恢复演示数据</button></div>` : ''}
+    <div class="table-footer">
+      <span>共 ${list.length} 条记录 · 按发起时间排序</span>
+      <div class="row"><button type="button" disabled aria-label="上一页">‹</button><button type="button" class="primary">1</button><button type="button" disabled aria-label="下一页">›</button></div>
+    </div>
+  </section>
+  ${scenarioBar()}`;
+}
+
+function openSkillTask(id) {
+  state.detailId = id;
+  state.detailTab = 'result';
+  state.callIndex = 0;
+  state.page = 'detail';
+  state.scenario = id === 'sk-running' ? 'running' : 'completed';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function renderCite(text) {
+  return esc(text)
+    .replace(/\[E(\d+)\]/g, (_, n) => `<button type="button" class="cite-mark" onclick="jumpEvidence('E${n}')" title="打开代码证据 E${n}">[E${n}]</button>`)
+    .replace(/\[C(\d+)\]/g, (_, n) => `<button type="button" class="cite-mark call" onclick="jumpCall('C${n}')" title="跳转到工具调用 C${n}">[C${n}]</button>`);
+}
+
+function renderDetail() {
+  const task = activeTask();
+  const running = !!task.running;
+  const meters = task.meters;
+  const limits = { steps: 12, time: 120, tokens: 40000, context: 100 };
+  return `
+  <div style="margin-bottom:16px"><button type="button" class="quiet" style="padding-left:0" onclick="go('center')">← 返回审查中心</button></div>
+  <div class="heading">
+    <div>
+      <div class="row wrap" style="margin-bottom:8px;gap:12px">
+        <h1>${esc(task.name)}</h1>
+        ${badge(task.status, task.color)}
+        <span class="skill-chip">Skill · ${esc(task.skillName)}</span>
+      </div>
+      <p>${esc(task.project)} <span style="padding:0 9px">/</span> ${esc(task.range)} <span style="padding:0 9px">/</span> <code>${esc(task.version)}</code></p>
+    </div>
+    <div class="actions wrap">
+      ${running ? '<button type="button" class="danger" onclick="cancelRunning()">取消任务</button>' : ''}
+      <button type="button" onclick="toast('已刷新演示状态（无后端）')">刷新</button>
+      <button type="button" onclick="copyParamsNew()">复制参数新建</button>
+    </div>
+  </div>
+  ${running ? '<div class="notice">任务执行中。已完成的工具调用可在「工具调用」页查看；完整分析结果待任务结束后呈现。</div>' : ''}
+  <div class="agent-meters">
+    ${[
+      ['已用步骤', meters.steps, limits.steps, '步'],
+      ['已用时间', meters.time, limits.time, '秒'],
+      ['累计额度', meters.tokens, limits.tokens, 'tokens'],
+      ['上下文占用', meters.context, limits.context, '%']
+    ].map(([label, used, max, unit]) => `
+      <div class="agent-meter">
+        <span class="muted small">${label}</span>
+        <strong>${Number(used).toLocaleString()} <small>/ ${Number(max).toLocaleString()} ${unit}</small></strong>
+        <progress aria-label="${label}" value="${used}" max="${max}"></progress>
+      </div>`).join('')}
+  </div>
+  <div class="tabbar agent-main-tabs">
+    ${[['result','分析结果'],['attrs','任务属性'],['calls','工具调用']].map(([k,v]) =>
+      `<button type="button" class="${state.detailTab===k?'active':''}" onclick="state.detailTab='${k}';render()">${v}${k==='calls'?' · '+toolCalls.length:''}</button>`
+    ).join('')}
+  </div>
+  ${state.detailTab === 'attrs' ? renderAttrs(task) : state.detailTab === 'calls' ? renderCalls(task) : renderResult(task)}
+  ${scenarioBar()}`;
+}
+
+function renderResult(task) {
+  if (task.running) {
+    return `<div class="agent-layout">
+      <article class="card agent-article">
+        <h2>调查进行中</h2>
+        <p>Skill 正在按依赖顺序调用工具。可切换到「工具调用」查看已保存快照，或使用情境条切到「已完成」预览完整结果。</p>
+        <div class="notice amber">部分调用记录不等于完整结论，不能作为已定稿分析材料。</div>
+        <div class="row wrap"><button type="button" onclick="state.detailTab='calls';render()">查看已有工具调用</button><button type="button" onclick="setScenario('completed')">查看已完成演示 →</button></div>
+      </article>
+      <aside class="agent-side">
+        <section class="card"><div class="section-top"><h3>已取得材料</h3></div><div class="pad"><p class="muted small">已完成 ${toolCalls.slice(0,2).length} 次工具调用（演示）。完整证据将在任务完成后汇总。</p></div></section>
+      </aside>
+    </div>`;
+  }
+  const article = resultMarkdownBlocks.map(b => {
+    if (b.type === 'h2') return `<h2>${esc(b.text)}</h2>`;
+    if (b.type === 'h3') return `<h3>${esc(b.text)}</h3>`;
+    if (b.type === 'blockquote') return `<blockquote>${renderCite(b.text)}</blockquote>`;
+    if (b.type === 'ul') return `<ul>${b.items.map(i => `<li>${renderCite(i)}</li>`).join('')}</ul>`;
+    return `<p>${renderCite(b.text)}</p>`;
+  }).join('');
+
+  return `<div class="agent-layout">
+    <article class="card agent-article">
+      <div class="row wrap" style="margin-bottom:16px">
+        <span class="badge indigo">Markdown 分析结果</span>
+        <span class="spacer"></span>
+        <span class="muted small">点击文内 [E#] / [C#] 跳转证据</span>
+      </div>
+      ${article}
+    </article>
+    <aside class="agent-side">
+      <section class="card">
+        <div class="section-top"><h3>代码证据</h3><span class="spacer"></span><span class="muted small">固定版本</span></div>
+        <div class="pad">
+          ${codeEvidence.map(e => `
+            <div class="agent-evidence">
+              <span class="muted small">${e.id} · ${esc(e.role)}</span><br>
+              <button type="button" class="source-link" onclick="openCodeEvidence('${e.id}')">${esc(e.file)} : ${e.start}–${e.end} ↗</button>
+              <p class="muted small" style="margin-top:6px"><code>${esc(e.sha)}</code> · ${esc(e.path)}</p>
+            </div>`).join('')}
+        </div>
+      </section>
+      <section class="card" style="margin-top:18px">
+        <div class="section-top"><h3>调用证据</h3><span class="spacer"></span><span class="muted small">工具快照</span></div>
+        <div class="pad">
+          ${callEvidence.map(c => `
+            <div class="agent-evidence">
+              <span class="muted small">${c.id}</span><br>
+              <button type="button" class="source-link" onclick="jumpCall('${c.callId}')">${esc(c.callId)} · 查看调用 ↗</button>
+              <p class="muted small" style="margin-top:6px">${esc(c.note)}</p>
+            </div>`).join('')}
+        </div>
+      </section>
+    </aside>
+  </div>`;
+}
+
+function renderAttrs(task) {
+  const f = task.form;
+  return `<section class="card"><div class="section-top"><h2>任务属性</h2><span class="spacer"></span><span class="muted small">提交时快照</span></div>
+  <div class="pad">
+    <div class="form-grid" style="margin-bottom:8px">
+      <div class="field"><label>Skill</label><div>${esc(task.skillName)} <code>v${esc(task.skillVersion)}</code></div></div>
+      <div class="field"><label>Skill ID</label><div><code>${esc(task.skillId)}</code></div></div>
+      <div class="field"><label>任务名称</label><div>${esc(task.name)}</div></div>
+      <div class="field"><label>完整性</label><div>${badge(task.integrity, 'green')}</div></div>
+      <div class="field full"><label>本次要求</label><div style="white-space:pre-wrap">${esc(f.requirements)}</div></div>
+      <div class="field"><label>Issue 编号</label><div><code>${esc(f.issueKey)}</code></div></div>
+      <div class="field"><label>仓库 / 项目</label><div>${esc(f.project)}</div></div>
+      <div class="field"><label>分支</label><div><code>${esc(f.branch)}</code></div></div>
+      <div class="field"><label>提交 hash</label><div><code>${esc(f.commit)}</code></div></div>
+      <div class="field full"><label>连接快照</label>
+        <div class="notice" style="margin:0">自动绑定 · <strong>${esc(task.connection)}</strong>（由 Skill 依赖声明，发起时无需挑选）</div>
+      </div>
+    </div>
+  </div></section>`;
+}
+
+function renderCalls(task) {
+  const idx = Math.min(state.callIndex, toolCalls.length - 1);
+  const call = toolCalls[idx];
+  return `<section class="card">
+    <div class="section-top"><h2>工具调用</h2><span class="spacer"></span><span class="muted small">按执行顺序保存的演示快照</span></div>
+    <div class="agent-call-layout">
+      <aside class="agent-call-list" id="call-list">
+        ${toolCalls.map((c, i) => `
+          <button type="button" data-call-id="${c.id}" class="${i===idx?'active':''}" onclick="state.callIndex=${i};render()">
+            ${c.id} · ${esc(c.name)}
+            <small>${esc(c.note)} · ${badge(c.status === 'success' ? '成功' : '失败', c.status === 'success' ? 'green' : 'red')}</small>
+          </button>`).join('')}
+      </aside>
+      <div class="agent-call-content">
+        <div class="row wrap">
+          <strong>${esc(call.id)} · ${esc(call.name)}</strong>
+          <span class="spacer"></span>
+          <span class="muted small">${call.elapsed} 秒 · ${badge(call.status === 'success' ? '成功' : '失败', call.status === 'success' ? 'green' : 'red')}</span>
+        </div>
+        <p class="muted small" style="margin:12px 0">${esc(call.note)}</p>
+        <h3 style="margin-bottom:8px">请求</h3>
+        <div class="preview-code"><pre>${esc(JSON.stringify(call.request, null, 2))}</pre></div>
+        <h3 style="margin:18px 0 8px">返回</h3>
+        <div class="preview-code"><pre>${esc(JSON.stringify(call.response, null, 2))}</pre></div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function jumpEvidence(id) {
+  openCodeEvidence(id);
+}
+
+function jumpCall(id) {
+  const i = toolCalls.findIndex(c => c.id === id);
+  if (i < 0) return;
+  state.detailTab = 'calls';
+  state.callIndex = i;
+  render();
+  requestAnimationFrame(() => {
+    const btn = document.querySelector(`[data-call-id="${id}"]`);
+    if (btn) {
+      btn.classList.add('flash');
+      btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      setTimeout(() => btn.classList.remove('flash'), 900);
+    }
+  });
+  toast(`已定位到工具调用 ${id}`);
+}
+
+function openCodeEvidence(id) {
+  const e = codeEvidence.find(x => x.id === id);
+  if (!e) return;
+  const lines = codeSamples[e.file] || [];
+  $('#code-title').textContent = `${e.file} : ${e.start}–${e.end}`;
+  $('#code-subtitle').textContent = `订单服务 · ${e.sha} · ${e.path}`;
+  $('#code-body').innerHTML = `
+    <div class="notice">${esc(e.id)} · ${esc(e.role)}。高亮行为演示定位，内容为固定版本快照。</div>
+    <div class="codeview">
+      <div class="codebar"><strong>${esc(e.file)}</strong><span class="spacer"></span><code>${esc(e.sha)}</code></div>
+      <div class="code-lines">${lines.map((line, i) => {
+        const n = i + 1;
+        const marked = n >= e.start && n <= e.end;
+        return `<div class="code-line ${marked ? 'marked' : ''}" ${n === e.start ? 'id="evidence-line"' : ''}><span class="ln">${n}</span><span class="source">${esc(line)}</span></div>`;
+      }).join('')}</div>
+    </div>`;
+  const dlg = $('#code-dialog');
+  if (!dlg.open) dlg.showModal();
+  requestAnimationFrame(() => document.getElementById('evidence-line')?.scrollIntoView({ block: 'center' }));
+}
+
+function closeCode() { $('#code-dialog').close(); }
+
+function cancelRunning() {
+  const task = activeTask();
+  if (!task.running) return;
+  task.running = false;
+  task.status = '已取消';
+  task.color = 'amber';
+  render();
+  toast('已取消任务（演示）。已产生的工具调用仍可查看。');
+}
+
+function copyParamsNew() {
+  const task = activeTask();
+  state.form = {
+    skillId: task.skillId,
+    name: '',
+    requirements: task.form.requirements,
+    issueKey: task.form.issueKey,
+    project: task.form.project,
+    branch: task.form.branch,
+    commit: task.form.commit
+  };
+  openSkillForm(true);
+}
+
+function openSkillForm(fromCopy = false) {
+  renderSkillForm(fromCopy);
+  $('#skill-form-dialog').showModal();
+}
+
+function closeSkillForm() { $('#skill-form-dialog').close(); }
+
+function syncSkillForm() {
+  const f = state.form;
+  f.skillId = $('#sf-skill')?.value || f.skillId;
+  f.name = $('#sf-name')?.value ?? f.name;
+  f.requirements = $('#sf-req')?.value ?? f.requirements;
+  f.issueKey = $('#sf-issue')?.value ?? f.issueKey;
+  f.project = $('#sf-project')?.value || f.project;
+  f.branch = $('#sf-branch')?.value || f.branch;
+  f.commit = $('#sf-commit')?.value || f.commit;
+}
+
+function onSkillChange() {
+  syncSkillForm();
+  renderSkillForm();
+}
+
+function renderSkillForm(fromCopy = false) {
+  const f = state.form;
+  const skill = skills.find(s => s.id === f.skillId) || skills[0];
+  $('#skill-form-body').innerHTML = `
+    ${fromCopy ? '<div class="notice">已复制历史任务参数。请确认版本与字段后提交，原任务不受影响。</div>' : ''}
+    <div class="step"><span class="num">1</span>选择 Skill</div>
+    <div class="form-grid">
+      <div class="field full">
+        <label for="sf-skill">Skill</label>
+        <select id="sf-skill" onchange="onSkillChange()">
+          ${skills.map(s => `<option value="${esc(s.id)}" ${s.id===f.skillId?'selected':''} ${s.disabledInForm?'disabled':''}>${esc(s.name)} · v${esc(s.version)}${s.disabledInForm?'（暂不可用）':''}</option>`).join('')}
+        </select>
+        <p class="hint">${esc(skill.summary)} · 连接自动绑定：${esc(skill.connection)}</p>
+      </div>
+      <div class="field full">
+        <label for="sf-name">任务名称 <span class="muted">可选</span></label>
+        <input id="sf-name" value="${esc(f.name)}" placeholder="留空则按 Skill + Issue 自动生成">
+      </div>
+      <div class="field full">
+        <label for="sf-req">本次要求 <span class="req">*</span></label>
+        <textarea id="sf-req" rows="3" aria-required="true" placeholder="描述本次分析关注点">${esc(f.requirements)}</textarea>
+      </div>
+    </div>
+    <div class="step"><span class="num">2</span>Skill 字段 · ${esc(skill.name)}</div>
+    <div class="dynamic-block">
+      <div class="form-grid">
+        <div class="field">
+          <label for="sf-issue">Issue 编号 <span class="req">*</span></label>
+          <input id="sf-issue" value="${esc(f.issueKey)}" placeholder="例如 ORD-1281" aria-required="true">
+        </div>
+        <div class="field">
+          <label for="sf-project">仓库 / 项目 <span class="req">*</span></label>
+          <select id="sf-project">${opts(['订单服务','支付服务'],['订单服务','支付服务'],f.project)}</select>
+        </div>
+        <div class="field">
+          <label for="sf-branch">分支</label>
+          <select id="sf-branch">${opts(['main','release'],['main','release'],f.branch)}</select>
+        </div>
+        <div class="field">
+          <label for="sf-commit">提交 hash</label>
+          <select id="sf-commit">${opts(['b7a312e','a84cd92'],['b7a312e · 调整支付重试处理','a84cd92 · 合并发布候选'],f.commit)}</select>
+          <p class="hint">正式版可为 Commit 选择器；本原型用下拉代替。</p>
+        </div>
+      </div>
+    </div>
+    <div id="sf-error" class="error-text" role="alert"></div>
+  `;
+}
+
+function submitSkillForm() {
+  syncSkillForm();
+  const f = state.form;
+  const err = $('#sf-error');
+  if (!f.requirements.trim()) { err.textContent = '请填写本次要求。'; return; }
+  if (!f.issueKey.trim()) { err.textContent = '请填写 Issue 编号。'; return; }
+  err.textContent = '';
+  const name = f.name.trim() || `${f.issueKey} · 支付重试改动点评估`;
+  // Update completed demo task to reflect form, then jump to completed detail
+  const target = demoTasks.find(t => t.id === 'sk-completed');
+  target.name = name;
+  target.form = {
+    issueKey: f.issueKey.trim(),
+    project: f.project,
+    branch: f.branch,
+    commit: f.commit,
+    requirements: f.requirements.trim()
+  };
+  target.range = `Issue ${f.issueKey.trim()} · ${f.branch} · ${f.commit}`;
+  target.version = f.commit;
+  target.time = '11-03 14:18';
+  state.detailId = 'sk-completed';
+  state.scenario = 'completed';
+  state.detailTab = 'result';
+  state.newNotice = true;
+  closeSkillForm();
+  toast('Skill 分析任务已创建（演示）');
+  go('detail');
+}
+
+function renderSkills() {
+  return `
+  <div class="heading">
+    <div>
+      <h1>Skill 管理</h1>
+      <p>查看已安装 Skill、启停状态与依赖检查。安装 / 编辑表单为 mock，保存仅写入本页内存列表。</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="primary" onclick="openInstallSkill()">安装 Skill</button>
+    </div>
+  </div>
+  <div class="notice">Skill 位于插件之上：发起分析时用户选择 Skill，动态字段与工具编排由 Skill 定义；连接按依赖自动绑定。依赖的插件在<a href="javascript:void(0)" onclick="go('plugins')">插件管理</a>中维护。列表「编辑」复用安装表单（mode=edit）。</div>
+  <div class="skill-list">
+    ${skills.map(s => `
+      <div class="skill-card" role="button" tabindex="0" onclick="openDrawer('${s.id}')" onkeydown="if(event.key==='Enter')openDrawer('${s.id}')">
+        <div class="row wrap">
+          <div>
+            <h2 style="font-size:16px">${esc(s.name)}</h2>
+            <p class="muted small" style="margin-top:6px"><code>${esc(s.id)}</code> · v${esc(s.version)}</p>
+          </div>
+          <span class="spacer"></span>
+          ${badge(s.status, s.status === '已启用' ? 'green' : 'amber')}
+          ${badge(s.depsOk ? '依赖检查 OK' : '依赖缺失', s.depsOk ? 'blue' : 'red')}
+        </div>
+        <p class="small" style="margin-top:12px;color:#475569">${esc(s.summary)}</p>
+        <div class="meta">
+          <span class="muted small">连接 · ${esc(s.connection)}</span>
+          <div class="row" style="gap:4px">
+            <button type="button" class="quiet" onclick="event.stopPropagation();openEditSkill('${s.id}')">编辑</button>
+            <button type="button" class="quiet" onclick="event.stopPropagation();openDrawer('${s.id}')">只读预览 →</button>
+          </div>
+        </div>
+      </div>`).join('')}
+  </div>
+  ${scenarioBar()}`;
+}
+
+function openDrawer(id) {
+  const s = skills.find(x => x.id === id);
+  if (!s) return;
+  $('#drawer-title').textContent = s.name;
+  $('#drawer-body').innerHTML = `
+    <div class="row wrap" style="margin-bottom:16px">
+      ${badge(s.status, s.status === '已启用' ? 'green' : 'amber')}
+      ${badge(s.depsOk ? '依赖检查 OK' : '依赖缺失', s.depsOk ? 'blue' : 'red')}
+      <span class="muted small"><code>${esc(s.id)}</code> · v${esc(s.version)}</span>
+    </div>
+    <p class="small" style="margin-bottom:16px">${esc(s.summary)}</p>
+    <div class="notice" style="margin-bottom:16px">连接快照：自动绑定「${esc(s.connection)}」。发起任务时不展示连接选择器。</div>
+    <h3 style="margin-bottom:10px">定义预览（YAML）</h3>
+    <div class="preview-code"><pre>${esc(s.yaml)}</pre></div>
+  `;
+  $('#skill-drawer').showModal();
+}
+
+function closeDrawer() { $('#skill-drawer').close(); }
+
+function renderPlugins() {
+  return `
+  <div class="heading">
+    <div>
+      <h1>插件管理</h1>
+      <p>业务与系统内置插件列表；发起分析时由 Skill 引用，用户不直接勾选。新建 / 编辑仅业务（mock）。</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="primary" onclick="openCreatePlugin()">新建插件</button>
+    </div>
+  </div>
+  <div class="notice">第一阶段只读查询。jira-issue 对齐 <strong>Jira Server 8.7.1</strong> · <code>/rest/api/2</code>，认证为 <strong>Basic / OAuth</strong>（非 Cloud token、非 JWT、非 8.14 PAT）。业务插件可「编辑」（复用新建表单 mode=edit）；系统内置不可编辑。抽屉仍为只读。</div>
+  <section class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>插件</th><th>类型</th><th>状态</th><th>认证</th><th>工具</th><th></th></tr></thead>
+        <tbody>
+          ${plugins.map(p => {
+            const isBuiltin = p.kind === '系统内置';
+            const editBtn = isBuiltin
+              ? `<span title="系统内置不可编辑" onclick="event.stopPropagation();toast('系统内置不可编辑')" style="display:inline-flex"><button type="button" class="quiet" disabled aria-disabled="true">编辑</button></span>`
+              : `<button type="button" class="quiet" onclick="event.stopPropagation();openEditPlugin('${p.id}')">编辑</button>`;
+            return `
+            <tr style="${p.planned ? 'opacity:.62' : ''}" role="button" tabindex="0" onclick="openPluginDrawer('${p.id}')" onkeydown="if(event.key==='Enter')openPluginDrawer('${p.id}')">
+              <td><strong>${esc(p.name)}</strong><span class="muted"><code>${esc(p.id)}</code> · v${esc(p.version)}${p.apiNote ? ' · ' + esc(p.apiNote) : ''}</span></td>
+              <td>${esc(p.kind)}</td>
+              <td>${badge(p.status, p.statusColor)}</td>
+              <td>${esc(p.auth)}</td>
+              <td><span class="small muted" style="white-space:normal;max-width:280px;display:inline-block">${esc(p.toolsShort)}</span></td>
+              <td>
+                <div class="row" style="gap:4px;justify-content:flex-end">
+                  ${editBtn}
+                  <button type="button" class="quiet" onclick="event.stopPropagation();openPluginDrawer('${p.id}')">只读预览 →</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <span>共 ${plugins.length} 个插件 · 一插件一连接</span>
+      <span class="muted small">发起分析时不暴露插件勾选器</span>
+    </div>
+  </section>
+  ${scenarioBar()}`;
+}
+
+function openPluginDrawer(id) {
+  const p = plugins.find(x => x.id === id);
+  if (!p) return;
+  $('#plugin-drawer-title').textContent = p.name;
+  const jiraNotice = p.id === 'jira-issue'
+    ? `<div class="notice amber" style="margin-bottom:16px"><strong>Server 8.7.1</strong>：无 Cloud API token / 无 8.14 PAT；认证仅 <strong>Basic（SSL）</strong> 或 <strong>OAuth</strong>（另可 <code>POST /rest/auth/1/session</code> Cookie）。基址 <code>{baseUrl}/rest/api/2/...</code>，非 Cloud api/3。</div>`
+    : '';
+  $('#plugin-drawer-body').innerHTML = `
+    <div class="row wrap" style="margin-bottom:16px">
+      ${badge(p.status, p.statusColor)}
+      ${badge(p.kind, p.kind === '系统内置' ? 'indigo' : 'blue')}
+      ${p.auth ? badge(p.auth, p.id === 'jira-issue' ? 'amber' : '') : ''}
+      <span class="muted small"><code>${esc(p.id)}</code> · v${esc(p.version)}${p.apiNote ? ' · ' + esc(p.apiNote) : ''}</span>
+    </div>
+    <p class="small" style="margin-bottom:16px">${esc(p.summary)}</p>
+    ${jiraNotice}
+    <div class="notice" style="margin-bottom:16px">连接绑定：<strong>一插件一连接</strong> · ${esc(p.connection)}。发起分析时用户不直接勾选插件。${p.kind === '系统内置' ? ' 本项为平台预装只读 Agent 工具集，不可通过「新建插件」创建。' : ''}</div>
+    <div class="field" style="margin-bottom:16px">
+      <label>暴露工具（一期只读）</label>
+      <div class="row wrap" style="margin-top:6px">${p.tools.map(t => `<code>${esc(t)}</code>`).join(' ')}</div>
+      ${p.id === 'jira-issue' ? '<p class="hint" style="margin-top:8px">写操作 <code>POST .../comment</code>（add_comment）· <span class="badge amber">一期未开放</span></p>' : ''}
+    </div>
+    <h3 style="margin-bottom:10px">清单预览（YAML）</h3>
+    <div class="preview-code"><pre>${esc(p.manifest)}</pre></div>
+  `;
+  $('#plugin-drawer').showModal();
+}
+
+function closePluginDrawer() { $('#plugin-drawer').close(); }
+
+
+const DEFAULT_SKILL_SCHEMA = `type: object
+properties:
+  issueKey:
+    type: string
+    title: Issue 编号
+    required: true
+  project:
+    type: string
+    title: 仓库/项目
+    enum: [订单服务, 支付服务]
+  branch:
+    type: string
+    title: 分支
+    default: main
+  commit:
+    type: string
+    title: 提交 hash
+  requirements:
+    type: string
+    title: 本次要求
+    format: textarea`;
+
+const DEFAULT_SKILL_BODY = `id: my-new-skill
+name: 示例 Skill
+version: 0.1.0
+description: |
+  在此填写 Skill 提示词与编排说明。
+requires:
+  plugins:
+    - jira-issue
+    - code-repo
+inputs:
+  - key: issueKey
+    label: Issue 编号
+    required: true
+tools:
+  - jira.get_issue
+  - code.search_code
+  - code.read_code
+prompt: |
+  根据 Issue 与仓库代码完成分析，并引用证据。`;
+
+let skillFormMode = 'install'; // install | edit
+let skillEditId = null;
+let pluginFormMode = 'create'; // create | edit
+let pluginEditId = null;
+
+function openInstallSkill() {
+  skillFormMode = 'install';
+  skillEditId = null;
+  $('#install-skill-title').textContent = '安装 Skill';
+  const sub = $('#install-skill-dialog .modal-head p');
+  if (sub) sub.textContent = '管理员录入结构化 Skill 定义。本原型仅 mock 保存到内存列表，无后端。';
+  $('#save-install-skill').textContent = '保存';
+  renderInstallSkillForm(null);
+  $('#install-skill-dialog').showModal();
+}
+
+function openEditSkill(id) {
+  const s = skills.find(x => x.id === id);
+  if (!s) { toast('未找到该 Skill'); return; }
+  skillFormMode = 'edit';
+  skillEditId = id;
+  $('#install-skill-title').textContent = '编辑 Skill';
+  const sub = $('#install-skill-dialog .modal-head p');
+  if (sub) sub.textContent = '复用安装表单结构（mode=edit）。标识只读；保存更新本页内存列表，无后端。';
+  $('#save-install-skill').textContent = '保存';
+  renderInstallSkillForm(s);
+  $('#install-skill-dialog').showModal();
+}
+
+function closeInstallSkill() {
+  skillFormMode = 'install';
+  skillEditId = null;
+  $('#install-skill-dialog').close();
+}
+
+function renderInstallSkillForm(skill) {
+  const isEdit = !!skill;
+  const checkedDeps = new Set(
+    isEdit
+      ? (skill.deps || [])
+      : ['jira-issue', 'code-repo']
+  );
+  const pluginChecks = plugins.map(p => `
+    <label class="row" style="gap:8px;margin:6px 0;font-weight:500">
+      <input type="checkbox" name="is-dep" value="${esc(p.id)}" ${checkedDeps.has(p.id) ? 'checked' : ''}>
+      <span><code>${esc(p.id)}</code> · ${esc(p.name)}
+        ${p.planned ? '<span class="badge amber" style="margin-left:6px">规划中</span>' : ''}
+      </span>
+    </label>`).join('');
+  const schemaVal = isEdit
+    ? (skill.schema != null && skill.schema !== '' ? skill.schema : DEFAULT_SKILL_SCHEMA)
+    : DEFAULT_SKILL_SCHEMA;
+  const bodyVal = isEdit ? (skill.yaml || '') : DEFAULT_SKILL_BODY;
+  const enabled = isEdit ? skill.status !== '已停用' : true;
+  const notice = isEdit
+    ? '<div class="notice amber">编辑模式：标识只读。保存仅 mock 更新本页 Skill 列表（刷新丢失）。</div>'
+    : '<div class="notice amber">本表单为 UX 示意。保存仅 mock：toast 成功、关闭弹窗，并将条目前置到本页 Skill 列表（刷新丢失）。</div>';
+  $('#install-skill-body').innerHTML = `
+    ${notice}
+    <div class="form-grid">
+      <div class="field">
+        <label for="is-id">Skill 标识 <span class="req">*</span></label>
+        <input id="is-id" class="mono" placeholder="例如 issue-code-impact" aria-required="true" autocomplete="off"
+          value="${isEdit ? esc(skill.id) : ''}" ${isEdit ? 'readonly aria-readonly="true"' : ''}>
+        <p class="hint">${isEdit ? '编辑时标识不可更改。' : '稳定 id，用于引用与版本管理；建议小写与连字符。'}</p>
+      </div>
+      <div class="field">
+        <label for="is-name">显示名称 <span class="req">*</span></label>
+        <input id="is-name" placeholder="例如 根据 Issue 评估代码改动点" aria-required="true" value="${isEdit ? esc(skill.name) : ''}">
+      </div>
+      <div class="field">
+        <label for="is-version">版本</label>
+        <input id="is-version" class="mono" value="${isEdit ? esc(skill.version || '0.1.0') : '0.1.0'}" placeholder="0.1.0">
+      </div>
+      <div class="field">
+        <label for="is-enabled" style="display:flex;align-items:center;gap:8px;margin-top:28px;font-weight:550">
+          <input type="checkbox" id="is-enabled" ${enabled ? 'checked' : ''}>
+          启用
+        </label>
+        <p class="hint">关闭后不可用于发起分析（演示开关）。</p>
+      </div>
+      <div class="field full">
+        <label for="is-summary">简介</label>
+        <textarea id="is-summary" rows="2" placeholder="一句话说明 Skill 用途与边界">${isEdit ? esc(skill.summary || '') : ''}</textarea>
+      </div>
+      <div class="field full">
+        <label>依赖插件</label>
+        <p class="hint" style="margin-bottom:8px">从已登记插件中勾选；连接按依赖自动绑定，发起分析时用户不挑选连接。</p>
+        <div class="dynamic-block" style="margin-top:0">${pluginChecks || '<span class="muted small">暂无插件</span>'}</div>
+      </div>
+      <div class="field full">
+        <label for="is-schema">输入表单 Schema</label>
+        <textarea id="is-schema" class="mono" rows="10" placeholder="JSON Schema / YAML 字段定义">${esc(schemaVal)}</textarea>
+        <p class="hint">示例为 YAML 形态的表单字段描述；正式版可与 JSON Schema 互换。</p>
+      </div>
+      <div class="field full">
+        <label for="is-body">Skill 定义正文 <span class="req">*</span></label>
+        <textarea id="is-body" class="mono" rows="14" aria-required="true" placeholder="YAML/JSON：prompt + tools refs">${esc(bodyVal)}</textarea>
+        <p class="hint">含提示词、工具引用与编排；本原型不做语法校验。</p>
+      </div>
+    </div>
+    <div id="is-error" class="error-text" role="alert"></div>
+  `;
+  setTimeout(() => (isEdit ? $('#is-name') : $('#is-id'))?.focus(), 0);
+}
+
+function submitInstallSkill() {
+  const id = ($('#is-id')?.value || '').trim();
+  const name = ($('#is-name')?.value || '').trim();
+  const version = ($('#is-version')?.value || '').trim() || '0.1.0';
+  const summary = ($('#is-summary')?.value || '').trim();
+  const schema = ($('#is-schema')?.value || '').trim();
+  const body = ($('#is-body')?.value || '').trim();
+  const enabled = !!$('#is-enabled')?.checked;
+  const deps = [...document.querySelectorAll('input[name="is-dep"]:checked')].map(el => el.value);
+  const err = $('#is-error');
+  const isEdit = skillFormMode === 'edit';
+  if (!id) { err.textContent = '请填写 Skill 标识。'; $('#is-id')?.focus(); return; }
+  if (!/^[a-z0-9][a-z0-9_-]*$/i.test(id)) { err.textContent = '标识建议为字母数字与连字符（示例：issue-code-impact）。'; $('#is-id')?.focus(); return; }
+  if (!name) { err.textContent = '请填写显示名称。'; $('#is-name')?.focus(); return; }
+  if (!body) { err.textContent = '请填写 Skill 定义正文。'; $('#is-body')?.focus(); return; }
+  if (isEdit) {
+    if (skillEditId !== id) { err.textContent = '编辑时不可更改标识。'; return; }
+  } else if (skills.some(s => s.id === id)) {
+    err.textContent = `标识「${id}」已存在，请更换。`; $('#is-id')?.focus(); return;
+  }
+  err.textContent = '';
+
+  const depNames = deps.map(d => plugins.find(p => p.id === d)?.name || d).join('、') || '（无）';
+  const connection = deps.includes('jira-issue') ? '研发 Jira' : deps.includes('code-repo') ? '系统内置' : (deps[0] ? `依赖 · ${deps[0]}` : '未绑定');
+  let yaml = body;
+  if (!body.includes(`id: ${id}`)) {
+    const depBlock = deps.length ? deps.map(d => `  - ${d}`).join('\n') : '  []';
+    yaml = `id: ${id}\nname: ${name}\nversion: ${version}\nenabled: ${enabled}\nrequires:\n  plugins:\n${depBlock}\n---\n${body}`;
+  }
+  if (schema && !isEdit) {
+    yaml += `\n\n# input form schema\n` + schema.split('\n').map(l => `# ${l}`).join('\n');
+  }
+
+  const record = {
+    id,
+    name,
+    version,
+    status: enabled ? '已启用' : '已停用',
+    depsOk: deps.every(d => {
+      const p = plugins.find(x => x.id === d);
+      return p && !p.planned;
+    }),
+    deps: [...deps],
+    connection,
+    summary: summary || (isEdit ? name : `新安装 Skill（依赖：${depNames}）`),
+    yaml,
+    schema,
+    disabledInForm: !enabled
+  };
+
+  if (isEdit) {
+    const idx = skills.findIndex(s => s.id === skillEditId);
+    if (idx < 0) { err.textContent = '原记录不存在，无法保存。'; return; }
+    const prev = skills[idx];
+    // 启停跟表单；若仍启用则保留原先「发起表单不可选」等演示标记
+    if (enabled && prev.disabledInForm) record.disabledInForm = true;
+    skills[idx] = { ...prev, ...record };
+    closeInstallSkill();
+    toast(`Skill「${name}」已更新（演示 · 内存）`);
+  } else {
+    skills.unshift(record);
+    closeInstallSkill();
+    toast(`Skill「${name}」已保存（演示 · 内存）`);
+  }
+  if (state.page === 'skills') render();
+  else go('skills');
+}
+
+function openCreatePlugin() {
+  pluginFormMode = 'create';
+  pluginEditId = null;
+  $('#create-plugin-title').textContent = '新建插件';
+  const sub = $('#create-plugin-dialog .modal-head p');
+  if (sub) sub.textContent = '仅可新建业务插件。系统内置（如 code-repo）为预装只读，不可在此创建。本原型仅 mock 追加到内存列表，无后端。';
+  $('#save-create-plugin').textContent = '创建';
+  renderCreatePluginForm(null);
+  $('#create-plugin-dialog').showModal();
+}
+
+function openEditPlugin(id) {
+  const p = plugins.find(x => x.id === id);
+  if (!p) { toast('未找到该插件'); return; }
+  if (p.kind === '系统内置') { toast('系统内置不可编辑'); return; }
+  pluginFormMode = 'edit';
+  pluginEditId = id;
+  $('#create-plugin-title').textContent = '编辑插件';
+  const sub = $('#create-plugin-dialog .modal-head p');
+  if (sub) sub.textContent = '复用新建表单结构（mode=edit）。标识只读、类型固定业务；保存更新本页内存列表，无后端。';
+  $('#save-create-plugin').textContent = '保存';
+  renderCreatePluginForm(p);
+  $('#create-plugin-dialog').showModal();
+}
+
+function closeCreatePlugin() {
+  pluginFormMode = 'create';
+  pluginEditId = null;
+  $('#create-plugin-dialog').close();
+}
+
+function renderCreatePluginForm(plugin) {
+  const isEdit = !!plugin;
+  const authMode = isEdit
+    ? (plugin.authMode || (String(plugin.auth || '').includes('JWT') ? 'JWT' : 'Legacy REST'))
+    : 'JWT';
+  const ad = (isEdit && plugin.authDetail) ? plugin.authDetail : {};
+  const toolsText = isEdit
+    ? (plugin.toolsText || (plugin.tools || []).join('\n'))
+    : '';
+  const enabled = isEdit ? !plugin.planned && plugin.status !== '已停用' : true;
+  const notice = isEdit
+    ? '<div class="notice amber">编辑模式：标识只读，类型固定业务。保存仅 mock 更新本页插件列表（刷新丢失）。系统内置不可由此编辑。</div>'
+    : '<div class="notice amber">本表单为 UX 示意。创建仅 mock：toast 成功、关闭弹窗，并追加到本页插件列表（刷新丢失）。新建仅支持<strong>业务</strong>插件；系统内置（如 code-repo）为预装只读，不在此创建。</div>';
+  $('#create-plugin-body').innerHTML = `
+    ${notice}
+    <div class="form-grid">
+      <div class="field">
+        <label for="cp-id">插件 id <span class="req">*</span></label>
+        <input id="cp-id" class="mono" placeholder="例如 my-service-api" aria-required="true" autocomplete="off"
+          value="${isEdit ? esc(plugin.id) : ''}" ${isEdit ? 'readonly aria-readonly="true"' : ''}>
+        ${isEdit ? '<p class="hint">编辑时 id 不可更改。</p>' : ''}
+      </div>
+      <div class="field">
+        <label for="cp-name">显示名称 <span class="req">*</span></label>
+        <input id="cp-name" placeholder="例如 My Service API" aria-required="true" value="${isEdit ? esc(plugin.name) : ''}">
+      </div>
+      <div class="field">
+        <label for="cp-kind">类型</label>
+        <input id="cp-kind" value="业务" readonly aria-readonly="true" title="仅支持业务插件">
+        <p class="hint">固定为业务。系统内置工具集（如 code-repo）由平台预装，不可在此创建或编辑。</p>
+      </div>
+      <div class="field">
+        <label for="cp-version">版本</label>
+        <input id="cp-version" class="mono" value="${isEdit ? esc(plugin.version || '0.1.0') : '0.1.0'}" placeholder="0.1.0">
+      </div>
+      <div class="field full">
+        <label for="cp-summary">简介</label>
+        <textarea id="cp-summary" rows="2" placeholder="插件能力与适用场景">${isEdit ? esc(plugin.summary || '') : ''}</textarea>
+      </div>
+      <div class="field">
+        <label for="cp-auth">认证方式 <span class="req">*</span></label>
+        <select id="cp-auth" onchange="onCreatePluginAuthChange()">
+          <option value="JWT" ${authMode === 'JWT' ? 'selected' : ''}>JWT</option>
+          <option value="Legacy REST" ${authMode === 'Legacy REST' ? 'selected' : ''}>Legacy REST</option>
+        </select>
+        <p class="hint">业务插件仅 JWT 或 Legacy REST。「内置无认证」仅适用于系统内置，不在此表单。</p>
+      </div>
+      <div class="field">
+        <label for="cp-enabled" style="display:flex;align-items:center;gap:8px;margin-top:28px;font-weight:550">
+          <input type="checkbox" id="cp-enabled" ${enabled ? 'checked' : ''}>
+          启用
+        </label>
+        <p class="hint">规划中插件请关闭启用（演示）。</p>
+      </div>
+      <div class="field full" id="cp-auth-dynamic"></div>
+      <div class="field full">
+        <label for="cp-tools">工具列表 <span class="req">*</span></label>
+        <textarea id="cp-tools" class="mono" rows="5" placeholder="每行一条：name — 描述&#10;get_issue — GET /rest/api/2/issue/{issueIdOrKey}&#10;search_issues — GET|POST /rest/api/2/search (JQL)" aria-required="true">${esc(toolsText)}</textarea>
+        <p class="hint">主能力清单：每行「name — desc」；Skill / 执行器按此消费。仅 name 亦可。</p>
+      </div>
+      <div class="field full">
+        <label>连接说明</label>
+        <div class="notice" style="margin:0 0 10px">只读约束：<strong>一插件一连接</strong>。发起分析时由 Skill 依赖自动绑定，用户不勾选插件、不挑选连接。</div>
+        <label for="cp-conn" class="muted small">默认连接名（可选）</label>
+        <input id="cp-conn" placeholder="例如 研发 Jira" style="margin-top:6px" value="${isEdit ? esc(plugin.connection === '未绑定' ? '' : (plugin.connection || '')) : ''}">
+      </div>
+      <div class="field full">
+        <details class="cp-advanced" ${isEdit && plugin.manifest ? 'open' : ''}>
+          <summary style="cursor:pointer;font-size:12px;font-weight:550;color:#475569">从 OpenAPI/清单导入（选填·高级）</summary>
+          <div style="margin-top:10px">
+            <textarea id="cp-manifest" class="mono" rows="4" placeholder="粘贴 OpenAPI 片段或插件 YAML 清单（可选）" style="font-size:12px">${isEdit ? esc(plugin.manifest || '') : ''}</textarea>
+            <p class="hint">工具列表是 Skill/执行器消费的能力清单；契约用于导入/校验，避免与上方工具列表重复填写。本原型不做导入解析。</p>
+          </div>
+        </details>
+      </div>
+    </div>
+    <div id="cp-error" class="error-text" role="alert"></div>
+  `;
+  onCreatePluginAuthChange();
+  // Prefill auth dynamic fields after render
+  if (isEdit) {
+    const mode = $('#cp-auth')?.value || authMode;
+    if (mode === 'JWT') {
+      if ($('#cp-base-url')) $('#cp-base-url').value = ad.baseUrl || '';
+      if ($('#cp-token-url')) $('#cp-token-url').value = ad.tokenUrl || '';
+      if ($('#cp-client-id')) $('#cp-client-id').value = ad.clientId && ad.clientId !== '（未填）' ? ad.clientId : '';
+      if ($('#cp-renew')) $('#cp-renew').checked = ad.renew !== '手动/短时';
+    } else {
+      if ($('#cp-base-url')) $('#cp-base-url').value = ad.baseUrl || '';
+      if ($('#cp-cred-note')) $('#cp-cred-note').value = ad.credNote || '';
+      if ($('#cp-compat')) $('#cp-compat').value = ad.compat || plugin.apiNote || '';
+    }
+  }
+  setTimeout(() => (isEdit ? $('#cp-name') : $('#cp-id'))?.focus(), 0);
+}
+
+function onCreatePluginAuthChange() {
+  const auth = $('#cp-auth')?.value || 'JWT';
+  const host = $('#cp-auth-dynamic');
+  if (!host) return;
+  // Preserve values across toggle when possible
+  const prevBase = $('#cp-base-url')?.value || '';
+  if (auth === 'JWT') {
+    host.innerHTML = `
+      <div class="dynamic-block" style="margin-top:0">
+        <div class="row wrap" style="margin-bottom:10px"><span class="badge blue">JWT</span><span class="muted small">按认证方式显示的连接字段</span></div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="cp-base-url">Base URL <span class="req">*</span></label>
+            <input id="cp-base-url" class="mono" placeholder="例如 https://jira.example.com" aria-required="true" value="${esc(prevBase)}">
+          </div>
+          <div class="field full">
+            <label for="cp-token-url">Token 获取地址 <span class="req">*</span></label>
+            <input id="cp-token-url" class="mono" placeholder="例如 https://jira.example.com/oauth/token" aria-required="true">
+          </div>
+          <div class="field">
+            <label for="cp-client-id">Client ID</label>
+            <input id="cp-client-id" class="mono" placeholder="客户端标识（占位）" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="cp-client-secret">密钥说明 / 占位</label>
+            <input id="cp-client-secret" type="password" placeholder="密钥不落盘示意 · 正式版走密钥库" autocomplete="new-password">
+            <p class="hint">原型仅占位，不保存真实密钥。</p>
+          </div>
+          <div class="field full">
+            <label for="cp-renew" style="display:flex;align-items:center;gap:8px;font-weight:550">
+              <input type="checkbox" id="cp-renew" checked>
+              续期策略 · 执行器自动续期
+            </label>
+            <p class="hint">JWT 由执行器续期；关闭则示意为手动/短时令牌（演示开关）。</p>
+          </div>
+        </div>
+      </div>`;
+  } else {
+    host.innerHTML = `
+      <div class="dynamic-block" style="margin-top:0">
+        <div class="row wrap" style="margin-bottom:10px"><span class="badge amber">Legacy REST</span><span class="muted small">Basic / OAuth / Session · 适合 Jira Server 等</span></div>
+        <div class="form-grid">
+          <div class="field full">
+            <label for="cp-base-url">Base URL <span class="req">*</span></label>
+            <input id="cp-base-url" class="mono" placeholder="例如 https://jira.example.com（API 前缀 /rest/api/2）" aria-required="true" value="${esc(prevBase)}">
+          </div>
+          <div class="field full">
+            <label for="cp-cred-note">认证材料说明 <span class="req">*</span></label>
+            <textarea id="cp-cred-note" rows="2" placeholder="例如：HTTP Basic 用户名+密码（SSL）/ OAuth 应用链路 / POST /rest/auth/1/session Cookie（正式版走密钥库）" aria-required="true"></textarea>
+            <p class="hint">说明材料形态即可；原型不采集真实口令。对标 Jira Server 8.7.1 时勿填 Cloud token / PAT。</p>
+          </div>
+          <div class="field full">
+            <label for="cp-compat">兼容备注 <span class="muted">可选</span></label>
+            <input id="cp-compat" placeholder="例如：Jira Server 8.7.1 · REST api/2 · 非 Cloud / 非 JWT / 非 PAT">
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+function submitCreatePlugin() {
+  const id = ($('#cp-id')?.value || '').trim();
+  const name = ($('#cp-name')?.value || '').trim();
+  const kind = '业务'; // 新建/编辑仅业务；系统内置不可在此创建或编辑
+  const version = ($('#cp-version')?.value || '').trim() || '0.1.0';
+  const summary = ($('#cp-summary')?.value || '').trim();
+  const auth = $('#cp-auth')?.value || 'JWT';
+  const enabled = !!$('#cp-enabled')?.checked;
+  const toolsRaw = ($('#cp-tools')?.value || '').trim();
+  const conn = ($('#cp-conn')?.value || '').trim();
+  const manifestOpt = ($('#cp-manifest')?.value || '').trim();
+  const baseUrl = ($('#cp-base-url')?.value || '').trim();
+  const err = $('#cp-error');
+  const isEdit = pluginFormMode === 'edit';
+  if (!id) { err.textContent = '请填写插件 id。'; $('#cp-id')?.focus(); return; }
+  if (!/^[a-z0-9][a-z0-9_-]*$/i.test(id)) { err.textContent = '插件 id 建议为字母数字与连字符。'; $('#cp-id')?.focus(); return; }
+  if (!name) { err.textContent = '请填写显示名称。'; $('#cp-name')?.focus(); return; }
+  if (isEdit) {
+    if (pluginEditId !== id) { err.textContent = '编辑时不可更改 id。'; return; }
+    const existing = plugins.find(p => p.id === pluginEditId);
+    if (existing && existing.kind === '系统内置') { err.textContent = '系统内置不可编辑。'; return; }
+  } else if (plugins.some(p => p.id === id)) {
+    err.textContent = `插件 id「${id}」已存在，请更换。`; $('#cp-id')?.focus(); return;
+  }
+  if (!baseUrl) { err.textContent = '请填写 Base URL。'; $('#cp-base-url')?.focus(); return; }
+  if (!toolsRaw) { err.textContent = '请填写工具列表（Skill/执行器消费的能力清单）。'; $('#cp-tools')?.focus(); return; }
+
+  let authDetail = {};
+  if (auth === 'JWT') {
+    const tokenUrl = ($('#cp-token-url')?.value || '').trim();
+    const clientId = ($('#cp-client-id')?.value || '').trim();
+    const renew = !!$('#cp-renew')?.checked;
+    if (!tokenUrl) { err.textContent = '请填写 Token 获取地址。'; $('#cp-token-url')?.focus(); return; }
+    authDetail = { baseUrl, tokenUrl, clientId: clientId || '（未填）', renew: renew ? '执行器自动续期' : '手动/短时' };
+  } else {
+    const credNote = ($('#cp-cred-note')?.value || '').trim();
+    const compat = ($('#cp-compat')?.value || '').trim();
+    if (!credNote) { err.textContent = '请填写认证材料说明。'; $('#cp-cred-note')?.focus(); return; }
+    authDetail = { baseUrl, credNote, compat: compat || '' };
+  }
+  err.textContent = '';
+
+  const toolLines = toolsRaw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const tools = toolLines.map(line => {
+    const parts = line.split(/\s*[—–-]\s*/);
+    return (parts[0] || line).trim();
+  }).filter(Boolean);
+  const toolsShort = tools.length
+    ? tools.slice(0, 4).join(', ') + (tools.length > 4 ? ', …' : '')
+    : '（未声明工具）';
+  const connection = conn || '未绑定';
+  const status = enabled ? '已启用' : '已停用';
+  const statusColor = enabled ? 'green' : 'amber';
+  const authLabel = auth === 'JWT'
+    ? `JWT · ${authDetail.renew}`
+    : `Basic / OAuth（Legacy REST）`;
+  const authYaml = auth === 'JWT'
+    ? `auth:
+  type: jwt
+  base_url: ${baseUrl}
+  token_url: ${authDetail.tokenUrl}
+  client_id: ${authDetail.clientId}
+  renew: ${authDetail.renew}
+  note: 密钥不落盘（原型）`
+    : `auth:
+  type: basic_or_oauth
+  base_url: ${baseUrl}
+  apiVersion: 2
+  credentials_note: ${authDetail.credNote.replace(/\n/g, ' ')}
+  compat: ${authDetail.compat || '（无）'}
+  note: Legacy REST · 非 Cloud token / 非 JWT / 非 PAT（示意）`;
+  const manifest = (isEdit && manifestOpt)
+    ? manifestOpt
+    : (manifestOpt || `id: ${id}
+name: ${name}
+version: ${version}
+kind: business
+status: ${enabled ? 'enabled' : 'disabled'}
+${authYaml}
+connection:
+  binding: one_plugin_one_connection
+  snapshot: ${connection}
+tools:
+${tools.length ? toolLines.map(line => {
+    const parts = line.split(/\s*[—–-]\s*/);
+    const tname = (parts[0] || line).trim();
+    const desc = (parts.slice(1).join(' — ') || '').trim();
+    return desc ? `  - name: ${tname}\n    description: ${desc}` : `  - name: ${tname}`;
+  }).join('\n') : '  []'}
+notes: |
+  一插件一连接。发起分析时不暴露插件勾选器。`);
+
+  const record = {
+    id,
+    name,
+    kind,
+    status,
+    statusColor,
+    auth: authLabel,
+    authMode: auth,
+    authDetail,
+    toolsShort,
+    tools: tools.length ? tools : ['（未声明）'],
+    toolsText: toolsRaw,
+    connection,
+    version,
+    planned: !enabled,
+    summary: summary || `业务插件（${auth} · ${baseUrl}）`,
+    manifest,
+    apiNote: auth === 'Legacy REST' ? (authDetail.compat || undefined) : undefined
+  };
+
+  if (isEdit) {
+    const idx = plugins.findIndex(p => p.id === pluginEditId);
+    if (idx < 0) { err.textContent = '原记录不存在，无法保存。'; return; }
+    const prev = plugins[idx];
+    if (prev.kind === '系统内置') { err.textContent = '系统内置不可编辑。'; return; }
+    plugins[idx] = { ...prev, ...record, kind: '业务' };
+    closeCreatePlugin();
+    toast(`插件「${name}」已更新（演示 · 内存）`);
+  } else {
+    plugins.push(record);
+    closeCreatePlugin();
+    toast(`插件「${name}」已创建（演示 · 内存）`);
+  }
+  if (state.page === 'plugins') render();
+  else go('plugins');
+}
+
+// Escape closes dialogs (native <dialog> already does; ensure cancel doesn't leave odd state)
+['skill-form-dialog','code-dialog','skill-drawer','plugin-drawer','install-skill-dialog','create-plugin-dialog'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('cancel', e => { /* allow default close */ });
+});
+
+render();
+
+document.addEventListener('DOMContentLoaded',function(){
+  if(document.querySelector('.proto-warn'))return;
+  var w=document.querySelector('.workspace .content')||document.querySelector('.content')||document.querySelector('.workspace');
+  if(!w)return;
+  var n=document.createElement('div');
+  n.className='proto-warn';n.setAttribute('role','note');
+  n.innerHTML='<strong>仅 UX / 流程示意，非实现稿。</strong> 本页 UI、组件弹出方式与系统最新情况不一致；正式实现以主干 Vue / Ant Design 为准。其他 agent 禁止按本 HTML 修改正式前端样式或弹层。';
+  w.insertBefore(n,w.firstChild);
+});
+</script>
+</body>
+</html>
