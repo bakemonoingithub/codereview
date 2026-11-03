@@ -114,7 +114,6 @@ import { useListPagination } from '@/utils/useListPagination'
 import ListPageLayout from '@/components/ListPageLayout.vue'
 import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
-import PageNotice from '@/components/PageNotice.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
 const keyword = ref('')
