@@ -1,0 +1,97 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+$ vite build
+vite v5.4.21 building for production...
+transforming...
+✓ 4291 modules transformed.
+rendering chunks...
+computing gzip size...
+../backend/src/main/resources/static/index.html                                    0.48 kB │ gzip:   0.34 kB
+../backend/src/main/resources/static/assets/LoadErrorAlert-CZs-5CF6.css            0.05 kB │ gzip:   0.07 kB
+../backend/src/main/resources/static/assets/RecordDeleteModal-C7DU-4Ru.css         0.13 kB │ gzip:   0.14 kB
+../backend/src/main/resources/static/assets/ProjectList-DK_toO1c.css               0.14 kB │ gzip:   0.13 kB
+../backend/src/main/resources/static/assets/PromptList-D0fuMl-w.css                0.19 kB │ gzip:   0.16 kB
+../backend/src/main/resources/static/assets/ReportList-DKR5Fbqn.css                0.20 kB │ gzip:   0.14 kB
+../backend/src/main/resources/static/assets/RetiredStrategyRoute-DAF63I01.css      0.38 kB │ gzip:   0.23 kB
+../backend/src/main/resources/static/assets/ModelConfigList-vb8kf4iT.css           0.51 kB │ gzip:   0.26 kB
+../backend/src/main/resources/static/assets/StatusBadge-D6ixJR5k.css               0.62 kB │ gzip:   0.29 kB
+../backend/src/main/resources/static/assets/promptSelection-CqrXm8jn.css           0.88 kB │ gzip:   0.39 kB
+../backend/src/main/resources/static/assets/LaunchFormSections-DpyasVuV.css        0.90 kB │ gzip:   0.40 kB
+../backend/src/main/resources/static/assets/markdown-BfC0goYb.css                  1.31 kB │ gzip:   0.61 kB
+../backend/src/main/resources/static/assets/MarkdownView-CT5BK0ha.css              1.59 kB │ gzip:   0.52 kB
+../backend/src/main/resources/static/assets/CodeViewer-DT6mZuTw.css                1.62 kB │ gzip:   0.62 kB
+../backend/src/main/resources/static/assets/EmptyGuide-BsJ8K5PM.css                1.67 kB │ gzip:   0.58 kB
+../backend/src/main/resources/static/assets/AgentLaunch-7x0Yxt9d.css               1.91 kB │ gzip:   0.66 kB
+../backend/src/main/resources/static/assets/CommitPickerModal-CJPGN_PB.css         2.60 kB │ gzip:   0.85 kB
+../backend/src/main/resources/static/assets/CodeBrowser-DzU-vCOc.css               2.65 kB │ gzip:   0.87 kB
+../backend/src/main/resources/static/assets/BasicLayout-nveWNOE3.css               2.77 kB │ gzip:   0.86 kB
+../backend/src/main/resources/static/assets/bootstrap-B6snAd4S.css                 2.97 kB │ gzip:   1.19 kB
+../backend/src/main/resources/static/assets/ReviewCenter-C5w5gRHw.css              3.03 kB │ gzip:   0.92 kB
+../backend/src/main/resources/static/assets/ReportCreate-BHleJdq6.css              4.83 kB │ gzip:   1.32 kB
+../backend/src/main/resources/static/assets/ActualCallList-B8m06t0y.css            5.11 kB │ gzip:   1.38 kB
+../backend/src/main/resources/static/assets/AgentResultPanel-BcXSLfAX.css          7.13 kB │ gzip:   1.85 kB
+../backend/src/main/resources/static/assets/index-h8B9hsWP.css                     9.21 kB │ gzip:   2.75 kB
+../backend/src/main/resources/static/assets/ReportDetail-9wmY_DSY.css             11.29 kB │ gzip:   2.47 kB
+../backend/src/main/resources/static/assets/ProjectDetail-CFYdyArd.css            11.69 kB │ gzip:   2.49 kB
+../backend/src/main/resources/static/assets/TaskDetailRoute-CDpErJJ6.css          13.95 kB │ gzip:   2.68 kB
+../backend/src/main/resources/static/assets/DiffViewer-CvPwl8pH.css               20.79 kB │ gzip:   3.34 kB
+../backend/src/main/resources/static/assets/promptVersion-Bk3VvLDJ.js              0.08 kB │ gzip:   0.10 kB
+../backend/src/main/resources/static/assets/index-j1pz52_n.js                      0.13 kB │ gzip:   0.13 kB
+../backend/src/main/resources/static/assets/useFlexGapSupport-CxKJdrES.js          0.16 kB │ gzip:   0.15 kB
+../backend/src/main/resources/static/assets/taskLabel-BGxKRYf1.js                  0.20 kB │ gzip:   0.19 kB
+../backend/src/main/resources/static/assets/StatusBadge-4By9q9jh.js                0.39 kB │ gzip:   0.30 kB
+../backend/src/main/resources/static/assets/duration-CC7W8tdw.js                   0.52 kB │ gzip:   0.33 kB
+../backend/src/main/resources/static/assets/LoadErrorAlert-U7zOUc26.js             0.62 kB │ gzip:   0.44 kB
+../backend/src/main/resources/static/assets/RetiredStrategyRoute-DpqJR5yk.js       0.89 kB │ gzip:   0.64 kB
+../backend/src/main/resources/static/assets/responsiveObserve-C_xc4qEX.js          1.07 kB │ gzip:   0.55 kB
+../backend/src/main/resources/static/assets/filePreview-phEjn3R7.js                1.11 kB │ gzip:   0.61 kB
+../backend/src/main/resources/static/assets/pathTree-CVNncCxc.js                   1.28 kB │ gzip:   0.63 kB
+../backend/src/main/resources/static/assets/RecordDeleteModal-CNr65GfU.js          1.29 kB │ gzip:   0.93 kB
+../backend/src/main/resources/static/assets/LeftOutlined-98qq1Y1d.js               1.91 kB │ gzip:   0.78 kB
+../backend/src/main/resources/static/assets/LaunchFormSections-BhfCTOGv.js         1.96 kB │ gzip:   0.95 kB
+../backend/src/main/resources/static/assets/index-C1I-pAZk.js                      2.18 kB │ gzip:   1.17 kB
+../backend/src/main/resources/static/assets/CodeViewer-DjM7Jh-T.js                 2.59 kB │ gzip:   1.25 kB
+../backend/src/main/resources/static/assets/hasIn-CEHP4z-z.js                      3.20 kB │ gzip:   1.54 kB
+../backend/src/main/resources/static/assets/EmptyGuide-Clpu2nia.js                 3.53 kB │ gzip:   1.65 kB
+../backend/src/main/resources/static/assets/promptSelection-BDwEUaHA.js            3.64 kB │ gzip:   1.90 kB
+../backend/src/main/resources/static/assets/index-u-NvzBhC.js                      4.80 kB │ gzip:   1.91 kB
+../backend/src/main/resources/static/assets/v2-C3M9Uy0r.js                         4.97 kB │ gzip:   1.34 kB
+../backend/src/main/resources/static/assets/Dropdown-rFnCTwLR.js                   5.05 kB │ gzip:   2.22 kB
+../backend/src/main/resources/static/assets/_getTag-80_Azmyr.js                    5.54 kB │ gzip:   2.37 kB
+../backend/src/main/resources/static/assets/ProjectList-B7reXCU6.js                5.66 kB │ gzip:   2.77 kB
+../backend/src/main/resources/static/assets/ReportList-DICn6J0C.js                 6.06 kB │ gzip:   3.22 kB
+../backend/src/main/resources/static/assets/index-K7CGyRGp.js                      7.29 kB │ gzip:   2.96 kB
+../backend/src/main/resources/static/assets/index-DHclG6QL.js                      7.74 kB │ gzip:   2.78 kB
+../backend/src/main/resources/static/assets/ModelConfigList-CxaZponY.js            8.65 kB │ gzip:   3.65 kB
+../backend/src/main/resources/static/assets/CommitPickerModal-CFTUkGiF.js          9.68 kB │ gzip:   3.91 kB
+../backend/src/main/resources/static/assets/PromptList-XQkG1pB5.js                10.18 kB │ gzip:   4.39 kB
+../backend/src/main/resources/static/assets/BasicLayout-C8Rxv7Ks.js               11.70 kB │ gzip:   4.89 kB
+../backend/src/main/resources/static/assets/CodeBrowser-CAY4PjfB.js               13.58 kB │ gzip:   5.69 kB
+../backend/src/main/resources/static/assets/ActualCallList-Bw9khNi3.js            16.64 kB │ gzip:   6.79 kB
+../backend/src/main/resources/static/assets/colors-Br1qSEo7.js                    17.11 kB │ gzip:   6.01 kB
+../backend/src/main/resources/static/assets/AgentResultPanel-DbIJtS6_.js          18.12 kB │ gzip:   7.50 kB
+../backend/src/main/resources/static/assets/index-BqYgJcsa.js                     20.06 kB │ gzip:   6.85 kB
+../backend/src/main/resources/static/assets/AgentLaunch-egP1OPN0.js               23.47 kB │ gzip:   8.79 kB
+../backend/src/main/resources/static/assets/ReportCreate-CwmUgkmr.js              25.73 kB │ gzip:  10.12 kB
+../backend/src/main/resources/static/assets/ReviewCenter-DdVkLyQs.js              27.69 kB │ gzip:  10.52 kB
+../backend/src/main/resources/static/assets/MarkdownView-x0lzBMeO.js              31.27 kB │ gzip:  12.23 kB
+../backend/src/main/resources/static/assets/ReportDetail-BY-CgcNg.js              31.48 kB │ gzip:  12.50 kB
+../backend/src/main/resources/static/assets/TaskDetailRoute-Cx3DuKHn.js           44.95 kB │ gzip:  16.41 kB
+../backend/src/main/resources/static/assets/slide-Kvps9-xM.js                     50.88 kB │ gzip:  16.96 kB
+../backend/src/main/resources/static/assets/index-U1DtTsij.js                     52.36 kB │ gzip:  15.93 kB
+../backend/src/main/resources/static/assets/index-D8PL823B.js                     53.14 kB │ gzip:  16.35 kB
+../backend/src/main/resources/static/assets/index-CWp5sAa1.js                     56.35 kB │ gzip:  17.49 kB
+../backend/src/main/resources/static/assets/index-CptEhJ5_.js                     64.34 kB │ gzip:  22.42 kB
+../backend/src/main/resources/static/assets/index-Drs3Qbyc.js                     74.29 kB │ gzip:  24.24 kB
+../backend/src/main/resources/static/assets/index-n4rxWhc0.js                     83.09 kB │ gzip:  33.26 kB
+../backend/src/main/resources/static/assets/index-DEskFA_Q.js                    129.64 kB │ gzip:  39.44 kB
+../backend/src/main/resources/static/assets/request-DcMTA0-K.js                  159.69 kB │ gzip:  51.83 kB
+../backend/src/main/resources/static/assets/bootstrap-Dorsd1Lw.js                185.32 kB │ gzip:  63.96 kB
+../backend/src/main/resources/static/assets/markdown-BZCZPn64.js                 239.04 kB │ gzip:  65.86 kB
+../backend/src/main/resources/static/assets/DiffViewer-DDGpljzt.js             1,046.48 kB │ gzip: 327.77 kB
+../backend/src/main/resources/static/assets/ProjectDetail-BkKUewON.js          1,244.45 kB │ gzip: 417.88 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 22.28s

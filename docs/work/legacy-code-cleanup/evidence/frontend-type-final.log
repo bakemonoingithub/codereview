@@ -1,0 +1,14 @@
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.onlyBuiltDependencies". See https://pnpm.io/settings for the new home of each setting.
+$ vue-tsc --noEmit
+src/views/ProjectDetail.vue(561,58): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(getter: ComputedGetter<CommitInfo | null>, debugOptions?: DebuggerOptions | undefined): ComputedRef<CommitInfo | null>', gave the following error.
+    Argument of type '() => { sha: string; message: string | undefined; author: string | undefined; date: string | undefined; } | null' is not assignable to parameter of type 'ComputedGetter<CommitInfo | null>'.
+      Type '{ sha: string; message: string | undefined; author: string | undefined; date: string | undefined; } | null' is not assignable to type 'CommitInfo | null'.
+        Type '{ sha: string; message: string | undefined; author: string | undefined; date: string | undefined; }' is not assignable to type 'CommitInfo'.
+          Types of property 'message' are incompatible.
+            Type 'string | undefined' is not assignable to type 'string'.
+              Type 'undefined' is not assignable to type 'string'.
+  Overload 2 of 2, '(options: WritableComputedOptions<CommitInfo | null, CommitInfo | null>, debugOptions?: DebuggerOptions | undefined): WritableComputedRef<...>', gave the following error.
+    Argument of type '() => { sha: string; message: string | undefined; author: string | undefined; date: string | undefined; } | null' is not assignable to parameter of type 'WritableComputedOptions<CommitInfo | null, CommitInfo | null>'.
+src/views/ProjectList.vue(117,1): error TS6133: 'PageNotice' is declared but its value is never read.
+[ELIFECYCLE] Command failed with exit code 2.

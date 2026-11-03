@@ -1,0 +1,40 @@
+{
+  "backendTest": {
+    "exitCode": 0,
+    "suites": 142,
+    "tests": 1025,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 11
+  },
+  "frontendTest": {
+    "exitCode": 0,
+    "files": 73,
+    "tests": 658,
+    "failures": 0,
+    "skipped": 0
+  },
+  "frontendTypeCheck": {
+    "exitCode": 2,
+    "diagnostics": [
+      "src/views/ProjectDetail.vue(561,58): TS2769",
+      "src/views/ProjectList.vue(117,1): TS6133"
+    ]
+  },
+  "frontendBuild": {
+    "exitCode": 0
+  },
+  "environment": {
+    "os": "Windows 11 amd64",
+    "java": "Azul 17.0.20.1",
+    "maven": "Wrapper / 3.9.9",
+    "node": "24.9.0",
+    "pnpm": "11.7.0"
+  },
+  "testOwnership": {
+    "backendProposedRemovedSuites": 38,
+    "backendProposedRemovedTests": 221,
+    "frontendProposedRemovedFiles": 23,
+    "frontendProposedRemovedTests": 226
+  }
+}

@@ -1,0 +1,470 @@
+{
+  "numTotalTestSuites": 197,
+  "numPassedTestSuites": 197,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 658,
+  "numPassedTests": 658,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1793672005932,
+  "success": true,
+  "fileCount": 73,
+  "files": [
+    {
+      "path": "frontend/src/runtime/config.spec.ts",
+      "status": "passed",
+      "tests": 11,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/runtime/StartupGate.spec.ts",
+      "status": "passed",
+      "tests": 1,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/CallReaderModal.spec.ts",
+      "status": "passed",
+      "tests": 5,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ChangedFileTree.spec.ts",
+      "status": "passed",
+      "tests": 10,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/CodeReferenceModal.spec.ts",
+      "status": "passed",
+      "tests": 11,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/CodeViewer.spec.ts",
+      "status": "passed",
+      "tests": 3,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/CommitPickerModal.spec.ts",
+      "status": "passed",
+      "tests": 10,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/CouplingResult.spec.ts",
+      "status": "passed",
+      "tests": 13,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/DiffReviewResult.spec.ts",
+      "status": "passed",
+      "tests": 11,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/EmptyGuide.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/FeedbackEditor.spec.ts",
+      "status": "passed",
+      "tests": 13,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/FileViewerModal.spec.ts",
+      "status": "passed",
+      "tests": 8,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/LaunchFormSections.spec.ts",
+      "status": "passed",
+      "tests": 2,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/LaunchModalShell.spec.ts",
+      "status": "passed",
+      "tests": 2,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ListPageLayout.spec.ts",
+      "status": "passed",
+      "tests": 9,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/LoadErrorAlert.spec.ts",
+      "status": "passed",
+      "tests": 3,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/MarkdownView.spec.ts",
+      "status": "passed",
+      "tests": 5,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/MaterialReaderModal.spec.ts",
+      "status": "passed",
+      "tests": 5,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/PageNotice.spec.ts",
+      "status": "passed",
+      "tests": 3,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/PromptInfoPreview.spec.ts",
+      "status": "passed",
+      "tests": 1,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReportMarkdown.spec.ts",
+      "status": "passed",
+      "tests": 2,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReportPanel.spec.ts",
+      "status": "passed",
+      "tests": 9,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReportPanelGenerateTip.spec.ts",
+      "status": "passed",
+      "tests": 6,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReportPanelPolling.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReportResultPickerModal.spec.ts",
+      "status": "passed",
+      "tests": 11,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReportSourceModal.spec.ts",
+      "status": "passed",
+      "tests": 20,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReviewConfigSnapshot.spec.ts",
+      "status": "passed",
+      "tests": 13,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReviewRecordViewer.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ReviewResult.spec.ts",
+      "status": "passed",
+      "tests": 22,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/ScopePickerModal.spec.ts",
+      "status": "passed",
+      "tests": 7,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/SpecialistResultView.spec.ts",
+      "status": "passed",
+      "tests": 7,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/SpecialistReviewResultTab.spec.ts",
+      "status": "passed",
+      "tests": 6,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/SplitPane.spec.ts",
+      "status": "passed",
+      "tests": 6,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/SrfContract.spec.ts",
+      "status": "passed",
+      "tests": 8,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/StatusBadge.spec.ts",
+      "status": "passed",
+      "tests": 2,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/components/__tests__/TaskAccuracySummary.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/api/__tests__/v2.spec.ts",
+      "status": "passed",
+      "tests": 20,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/accuracy.spec.ts",
+      "status": "passed",
+      "tests": 10,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/changedFiles.spec.ts",
+      "status": "passed",
+      "tests": 18,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/duration.spec.ts",
+      "status": "passed",
+      "tests": 14,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/enums.spec.ts",
+      "status": "passed",
+      "tests": 9,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/filePreview.spec.ts",
+      "status": "passed",
+      "tests": 13,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/markdown.spec.ts",
+      "status": "passed",
+      "tests": 7,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/patch.spec.ts",
+      "status": "passed",
+      "tests": 11,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/pathTree.spec.ts",
+      "status": "passed",
+      "tests": 5,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/promptDiff.spec.ts",
+      "status": "passed",
+      "tests": 14,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/promptSelection.spec.ts",
+      "status": "passed",
+      "tests": 3,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/records.spec.ts",
+      "status": "passed",
+      "tests": 14,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/request.spec.ts",
+      "status": "passed",
+      "tests": 6,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/reviewResult.spec.ts",
+      "status": "passed",
+      "tests": 20,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/useListPagination.spec.ts",
+      "status": "passed",
+      "tests": 8,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/utils/__tests__/useRecordPagination.spec.ts",
+      "status": "passed",
+      "tests": 9,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/router/__tests__/menu.spec.ts",
+      "status": "passed",
+      "tests": 8,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/layouts/__tests__/BasicLayout.spec.ts",
+      "status": "passed",
+      "tests": 8,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/AdminListOrdering.spec.ts",
+      "status": "passed",
+      "tests": 9,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/AgentLaunch.spec.ts",
+      "status": "passed",
+      "tests": 18,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/AgentTaskDetail.spec.ts",
+      "status": "passed",
+      "tests": 11,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/CodeBrowser.spec.ts",
+      "status": "passed",
+      "tests": 7,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ModelConfigList.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ProjectDetailFileView.spec.ts",
+      "status": "passed",
+      "tests": 6,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ProjectDetailLoadFailure.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ProjectDetailPagination.spec.ts",
+      "status": "passed",
+      "tests": 8,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ProjectDetailPolling.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ProjectDetailRetry.spec.ts",
+      "status": "passed",
+      "tests": 4,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ProjectDetailStructure.spec.ts",
+      "status": "passed",
+      "tests": 14,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ProjectList.spec.ts",
+      "status": "passed",
+      "tests": 5,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/PromptList.spec.ts",
+      "status": "passed",
+      "tests": 5,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ReportCreate.spec.ts",
+      "status": "passed",
+      "tests": 13,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ReportDetail.spec.ts",
+      "status": "passed",
+      "tests": 15,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ReportList.spec.ts",
+      "status": "passed",
+      "tests": 6,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ReviewCenter.spec.ts",
+      "status": "passed",
+      "tests": 10,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/ReviewLaunch.spec.ts",
+      "status": "passed",
+      "tests": 37,
+      "failed": []
+    },
+    {
+      "path": "frontend/src/views/__tests__/TaskDetail.spec.ts",
+      "status": "passed",
+      "tests": 20,
+      "failed": []
+    }
+  ]
+}

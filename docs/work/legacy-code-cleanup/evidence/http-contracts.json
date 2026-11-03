@@ -1,0 +1,702 @@
+[
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/AgentHealthController.java",
+    "method": "GET",
+    "path": "/api/v2/health",
+    "signature": "Map<String, Object> health()",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/AgentTaskV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/agent-tasks",
+    "signature": "ResponseEntity<AgentTaskDtos.Created> create( @Valid @RequestBody AgentTaskDtos.Create req, @RequestHeader(value = \"Idempotency-Key\", required = false) String idempotencyKey)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/AgentTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/agent-tasks/{id}/copy-input",
+    "signature": "AgentTaskDtos.CopyInput copyInput(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/AgentTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/agent-tasks/{id}/progress",
+    "signature": "AgentReadDtos.Progress progress(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/AgentTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/agent-tasks/{id}/tool-calls",
+    "signature": "PageResponse<AgentReadDtos.ToolCallSummary> toolCalls( @PathVariable String id, @RequestParam(required = false) Integer pageNum, @RequestParam(required = false) Integer pageSize)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/AgentTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/agent-tasks/{id}/tool-calls/{callId}",
+    "signature": "AgentReadDtos.ToolCallDetail toolCall(@PathVariable String id, @PathVariable String callId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/AgentTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/agent-tasks/{id}/result",
+    "signature": "AgentReadDtos.Result result(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/FeedbackV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/feedback/{subjectKind}/{subjectId}",
+    "signature": "FeedbackDtos.View get(@PathVariable String subjectKind, @PathVariable String subjectId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/FeedbackV2Controller.java",
+    "method": "PUT",
+    "path": "/api/v2/feedback/{subjectKind}/{subjectId}",
+    "signature": "FeedbackDtos.View save(@PathVariable String subjectKind, @PathVariable String subjectId, @Valid @RequestBody FeedbackDtos.Update request)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelCallV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/model-calls/{id}",
+    "signature": "TaskDtos.CallDetail detail(@PathVariable String id, @RequestParam(defaultValue = \"response\") String part)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelCallV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/model-calls/{id}/full",
+    "signature": "TaskDtos.CallDetailFull full(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/models",
+    "signature": "PageResponse<ModelDtos.View> list(@RequestParam(required = false) String q, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit, @RequestParam(required = false) Integer pageNum, @RequestParam(required = false) Integer pageSize)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/models/{id}",
+    "signature": "ModelDtos.View detail(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/models",
+    "signature": "ResponseEntity<ModelDtos.View> create(@Valid @RequestBody ModelDtos.Create req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+    "method": "PUT",
+    "path": "/api/v2/models/{id}",
+    "signature": "ModelDtos.View update(@PathVariable String id, @Valid @RequestBody ModelDtos.Update req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+    "method": "DELETE",
+    "path": "/api/v2/models/{id}",
+    "signature": "ResponseEntity<Void> delete(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/models/{id}/validate",
+    "signature": "ModelDtos.ValidationResult validate(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ModelV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/models/{id}/validate-agent",
+    "signature": "ModelDtos.ValidationResult validateAgent(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects",
+    "signature": "PageResponse<ProjectDtos.View> list(@RequestParam(required = false) String q, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit, @RequestParam(required = false) Integer pageNum, @RequestParam(required = false) Integer pageSize)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{id}",
+    "signature": "ProjectDtos.View detail(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/projects",
+    "signature": "ResponseEntity<ProjectDtos.View> create(@Valid @RequestBody ProjectDtos.Create req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+    "method": "PUT",
+    "path": "/api/v2/projects/{id}",
+    "signature": "ProjectDtos.View update(@PathVariable String id, @Valid @RequestBody ProjectDtos.Update req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ProjectV2Controller.java",
+    "method": "DELETE",
+    "path": "/api/v2/projects/{id}",
+    "signature": "ResponseEntity<Void> delete(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/prompts",
+    "signature": "PageResponse<PromptDtos.Summary> list(@RequestParam(required = false) String q, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit, @RequestParam(required = false) Integer pageNum, @RequestParam(required = false) Integer pageSize)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/prompts/{id}",
+    "signature": "PromptDtos.View detail(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/prompts",
+    "signature": "ResponseEntity<PromptDtos.View> create(@Valid @RequestBody PromptDtos.Create req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "PUT",
+    "path": "/api/v2/prompts/{id}",
+    "signature": "PromptDtos.View update(@PathVariable String id, @Valid @RequestBody PromptDtos.Update req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/prompts/{id}/versions",
+    "signature": "PromptDtos.View addVersion(@PathVariable String id, @Valid @RequestBody PromptDtos.VersionCreate req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/prompts/{id}/versions",
+    "signature": "List<PromptDtos.VersionView> versions(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/prompts/{id}/versions/diff",
+    "signature": "List<TextDiff.DiffLine> diff(@PathVariable String id, @RequestParam String fromVersionId, @RequestParam String toVersionId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/PromptV2Controller.java",
+    "method": "DELETE",
+    "path": "/api/v2/prompts/{id}",
+    "signature": "ResponseEntity<Void> delete(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/reports/candidates",
+    "signature": "PageResponse<ReportDtos.Candidate> candidates( @RequestParam(required = false) String projectId, @RequestParam(required = false) String taskId, @RequestParam(required = false) String kind, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/reports/inputs",
+    "signature": "ResponseEntity<ReportDtos.FrozenInput> freeze( @Valid @RequestBody ReportDtos.FreezeRequest request)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/reports/{id}/inputs",
+    "signature": "ReportDtos.FrozenInput inputs(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/reports",
+    "signature": "PageResponse<ReportDtos.ReportSummary> list( @RequestParam(required = false) String q, @RequestParam(required = false) String state, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit, @RequestParam(required = false) Integer pageNum, @RequestParam(required = false) Integer pageSize)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/reports/{id}/generate",
+    "signature": "ResponseEntity<ReportDtos.ReportDetail> generate( @PathVariable String id, @Valid @RequestBody ReportDtos.GenerateRequest request)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/reports/{id}",
+    "signature": "ReportDtos.ReportDetail detail(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/reports/{id}/sources/{ordinal}",
+    "signature": "ReportDtos.FrozenSource source(@PathVariable String id, @PathVariable int ordinal)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/reports/{id}/calls",
+    "signature": "List<ReportDtos.CallSummary> calls(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReportV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/reports/{id}/download",
+    "signature": "ResponseEntity<byte[]> download(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/branches",
+    "signature": "java.util.List<String> branches(@PathVariable String projectId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/head",
+    "signature": "java.util.Map<String, String> head(@PathVariable String projectId, @RequestParam String branch)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/commits",
+    "signature": "com.codereview.git.CommitPage commits(@PathVariable String projectId, @RequestParam String branch, @RequestParam(defaultValue = \"1\") int page, @RequestParam(defaultValue = \"30\") int perPage)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/commit",
+    "signature": "RepositorySnapshots.CommitView commit(@PathVariable String projectId, @RequestParam String sha)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/paths",
+    "signature": "RepositorySnapshots.PathList paths(@PathVariable String projectId, @RequestParam String sha)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/files",
+    "signature": "RepositorySnapshots.FileSnapshot file(@PathVariable String projectId, @RequestParam String sha, @RequestParam String path)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/files/range",
+    "signature": "RepositorySnapshots.RangeSnapshot range(@PathVariable String projectId, @RequestParam String sha, @RequestParam String path, @RequestParam int startLine, @RequestParam int endLine)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RepositoryV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/projects/{projectId}/diff",
+    "signature": "RepositorySnapshots.DiffSides diff(@PathVariable String projectId, @RequestParam String sha, @RequestParam String path)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/review-tasks",
+    "signature": "ResponseEntity<TaskDtos.View> create( @RequestHeader(value = \"Idempotency-Key\", required = false) String idempotencyKey, @Valid @RequestBody TaskDtos.Create req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks",
+    "signature": "PageResponse<TaskDtos.Summary> list(@RequestParam(required = false) String projectId, @RequestParam(required = false) String route, @RequestParam(required = false) String type, @RequestParam(required = false) String state, @RequestParam(required = false) String q, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit, @RequestParam(required = false) Integer pageNum, @RequestParam(required = false) Integer pageSize)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}",
+    "signature": "TaskDtos.View detail(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}/statistics",
+    "signature": "TaskDtos.Statistics statistics(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "POST",
+    "path": "/api/v2/review-tasks/{id}/cancel",
+    "signature": "TaskDtos.View cancel(@PathVariable String id, @Valid @RequestBody TaskDtos.Cancel req)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}/copy-input",
+    "signature": "TaskDtos.CopyInput copyInput(@PathVariable String id)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}/calls",
+    "signature": "PageResponse<TaskDtos.CallSummary> calls(@PathVariable String id, @RequestParam(required = false) String targetId, @RequestParam(required = false) String unitId, @RequestParam(required = false) String cursor, @RequestParam(required = false) Integer limit)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}/calls/{callId}",
+    "signature": "TaskDtos.CallDetailFull call(@PathVariable String id, @PathVariable String callId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}/targets/{targetId}/result",
+    "signature": "TaskDtos.ResultView result(@PathVariable String id, @PathVariable String targetId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}/targets/{targetId}/materials",
+    "signature": "java.util.List<TaskDtos.MaterialView> materials(@PathVariable String id, @PathVariable String targetId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/ReviewTaskV2Controller.java",
+    "method": "GET",
+    "path": "/api/v2/review-tasks/{id}/materials/{materialId}",
+    "signature": "TaskDtos.MaterialDetail material(@PathVariable String id, @PathVariable String materialId)",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/agent/api/RuntimeConfigController.java",
+    "method": "GET",
+    "path": "/api/v2/runtime-config",
+    "signature": "ResponseEntity<PublicConfig> get()",
+    "registration": "当前（受各控制器条件配置限制）"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/IssueMarkController.java",
+    "method": "POST",
+    "path": "/api/reviews/{recordId}/marks",
+    "signature": "Result<IssueMark> mark(@PathVariable Long recordId, @RequestBody IssueMarkReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/IssueMarkController.java",
+    "method": "DELETE",
+    "path": "/api/reviews/{recordId}/marks",
+    "signature": "Result<Void> unmark(@PathVariable Long recordId, @RequestParam String unitPath, @RequestParam Integer issueIndex)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/IssueMarkController.java",
+    "method": "GET",
+    "path": "/api/reviews/{recordId}/marks",
+    "signature": "Result<List<IssueMark>> list(@PathVariable Long recordId)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/IssueMarkController.java",
+    "method": "GET",
+    "path": "/api/projects/{projectId}/accuracy",
+    "signature": "Result<List<AccuracyStat>> accuracy(@PathVariable Long projectId)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ModelConfigController.java",
+    "method": "GET",
+    "path": "/api/models",
+    "signature": "Result<Page<ModelConfig>> list(@RequestParam(defaultValue = \"1\") long pageNum, @RequestParam(defaultValue = \"10\") long pageSize)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ModelConfigController.java",
+    "method": "POST",
+    "path": "/api/models",
+    "signature": "Result<ModelConfig> create(@RequestBody ModelConfigReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ModelConfigController.java",
+    "method": "PUT",
+    "path": "/api/models/{id}",
+    "signature": "Result<ModelConfig> update(@PathVariable Long id, @RequestBody ModelConfigReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ModelConfigController.java",
+    "method": "DELETE",
+    "path": "/api/models/{id}",
+    "signature": "Result<Void> delete(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ModelConfigController.java",
+    "method": "POST",
+    "path": "/api/models/{id}/verify",
+    "signature": "Result<ModelConfig> verify(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "POST",
+    "path": "/api/projects",
+    "signature": "Result<Project> create(@RequestBody ProjectCreateReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects",
+    "signature": "Result<Page<Project>> list(@RequestParam(defaultValue = \"1\") long pageNum, @RequestParam(defaultValue = \"10\") long pageSize)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}",
+    "signature": "Result<Project> detail(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/tree",
+    "signature": "Result<List<TreeNodeResp>> tree(@PathVariable Long id, @RequestParam String branch)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/branches",
+    "signature": "Result<List<String>> branches(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/commits",
+    "signature": "Result<List<CommitInfo>> commits(@PathVariable Long id, @RequestParam String branch)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/changed-files",
+    "signature": "Result<List<String>> changedFiles(@PathVariable Long id, @RequestParam String base, @RequestParam String head)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/commits/page",
+    "signature": "Result<CommitPage> commitsPage(@PathVariable Long id, @RequestParam String branch, @RequestParam(defaultValue = \"1\") int page, @RequestParam(defaultValue = \"50\") int pageSize)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/commits/{sha:[0-9a-fA-F]{7,40}}",
+    "signature": "Result<CommitDetail> commitDetail(@PathVariable Long id, @PathVariable String sha)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/commits/{sha:[0-9a-fA-F]{7,40}}/patch",
+    "signature": "Result<String> filePatch(@PathVariable Long id, @PathVariable String sha, @RequestParam String path)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/file",
+    "signature": "Result<FileContentResp> file(@PathVariable Long id, @RequestParam String ref, @RequestParam String path, @RequestParam(defaultValue = \"content\") String mode, @RequestParam(defaultValue = \"false\") boolean full)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "GET",
+    "path": "/api/projects/{id}/delete-impact",
+    "signature": "Result<DeleteImpactResp> deleteImpact(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ProjectController.java",
+    "method": "DELETE",
+    "path": "/api/projects/{id}",
+    "signature": "Result<Void> delete(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/PromptController.java",
+    "method": "POST",
+    "path": "/api/prompts",
+    "signature": "Result<Prompt> create(@RequestBody PromptCreateReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/PromptController.java",
+    "method": "GET",
+    "path": "/api/prompts",
+    "signature": "Result<Page<Prompt>> list(@RequestParam(defaultValue = \"1\") long pageNum, @RequestParam(defaultValue = \"10\") long pageSize, @RequestParam(required = false) String keyword)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/PromptController.java",
+    "method": "GET",
+    "path": "/api/prompts/{id}",
+    "signature": "Result<PromptDetailResp> detail(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/PromptController.java",
+    "method": "PUT",
+    "path": "/api/prompts/{id}",
+    "signature": "Result<Prompt> update(@PathVariable Long id, @RequestBody PromptUpdateReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/PromptController.java",
+    "method": "PUT",
+    "path": "/api/prompts/{id}/content",
+    "signature": "Result<PromptVersion> updateContent(@PathVariable Long id, @RequestBody PromptContentUpdateReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/PromptController.java",
+    "method": "DELETE",
+    "path": "/api/prompts/{id}",
+    "signature": "Result<Void> delete(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/PromptController.java",
+    "method": "GET",
+    "path": "/api/prompts/{id}/versions/diff",
+    "signature": "Result<List<TextDiff.DiffLine>> diff(@PathVariable Long id, @RequestParam Long from, @RequestParam Long to)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReportController.java",
+    "method": "POST",
+    "path": "/api/projects/{projectId}/reports",
+    "signature": "Result<Report> generate(@PathVariable Long projectId, @RequestBody ReportGenerateReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReportController.java",
+    "method": "GET",
+    "path": "/api/projects/{projectId}/reports",
+    "signature": "Result<Page<Report>> list(@PathVariable Long projectId, @RequestParam(defaultValue = \"1\") long pageNum, @RequestParam(defaultValue = \"10\") long pageSize)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReportController.java",
+    "method": "GET",
+    "path": "/api/reports/{id}",
+    "signature": "Result<Report> detail(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewController.java",
+    "method": "POST",
+    "path": "/api/projects/{projectId}/reviews/trigger",
+    "signature": "Result<ReviewRecord> trigger(@PathVariable Long projectId, @RequestBody ReviewTriggerReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewController.java",
+    "method": "POST",
+    "path": "/api/reviews/{id}/retry",
+    "signature": "Result<Void> retry(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewController.java",
+    "method": "GET",
+    "path": "/api/projects/{projectId}/reviews",
+    "signature": "Result<Page<ReviewRecordRow>> list(@PathVariable Long projectId, @RequestParam(defaultValue = \"1\") long pageNum, @RequestParam(defaultValue = \"10\") long pageSize, @RequestParam(required = false) Integer statusMin)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewController.java",
+    "method": "GET",
+    "path": "/api/reviews/{id}",
+    "signature": "Result<ReviewRecordResp> detail(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewStrategyController.java",
+    "method": "GET",
+    "path": "/api/strategies",
+    "signature": "Result<Page<StrategyResp>> list(@RequestParam(defaultValue = \"1\") long pageNum, @RequestParam(defaultValue = \"10\") long pageSize, @RequestParam(required = false) String keyword, @RequestParam(required = false) Integer analyzerType)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewStrategyController.java",
+    "method": "POST",
+    "path": "/api/strategies",
+    "signature": "Result<StrategyResp> create(@RequestBody StrategyReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewStrategyController.java",
+    "method": "PUT",
+    "path": "/api/strategies/{id}",
+    "signature": "Result<StrategyResp> update(@PathVariable Long id, @RequestBody StrategyReq req)",
+    "registration": "旧控制器，不在启动扫描范围"
+  },
+  {
+    "source": "backend/src/main/java/com/codereview/controller/ReviewStrategyController.java",
+    "method": "DELETE",
+    "path": "/api/strategies/{id}",
+    "signature": "Result<Void> delete(@PathVariable Long id)",
+    "registration": "旧控制器，不在启动扫描范围"
+  }
+]
