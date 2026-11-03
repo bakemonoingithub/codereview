@@ -1,12 +1,13 @@
 # LGC-04 交付记录
 
-日期：2026-11-03（Asia/Taipei）。LGC-02、LGC-03 为 `done`。本记录覆盖远程可执行的核对与检查。LGC-04 保持 `partial`，不因本文件存在而关闭。
+日期：2026-11-03（Asia/Taipei）。LGC-01–04 均为 `done`。本记录汇总前序远程工程检查、PR 合并及负责人独立验证。负责人在本会话确认现有库连接、业务服务启停、一次真实 Agent 分析和正式页面视觉验收均无问题，LGC-04 据此关闭。
 
 ## 1. 候选
 
-- 分支：`cursor/lgc-02-03-legacy-cleanup-cc85`。
+- 实现分支：`cursor/lgc-02-03-legacy-cleanup-cc85`；现已合并至 `dev`。
 - 清单基准：`9dc1ff7dd12292f2515890e11dd9ad22f97f30d9`。LGC-01 文档入库为 `08ec5be732217eb244ab7975183f0275c81eeaba`。
-- 实现提交：`db9f7c1`（前端入口与独占依赖）、`4a2de95`（后端旧实现与专属测试）。本记录是其后的文档提交。
+- 实现提交：`db9f7c1`（前端入口与独占依赖）、`4a2de95`（后端旧实现与专属测试）；`54b3dd41cb27e9b53a6747594e64f821fda257b8` 补充工程交付记录并移除未使用导入。
+- [PR #8](https://github.com/bakemonoingithub/codereview/pull/8) 已合并，合并提交为 `26e81c7647db3eb0b74aa5bf10d3cb7be7acd7e8`；本轮本地 `dev` 与该提交一致。
 - 被删除源码用「删除前提交 `08ec5be`＋原路径」定位。历史文档中的旧路径未批量改写。
 
 ## 2. 清单复核
@@ -27,7 +28,7 @@
 
 另外两条现行删除接口使用全限定 `@DeleteMapping`，不在上述 60 条快照里：`DELETE /api/v2/review-tasks/{id}`、`DELETE /api/v2/reports/{id}`。它们属于当前 v2，Postman 中的对应请求保留。
 
-没有启动应用做运行时路由表导出。`AgentOnlyStartupTest` 只验证缺少 agent 配置时启动失败，不枚举 URL。
+前序工程检查没有启动应用做运行时路由表导出。`AgentOnlyStartupTest` 只验证缺少 agent 配置时启动失败，不枚举 URL；随后负责人实际启动验证见第 7 节。
 
 ## 4. 测试变动
 
@@ -104,7 +105,7 @@
 | `ProjectDetailRetry.spec.ts` | 4 | 旧项目详情 |
 | `ProjectDetailStructure.spec.ts` | 14 | 旧项目详情 |
 
-## 5. 本次检查
+## 5. 前序远程工程检查
 
 环境：Linux；OpenJDK 21.0.12.1；Maven Wrapper，编译 `release 17`；Node 22.23.4；pnpm 10.33.4。测试子进程去掉模型凭据、远端仓库变量和可能注入参数的环境项，传入空 `deepseek.api-key`，不传 `probe.root` 或 `agent.live.cancel`。
 
@@ -165,12 +166,24 @@ pnpm exec vue-tsc --noEmit
 | 审查记录 `6055a32a-a065-4756-92a8-c6a874cd586b` | `POST /api/projects/{projectId}/reviews/trigger`；`POST /api/reviews/{id}/retry`；`GET /api/projects/{projectId}/reviews`；`GET /api/reviews/{id}` |
 | 审查策略 `238d2d7c-85fb-e84f-96cd-b68dad37dddc` | `GET /api/strategies`；`POST /api/strategies`；`PUT /api/strategies/{id}`；`DELETE /api/strategies/{id}` |
 
-## 7. 未验证，LGC-04 不关闭
+## 7. 负责人独立验证与关闭
 
-- 未连接现有数据库，未执行迁移或清理。
-- 未启动或停止业务服务，也没有运行时路由表导出。
-- 未调用真实模型。真实模型 token 消耗为 0。
-- 未做正式页面视觉验收，也未在真实浏览器复测旧地址。路由覆盖在 happy-dom。
-- 未执行 `deploy/scripts` 的离线组包、部署或发布。
-- 未合并 PR。
-- 7 项真实探针仍跳过。
+2026-11-03，负责人在本会话确认 PR #8 已合并，并已独立启动系统、执行一次真实 Agent 分析，明确现有库连接、业务服务启停、真实模型和页面视觉验收均可标记为没有问题。
+
+| 验证项 | 结果 | 依据 |
+| --- | --- | --- |
+| 现有数据库连接 | 通过 | 负责人实际启动并完成真实 Agent 分析，明确确认 |
+| 业务服务启停 | 通过 | 负责人明确确认 |
+| 真实模型与 Agent 分析 | 通过 | 负责人执行一次真实 Agent 分析并确认无问题 |
+| 正式页面视觉验收 | 通过 | 负责人明确确认 |
+| PR 合并 | 完成 | GitHub 合并状态及本地 `dev` 的 `26e81c7` 核对一致 |
+
+以上为负责人独立验收结论，本轮只记录结果，没有由本会话重新启动系统或发起模型调用。未提供任务 ID、模型名称、token 用量或页面截图，不补造这些数据；前序工程检查不调用模型的记录仍只适用于当时的执行范围。
+
+结合第 2–5 节的清单、接口、全量测试、类型检查及打包资源对照，LGC-04 由 `partial` 更新为 `done`。LGC-01–04 全部完成，无本工作包 `active`。
+
+## 8. 保留的验证边界
+
+本次关闭不新增离线组包、部署或发布记录，也不记录数据库迁移／清理已执行。未导出运行时完整路由表；旧地址的自动化覆盖仍为 happy-dom，负责人确认的页面视觉通过不另推定为逐项旧地址复测。7 项真实探针仍按原记录跳过，不因一次真实 Agent 分析改写其逐项结果。
+
+本轮开始时 `frontend/components.d.ts` 已有未提交修改，原样保留。本轮仅更新 LGC 文档及状态，未修改生产／测试代码，也未再次操作数据库、启停服务或调用模型。
