@@ -6,6 +6,8 @@
 
 已有成果为 [Gitea 1.16.1 基础插件 JSON](examples/gitea-1.16.1-basic.plugin.json)及其[使用说明](examples/README.md)，提交为 `ce8ae41`。样例仅完成离线核对，不代表现有系统已经能够导入、授权或执行插件。
 
+2026-11-03 补充材料：[设计讨论纪要](discussion-2026-11-03.md)、[前端工作量评估](frontend-workload-2026-11-03.md)、[Skill／插件分析 UX 示意](skill-analysis-prototype/README.md)。该 HTML 只表达流程与信息结构。正式 Vue／Ant Design 界面必须跟随主干现有 Agent 页面；不要把该 HTML 的样式、弹窗或抽屉抄进 `src/`。
+
 ## 1. 方向、建议与待确认事项
 
 下表区分负责人提出的方向与会话中的设计建议。本文落盘不等于其中全部建议已经批准，也不表示已授权业务代码、数据库、部署或外部系统操作。
