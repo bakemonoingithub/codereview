@@ -10,11 +10,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 按仓库 host 选实现（策略注册表）。
+ * 按仓库 host 选实现。
  *
- * <p>写法刻意与本仓已有的 {@code Analyzer} 注册表一致（{@code ReviewExecutor} 里
- * {@code Collectors.toMap(Analyzer::type, identity())} + 取不到就抛"不支持的类型"）：
- * 注入所有实现，按 host 取匹配的那个，**取不到就显式报错**。
+ * <p>注入全部 {@link GitHostClient}，按 host 取唯一匹配；没有匹配或重复声明都显式失败，
+ * 不默认落到 GitHub。
  *
  * <p>为什么不能"默认用 GitHub"：内网 Gitea 项目一旦被拿去查 {@code api.github.com}，
  * 表现是"仓库读不到/文件树为空"，而错误信息里没有任何线索指向 host —— 这正是 E1 被藏了很久的原因。

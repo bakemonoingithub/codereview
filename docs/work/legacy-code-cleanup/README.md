@@ -2,7 +2,7 @@
 
 ## 1. 目标、状态与依据
 
-日期：2026-11-03（Asia/Taipei）。本轮按负责人要求编制清理计划，并同步 [STATE](../../STATE.md) 与 [ROADMAP](../../ROADMAP.md)。实施分为 4 步。LGC-01 已固定清单与改造前基准，LGC-02 已关闭旧项目详情入口并删除其独占前端依赖。LGC-03、LGC-04 仍为 `todo`，无本工作包 `active`。
+日期：2026-11-03（Asia/Taipei）。本轮按负责人要求编制清理计划，并同步 [STATE](../../STATE.md) 与 [ROADMAP](../../ROADMAP.md)。实施分为 4 步。LGC-01 已固定清单与改造前基准，LGC-02 已关闭旧项目详情入口，LGC-03 已按清单删除后端旧实现及专属测试。LGC-04 仍为 `todo`，无本工作包 `active`。
 
 目标是清除已经退出产品运行路径的旧接口实现、专属页面、配套测试和失效配置引用，减少阅读、构建与维护负担。保留现行专项、Agent、反馈、报告、项目、模型、提示词和代码浏览能力，以及它们实际复用的公共代码。完成依据是依赖清楚、现行行为不变及必要检查通过，不以删除数量、测试减少比例或代码量作为目标。
 
@@ -62,7 +62,7 @@
 | --- | --- | --- | --- | --- |
 | LGC-01 | 固定清单、保留项与改造前基准 | done | - | 逐文件处置清单、当前有效接口清单、测试归属和可比较的改造前检查结果 |
 | LGC-02 | 关闭前端残留入口并清理独占页面依赖 | done | LGC-01 | 旧项目地址转到现有项目列表，现行入口不再依赖旧 API，相关前端检查通过 |
-| LGC-03 | 清理后端旧实现与专属测试，处理外围引用 | todo | LGC-02 | 按清单删除独占实现及对应测试，保留共用能力与历史迁移，后端相关检查通过 |
+| LGC-03 | 清理后端旧实现与专属测试，处理外围引用 | done | LGC-02 | 按清单删除独占实现及对应测试，保留共用能力与历史迁移，后端相关检查通过 |
 | LGC-04 | 全量验证、交付记录与状态关闭 | todo | LGC-03 | 现行功能保护检查、全量回归、打包与引用核对完成，交付版本固定并同步状态 |
 
 顺序为 `LGC-01 → LGC-02 → LGC-03 → LGC-04`。前端与后端分成独立可检查批次，避免一个批次同时改变入口、删除实现并失去问题定位依据。每步内部的清单、修改和必要检查合并处理，不再拆成大量小里程碑。
@@ -187,4 +187,32 @@ pnpm exec vite build --outDir /tmp/lgc02-frontend-dist --emptyOutDir
 
 基线为 73 个文件、658 项。本步去掉 23 个专属测试文件、226 项，新增 4 项旧地址路由覆盖。构建没有写入 `backend/src/main/resources/static`。
 
-未连接数据库、未启停业务服务、未调用模型、未修改 Postman，也未做正式页面视觉验收；本步没有新增布局。地址直达、hash 与返回由 happy-dom 覆盖，未在真实浏览器复测。后端旧实现仍在，归 LGC-03。LGC-02 done，LGC-03、LGC-04 todo，无本工作包 active。
+未连接数据库、未启停业务服务、未调用模型、未修改 Postman，也未做正式页面视觉验收；本步没有新增布局。地址直达、hash 与返回由 happy-dom 覆盖，未在真实浏览器复测。LGC-02 done；随后 LGC-03 的实施见第 9 节。
+
+## 9. LGC-03 完成记录
+
+2026-11-03：在 LGC-02 之后按[清单](inventory.md)清理后端。先删除 7 个旧控制器并完成主代码与测试编译，再删除其余独占生产代码和专属测试。没有按目录递归删除。现行 `agent`、`git`、启动类，以及仍被使用的异常、文件过滤、文本差异、追踪和 Web／Jackson 配置保留。
+
+删除范围：后端生产 96 份，专属测试 38 个套件、221 项。其中包括旧分析器、执行器、材料实现、DTO、实体、Mapper、旧配置与用户辅助对象，以及 `AiGatewayProbe`、`JavaParserProbe`、`StructureLlmProbe` 和它们的测试。这三份探针只服务已退出的实验入口，清单未保留独立用途。
+
+保留：7 份旧 SQL、`MigrationContractTest`、`scripts/migration/LegacyConfigMigration.java` 与 `migrate-legacy-config.ps1`。现行连通探针 `HttpModelProbe` 仍由模型验证按配置超时调用，测试不访问真实模型。Maven 依赖未删未升级；Flyway、MyBatis、JavaParser、Jackson 继续服务现行迁移、持久化和专项材料解析。
+
+注释只改了仍把已退出机制写成当前行为的说明：`V2ExceptionHandler`、`ErrorCode`、`GitHostClientRegistry`、`JavaStructureParser`，以及 `pom.xml` 中 JavaParser 的用途说明。提示词资源、请求／工具基线和业务校验未改。
+
+检查环境：Linux；OpenJDK 21.0.12.1；Maven Wrapper，编译目标 release 17。测试子进程去掉模型凭据、远端仓库变量和可能注入参数的环境项，传入空 `deepseek.api-key`，不传 `probe.root` 或 `agent.live.cancel`。在 `backend` 执行：
+
+```bash
+bash ./mvnw -q -DskipTests -Ddeepseek.api-key= -Dbackend.buildDirectory=/tmp/lgc03-batch1 test-compile
+bash ./mvnw -Ddeepseek.api-key= -DargLine=-Duser.home=/tmp/lgc-test-home -Dbackend.buildDirectory=/tmp/lgc03-backend-build test
+```
+
+第一行在只删除 7 个控制器后执行，退出码 0。第二行在其余独占代码和专属测试删除后执行。本机全局 Git 配置强制 SSH 提交签名，JGit 无法完成该签名，首次全量因此在 `GiteaGitMirrorTest` 出现 3 个错误；测试期望未改。复跑时仅为测试进程指定无该配置的 `user.home`，3 项通过。
+
+| 检查 | 结果 | 实际范围 | 退出码 |
+| --- | --- | --- | --- |
+| 控制器删除后的测试编译 | 通过 | 主代码与当时仍在的测试源码 | 0 |
+| 后端测试（隔离签名配置后） | 通过 | 104 个套件、804 项，失败 0、异常 0、跳过 7 | 0 |
+
+跳过 7 项为 `GiteaClientLiveTest` 5 项和 `AgentCancellationLiveTest` 2 项，分别缺少远端仓库变量和显式真实取消开关。已删除探针的 4 项跳过随测试类消失。基线为 142 个套件、1025 项、跳过 11 项。
+
+未连接现有数据库、未启停业务服务、未调用模型、未修改 Postman，也未执行打包与交付记录。LGC-03 done，LGC-04 todo，无本工作包 active。下一步才做最终全量对照、打包产物核对和 `delivery.md`。
