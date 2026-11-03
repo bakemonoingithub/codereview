@@ -138,6 +138,7 @@ public class GitMirror {
         if (dirReady(dir)) {
             return false;
         }
+        clearIncompleteMirror(dir);
         try {
             java.nio.file.Files.createDirectories(dir.toPath());
         } catch (IOException e) {
@@ -161,6 +162,42 @@ public class GitMirror {
         } catch (Exception e) {
             throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(),
                     "本地镜像克隆失败（" + cloneUrl + "）：" + message(e));
+        }
+    }
+
+    /** 调用方持有镜像写锁；只清理当前镜像，不跟随链接。 */
+    private void clearIncompleteMirror(File dir) {
+        java.nio.file.Path root = workDir.toPath().toAbsolutePath().normalize();
+        java.nio.file.Path target = dir.toPath().toAbsolutePath().normalize();
+        try {
+            if (!root.equals(target.getParent()) || java.nio.file.Files.isSymbolicLink(target)) {
+                throw new IOException("镜像目录不在允许清理的范围内");
+            }
+            if (!java.nio.file.Files.exists(target, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                return;
+            }
+            java.nio.file.Files.walkFileTree(target, new java.nio.file.SimpleFileVisitor<>() {
+                @Override
+                public java.nio.file.FileVisitResult visitFile(java.nio.file.Path file,
+                        java.nio.file.attribute.BasicFileAttributes attributes) throws IOException {
+                    java.nio.file.Files.delete(file);
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public java.nio.file.FileVisitResult postVisitDirectory(java.nio.file.Path directory,
+                        IOException error) throws IOException {
+                    if (error != null) {
+                        throw error;
+                    }
+                    java.nio.file.Files.delete(directory);
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+            });
+            LOG.info("已清理未初始化的镜像目录: {}", target);
+        } catch (IOException e) {
+            throw new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(),
+                    "无法清理未初始化的镜像目录（" + dir + "）：" + message(e));
         }
     }
 

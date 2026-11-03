@@ -49,6 +49,45 @@ class GitMirrorTest {
         assertTrue(output.trim().equals("commit"), output);
     }
 
+    @Test
+    void incompleteNonEmptyMirrorIsRebuilt() throws Exception {
+        Path source = temp.resolve("source");
+        String sha;
+        try (org.eclipse.jgit.api.Git git = org.eclipse.jgit.api.Git.init().setDirectory(source.toFile()).call()) {
+            Files.writeString(source.resolve("sample.txt"), "needle");
+            git.add().addFilepattern(".").call();
+            sha = git.commit().setMessage("initial").setAuthor("test", "test@example.com")
+                    .setCommitter("test", "test@example.com").call().name();
+        }
+        GitMirror mirror = new GitMirror(temp.resolve("mirrors").toFile(), 120);
+        String url = source.toUri().toString();
+        Path dir = mirror.mirrorDir(url).toPath();
+        Files.createDirectories(dir.resolve("objects"));
+        Files.createDirectories(dir.resolve("refs"));
+        Path leftover = Files.writeString(dir.resolve("objects/leftover"), "incomplete");
+        mirror.using(url, null, 1, List.of(sha), null, d -> d);
+        assertTrue(mirror.hasObject(dir.toFile(), sha));
+        org.junit.jupiter.api.Assertions.assertFalse(Files.exists(leftover));
+        Path marker = Files.writeString(dir.resolve("keep"), "valid mirror");
+        mirror.using(url, null, 1, List.of(sha), null, d -> d);
+        assertTrue(Files.exists(marker));
+    }
+
+    @Test
+    void failedReclonePreservesOtherMirrorsAndReportsCloneFailure() throws Exception {
+        GitMirror mirror = new GitMirror(temp.resolve("mirrors").toFile(), 120);
+        String url = temp.resolve("missing-source").toUri().toString();
+        Path dir = mirror.mirrorDir(url).toPath();
+        Files.createDirectories(dir.resolve("objects"));
+        Path other = Files.createDirectories(temp.resolve("mirrors/other"));
+        Path marker = Files.writeString(other.resolve("keep"), "untouched");
+        var error = org.junit.jupiter.api.Assertions.assertThrows(
+                com.codereview.common.BusinessException.class,
+                () -> mirror.using(url, null, 1, List.of(), null, d -> d));
+        org.junit.jupiter.api.Assertions.assertFalse(error.getMessage().contains("not an empty directory"));
+        assertTrue(Files.exists(marker));
+    }
+
     private static boolean gitAvailable() {
         try {
             Process process = new ProcessBuilder("git", "--version").start();
