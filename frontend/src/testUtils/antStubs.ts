@@ -3,7 +3,7 @@ import { defineComponent, h, type VNodeChild } from 'vue'
 /**
  * 组件测试用的 AntDV stub：**保留插槽渲染**。
  *
- * `@vue/test-utils` 的 `shallow: true` 不渲染插槽内容，于是按钮文案、SplitPane 里的
+ * `@vue/test-utils` 的 `shallow: true` 不渲染插槽内容，于是按钮文案、具名插槽里的
  * 结果区全都取不到，也没法断言 disabled。这里用带插槽的轻量 stub 顶掉 AntDV，
  * 让"置灰"这种 DOM 级契约能被真正断言。
  */

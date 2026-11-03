@@ -13,7 +13,7 @@ import {
 
 const APP_TITLE = runtimeConfig().title
 
-/** 侧边栏菜单项：由路由表生成，`meta.hideMenu` 的项不出现（如项目详情） */
+/** 侧边栏菜单项：由路由表生成，`meta.hideMenu` 的项不出现（如任务详情、报告详情） */
 export interface MenuItem {
   path: string
   title: string
@@ -87,10 +87,10 @@ const appRoutes: RouteRecordRaw[] = [
     meta: { title: '项目管理', icon: FolderOutlined, group: 'manage' }
   },
   {
+    // 旧收藏地址不再加载已退出的项目详情，也不把数字 ID 解释成现行项目 ID。
     path: 'projects/:id',
-    name: 'project-detail',
-    component: () => import('@/views/ProjectDetail.vue'),
-    meta: { title: '项目详情', hideMenu: true }
+    redirect: '/projects',
+    meta: { hideMenu: true }
   },
   {
     path: 'models',
@@ -136,8 +136,8 @@ export const menuGroups: Array<{ key: MenuItem['group']; label: string; items: M
 /**
  * 当前路径对应哪个菜单项。
  *
- * 详情页 `/projects/123` 也要归到 `/projects` —— 原先 BasicLayout 直接用
- * `[route.path]` 比对，进详情页后**侧边栏没有任何高亮**，用户失去方位感。
+ * 子路径归到对应菜单，例如 `/reviews/123`、`/reports/123`。
+ * `/projects/123` 也会归到 `/projects`；该地址已重定向，不会停在旧详情页。
  * 抽成纯函数是为了能直接单测（不必挂载整棵树）。
  */
 export function activeMenuKey(path: string, items: MenuItem[] = menuItems): string {

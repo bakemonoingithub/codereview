@@ -15,10 +15,9 @@ import DOMPurify from 'dompurify'
  * 渲染器本身在 `utils/markdown.ts`（按需注册语言、接管代码块以做语法高亮）；
  * 这里只负责净化与展示。
  *
- * **`utils/markdown` 改成动态 import**：它静态引入 highlight.js 核心 + 35 种语言
- * （约 200 kB，gzip 60 kB），而它只被这里用到 —— 静态引入会把这份体积塞进
- * `ProjectDetail`（审查详情页）的首屏 chunk，哪怕用户根本没打开报告。改成打开时才拉，
- * 首屏只多一次按需请求。
+ * **`utils/markdown` 使用动态 import**：它引入 highlight.js 核心和多种语言。
+ * 当前由任务详情、Agent 详情和报告阅读按需渲染；打开正文时才加载，
+ * 未渲染 Markdown 的页面不支付这份体积。
  *
  * 渲染结果放 `ref` 而不是 computed：模板里调用会在**每次渲染**重跑
  * marked + highlight.js + DOMPurify，长报告/大文本上很浪费。

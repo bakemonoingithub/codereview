@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-03 LGC-02 完成：`/projects/:id` 重定向到 `/projects`，路径数字不解释为现行项目 ID。按[清单](work/legacy-code-cleanup/inventory.md)删除前端独占源码 26 份、专属测试 23 份；保留 `api/v2.ts` 与现行页面仍用的公共组件。`components.d.ts` 只删除已删组件声明，生成器补写的两条既有全局组件已还原。移除仅旧图表和分割面板使用的 `echarts`、`splitpanes`。前端 51 个文件、436 项通过；类型检查仅剩 `ProjectList.vue` TS6133，`ProjectDetail` TS2769 随文件删除消失；隔离构建通过，未写入后端静态目录。未连接数据库、未启停服务、未调用模型、未修改 Postman，未做正式视觉验收。LGC-02 done，LGC-03、LGC-04 todo，无本工作包 active；下一步是 LGC-03。详见[LGC-02 记录](work/legacy-code-cleanup/README.md#8-lgc-02-完成记录)。
+
 2026-11-03 LGC-01 完成：以 `dev` 提交 `9dc1ff7dd12292f2515890e11dd9ad22f97f30d9` 固定[逐文件处置与接口清单](work/legacy-code-cleanup/inventory.md)及[改造前基准](work/legacy-code-cleanup/baseline.md)。启动时工作区干净；后端候选生产 96 份、专属测试 38 套件／221 项，前端候选源码 26 份、专属测试 23 文件／226 项。保留现行共用代码、7 份旧 SQL 及迁移契约测试、独立配置迁移工具和历史证据；60 个现行自定义接口及 40 个未注册旧接口已固定快照。隔离后端全量 142 套件／1025 项通过（11 项真实探针跳过），前端 73 文件／658 项及构建通过；类型检查在未改造源码复现 ProjectDetail TS2769 和 ProjectList TS6133 两处既有诊断。未删除或修改生产／测试／构建配置，未连接现有数据库、启停业务服务、调用模型、修改 Postman 或提交／发布。LGC-01 done，LGC-02–04 todo，无本工作包 active；下一步仅在负责人要求后开始 LGC-02，其他工作包状态不变。
 
 2026-11-03 LGC 旧实现清理规划完成：已建立[清理计划](work/legacy-code-cleanup/README.md)，按「清单与基准 → 前端残留入口 → 后端旧实现及专属测试 → 全量验证与交付」安排 4 步。候选约 96 份生产 Java 文件；历史旧测试统计含保留迁移测试，不作为删除指标。默认保留当前共用代码、旧迁移 SQL 及契约测试、独立配置迁移工具、历史证据和 Postman 停用目录；旧 `/projects/:id` 计划导向现有项目列表。LGC-01–04 均 todo，无本工作包 active；下一步仅在负责人要求实施后从 LGC-01 复核清单和基准开始。本轮只编制文档，未删除源码、修改业务或测试代码、运行工程测试、操作数据库／服务、调用模型或修改 Postman；已有 `frontend/components.d.ts` 修改保留，其他工作包状态不变。
