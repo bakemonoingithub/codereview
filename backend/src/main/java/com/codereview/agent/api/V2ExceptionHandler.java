@@ -19,8 +19,8 @@ import java.util.Map;
 /**
  * v2 统一错误处理。
  *
- * <p>只作用于 {@code com.codereview.agent.api} 下的控制器，旧接口继续走
- * {@code GlobalExceptionHandler}。顺序调高，避免旧兜底把 v2 异常也包成 200 信封。
+ * <p>只作用于 {@code com.codereview.agent.api} 下的控制器，把业务异常和参数错误
+ * 写成 v2 错误体。启动扫描不包含已退出的旧控制器，这里也不再另挂一套全局兜底。
  */
 @RestControllerAdvice(basePackages = "com.codereview.agent.api")
 @Order(Ordered.HIGHEST_PRECEDENCE)

@@ -79,7 +79,7 @@ const route = useRoute()
 /** 侧栏是否收起（由 Sider 的折叠按钮或 `breakpoint` 的响应式折叠驱动） */
 const collapsed = ref(false)
 
-/** 菜单高亮：详情页 /projects/123 也保持在「项目」上（见 activeMenuKey） */
+/** 菜单高亮：子路径归到上一级菜单（见 activeMenuKey）。旧 /projects/:id 会先重定向到 /projects。 */
 const selectedKeys = computed(() => {
   const key = activeMenuKey(route.path)
   return key ? [key] : []

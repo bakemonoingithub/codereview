@@ -5,8 +5,7 @@ import org.springframework.http.HttpStatus;
 /**
  * v2 错误码。HTTP 状态表达失败语义，`code` 给前端稳定判断，`retryable` 由服务端判定。
  *
- * <p>与旧接口的四位数字码不是一套：旧接口仍用 200 信封与 1xxx–7xxx，
- * v2 不解释旧码，旧页面也不读 v2 码。
+ * <p>现行接口使用 HTTP 状态和稳定字符串码，不使用已退出的数字信封码。
  */
 public enum ErrorCode {
 

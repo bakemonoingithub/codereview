@@ -46,7 +46,7 @@ import static com.codereview.agent.specialist.material.JavaSourceStructure.TypeR
  *
  * <p>只抽取后续材料准备、声明定位、耦合指标和拆分要用的声明事实：
  * 包、导入、类型、继承、字段、方法签名、初始化块、注释与原始行号。
- * 不复用旧 {@code StructureExtractor} 的“只取顶层类、字段/方法扁平列表”口径，
+ * 不沿用已退出的 {@code StructureExtractor} 口径（只取顶层类，并把字段和方法摊平），
  * 因为那个口径无法核对嵌套类型和成员覆盖。
  */
 @Component
