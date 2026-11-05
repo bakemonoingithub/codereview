@@ -701,7 +701,10 @@ async function submit() {
     }
   }
   try {
-    const created = await agentTasksApi.create(body, crypto.randomUUID())
+    const key = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `task-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const created = await agentTasksApi.create(body, key)
     message.success('Agent 调查已受理')
     router.push({ path: `/reviews/${created.id}`, query: { from: '/agents/new' } })
   } catch (e) {

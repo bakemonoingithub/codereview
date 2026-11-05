@@ -184,6 +184,24 @@ describe('Agent 发起表单', () => {
     wrapper.unmount()
   })
 
+  it('HTTP 环境缺少 randomUUID 时仍能提交任务', async () => {
+    const wrapper = await start()
+    const s = state(wrapper)
+    s.form.paths = ['src/A.java']
+    s.form.modelConfigId = 'm1'
+    s.form.requirements = '检查调用链'
+    vi.stubGlobal('crypto', { randomUUID: undefined })
+    try {
+      await s.submit()
+      expect(agentTasksApi.create).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(agentTasksApi.create).mock.calls[0][1]).toMatch(/^task-\d+-[0-9a-f]+$/)
+      expect(context.push).toHaveBeenCalledWith({ path: '/reviews/task-1', query: { from: '/agents/new' } })
+    } finally {
+      vi.unstubAllGlobals()
+      wrapper.unmount()
+    }
+  })
+
   it('提交范围按选择顺序保留，且不使用文件观察版本', async () => {
     const wrapper = await start()
     const s = state(wrapper)
