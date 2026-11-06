@@ -37,7 +37,7 @@ class PromptTemplateRegistryTest {
             assertTrue(schema.body().length() > 20, "协议正文不应为空");
             assertEquals(instruction.body(), registry.require("instruction." + purpose.wireName()).body());
         }
-        assertEquals(8, PromptPurpose.values().length);
+        assertEquals(9, PromptPurpose.values().length);
         assertTrue(registry.ids().contains("protocol.suffix"));
         assertTrue(registry.ids().contains("system.SPECIALIST"));
         assertTrue(registry.ids().contains("agent.TOOL_USAGE"));

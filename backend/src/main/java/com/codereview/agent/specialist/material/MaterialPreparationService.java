@@ -55,8 +55,11 @@ public class MaterialPreparationService {
     public PreparedTarget prepare(PrepareCommand command) {
         PrepareCommand normalized = validate(command);
         try {
-            return "DIFF".equals(normalized.sourceKind())
-                    ? prepareDiff(normalized) : prepareFile(normalized);
+            return switch (normalized.sourceKind()) {
+                case "DIFF" -> prepareDiff(normalized);
+                case "PR" -> preparePullRequest(normalized);
+                default -> prepareFile(normalized);
+            };
         } catch (ApiException failure) {
             return PreparedTarget.failure(normalized, failure.errorCode().code(), failure.getMessage());
         }
@@ -75,12 +78,21 @@ public class MaterialPreparationService {
                 structure));
         return new PreparedTarget(command.projectId(), command.specialistType(),
                 command.sourceKind(), command.branch(), snapshot.path(), null, snapshot.sha(),
-                null, command.note(), false, false, List.of(material), List.of(), gaps, null, null);
+                null, command.note(), false, false, List.of(material), List.of(), gaps, null, null,
+                command.pullRequest());
+    }
+
+    private PreparedTarget preparePullRequest(PrepareCommand command) {
+        return finishDiff(command, repository.diffRange(
+                command.projectId(), command.baseSha(), command.headSha(), command.path()));
     }
 
     private PreparedTarget prepareDiff(PrepareCommand command) {
-        RepositorySnapshots.DiffSides sides = repository.diff(
-                command.projectId(), command.headSha(), command.path());
+        return finishDiff(command, repository.diff(
+                command.projectId(), command.headSha(), command.path()));
+    }
+
+    private PreparedTarget finishDiff(PrepareCommand command, RepositorySnapshots.DiffSides sides) {
         if (sides.binary()) {
             throw new ApiException(ErrorCode.FILE_NOT_READABLE,
                     "二进制文件不可作为审查材料：" + sides.path(), Map.of("reason", "BINARY"));
@@ -115,16 +127,20 @@ public class MaterialPreparationService {
 
         if (materials.isEmpty()) {
             throw new ApiException(ErrorCode.FILE_NOT_READABLE,
-                    "提交差异的两侧都没有可读正文：" + sides.path(),
+                    "差异的两侧都没有可读正文：" + sides.path(),
                     Map.of("before", sides.before().status(), "after", sides.after().status()));
         }
         for (Material material : materials) {
             addCoverageGap(material.path(), material.structure(), gaps);
         }
+        if (command.pullRequest() != null && command.pullRequest().coverageNote() != null
+                && !command.pullRequest().coverageNote().isBlank()) {
+            gaps.add(new Gap("UNCOVERED_SCOPE", sides.path(), command.pullRequest().coverageNote()));
+        }
         return new PreparedTarget(command.projectId(), command.specialistType(),
                 command.sourceKind(), command.branch(), sides.path(), sides.oldPath(),
                 sides.headSha(), sides.baseSha(), command.note(), added, removed,
-                List.copyOf(materials), List.of(), gaps, null, null);
+                List.copyOf(materials), List.of(), gaps, null, null, command.pullRequest());
     }
 
     private Material diffMaterial(PrepareCommand command, String path, String sha, Side side,
@@ -205,8 +221,8 @@ public class MaterialPreparationService {
         }
         String kind = command.sourceKind() == null
                 ? "" : command.sourceKind().trim().toUpperCase(Locale.ROOT);
-        if (!"FILES".equals(kind) && !"DIFF".equals(kind)) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "sourceKind 只能是 FILES 或 DIFF",
+        if (!"FILES".equals(kind) && !"DIFF".equals(kind) && !"PR".equals(kind)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "sourceKind 只能是 FILES、DIFF 或 PR",
                     Map.of("sourceKind", command.sourceKind()));
         }
         String path = RepositoryPaths.requireSafePath(command.path());
@@ -218,15 +234,18 @@ public class MaterialPreparationService {
         if ("FILES".equals(kind) && baseSha != null) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "文件目标不应携带 baseSha");
         }
-        if ("DIFF".equals(kind) && baseSha != null && baseSha.equals(headSha)) {
+        if (("DIFF".equals(kind) || "PR".equals(kind)) && baseSha != null && baseSha.equals(headSha)) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "比较基线与目标提交不能相同");
+        }
+        if ("PR".equals(kind) && baseSha == null) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "PR 材料缺少共同祖先");
         }
         String branch = command.branch() == null || command.branch().isBlank()
                 ? null : command.branch().trim();
         String note = command.note() == null || command.note().isBlank()
                 ? null : command.note().trim();
         return new PrepareCommand(command.projectId(), type, kind, branch, path, oldPath, note,
-                headSha, baseSha);
+                headSha, baseSha, command.pullRequest());
     }
 
 }

@@ -100,6 +100,24 @@ class SpecialistResultValidatorTest {
     }
 
     @Test
+    void pullRequestIssueRequiresChangeRelation() {
+        SpecialistMaterials.Material after = material("after", "src/Order.java",
+                SpecialistMaterials.Side.AFTER, SpecialistMaterials.Role.TARGET, 1, 20);
+        SpecialistResults.Result missing = parser.parse("""
+                {"summary":"x","issues":[{"category":"RULE","severity":"MEDIUM","title":"t",
+                "locations":[{"materialId":"after","startLine":2,"endLine":3}],
+                "reason":"r","suggestion":"s","evidence":[],"changeRelation":null}],
+                "limitations":[]}
+                """, "ISSUE");
+        SpecialistResultValidator.ValidationContext context = new SpecialistResultValidator.ValidationContext(
+                "ISSUE", "PR", SHA, BASE, "src/Order.java", null, false, false, List.of(after), Set.of());
+
+        assertEquals("MISSING_FIELD", code(assertThrows(ApiException.class,
+                () -> validator.validate(missing, context))));
+        assertEquals(1, validator.validate(diffIssue("after"), context).resolvedLocations().size());
+    }
+
+    @Test
     void fileIssueMustNotCarryChangeRelation() {
         SpecialistResults.Result result = parser.parse("""
                 {"summary":"x","issues":[{"category":"RULE","severity":"MEDIUM","title":"t",

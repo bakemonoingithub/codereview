@@ -38,13 +38,24 @@ public final class TaskDtos {
         }
     }
 
-    /** FILES 需要 branch；DIFF 需要完整 commitSha，baseSha 可空表示第一父提交。 */
+    /**
+     * FILES 需要 branch 与 observedSha。DIFF 需要完整 commitSha，baseSha 可空表示第一父提交。
+     * PR 需要 pullNumber，以及用户确认过的 sourceHead、targetHead 和 mergeBase。
+     */
     public record Source(
             @NotBlank @Size(max = 10) String kind,
             @Size(max = 200) String branch,
             @Size(max = 40) String observedSha,
             @Size(max = 40) String commitSha,
-            @Size(max = 40) String baseSha) {
+            @Size(max = 40) String baseSha,
+            Long pullNumber,
+            @Size(max = 40) String sourceHead,
+            @Size(max = 40) String targetHead,
+            @Size(max = 40) String mergeBase) {
+
+        public Source(String kind, String branch, String observedSha, String commitSha, String baseSha) {
+            this(kind, branch, observedSha, commitSha, baseSha, null, null, null, null);
+        }
     }
 
     public record Target(
@@ -70,7 +81,9 @@ public final class TaskDtos {
                        String stopReason, String sourceKind, String branch, String headSha, String baseSha,
                        boolean smartSplit, int revision, LocalDateTime createdAt, LocalDateTime updatedAt,
                        LocalDateTime startedAt, LocalDateTime finishedAt, LocalDateTime deadlineAt,
-                       LocalDateTime cancelRequestedAt, List<TargetView> targets, ConfigView config) {
+                       LocalDateTime cancelRequestedAt, List<TargetView> targets, ConfigView config,
+                       Long pullNumber, String sourceBranch, String targetBranch, String sourceHead,
+                       String targetHead, String mergeBase) {
     }
 
     public record Summary(String id, String name, String projectId, String route, String specialistType, String state,
@@ -83,7 +96,7 @@ public final class TaskDtos {
     public record CopyInput(String projectId, String route, String specialistType, String sourceKind,
                             String branch, String commitSha, String baseSha, List<TargetCopy> targets,
                             String modelConfigId, String promptId, String promptVersionId, boolean smartSplit,
-                            boolean reobserveHead, String name) {
+                            boolean reobserveHead, String name, Long pullNumber) {
     }
 
     public record TargetCopy(String path, String oldPath, String note) {

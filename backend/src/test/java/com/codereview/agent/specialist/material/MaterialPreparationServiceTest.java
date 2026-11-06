@@ -241,6 +241,29 @@ class MaterialPreparationServiceTest {
     }
 
     @Test
+    void pullRequestUsesTheFrozenRangeAndRecordsUncoveredScope() {
+        when(repository.diffRange(PROJECT, BASE, HEAD, "src/A.java")).thenReturn(new RepositorySnapshots.DiffSides(
+                HEAD, BASE, "src/A.java", null, "modified", null,
+                RepositorySnapshots.Side.present(CODE), RepositorySnapshots.Side.present(CODE)));
+
+        SpecialistMaterials.PreparedTarget target = service.prepare(new SpecialistMaterials.PrepareCommand(
+                PROJECT, SpecialistTypes.ISSUE, "PR", "dev", "src/A.java", null, "说明", HEAD, BASE,
+                new SpecialistMaterials.PullRequestContext(12, "feature", "dev",
+                        "dddddddddddddddddddddddddddddddddddddddd", "另有未选择的文本文件。")));
+
+        assertFalse(target.failed());
+        var prompt = new com.codereview.agent.specialist.protocol.SpecialistPromptBuilder()
+                .build(target, null, null, null);
+        assertEquals(com.codereview.agent.prompt.PromptPurpose.ISSUE_PR, prompt.purpose());
+        assertEquals(12, prompt.pullRequest().number());
+        assertEquals(BASE, target.baseSha());
+        assertEquals(HEAD, target.targets().get(0).sha());
+        assertTrue(target.gaps().stream().anyMatch(gap -> gap.code().equals("UNCOVERED_SCOPE")));
+        verify(repository).diffRange(PROJECT, BASE, HEAD, "src/A.java");
+        verify(repository, never()).diff(any(), any(), any());
+    }
+
+    @Test
     void duplicatePreparationReusesStoredMaterialId() {
         when(repository.readFile(PROJECT, HEAD, "src/A.java"))
                 .thenReturn(new RepositorySnapshots.FileSnapshot(HEAD, "src/A.java", CODE,

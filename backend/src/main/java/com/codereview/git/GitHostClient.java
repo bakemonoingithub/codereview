@@ -1,5 +1,8 @@
 package com.codereview.git;
 
+import com.codereview.common.BusinessException;
+import com.codereview.common.ResultCode;
+
 import java.util.List;
 import java.util.Set;
 
@@ -79,4 +82,37 @@ public interface GitHostClient {
      * 这是「审 diff」的数据来源；{@code patch} 可能为空（二进制、过大，或宿主不返回）。
      */
     CommitDetail commitDetail(String token, Integer credentialType, GitRepoRef repoRef, String sha);
+
+    /**
+     * 未关闭或已关闭的 PR 列表。{@code state} 为 open、closed 或 all；
+     * {@code targetBranch} 由支持的宿主在服务端过滤，不支持时由调用方保留分页信号。
+     */
+    default PullRequests.Page pullRequests(String token, Integer credentialType, GitRepoRef repoRef,
+                                           String state, String targetBranch, int page, int perPage) {
+        throw unsupported("PR 列表");
+    }
+
+    /** 单个 PR。编号是宿主的 PR 序号，不是内部 id。 */
+    default PullRequests.Item pullRequest(String token, Integer credentialType, GitRepoRef repoRef, long number) {
+        throw unsupported("PR 详情");
+    }
+
+    /** 本地镜像克隆地址。凭据由镜像组件单独传递，不放进返回的 URL。 */
+    default String mirrorCloneUrl(GitRepoRef repoRef) {
+        throw unsupported("本地镜像地址");
+    }
+
+    /** 当前宿主能否用本地镜像计算固定 SHA 比较。关闭时不得改走 PR diff。 */
+    default boolean supportsLocalComparison() {
+        return true;
+    }
+
+    /** 写入快照的宿主标识，只区分已接入的两类仓库。 */
+    default String pullRequestProvider() {
+        return "git";
+    }
+
+    private static BusinessException unsupported(String action) {
+        return new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(), "当前宿主未实现" + action);
+    }
 }

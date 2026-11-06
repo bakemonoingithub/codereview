@@ -15,6 +15,7 @@ public enum PromptPurpose {
 
     ISSUE_FILE("ISSUE_FILE", true),
     ISSUE_DIFF("ISSUE_DIFF", true),
+    ISSUE_PR("ISSUE_PR", true),
     PATTERN("PATTERN", true),
     COUPLING("COUPLING", true),
     REPORT("REPORT", false),
@@ -39,6 +40,7 @@ public enum PromptPurpose {
     }
 
     public boolean isSpecialist() {
-        return this == ISSUE_FILE || this == ISSUE_DIFF || this == PATTERN || this == COUPLING;
+        return this == ISSUE_FILE || this == ISSUE_DIFF || this == ISSUE_PR
+                || this == PATTERN || this == COUPLING;
     }
 }

@@ -264,7 +264,8 @@ public class SpecialistSplitPlanner {
         return new PreparedTarget(original.projectId(), original.specialistType(),
                 original.sourceKind(), original.branch(), original.path(), original.oldPath(),
                 original.headSha(), original.baseSha(), original.note(), original.added(),
-                original.removed(), targets, auxiliary, original.gaps(), null, null);
+                original.removed(), targets, auxiliary, original.gaps(), null, null,
+                original.pullRequest());
     }
 
     private List<Material> headerFragments(PreparedTarget target) {

@@ -42,10 +42,16 @@ public class SpecialistPromptBuilder {
         if (facts != null) {
             missingNotes.addAll(facts.limitations());
         }
+        PromptInput.PullRequestScope pull = null;
+        if (target.pullRequest() != null) {
+            var context = target.pullRequest();
+            pull = new PromptInput.PullRequestScope(context.number(), context.sourceBranch(),
+                    context.targetBranch(), context.targetHead());
+        }
         return new PromptInput(purpose(target), SpecialistProtocol.VERSION, generalRuleName,
                 generalRuleContent, target.note(), target.sourceKind(), target.branch(),
                 target.headSha(), target.baseSha(), targets, auxiliary, List.copyOf(missingNotes),
-                promptFacts, formatRetry);
+                promptFacts, formatRetry, null, null, pull);
     }
 
     public SpecialistResultValidator.ValidationContext context(PreparedTarget target,
@@ -59,8 +65,11 @@ public class SpecialistPromptBuilder {
 
     static PromptPurpose purpose(PreparedTarget target) {
         return switch (target.specialistType()) {
-            case SpecialistTypes.ISSUE -> "DIFF".equals(target.sourceKind())
-                    ? PromptPurpose.ISSUE_DIFF : PromptPurpose.ISSUE_FILE;
+            case SpecialistTypes.ISSUE -> switch (target.sourceKind()) {
+                case "DIFF" -> PromptPurpose.ISSUE_DIFF;
+                case "PR" -> PromptPurpose.ISSUE_PR;
+                default -> PromptPurpose.ISSUE_FILE;
+            };
             case SpecialistTypes.PATTERN -> PromptPurpose.PATTERN;
             case SpecialistTypes.COUPLING -> PromptPurpose.COUPLING;
             default -> throw new IllegalArgumentException("未知专项类型：" + target.specialistType());

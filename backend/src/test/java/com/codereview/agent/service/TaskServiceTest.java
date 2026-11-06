@@ -26,6 +26,7 @@ import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
+import com.codereview.agent.repository.PullRequestViews;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.support.AgentTime;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,7 +56,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +73,9 @@ class TaskServiceTest {
     private static final String CALL_ID = com.codereview.agent.support.AgentIds.next();
     private static final String HEAD = "b7a312e0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6";
     private static final String OTHER = "12ac80f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
+    private static final String SOURCE = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    private static final String TARGET = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    private static final String BASE = "cccccccccccccccccccccccccccccccccccccccc";
 
     @Mock
     private AgentDatabase db;
@@ -188,6 +195,68 @@ class TaskServiceTest {
 
         assertEquals(ErrorCode.VALIDATION_FAILED, error.errorCode());
         verify(taskMapper, never()).insert(any(AgentReviewTask.class));
+    }
+
+    @Test
+    void pullRequestTargetFreezesNetDiffAndLeavesSingleCommitDiffUntouched() {
+        when(repository.bindPullRequest(PROJECT_ID, 12, SOURCE, TARGET, BASE)).thenReturn(binding());
+
+        TaskDtos.View view = service.create(pullRequest(List.of(
+                new TaskDtos.Target("src/A.java", null, "关注重试"))), null);
+
+        assertEquals("PR", view.sourceKind());
+        assertEquals(SOURCE, view.headSha());
+        assertEquals(BASE, view.baseSha());
+        assertEquals(12L, view.pullNumber());
+        assertEquals("feature", view.sourceBranch());
+        ArgumentCaptor<AgentReviewTask> task = ArgumentCaptor.forClass(AgentReviewTask.class);
+        verify(taskMapper).insert(task.capture());
+        String snapshot = task.getValue().getInputSnapshot();
+        assertTrue(snapshot.contains("\"pullNumber\":12"));
+        assertTrue(snapshot.contains("\"binaryFiles\":1"));
+        assertTrue(snapshot.contains("未选择的文本"));
+        assertFalse(snapshot.contains("credential"));
+        verify(repository, never()).diff(any(), any(), any());
+
+        when(taskMapper.selectById(task.getValue().getId())).thenReturn(task.getValue());
+        TaskDtos.CopyInput copy = service.copyInput(task.getValue().getId());
+        assertTrue(copy.reobserveHead());
+        assertEquals(12L, copy.pullNumber());
+        assertNull(copy.commitSha());
+        assertNull(copy.baseSha());
+    }
+
+    @Test
+    void pullRequestRejectsBinaryTargetsAndNonIssueSpecialists() {
+        when(repository.bindPullRequest(any(), eq(12L), any(), any(), any())).thenReturn(binding());
+
+        ApiException binary = assertThrows(ApiException.class, () -> service.create(pullRequest(List.of(
+                new TaskDtos.Target("docs/a.png", null, null))), null));
+        assertEquals(ErrorCode.VALIDATION_FAILED, binary.errorCode());
+        verify(taskMapper, never()).insert(any(AgentReviewTask.class));
+
+        TaskDtos.Create pattern = new TaskDtos.Create(PROJECT_ID, "SPECIALIST", "PATTERN",
+                new TaskDtos.Source("PR", null, null, null, null, 12L, SOURCE, TARGET, BASE),
+                List.of(new TaskDtos.Target("src/A.java", null, null)), MODEL_ID, null, null, false, null);
+        ApiException rejected = assertThrows(ApiException.class, () -> service.create(pattern, null));
+        assertEquals(ErrorCode.VALIDATION_FAILED, rejected.errorCode());
+        verify(repository, times(1)).bindPullRequest(any(), eq(12L), any(), any(), any());
+    }
+
+    @Test
+    void singleCommitDiffDoesNotReadPullRequests() {
+        TaskDtos.Create diff = new TaskDtos.Create(PROJECT_ID, "SPECIALIST", "ISSUE",
+                new TaskDtos.Source("DIFF", "dev", null, HEAD, BASE),
+                List.of(new TaskDtos.Target("src/Order.java", null, null)),
+                MODEL_ID, null, null, false, null);
+
+        TaskDtos.View view = service.create(diff, null);
+
+        assertEquals("DIFF", view.sourceKind());
+        assertEquals(HEAD, view.headSha());
+        assertEquals(BASE, view.baseSha());
+        assertNull(view.pullNumber());
+        verify(repository, never()).bindPullRequest(any(), anyLong(), any(), any(), any());
     }
 
     @Test
@@ -498,6 +567,22 @@ class TaskServiceTest {
         assertThrows(ApiException.class, () -> service.create(req, null));
         verify(taskMapper, never()).insert(any(AgentReviewTask.class));
         verify(dispatcher, never()).dispatch(any());
+    }
+
+    private static PullRequestViews.Binding binding() {
+        PullRequestViews.Item item = new PullRequestViews.Item(12, "修复重试", "open", false, false,
+                "chen", "feature", "dev", SOURCE, TARGET, "acme/order-service", "acme/order-service",
+                true, "https://example/pull/12", "2026-11-06", "github");
+        return new PullRequestViews.Binding(item, BASE, "COMPLETE", List.of(
+                new PullRequestViews.FileChange("src/A.java", null, "modified", "TEXT", null),
+                new PullRequestViews.FileChange("docs/a.png", null, "modified", "BINARY", "BINARY")),
+                1, 1, 0);
+    }
+
+    private TaskDtos.Create pullRequest(List<TaskDtos.Target> targets) {
+        return new TaskDtos.Create(PROJECT_ID, "SPECIALIST", "ISSUE",
+                new TaskDtos.Source("PR", null, null, null, null, 12L, SOURCE, TARGET, BASE),
+                targets, MODEL_ID, null, null, false, null);
     }
 
     private TaskDtos.Create request(String unused) {

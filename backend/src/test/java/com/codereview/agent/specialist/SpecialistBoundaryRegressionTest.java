@@ -62,7 +62,7 @@ class SpecialistBoundaryRegressionTest {
             Math.max(1,JavaStructureParser.countLines(code)),code,ContentHash.sha256(code),"COMPLETE",null,
             Role.TARGET,Status.RESOLVED,null,parser.parse("app/Child.java",code));
         return new PreparedTarget(P,"COUPLING","FILES","main",material.path(),null,SHA,null,null,
-            false,false,List.of(material),List.of(),List.of(),null,null);
+            false,false,List.of(material),List.of(),List.of(),null,null,null);
     }
     private CouplingFacts facts(String code) {
         return new CouplingFactsBuilder().build(target(code),new DeclarationResolver(P,SHA,repo,parser));
@@ -236,7 +236,7 @@ class SpecialistBoundaryRegressionTest {
                 file.content(), file.contentHash(), "COMPLETE", null, Role.TARGET, Status.RESOLVED,
                 null, file.structure());
         var diff = new PreparedTarget(P, "ISSUE", "DIFF", "main", file.path(), null, SHA, BASE,
-                null, false, false, List.of(after, before), List.of(), List.of(), null, null);
+                null, false, false, List.of(after, before), List.of(), List.of(), null, null, null);
         var properties = new SpecialistProperties();
         properties.setMaxAuxiliaryFiles(1);
         var enhanced = new DeclarationEnhancementService(store, repo, parser,

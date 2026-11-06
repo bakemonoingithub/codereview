@@ -107,10 +107,22 @@ public final class SpecialistMaterials {
         }
     }
 
+    /** PR 目标的固定身份。coverageNote 只描述未覆盖范围，不包含 PR 标题或描述。 */
+    public record PullRequestContext(long number, String sourceBranch, String targetBranch,
+                                     String targetHead, String coverageNote) {
+    }
+
     /** 一次逐文件准备的输入；task/target 的持久化由执行层负责。 */
     public record PrepareCommand(String projectId, String specialistType, String sourceKind,
                                  String branch, String path, String oldPath, String note,
-                                 String headSha, String baseSha) {
+                                 String headSha, String baseSha, PullRequestContext pullRequest) {
+
+        public PrepareCommand(String projectId, String specialistType, String sourceKind,
+                              String branch, String path, String oldPath, String note,
+                              String headSha, String baseSha) {
+            this(projectId, specialistType, sourceKind, branch, path, oldPath, note,
+                    headSha, baseSha, null);
+        }
     }
 
     /**
@@ -121,12 +133,22 @@ public final class SpecialistMaterials {
                                  String branch, String path, String oldPath, String headSha,
                                  String baseSha, String note, boolean added, boolean removed,
                                  List<Material> targets, List<Material> auxiliary, List<Gap> gaps,
-                                 String errorCode, String errorMessage) {
+                                 String errorCode, String errorMessage, PullRequestContext pullRequest) {
 
         public PreparedTarget {
             targets = targets == null ? List.of() : List.copyOf(targets);
             auxiliary = auxiliary == null ? List.of() : List.copyOf(auxiliary);
             gaps = gaps == null ? List.of() : List.copyOf(gaps);
+        }
+
+        /** 既有文件和提交差异目标没有 PR 身份。 */
+        public PreparedTarget(String projectId, String specialistType, String sourceKind,
+                              String branch, String path, String oldPath, String headSha,
+                              String baseSha, String note, boolean added, boolean removed,
+                              List<Material> targets, List<Material> auxiliary, List<Gap> gaps,
+                              String errorCode, String errorMessage) {
+            this(projectId, specialistType, sourceKind, branch, path, oldPath, headSha, baseSha, note,
+                    added, removed, targets, auxiliary, gaps, errorCode, errorMessage, null);
         }
 
         public boolean failed() {
@@ -154,14 +176,14 @@ public final class SpecialistMaterials {
             merged.addAll(newGaps);
             return new PreparedTarget(projectId, specialistType, sourceKind, branch, path, oldPath,
                     headSha, baseSha, note, added, removed, targets, materials, merged,
-                    errorCode, errorMessage);
+                    errorCode, errorMessage, pullRequest);
         }
 
         public static PreparedTarget failure(PrepareCommand command, String errorCode, String message) {
             return new PreparedTarget(command.projectId(), command.specialistType(),
                     command.sourceKind(), command.branch(), command.path(), command.oldPath(),
                     command.headSha(), command.baseSha(), command.note(), false, false,
-                    List.of(), List.of(), List.of(), errorCode, message);
+                    List.of(), List.of(), List.of(), errorCode, message, command.pullRequest());
         }
     }
 

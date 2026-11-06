@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-06 PRS-01–03 工程实现完成，等待负责人审查，不合并：问题专项可以手工选择同一仓库内未合并 PR 的净变化文本文件。PR 列表和详情读取 GitHub 与 Gitea 1.16.1 的 pulls 接口；文件清单和两侧材料改为固定 SHA 的本地镜像比较，共同祖先到源提交，不使用第一父提交，也不调用 GitHub PR 文件接口或 Gitea PR diff。创建时重新核对三个版本，变化返回 `SOURCE_MOVED`。二进制、子模块、符号链接、LFS 指针、超限和无法按 UTF-8 读取的文件不能成为审查目标。单提交 `DIFF` 仍按第一父提交。Agent PR 范围、正式页面和双宿主真实使用仍属 PRS-04–06。未连接现有库、未启停服务、未调用模型、未部署。详见[PRS-01 契约](work/pr-review-scope/prs-01-contract.md)。
+
 2026-11-06 PRS 手工选择 PR 审查范围规划完成：负责人要求更新仓库状态并准备开发。业务契约新增[第 13 节](work/agent-redesign/business-contract.md#13-pr-手工审查范围2026-11-06)，[影响评估与前端复用清单](work/pr-review-scope/assessment.md)、[交互原型](work/pr-review-scope/prototype.html)及[PRS-01–06 工作计划](work/pr-review-scope/README.md)已就绪。范围覆盖 GitHub 验证仓库与 Gitea 1.16.1 内网仓库的手工 PR 选择、冻结净变化、问题专项与 Agent 分析、现有页面／证据／材料／报告接入及双宿主验收；不包含自动触发、PR 回写或质量门禁。PRS-01–06 均为 `todo`，当前无本工作包 `active`；下一步是 PRS-01 固定接口、材料与覆盖规则后开始实现。新增 GitHub／Gitea PR 只读调用已在计划中明列，尚未实施。本轮只更新文档与状态，未改生产／测试代码、数据库或集成接口，未启停服务、调用模型、提交或发布；保留已有 `frontend/components.d.ts` 未提交修改，评估与原型仍为未提交文档。既有工作包状态不变。
 
 2026-11-03 LGC-04 完成，LGC-01–04 全部 `done`：PR #8 已合并到 `dev`，合并提交为 `26e81c7647db3eb0b74aa5bf10d3cb7be7acd7e8`。前序工程检查、全量测试、类型检查、打包资源对照和 Postman 旧请求删除已有记录；负责人在本会话确认已独立启动系统并完成一次真实 Agent 分析，现有库连接、业务服务启停、真实模型和正式页面视觉验收均无问题。据此关闭 LGC-04，无本工作包 active；部署发布及未逐项执行的探针保留原有边界，其他工作包状态不变。本轮只更新文档及状态，未再次操作数据库、启停服务、调用模型或修改 Postman；保留已有 `frontend/components.d.ts` 未提交修改。详见[交付与负责人验收记录](work/legacy-code-cleanup/delivery.md#7-负责人独立验证与关闭)。

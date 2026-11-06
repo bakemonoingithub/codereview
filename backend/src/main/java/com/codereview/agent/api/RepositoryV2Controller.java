@@ -1,5 +1,6 @@
 package com.codereview.agent.api;
 
+import com.codereview.agent.repository.PullRequestViews;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.repository.RepositorySnapshots;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -76,5 +77,24 @@ public class RepositoryV2Controller {
                                               @RequestParam String sha,
                                               @RequestParam String path) {
         return service.diff(projectId, sha, path);
+    }
+
+    @GetMapping("/pulls")
+    public PullRequestViews.Page pulls(@PathVariable String projectId,
+                                       @RequestParam(defaultValue = "open") String state,
+                                       @RequestParam(required = false) String targetBranch,
+                                       @RequestParam(defaultValue = "1") int page,
+                                       @RequestParam(defaultValue = "30") int perPage) {
+        return service.pullRequests(projectId, state, targetBranch, page, perPage);
+    }
+
+    @GetMapping("/pulls/{number}")
+    public PullRequestViews.Detail pull(@PathVariable String projectId, @PathVariable long number) {
+        return service.pullRequest(projectId, number);
+    }
+
+    @GetMapping("/pulls/{number}/changes")
+    public PullRequestViews.Changes pullChanges(@PathVariable String projectId, @PathVariable long number) {
+        return service.pullRequestChanges(projectId, number);
     }
 }

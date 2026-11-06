@@ -207,6 +207,46 @@ public class GitHubClient implements GitHostClient {
         return GitResponseParser.parseCommit(readTree(resp.getBody()), truncated);
     }
 
+    @Override
+    public PullRequests.Page pullRequests(String token, Integer credentialType, GitRepoRef repoRef,
+                                          String state, String targetBranch, int page, int perPage) {
+        int safePage = Math.max(1, page);
+        int safeSize = Math.min(Math.max(1, perPage), MAX_PER_PAGE);
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo()
+                + "/pulls?state=" + UriUtils.encodeQueryParam(state, StandardCharsets.UTF_8)
+                + "&sort=updated&direction=desc&page=" + safePage + "&per_page=" + safeSize;
+        if (targetBranch != null && !targetBranch.isBlank()) {
+            url += "&base=" + UriUtils.encodeQueryParam(targetBranch.trim(), StandardCharsets.UTF_8);
+        }
+        ResponseEntity<String> resp = getEntity(url, token, credentialType);
+        return new PullRequests.Page(PullRequestParser.parseList(readTree(resp.getBody())),
+                GitResponseParser.hasNextPage(linkHeader(resp)));
+    }
+
+    @Override
+    public PullRequests.Item pullRequest(String token, Integer credentialType, GitRepoRef repoRef, long number) {
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/pulls/" + number;
+        PullRequests.Item item = PullRequestParser.parse(getJson(url, token, credentialType));
+        if (item == null) {
+            throw new IllegalStateException("PR 响应缺少编号");
+        }
+        return item;
+    }
+
+    @Override
+    public String mirrorCloneUrl(GitRepoRef repoRef) {
+        String root = repoRef.baseUrl();
+        if (root == null || root.isBlank()) {
+            root = "https://" + repoRef.host();
+        }
+        return root + "/" + repoRef.owner() + "/" + repoRef.repo() + ".git";
+    }
+
+    @Override
+    public String pullRequestProvider() {
+        return "github";
+    }
+
     private static String linkHeader(ResponseEntity<String> resp) {
         return resp.getHeaders().getFirst(HttpHeaders.LINK);
     }

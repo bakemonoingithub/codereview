@@ -48,7 +48,7 @@ public final class SpecialistOutputContracts {
     /** 按提示词用途取契约；问题文件与问题差异共用结构，材料侧规则由校验上下文区分。 */
     public static JsonContract forPurpose(PromptPurpose purpose) {
         return switch (purpose) {
-            case ISSUE_FILE, ISSUE_DIFF -> ISSUE;
+            case ISSUE_FILE, ISSUE_DIFF, ISSUE_PR -> ISSUE;
             case PATTERN -> PATTERN;
             case COUPLING -> COUPLING;
             default -> throw new IllegalArgumentException("用途没有专项输出契约：" + purpose);

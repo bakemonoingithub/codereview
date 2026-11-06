@@ -18,6 +18,14 @@
       "variables": []
     },
     {
+      "id": "instruction.ISSUE_PR",
+      "kind": "INSTRUCTION",
+      "purpose": "ISSUE_PR",
+      "version": "1",
+      "path": "prompts/instruction/issue-pr.txt",
+      "variables": []
+    },
+    {
       "id": "instruction.PATTERN",
       "kind": "INSTRUCTION",
       "purpose": "PATTERN",
@@ -79,6 +87,14 @@
       "purpose": "ISSUE_DIFF",
       "version": "1",
       "path": "prompts/protocol/issue-diff.txt",
+      "variables": ["schema"]
+    },
+    {
+      "id": "protocol.ISSUE_PR",
+      "kind": "SCHEMA",
+      "purpose": "ISSUE_PR",
+      "version": "1",
+      "path": "prompts/protocol/issue-pr.txt",
       "variables": ["schema"]
     },
     {

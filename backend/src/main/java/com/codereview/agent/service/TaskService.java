@@ -36,6 +36,7 @@ import com.codereview.agent.mapper.AgentPromptMapper;
 import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.AgentTaskQuotaMapper;
 import com.codereview.agent.mapper.AgentTaskTargetMapper;
+import com.codereview.agent.repository.PullRequestViews;
 import com.codereview.agent.repository.RepositoryPaths;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.support.AgentIds;
@@ -110,9 +111,15 @@ public class TaskService {
 
         String specialistType = normalizeSpecialist(req.specialistType());
         String route = normalizeRoute(req.route());
+        if ("PR".equalsIgnoreCase(req.source().kind()) && !"ISSUE".equals(specialistType)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "PR 范围目前只开放给问题审查",
+                    Map.of("specialistType", specialistType));
+        }
         ResolvedConfig config = resolveConfig(req);
         ResolvedSource source = resolveSource(req.source(), project);
-        List<NormalizedTarget> targets = normalizeTargets(req.targets());
+        List<NormalizedTarget> requestedTargets = normalizeTargets(req.targets());
+        List<NormalizedTarget> targets = source.pull() == null
+                ? requestedTargets : selectPullTargets(source.pull(), requestedTargets);
 
         AgentReviewTask task = new AgentReviewTask();
         task.setId(AgentIds.next());
@@ -253,12 +260,15 @@ public class TaskService {
         String modelId = textOrNull(config.path("model"), "id");
         JsonNode prompt = config.path("prompt");
         String kind = source.path("kind").asText("FILES");
+        boolean pullRequest = "PR".equals(kind);
         return new TaskDtos.CopyInput(task.getProjectId(), task.getRoute(), task.getSpecialistType(),
-                kind, textOrNull(source, "branch"), textOrNull(source, "commitSha"),
-                textOrNull(source, "baseSha"), targets, modelId,
+                kind, textOrNull(source, "branch"),
+                pullRequest ? null : textOrNull(source, "commitSha"),
+                pullRequest ? null : textOrNull(source, "baseSha"), targets, modelId,
                 textOrNull(prompt, "id"), textOrNull(prompt, "versionId"),
-                input.path("smartSplit").asBoolean(false), "FILES".equals(kind),
-                TaskNames.display(task.getName(), task.getId()));
+                input.path("smartSplit").asBoolean(false), "FILES".equals(kind) || pullRequest,
+                TaskNames.display(task.getName(), task.getId()),
+                pullRequest && source.path("pullNumber").isNumber() ? source.path("pullNumber").asLong() : null);
     }
 
     public PageResponse<TaskDtos.CallSummary> calls(String taskId, String targetId, String unitId,
@@ -559,7 +569,7 @@ public class TaskService {
                         Map.of("branch", branch, "observedSha", observed,
                                 "currentSha", head == null ? "UNKNOWN" : head));
             }
-            return new ResolvedSource("FILES", branch, head.toLowerCase(), null);
+            return new ResolvedSource("FILES", branch, head.toLowerCase(), null, null);
         }
         if ("DIFF".equals(kind)) {
             String commit = RepositoryPaths.requireFixedSha(source.commitSha());
@@ -569,10 +579,52 @@ public class TaskService {
                 throw new ApiException(ErrorCode.VALIDATION_FAILED, "比较基线与目标提交不能相同");
             }
             String branch = source.branch() == null ? null : source.branch().trim();
-            return new ResolvedSource("DIFF", branch, commit, base);
+            return new ResolvedSource("DIFF", branch, commit, base, null);
         }
-        throw new ApiException(ErrorCode.VALIDATION_FAILED, "source.kind 只能是 FILES 或 DIFF",
+        if ("PR".equals(kind)) {
+            if (source.pullNumber() == null || source.pullNumber() <= 0) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "PR 来源缺少 pullNumber");
+            }
+            PullRequestViews.Binding pull = repository.bindPullRequest(project.getId(), source.pullNumber(),
+                    source.sourceHead(), source.targetHead(), source.mergeBase());
+            return new ResolvedSource("PR", pull.pullRequest().targetBranch(), pull.pullRequest().sourceHead(),
+                    pull.mergeBase(), pull);
+        }
+        throw new ApiException(ErrorCode.VALIDATION_FAILED, "source.kind 只能是 FILES、DIFF 或 PR",
                 Map.of("kind", source.kind()));
+    }
+
+    private List<NormalizedTarget> selectPullTargets(PullRequestViews.Binding pull,
+                                                     List<NormalizedTarget> targets) {
+        if (pull.textFiles() == 0) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "该 PR 没有可审查的文本变更，不能创建问题审查",
+                    Map.of("reason", "NO_TEXT_CHANGES", "pullNumber", pull.pullRequest().number(),
+                            "binaryFiles", pull.binaryFiles(), "unreadableFiles", pull.unreadableFiles()));
+        }
+        Map<String, PullRequestViews.FileChange> byPath = new LinkedHashMap<>();
+        for (PullRequestViews.FileChange file : pull.files()) {
+            byPath.put(file.path(), file);
+        }
+        List<NormalizedTarget> selected = new ArrayList<>();
+        for (NormalizedTarget target : targets) {
+            PullRequestViews.FileChange file = byPath.get(target.path());
+            if (file == null) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "目标文件不在 PR 净变化中：" + target.path(),
+                        Map.of("path", target.path()));
+            }
+            if (!file.text()) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                        "二进制或无法读取的文件不能作为文本审查目标：" + target.path(),
+                        Map.of("path", target.path(),
+                                "reason", file.reason() == null ? file.category() : file.reason()));
+            }
+            if (target.oldPath() != null && file.oldPath() != null && !target.oldPath().equals(file.oldPath())) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "目标旧路径与 PR 净变化不一致：" + target.path(),
+                        Map.of("path", target.path(), "oldPath", target.oldPath()));
+            }
+            selected.add(new NormalizedTarget(file.path(), file.oldPath(), target.note()));
+        }
+        return selected;
     }
 
     private List<NormalizedTarget> normalizeTargets(List<TaskDtos.Target> targets) {
@@ -640,6 +692,36 @@ public class TaskService {
         sourceNode.put("headSha", source.headSha());
         putNullable(sourceNode, "baseSha", source.baseSha());
         putNullable(sourceNode, "commitSha", "DIFF".equals(source.kind()) ? source.headSha() : null);
+        if (source.pull() != null) {
+            PullRequestViews.Binding pull = source.pull();
+            PullRequestViews.Item item = pull.pullRequest();
+            sourceNode.put("pullNumber", item.number());
+            putNullable(sourceNode, "title", item.title());
+            putNullable(sourceNode, "url", item.url());
+            putNullable(sourceNode, "provider", item.provider());
+            putNullable(sourceNode, "sourceBranch", item.sourceBranch());
+            putNullable(sourceNode, "targetBranch", item.targetBranch());
+            putNullable(sourceNode, "sourceHead", item.sourceHead());
+            putNullable(sourceNode, "targetHead", item.targetHead());
+            putNullable(sourceNode, "mergeBase", pull.mergeBase());
+            putNullable(sourceNode, "coverageNote", coverageNote(pull, targets));
+            ObjectNode coverage = root.putObject("coverage");
+            coverage.put("completeness", pull.completeness());
+            coverage.put("changedFiles", pull.files().size());
+            coverage.put("textFiles", pull.textFiles());
+            coverage.put("binaryFiles", pull.binaryFiles());
+            coverage.put("unreadableFiles", pull.unreadableFiles());
+            coverage.put("selectedFiles", targets.size());
+            var unselected = coverage.putArray("unselectedTextFiles");
+            Set<String> selectedPaths = targets.stream().map(NormalizedTarget::path).collect(Collectors.toSet());
+            int listed = 0;
+            for (PullRequestViews.FileChange file : pull.files()) {
+                if (file.text() && !selectedPaths.contains(file.path()) && listed < 20) {
+                    unselected.add(file.path());
+                    listed++;
+                }
+            }
+        }
         var targetArray = root.putArray("targets");
         for (NormalizedTarget target : targets) {
             ObjectNode node = targetArray.addObject();
@@ -699,7 +781,20 @@ public class TaskService {
                 textOrNull(source, "headSha"), textOrNull(source, "baseSha"),
                 input.path("smartSplit").asBoolean(false), task.getRevision(), task.getCreatedAt(),
                 task.getUpdatedAt(), task.getStartedAt(), task.getFinishedAt(), task.getDeadlineAt(),
-                task.getCancelRequestedAt(), targetViews, configView);
+                task.getCancelRequestedAt(), targetViews, configView,
+                source.path("pullNumber").isNumber() ? source.path("pullNumber").asLong() : null,
+                textOrNull(source, "sourceBranch"), textOrNull(source, "targetBranch"),
+                textOrNull(source, "sourceHead"), textOrNull(source, "targetHead"),
+                textOrNull(source, "mergeBase"));
+    }
+
+    private static String coverageNote(PullRequestViews.Binding pull, List<NormalizedTarget> targets) {
+        int unselected = pull.textFiles() - targets.size();
+        return "该 PR 净变化共 " + pull.files().size() + " 个文件，其中文本 " + pull.textFiles()
+                + "、二进制 " + pull.binaryFiles() + "、无法读取 " + pull.unreadableFiles()
+                + "。本次只审查 " + targets.size() + " 个文本文件。"
+                + (unselected > 0 ? "另有 " + unselected + " 个文本文件未选择。" : "")
+                + "未选择的文本、二进制和无法读取的内容都没有审查，不能写成已检查或没有问题。";
     }
 
     /** 按最近发布的完整问题结果批量计数；没有完整结果时保留 null，不能补成零。 */
@@ -893,7 +988,8 @@ public class TaskService {
                                   AgentPromptVersion promptVersion) {
     }
 
-    private record ResolvedSource(String kind, String branch, String headSha, String baseSha) {
+    private record ResolvedSource(String kind, String branch, String headSha, String baseSha,
+                                  PullRequestViews.Binding pull) {
     }
 
     private record NormalizedTarget(String path, String oldPath, String note) {

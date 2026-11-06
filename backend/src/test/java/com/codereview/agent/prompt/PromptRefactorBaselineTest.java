@@ -14,7 +14,9 @@ class PromptRefactorBaselineTest {
   var mapper = new ObjectMapper(); var assembly = new PromptAssemblyService();
   Map<String,AssembledPrompt> cases = new LinkedHashMap<>();
   for (var purpose : PromptPurpose.values()) {
-   if (purpose == PromptPurpose.AGENT || purpose == PromptPurpose.AGENT_TOOL_CHECK) continue;
+   // ISSUE_PR 是 PRS-03 新增用途，不写入 PAR 冻结请求；正文由 PullRequestPromptTest 单独核对。
+   if (purpose == PromptPurpose.AGENT || purpose == PromptPurpose.AGENT_TOOL_CHECK
+           || purpose == PromptPurpose.ISSUE_PR) continue;
    for (boolean rich : List.of(false,true)) {
     var m = new PromptMaterial("M1","src/中文.java","head","AFTER",7,8,"class A {}\n// 证据\n","COMPLETE",null);
     cases.put(purpose + (rich ? "-rich" : "-minimal"),assembly.assemble(new PromptInput(purpose,"1",

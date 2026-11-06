@@ -349,16 +349,54 @@ public class GiteaClient implements GitHostClient {
         // 仅当两端都是 commit sha 时才缓存（任一端是分支名就可能在移动）
         if (GitCache.isImmutableRef(base) && GitCache.isImmutableRef(head)) {
             String key = GitCache.key(repoRef, effectiveCredential(token), base + "..." + head);
-            return cache.changedFiles(key, () -> mirror.changedPaths(cloneUrl(repoRef), token, credentialType, base, head));
+            return cache.changedFiles(key, () -> mirror.changedPaths(mirrorCloneUrl(repoRef), token, credentialType, base, head));
         }
-        return mirror.changedPaths(cloneUrl(repoRef), token, credentialType, base, head);
+        return mirror.changedPaths(mirrorCloneUrl(repoRef), token, credentialType, base, head);
+    }
+
+    @Override
+    public PullRequests.Page pullRequests(String token, Integer credentialType, GitRepoRef repoRef,
+                                          String state, String targetBranch, int page, int perPage) {
+        int safePage = Math.max(1, page);
+        int safeSize = Math.min(Math.max(1, perPage), LIST_LIMIT);
+        String url = apiBase(repoRef) + "/repos/" + repoRef.owner() + "/" + repoRef.repo()
+                + "/pulls?state=" + UriUtils.encodeQueryParam(state, StandardCharsets.UTF_8)
+                + "&page=" + safePage + "&limit=" + safeSize;
+        ResponseEntity<String> resp = getEntity(url, token, credentialType);
+        List<PullRequests.Item> items = PullRequestParser.parseList(readTree(resp.getBody()));
+        if (targetBranch != null && !targetBranch.isBlank()) {
+            String branch = targetBranch.trim();
+            items = items.stream().filter(item -> branch.equals(item.targetBranch())).toList();
+        }
+        return new PullRequests.Page(items, hasMorePages(resp, safePage, safeSize));
+    }
+
+    @Override
+    public PullRequests.Item pullRequest(String token, Integer credentialType, GitRepoRef repoRef, long number) {
+        String url = apiBase(repoRef) + "/repos/" + repoRef.owner() + "/" + repoRef.repo() + "/pulls/" + number;
+        PullRequests.Item item = PullRequestParser.parse(getJson(url, token, credentialType));
+        if (item == null) {
+            throw new IllegalStateException("PR 响应缺少编号");
+        }
+        return item;
+    }
+
+    @Override
+    public boolean supportsLocalComparison() {
+        return properties.isLocalCloneEnabled();
+    }
+
+    @Override
+    public String pullRequestProvider() {
+        return "gitea";
     }
 
     /**
      * 本地镜像用的克隆地址：{@code {站点根}/{owner}/{repo}.git}。
      * 站点根优先取仓库地址里的（含子路径），其次从配置的 API 根去掉 {@code /api/v1} 反推。
      */
-    private String cloneUrl(GitRepoRef repoRef) {
+    @Override
+    public String mirrorCloneUrl(GitRepoRef repoRef) {
         String siteRoot = repoRef.baseUrl();
         if (siteRoot == null || siteRoot.isBlank()) {
             String api = properties.normalizedApiBase();
