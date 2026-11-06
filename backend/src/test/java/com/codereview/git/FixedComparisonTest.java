@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 
@@ -105,6 +106,52 @@ class FixedComparisonTest {
         assertEquals("ENCODING", byPath.get("bad.txt").reason());
         assertEquals("LFS_POINTER", byPath.get("lfs.txt").reason());
         assertTrue(byPath.get("moved.txt").text());
+    }
+
+    @Test
+    void nulAfterTheFirst8192BytesIsBinaryWhenTheFileFitsTheReadLimit() throws Exception {
+        Path work = tempDir.resolve("work");
+        String base;
+        String source;
+        try (Git git = Git.init().setDirectory(work.toFile()).call()) {
+            base = commit(git, work, Map.of("a.txt", "1\n"), "base");
+            byte[] bytes = new byte[8193];
+            Arrays.fill(bytes, (byte) 'a');
+            bytes[8192] = 0;
+            Files.write(work.resolve("late.bin"), bytes);
+            git.add().addFilepattern("late.bin").call();
+            source = git.commit().setMessage("source").setSign(false).setAuthor(ident()).setCommitter(ident()).call().name();
+        }
+
+        FixedComparison.Result result = FixedComparison.between(gitDir(work), base, source, 10, 20_000);
+        FixedComparison.FileChange file = result.files().stream()
+                .filter(item -> "late.bin".equals(item.path())).findFirst().orElseThrow();
+
+        assertEquals(FixedComparison.BINARY, file.category());
+        assertEquals(FixedComparison.BINARY, file.reason());
+    }
+
+    @Test
+    void oversizedFileWithLateNulStaysTooLargeInsteadOfText() throws Exception {
+        Path work = tempDir.resolve("work");
+        String base;
+        String source;
+        try (Git git = Git.init().setDirectory(work.toFile()).call()) {
+            base = commit(git, work, Map.of("a.txt", "1\n"), "base");
+            byte[] bytes = new byte[9000];
+            Arrays.fill(bytes, (byte) 'a');
+            bytes[8192] = 0;
+            Files.write(work.resolve("big.bin"), bytes);
+            git.add().addFilepattern("big.bin").call();
+            source = git.commit().setMessage("source").setSign(false).setAuthor(ident()).setCommitter(ident()).call().name();
+        }
+
+        FixedComparison.Result result = FixedComparison.between(gitDir(work), base, source, 10, 8500);
+        FixedComparison.FileChange file = result.files().stream()
+                .filter(item -> "big.bin".equals(item.path())).findFirst().orElseThrow();
+
+        assertEquals(FixedComparison.UNREADABLE, file.category());
+        assertEquals("TOO_LARGE", file.reason());
     }
 
     @Test

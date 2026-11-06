@@ -19,7 +19,7 @@
 | 类别 | 条件 | 能否成为问题专项目标 |
 | --- | --- | --- |
 | TEXT | 常规文件，无 NUL，体积不超过现有读取上限，可按 UTF-8 解码，且不是 LFS 指针 | 可以 |
-| BINARY | 内容含 NUL | 不可以 |
+| BINARY | 读取上限内的完整内容含 NUL；前 8192 字节已含 NUL 时不必继续读 | 不可以 |
 | UNREADABLE / SUBMODULE | gitlink | 不可以 |
 | UNREADABLE / SYMLINK | 符号链接，不跟随目标 | 不可以 |
 | UNREADABLE / LFS_POINTER | 文本以 Git LFS 指针开头；不读取 LFS 对象 | 不可以 |
@@ -27,7 +27,7 @@
 | UNREADABLE / ENCODING | 不是合法 UTF-8 | 不可以 |
 | UNREADABLE / MISSING | 对应对象不存在 | 不可以 |
 
-超过 3000 个变更文件时，比较结果为 `TRUNCATED`，不返回可选用的部分路径。创建任务得到 `SNAPSHOT_INCOMPLETE`。
+超过 3000 个变更文件时，比较结果为 `TRUNCATED`，不返回可选用的部分路径。两侧提交未变时，创建任务得到 `SNAPSHOT_INCOMPLETE`；提交已经变化时先返回 `SOURCE_MOVED`。
 
 ## 2. 新增只读接口
 
@@ -48,9 +48,10 @@
 | --- | --- |
 | 源或目标仓库不是当前项目 | `CROSS_REPOSITORY`，创建为 `VALIDATION_FAILED` |
 | 非 open，或已经合并 | `PR_NOT_OPEN`，创建为 `VALIDATION_FAILED` |
-| 没有共同祖先 | `NO_MERGE_BASE`，创建为 `VALIDATION_FAILED` |
-| 变更文件超过 3000 | `TRUNCATED`，创建为 `SNAPSHOT_INCOMPLETE` |
-| 三个确认版本与重新读取的结果不一致 | `SOURCE_MOVED` |
+| 源提交或目标提交与确认值不同 | `SOURCE_MOVED`。新版本没有共同祖先或超过 3000 个文件时仍返回此项，不先返回 `NO_MERGE_BASE` 或 `SNAPSHOT_INCOMPLETE` |
+| 两侧提交未变，但没有共同祖先 | `NO_MERGE_BASE`，创建为 `VALIDATION_FAILED` |
+| 两侧提交未变，变更文件超过 3000 | `TRUNCATED`，创建为 `SNAPSHOT_INCOMPLETE` |
+| 两侧提交未变，共同祖先与确认值不同 | `SOURCE_MOVED` |
 | 目标不是文本净变化 | `VALIDATION_FAILED`，不写入任务目标 |
 | 没有可审查文本变更 | `VALIDATION_FAILED`，原因 `NO_TEXT_CHANGES` |
 
@@ -73,7 +74,7 @@
 - `GiteaGitMirror.changedPaths` 仍是路径列表；无共同祖先时仍退回 base 树。
 - `source.kind=DIFF` 创建任务不读取 PR，也不调用 `diffRange`。
 
-PR 材料走 `RepositoryReadService.diffRange(projectId, mergeBase, sourceHead, path)`。这里的第一个 SHA 已经是共同祖先，方法不再另取父提交。
+PR 材料走 `RepositoryReadService.diffRange(projectId, mergeBase, sourceHead, path)`。这里的第一个 SHA 已经是共同祖先，方法不再另取父提交。同一项目、同一共同祖先和源提交的完整比较结果会复用，不按目标文件重复扫描。
 
 ## 5. 未实现
 

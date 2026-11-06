@@ -60,6 +60,7 @@ public class RepositoryReadService {
     private final GitHostClientRegistry registry;
     private final Cache<String, RepositorySnapshots.FileSnapshot> fileCache;
     private final Cache<String, RepositorySnapshots.PathList> treeCache;
+    private final Cache<String, FixedComparison.Result> frozenComparisonCache;
 
     private final RepositoryProperties properties;
     private final FixedComparisonService comparisons;
@@ -87,6 +88,10 @@ public class RepositoryReadService {
                 .build();
         this.treeCache = Caffeine.newBuilder()
                 .maximumSize(properties.getTreeCacheSize())
+                .expireAfterWrite(Duration.ofMinutes(properties.getTreeCacheMinutes()))
+                .build();
+        this.frozenComparisonCache = Caffeine.newBuilder()
+                .maximumSize(Math.max(1, properties.getTreeCacheSize()))
                 .expireAfterWrite(Duration.ofMinutes(properties.getTreeCacheMinutes()))
                 .build();
     }
@@ -292,21 +297,18 @@ public class RepositoryReadService {
         String observedTarget = RepositoryPaths.requireFixedSha(targetHead);
         String observedBase = RepositoryPaths.requireFixedSha(mergeBase);
         LoadedPull loaded = loadPull(projectId, number);
-        if (loaded.blocker != null) {
+        if (PullRequestViews.CROSS_REPOSITORY.equals(loaded.blocker)
+                || PullRequestViews.PR_NOT_OPEN.equals(loaded.blocker)) {
             throw pullBlocker(loaded);
         }
-        if (!observedSource.equals(loaded.item.sourceHead())
-                || !observedTarget.equals(loaded.item.targetHead())
-                || !observedBase.equals(loaded.mergeBase)) {
-            throw new ApiException(ErrorCode.SOURCE_MOVED,
-                    "PR #" + number + " 的源提交、目标提交或共同祖先已变化，请刷新范围后重新提交",
-                    Map.of("pullNumber", number,
-                            "observedSourceHead", observedSource,
-                            "currentSourceHead", loaded.item.sourceHead() == null ? "UNKNOWN" : loaded.item.sourceHead(),
-                            "observedTargetHead", observedTarget,
-                            "currentTargetHead", loaded.item.targetHead() == null ? "UNKNOWN" : loaded.item.targetHead(),
-                            "observedMergeBase", observedBase,
-                            "currentMergeBase", loaded.mergeBase == null ? "UNKNOWN" : loaded.mergeBase));
+        boolean headsMoved = !observedSource.equals(nullToEmpty(loaded.item.sourceHead()))
+                || !observedTarget.equals(nullToEmpty(loaded.item.targetHead()));
+        boolean baseMoved = loaded.mergeBase != null && !observedBase.equals(loaded.mergeBase);
+        if (headsMoved || baseMoved) {
+            throw sourceMoved(number, observedSource, observedTarget, observedBase, loaded);
+        }
+        if (loaded.blocker != null) {
+            throw pullBlocker(loaded);
         }
         return new PullRequestViews.Binding(loaded.item, loaded.mergeBase, loaded.completeness, loaded.files,
                 count(loaded.files, "TEXT"), count(loaded.files, "BINARY"), count(loaded.files, "UNREADABLE"));
@@ -552,7 +554,9 @@ public class RepositoryReadService {
     }
 
     private FixedComparison.Result frozenComparison(ProjectContext context, String mergeBase, String sourceHead) {
-        return compare(context, mergeBase, sourceHead, false);
+        String key = context.namespace + "|trees|" + mergeBase + "|" + sourceHead + "|"
+                + properties.getMaxFileBytes();
+        return frozenComparisonCache.get(key, ignored -> compare(context, mergeBase, sourceHead, false));
     }
 
     private FixedComparison.Result compare(ProjectContext context, String base, String head, boolean findMergeBase) {
@@ -583,6 +587,19 @@ public class RepositoryReadService {
                     Map.of("reason", PullRequestViews.NO_MERGE_BASE));
         }
         return new ApiException(ErrorCode.REPO_UNREACHABLE, "计算 PR 净变化失败：" + message);
+    }
+
+    private static ApiException sourceMoved(long number, String observedSource, String observedTarget,
+                                             String observedBase, LoadedPull loaded) {
+        return new ApiException(ErrorCode.SOURCE_MOVED,
+                "PR #" + number + " 的源提交、目标提交或共同祖先已变化，请刷新范围后重新提交",
+                Map.of("pullNumber", number,
+                        "observedSourceHead", observedSource,
+                        "currentSourceHead", loaded.item.sourceHead() == null ? "UNKNOWN" : loaded.item.sourceHead(),
+                        "observedTargetHead", observedTarget,
+                        "currentTargetHead", loaded.item.targetHead() == null ? "UNKNOWN" : loaded.item.targetHead(),
+                        "observedMergeBase", observedBase,
+                        "currentMergeBase", loaded.mergeBase == null ? "UNKNOWN" : loaded.mergeBase));
     }
 
     private static ApiException pullBlocker(LoadedPull loaded) {

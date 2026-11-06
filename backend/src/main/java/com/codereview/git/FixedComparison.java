@@ -181,6 +181,9 @@ public final class FixedComparison {
                 return new Classification(UNREADABLE, "LFS_POINTER");
             }
             byte[] all = size <= probeLength ? probe : loader.getBytes();
+            if (hasNul(all)) {
+                return new Classification(BINARY, BINARY);
+            }
             if (!isUtf8(all)) {
                 return new Classification(UNREADABLE, "ENCODING");
             }
