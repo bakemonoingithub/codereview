@@ -83,7 +83,9 @@ public final class TaskDtos {
                        LocalDateTime startedAt, LocalDateTime finishedAt, LocalDateTime deadlineAt,
                        LocalDateTime cancelRequestedAt, List<TargetView> targets, ConfigView config,
                        Long pullNumber, String sourceBranch, String targetBranch, String sourceHead,
-                       String targetHead, String mergeBase) {
+                       String targetHead, String mergeBase, String pullTitle, String pullUrl,
+                       String coverageNote, Integer changedFiles, Integer textFiles,
+                       Integer binaryFiles, Integer unreadableFiles, Integer selectedFiles) {
     }
 
     public record Summary(String id, String name, String projectId, String route, String specialistType, String state,

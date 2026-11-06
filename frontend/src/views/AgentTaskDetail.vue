@@ -189,6 +189,19 @@
                   <span v-else class="muted">{{ inputLoading ? '正在读取提交版本…' : (inputError ? '提交版本暂不可用' : '提交版本未记录') }}</span>
                   <small class="muted input-note">按所选顺序逐项分析提交差异。</small>
                 </dd>
+                <dd v-else-if="inputKind === 'PR'">
+                  <code class="input-version">PR #{{ task.pullNumber || inputScope?.scope.pullNumber || '?' }}</code>
+                  <span v-if="task.pullTitle"> {{ task.pullTitle }}</span>
+                  <a v-if="task.pullUrl" :href="task.pullUrl" target="_blank" rel="noreferrer">打开 PR</a>
+                  <small class="muted input-note">
+                    {{ task.sourceBranch || '源分支未记录' }} → {{ task.targetBranch || '目标分支未记录' }}。
+                    源提交 {{ task.sourceHead || '未记录' }} · 目标提交 {{ task.targetHead || '未记录' }} · 共同祖先 {{ task.mergeBase || task.baseSha || '未记录' }}。
+                    文本 {{ task.textFiles ?? '未记录' }} / 二进制 {{ task.binaryFiles ?? '未记录' }} / 无法读取 {{ task.unreadableFiles ?? '未记录' }}。
+                    一次调查整个净变化，不按提交逐项展开。
+                  </small>
+                  <p class="muted small">{{ task.coverageNote || '二进制和无法读取的文件没有审查。' }}</p>
+                  <a-alert v-if="pullVersionNote" type="warning" show-icon :message="pullVersionNote" />
+                </dd>
                 <dd v-else><code class="input-version" :title="inputVersion.full">{{ inputVersion.label }}</code></dd>
                 <template v-if="inputKind === 'TEXT'">
                   <dt>范围描述</dt>
@@ -317,6 +330,7 @@ const router = useRouter()
 const taskId = computed(() => String(route.params.id))
 
 const task = ref<TaskView | null>(null)
+const pullVersionNote = ref('')
 const projectName = ref('')
 const inputScope = ref<AgentTaskCopyInput | null>(null)
 const inputLoading = ref(false)
@@ -451,12 +465,34 @@ function stopPolling() {
   }
 }
 
+async function checkPullVersion(current: TaskView) {
+  pullVersionNote.value = ''
+  if (current.sourceKind !== 'PR' || current.pullNumber == null) return
+  try {
+    const detail = await repositoryApi.pull(current.projectId, Number(current.pullNumber))
+    const live = detail.pullRequest
+    const moved = Boolean(
+      (current.sourceHead && live.sourceHead && current.sourceHead !== live.sourceHead)
+      || (current.targetHead && live.targetHead && current.targetHead !== live.targetHead)
+      || (current.mergeBase && detail.mergeBase && current.mergeBase !== detail.mergeBase)
+    )
+    if (moved) {
+      pullVersionNote.value = '当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。'
+    } else if (detail.blocker === 'PR_NOT_OPEN') {
+      pullVersionNote.value = '该 PR 已不再处于未合并的 open 状态。历史结果仍可阅读。'
+    }
+  } catch {
+    pullVersionNote.value = '暂时无法核对当前 PR 版本，本页仍显示发起时冻结的版本。'
+  }
+}
+
 async function loadTask() {
   stopPolling()
   taskLoading.value = true
   loadError.value = ''
   try {
     task.value = await tasksApi.detail(taskId.value)
+    void checkPullVersion(task.value)
     await Promise.all([loadProjectName(), loadProgress(), loadCalls(), loadInput()])
     if (isTerminal(task.value.state)) {
       await loadResult()

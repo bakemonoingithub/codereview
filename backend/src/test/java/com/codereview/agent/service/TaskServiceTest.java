@@ -208,6 +208,11 @@ class TaskServiceTest {
         assertEquals(SOURCE, view.headSha());
         assertEquals(BASE, view.baseSha());
         assertEquals(12L, view.pullNumber());
+        assertEquals("修复重试", view.pullTitle());
+        assertEquals(2, view.changedFiles());
+        assertEquals(1, view.textFiles());
+        assertEquals(1, view.binaryFiles());
+        assertEquals(1, view.selectedFiles());
         assertEquals("feature", view.sourceBranch());
         ArgumentCaptor<AgentReviewTask> task = ArgumentCaptor.forClass(AgentReviewTask.class);
         verify(taskMapper).insert(task.capture());

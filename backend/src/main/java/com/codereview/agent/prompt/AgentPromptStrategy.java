@@ -49,7 +49,16 @@ final class AgentPromptStrategy {
                 user.append("- ").append(version.version()).append(" = ").append(version.sha()).append('\n');
             }
         }
-        if (!input.comparisons().isEmpty()) {
+        if ("PR".equals(input.scopeKind()) && !input.comparisons().isEmpty()) {
+            user.append("比较关系（一个 PR 的净变化，共同祖先到源提交，不按其中的提交逐项比较）：\n");
+            for (AgentPromptInput.Comparison comparison : input.comparisons()) {
+                user.append("- ").append(comparison.id()).append("：").append(comparison.headSha())
+                        .append(comparison.baseSha() == null
+                                ? "（没有共同祖先）" : " ← 共同祖先 " + comparison.baseSha())
+                        .append('\n');
+            }
+            user.append("BEFORE 是共同祖先，AFTER 是源提交，不是第一父提交，也不是目标分支的当前内容。\n");
+        } else if (!input.comparisons().isEmpty()) {
             user.append("比较关系（只能按标识读取，不合并成首尾净差异）：\n");
             for (AgentPromptInput.Comparison comparison : input.comparisons()) {
                 user.append("- ").append(comparison.id()).append("：").append(comparison.headSha())

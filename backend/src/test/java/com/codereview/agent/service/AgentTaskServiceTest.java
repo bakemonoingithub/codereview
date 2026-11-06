@@ -207,6 +207,79 @@ class AgentTaskServiceTest {
     }
 
     @Test
+    void pullRequestFreezesOneNetRangeAndKeepsCommitComparisonsSeparate() {
+        when(repository.bindPullRequest(PROJECT_ID, 12, HEAD, OTHER, COMMIT_1)).thenReturn(
+                new com.codereview.agent.repository.PullRequestViews.Binding(
+                        new com.codereview.agent.repository.PullRequestViews.Item(12, "修复重试", "open",
+                                false, false, "chen", "feature", "dev", HEAD, OTHER,
+                                "acme/order", "acme/order", true, "https://example/12", "2026-11-06", "github"),
+                        COMMIT_1, "COMPLETE", List.of(new com.codereview.agent.repository.PullRequestViews.FileChange(
+                        "src/A.java", null, "modified", "TEXT", null)), 1, 0, 0));
+        AgentTaskDtos.Create req = new AgentTaskDtos.Create(PROJECT_ID, "PR调查", MODEL_ID, null,
+                new AgentTaskDtos.Scope("PR", null, null, List.of(), List.of(), "关注重试",
+                        12L, HEAD, OTHER, COMMIT_1),
+                "检查这个 PR 的净变化", null);
+
+        JsonNode scope = read(createAndCapture(req).getInputSnapshot()).path("scope");
+
+        assertEquals("PR", scope.path("kind").asText());
+        assertEquals(1, scope.path("comparisons").size());
+        assertEquals("C1", scope.path("comparisons").get(0).path("id").asText());
+        assertEquals("RANGE", scope.path("comparisons").get(0).path("mode").asText());
+        assertEquals(HEAD, scope.path("comparisons").get(0).path("headSha").asText());
+        assertEquals(COMMIT_1, scope.path("comparisons").get(0).path("baseSha").asText());
+        assertEquals(12, scope.path("pullNumber").asInt());
+        assertTrue(scope.path("coverageNote").asText().contains("二进制"));
+    }
+
+    @Test
+    void pullRequestWithoutTextChangesCannotStartAnInvestigation() {
+        when(repository.bindPullRequest(PROJECT_ID, 12, HEAD, OTHER, COMMIT_1)).thenReturn(
+                new com.codereview.agent.repository.PullRequestViews.Binding(
+                        new com.codereview.agent.repository.PullRequestViews.Item(12, "只有图片", "open",
+                                false, false, "chen", "feature", "dev", HEAD, OTHER,
+                                "acme/order", "acme/order", true, "https://example/12", "2026-11-06", "github"),
+                        COMMIT_1, "COMPLETE", List.of(new com.codereview.agent.repository.PullRequestViews.FileChange(
+                        "docs/a.png", null, "added", "BINARY", "BINARY")), 0, 1, 0));
+        AgentTaskDtos.Create req = new AgentTaskDtos.Create(PROJECT_ID, "PR调查", MODEL_ID, null,
+                new AgentTaskDtos.Scope("PR", null, null, List.of(), List.of(), null,
+                        12L, HEAD, OTHER, COMMIT_1),
+                "检查这个 PR", null);
+
+        ApiException error = assertThrows(ApiException.class, () -> service.create(req, null));
+
+        assertEquals(ErrorCode.VALIDATION_FAILED, error.errorCode());
+        assertTrue(error.getMessage().contains("没有可审查的文本变更"));
+        verify(taskMapper, org.mockito.Mockito.never()).insert(any(AgentReviewTask.class));
+    }
+
+    @Test
+    void copiedPullRequestDropsFrozenShasAndKeepsTheNumber() {
+        when(repository.bindPullRequest(PROJECT_ID, 12, HEAD, OTHER, COMMIT_1)).thenReturn(
+                new com.codereview.agent.repository.PullRequestViews.Binding(
+                        new com.codereview.agent.repository.PullRequestViews.Item(12, "修复重试", "open",
+                                false, false, "chen", "feature", "dev", HEAD, OTHER,
+                                "acme/order", "acme/order", true, "https://example/12", "2026-11-06", "github"),
+                        COMMIT_1, "COMPLETE", List.of(new com.codereview.agent.repository.PullRequestViews.FileChange(
+                        "src/A.java", null, "modified", "TEXT", null)), 1, 0, 0));
+        AgentTaskDtos.Create req = new AgentTaskDtos.Create(PROJECT_ID, "PR调查", MODEL_ID, null,
+                new AgentTaskDtos.Scope("PR", null, null, List.of(), List.of(), null,
+                        12L, HEAD, OTHER, COMMIT_1),
+                "检查这个 PR 的净变化", null);
+        AgentReviewTask task = createAndCapture(req);
+        when(taskMapper.selectById(task.getId())).thenReturn(task);
+
+        AgentTaskDtos.CopyInput copy = service.copyInput(task.getId());
+
+        assertEquals("PR", copy.scope().kind());
+        assertEquals(12L, copy.scope().pullNumber());
+        assertNull(copy.scope().sourceHead());
+        assertNull(copy.scope().targetHead());
+        assertNull(copy.scope().mergeBase());
+        assertTrue(copy.reobserveHead());
+    }
+
+    @Test
     void commitsTaskKeepsOrderAndBuildsFirstParentComparisons() {
         when(repository.commit(PROJECT_ID, COMMIT_3))
                 .thenReturn(commit(COMMIT_3, List.of(COMMIT_2)));

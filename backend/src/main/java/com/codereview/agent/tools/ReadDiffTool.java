@@ -1,9 +1,16 @@
 package com.codereview.agent.tools;
 
+import com.codereview.agent.api.ApiException;
+import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.repository.RepositorySnapshots;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
+import com.codereview.git.FixedComparison;
+import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.diff.HistogramDiff;
+import org.eclipse.jgit.diff.RawText;
+import org.eclipse.jgit.diff.RawTextComparator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -34,9 +41,86 @@ public class ReadDiffTool {
     public ToolEnvelope execute(String toolCallId, ToolInvocation invocation, AgentToolScope scope) {
         AgentToolScope.Comparison comparison = scope.comparison(invocation.comparisonId());
         ToolCursor cursor = ToolCursor.decode(invocation.cursor(), invocation);
+        if (comparison.range()) {
+            return invocation.path() == null
+                    ? listRange(toolCallId, invocation, scope, comparison, cursor)
+                    : hunksRange(toolCallId, invocation, scope, comparison, cursor);
+        }
         return invocation.path() == null
                 ? list(toolCallId, invocation, scope, comparison, cursor)
                 : hunks(toolCallId, invocation, scope, comparison, cursor);
+    }
+
+    private ToolEnvelope listRange(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
+                                   AgentToolScope.Comparison comparison, ToolCursor cursor) {
+        FixedComparison.Result result = repository.frozenRange(scope.projectId(),
+                comparison.baseSha(), comparison.headSha());
+        List<FixedComparison.FileChange> files = result.files();
+        int offset = Math.min(cursor.offset(), files.size());
+        List<Map<String, Object>> items = new ArrayList<>();
+        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
+        int index = offset;
+        while (index < files.size() && items.size() < scope.limits().getDiffMaxItems()) {
+            FixedComparison.FileChange file = files.get(index);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("path", file.path());
+            if (file.oldPath() != null && !file.oldPath().isBlank()) {
+                item.put("oldPath", file.oldPath());
+            }
+            item.put("status", file.status());
+            item.put("category", file.category());
+            if (file.reason() != null) {
+                item.put("reason", file.reason());
+            }
+            int cost = file.path().length() * 2 + 180;
+            if (!items.isEmpty() && cost > budget) {
+                break;
+            }
+            budget -= cost;
+            items.add(item);
+            index++;
+        }
+        boolean more = index < files.size();
+        boolean truncated = !result.complete();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("comparisonId", comparison.id());
+        data.put("headSha", comparison.headSha());
+        data.put("baseSha", comparison.baseSha());
+        data.put("totalFiles", truncated ? result.fileCount() : files.size());
+        data.put("items", items);
+        data.put("hint", "读取某个文本文件的逐 hunk 内容时再次调用本工具并传入 path；二进制和无法读取的文件没有审查");
+        String diagnostic = truncated ? "净变化清单不完整，不能把已返回的部分当成全部变更" : null;
+        return new ToolEnvelope(toolCallId, ToolEnvelope.OK, scope.versionRefs(), comparison.id(),
+                List.of(), data,
+                more || truncated ? ToolEnvelope.PARTIAL : ToolEnvelope.COMPLETE,
+                more ? ToolCursor.encode(invocation, index) : null, diagnostic);
+    }
+
+    private ToolEnvelope hunksRange(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
+                                    AgentToolScope.Comparison comparison, ToolCursor cursor) {
+        try {
+            RepositorySnapshots.DiffSides sides = repository.diffRange(scope.projectId(),
+                    comparison.baseSha(), comparison.headSha(), invocation.path());
+            String patch = sides.patch();
+            if (patch == null || patch.isBlank()) {
+                patch = unified(sideText(sides.before()), sideText(sides.after()));
+            }
+            return hunksFrom(toolCallId, invocation, scope, comparison, cursor,
+                    new RepositorySnapshots.DiffSides(sides.headSha(), sides.baseSha(), sides.path(),
+                            sides.oldPath(), sides.status(), patch, sides.before(), sides.after()));
+        } catch (ApiException failure) {
+            if (failure.errorCode() != ErrorCode.FILE_NOT_READABLE) {
+                throw failure;
+            }
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("comparisonId", comparison.id());
+            data.put("path", invocation.path());
+            data.put("headSha", comparison.headSha());
+            data.put("baseSha", comparison.baseSha());
+            data.put("note", "该净变化文件没有可读文本差异");
+            return new ToolEnvelope(toolCallId, ToolEnvelope.UNREADABLE, scope.versionRefs(),
+                    comparison.id(), List.of(), data, ToolEnvelope.UNKNOWN, null, failure.getMessage());
+        }
     }
 
     private ToolEnvelope list(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
@@ -88,8 +172,32 @@ public class ReadDiffTool {
 
     private ToolEnvelope hunks(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
                                AgentToolScope.Comparison comparison, ToolCursor cursor) {
-        RepositorySnapshots.DiffSides sides =
-                repository.diff(scope.projectId(), comparison.headSha(), invocation.path());
+        return hunksFrom(toolCallId, invocation, scope, comparison, cursor,
+                repository.diff(scope.projectId(), comparison.headSha(), invocation.path()));
+    }
+
+    private static String sideText(RepositorySnapshots.Side side) {
+        return side != null && side.present() ? side.content() : "";
+    }
+
+    private static String unified(String before, String after) {
+        try {
+            RawText left = new RawText((before == null ? "" : before).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            RawText right = new RawText((after == null ? "" : after).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            var edits = new HistogramDiff().diff(RawTextComparator.DEFAULT, left, right);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            try (DiffFormatter formatter = new DiffFormatter(out)) {
+                formatter.format(edits, left, right);
+            }
+            return out.toString(java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException failure) {
+            return "";
+        }
+    }
+
+    private ToolEnvelope hunksFrom(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
+                                   AgentToolScope.Comparison comparison, ToolCursor cursor,
+                                   RepositorySnapshots.DiffSides sides) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("comparisonId", comparison.id());
         data.put("path", sides.path());

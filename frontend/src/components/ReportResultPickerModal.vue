@@ -58,7 +58,7 @@
                 <span v-else class="muted small">{{ item.kind === 'ISSUE' ? `${item.issueCount} 个问题` : '结果级反馈' }}</span>
                 <span v-if="item.kind === 'AGENT' && item.unresolvedCount" class="muted small">未解决 {{ item.unresolvedCount }} 项</span>
                 <span v-else class="muted small">{{ feedbackText(item) }}</span>
-                <span class="muted small">{{ item.kind === 'AGENT' ? 'Agent 调查' : item.sourceKind === 'DIFF' ? '审查差异' : '审查内容' }}</span>
+                <span class="muted small">{{ item.kind === 'AGENT' ? 'Agent 调查' : item.sourceKind === 'PR' ? 'PR 净变化' : item.sourceKind === 'DIFF' ? '审查差异' : '审查内容' }}</span>
               </div>
               <a-button type="link" size="small" :disabled="item.kind !== 'AGENT' && !item.targetId" @click="emit('preview', item)">查看结果</a-button>
             </div>

@@ -4,6 +4,7 @@ import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.repository.RepositorySnapshots;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
+import com.codereview.git.FixedComparison;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,22 @@ class ReadDiffToolTest {
                     draft.path(), draft.side(), draft.sha(), draft.startLine(), draft.endLine(),
                     draft.contentHash(), draft.completeness(), draft.content());
         });
+    }
+
+    @Test
+    void rangeComparisonListsFrozenFilesWithoutReadingTheCommit() {
+        AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
+                AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));
+        when(repository.frozenRange("p1", BASE, HEAD)).thenReturn(new FixedComparison.Result(
+                null, HEAD, BASE, FixedComparison.COMPLETE, 1, List.of(
+                new FixedComparison.FileChange("src/A.java", "src/Old.java", "renamed", "TEXT", null))));
+
+        ToolEnvelope envelope = tool.execute("call-1", invocation(null), range);
+
+        assertEquals("src/A.java", ((Map<?, ?>) ((List<?>) ((Map<?, ?>) envelope.data()).get("items")).get(0)).get("path"));
+        assertEquals("src/Old.java", ((Map<?, ?>) ((List<?>) ((Map<?, ?>) envelope.data()).get("items")).get(0)).get("oldPath"));
+        assertEquals(ToolEnvelope.COMPLETE, envelope.completeness());
+        org.mockito.Mockito.verify(repository, org.mockito.Mockito.never()).commit(any(), any());
     }
 
     @Test

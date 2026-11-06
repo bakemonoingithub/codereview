@@ -15,7 +15,7 @@ vi.mock('@/api/v2', () => ({
   projectsApi: { list: vi.fn() },
   modelsApi: { list: vi.fn(), validateAgent: vi.fn() },
   promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() },
-  repositoryApi: { branches: vi.fn(), head: vi.fn(), commits: vi.fn() }
+  repositoryApi: { branches: vi.fn(), head: vi.fn(), commits: vi.fn(), pulls: vi.fn(), pullChanges: vi.fn() }
 }))
 import { agentTasksApi, projectsApi, modelsApi, promptsApi, repositoryApi } from '@/api/v2'
 
@@ -298,6 +298,29 @@ describe('Agent 发起表单', () => {
     s.form.guidancePromptId = undefined
     expect(s.form.guidancePromptVersionId).toBeUndefined()
     expect(s.guidancePromptVersions).toEqual([])
+    wrapper.unmount()
+  })
+
+  it('复制 PR 参数时重新读取当前净变化，不提交旧 SHA', async () => {
+    context.route.query = { copyFrom: 'old-task' }
+    const sourceHead = 'e'.repeat(40)
+    vi.mocked(agentTasksApi.copyInput).mockResolvedValue({
+      projectId: 'p1', modelConfigId: 'm1', requirements: '检查净变化',
+      scope: { kind: 'PR', pullNumber: 8 }
+    } as any)
+    vi.mocked(repositoryApi.pullChanges).mockResolvedValue({
+      number: 8, sourceHead, targetHead: 'f'.repeat(40), mergeBase: '1'.repeat(40),
+      blocker: null, textFiles: 2, binaryFiles: 1, unreadableFiles: 1, fileCount: 4, files: []
+    } as any)
+    const wrapper = await start(); const s = state(wrapper)
+    expect(repositoryApi.pullChanges).toHaveBeenCalledWith('p1', 8)
+    expect(s.form.sourceHead).toBe(sourceHead)
+    expect(s.pullNotice).toContain('未沿用旧提交')
+    await s.submit()
+    const scope = vi.mocked(agentTasksApi.create).mock.calls[0][0].scope
+    expect(scope).toMatchObject({ kind: 'PR', pullNumber: 8, sourceHead, mergeBase: '1'.repeat(40) })
+    expect(scope.observedSha).toBeUndefined()
+    expect(scope.commits).toBeUndefined()
     wrapper.unmount()
   })
 
