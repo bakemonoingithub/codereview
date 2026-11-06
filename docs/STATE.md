@@ -4,6 +4,8 @@
 
 ## 当前状态
 
+2026-11-06 PRS 手工选择 PR 审查范围规划完成：负责人要求更新仓库状态并准备开发。业务契约新增[第 13 节](work/agent-redesign/business-contract.md#13-pr-手工审查范围2026-11-06)，[影响评估与前端复用清单](work/pr-review-scope/assessment.md)、[交互原型](work/pr-review-scope/prototype.html)及[PRS-01–06 工作计划](work/pr-review-scope/README.md)已就绪。范围覆盖 GitHub 验证仓库与 Gitea 1.16.1 内网仓库的手工 PR 选择、冻结净变化、问题专项与 Agent 分析、现有页面／证据／材料／报告接入及双宿主验收；不包含自动触发、PR 回写或质量门禁。PRS-01–06 均为 `todo`，当前无本工作包 `active`；下一步是 PRS-01 固定接口、材料与覆盖规则后开始实现。新增 GitHub／Gitea PR 只读调用已在计划中明列，尚未实施。本轮只更新文档与状态，未改生产／测试代码、数据库或集成接口，未启停服务、调用模型、提交或发布；保留已有 `frontend/components.d.ts` 未提交修改，评估与原型仍为未提交文档。既有工作包状态不变。
+
 2026-11-03 LGC-04 完成，LGC-01–04 全部 `done`：PR #8 已合并到 `dev`，合并提交为 `26e81c7647db3eb0b74aa5bf10d3cb7be7acd7e8`。前序工程检查、全量测试、类型检查、打包资源对照和 Postman 旧请求删除已有记录；负责人在本会话确认已独立启动系统并完成一次真实 Agent 分析，现有库连接、业务服务启停、真实模型和正式页面视觉验收均无问题。据此关闭 LGC-04，无本工作包 active；部署发布及未逐项执行的探针保留原有边界，其他工作包状态不变。本轮只更新文档及状态，未再次操作数据库、启停服务、调用模型或修改 Postman；保留已有 `frontend/components.d.ts` 未提交修改。详见[交付与负责人验收记录](work/legacy-code-cleanup/delivery.md#7-负责人独立验证与关闭)。
 
 2026-11-03 LGC-04 部分完成，整项保持 `partial`：LGC-02 与 LGC-03 保持 `done`。远程复核清单、60 条现行接口注解与 40 个旧控制器源码缺失、前后端全量、隔离构建和 `mvn package` 资源对照已通过。随后删除 `ProjectList.vue` 未使用的 `PageNotice` 导入，`vue-tsc --noEmit` 退出码 0、无诊断。提示词与工具基线相对 `9dc1ff7` 无差异。负责人授权后删除 Postman 工作区 `codereview` 集合「aiCodeReview 后端接口（按业务组织）」中的「99 已停用接口」及 40 个旧请求，62 个现行 `/api/v2` 请求仍在。未连接现有库、未启停业务服务、未调用真实模型、未做正式视觉、未部署或发布、未合并 PR。详见[交付记录](work/legacy-code-cleanup/delivery.md)。
