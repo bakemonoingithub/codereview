@@ -35,6 +35,7 @@ public class PromptAssemblyService {
         EnumMap<PromptPurpose, PromptInputStrategy> routes = new EnumMap<>(PromptPurpose.class);
         routes.put(PromptPurpose.ISSUE_FILE, specialist);
         routes.put(PromptPurpose.ISSUE_DIFF, specialist);
+        routes.put(PromptPurpose.ISSUE_PR, specialist);
         routes.put(PromptPurpose.PATTERN, specialist);
         routes.put(PromptPurpose.COUPLING, specialist);
         routes.put(PromptPurpose.REPORT, report);

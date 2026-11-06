@@ -154,7 +154,8 @@ public class SpecialistResultValidator {
 
     private static void validateChangeRelation(String changeRelation, ValidationContext context,
                                         String field) {
-        if ("DIFF".equals(context.sourceKind())) {
+        // BRC-M02：DIFF 与 PR 都要求说明和净变化的关系；PR 的 BEFORE 是共同祖先，不是第一父提交。
+        if ("DIFF".equals(context.sourceKind()) || "PR".equals(context.sourceKind())) {
             requireText(changeRelation, field);
         } else if (changeRelation != null && !changeRelation.isBlank()) {
             throw invalid("UNEXPECTED_CHANGE_RELATION",

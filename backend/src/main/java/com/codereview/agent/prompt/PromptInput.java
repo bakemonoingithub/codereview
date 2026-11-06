@@ -24,7 +24,8 @@ public record PromptInput(PromptPurpose purpose,
                           List<PromptFact> facts,
                           FormatRetry formatRetry,
                           String reportTitle,
-                          String reportInstruction) {
+                          String reportInstruction,
+                          PullRequestScope pullRequest) {
 
     /** 既有专项／验证调用保持原构造方式；报告用途再显式传入标题与要求。 */
     public PromptInput(PromptPurpose purpose, String protocolVersion, String generalRuleName,
@@ -33,7 +34,22 @@ public record PromptInput(PromptPurpose purpose,
                        List<PromptMaterial> auxiliary, List<String> missingNotes,
                        List<PromptFact> facts, FormatRetry formatRetry) {
         this(purpose, protocolVersion, generalRuleName, generalRuleContent, targetNote, sourceKind, branch,
-                headSha, baseSha, targets, auxiliary, missingNotes, facts, formatRetry, null, null);
+                headSha, baseSha, targets, auxiliary, missingNotes, facts, formatRetry, null, null, null);
+    }
+
+    public PromptInput(PromptPurpose purpose, String protocolVersion, String generalRuleName,
+                       String generalRuleContent, String targetNote, String sourceKind, String branch,
+                       String headSha, String baseSha, List<PromptMaterial> targets,
+                       List<PromptMaterial> auxiliary, List<String> missingNotes,
+                       List<PromptFact> facts, FormatRetry formatRetry, String reportTitle,
+                       String reportInstruction) {
+        this(purpose, protocolVersion, generalRuleName, generalRuleContent, targetNote, sourceKind, branch,
+                headSha, baseSha, targets, auxiliary, missingNotes, facts, formatRetry, reportTitle,
+                reportInstruction, null);
+    }
+
+    /** PR 范围随专项输入进入用户段落，不改变既有用途的构造方式。 */
+    public record PullRequestScope(long number, String sourceBranch, String targetBranch, String targetHead) {
     }
 
     public PromptInput {

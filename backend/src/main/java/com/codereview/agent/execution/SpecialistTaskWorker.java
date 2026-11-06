@@ -329,11 +329,18 @@ public class SpecialistTaskWorker implements TaskWorker {
 
     private PrepareCommand command(AgentReviewTask task, AgentTaskTarget target) {
         JsonNode input = read(task.getInputSnapshot());
-        return new PrepareCommand(task.getProjectId(), task.getSpecialistType(),
-                input.path("source").path("kind").asText("FILES"),
-                input.path("source").path("branch").asText(null),
+        JsonNode source = input.path("source");
+        String kind = source.path("kind").asText("FILES");
+        SpecialistMaterials.PullRequestContext pull = null;
+        if ("PR".equals(kind)) {
+            pull = new SpecialistMaterials.PullRequestContext(source.path("pullNumber").asLong(),
+                    source.path("sourceBranch").asText(null), source.path("targetBranch").asText(null),
+                    source.path("targetHead").asText(null), textOrNull(source, "coverageNote"));
+        }
+        return new PrepareCommand(task.getProjectId(), task.getSpecialistType(), kind,
+                source.path("branch").asText(null),
                 target.getPath(), target.getOldPath(), target.getNote(),
-                target.getHeadSha(), target.getBaseSha());
+                target.getHeadSha(), target.getBaseSha(), pull);
     }
 
     private CouplingFacts facts(AgentReviewTask task, PreparedTarget target) {
@@ -452,6 +459,11 @@ public class SpecialistTaskWorker implements TaskWorker {
         return plan.ranges().stream()
                 .map(range -> Map.of("startLine", range.startLine(), "endLine", range.endLine()))
                 .toList();
+    }
+
+    private static String textOrNull(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        return value.isMissingNode() || value.isNull() || value.asText().isBlank() ? null : value.asText();
     }
 
     private JsonNode read(String value) {

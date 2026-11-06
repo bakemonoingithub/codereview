@@ -40,7 +40,7 @@ final class PromptSystemRenderer {
     public String protocolBody(PromptPurpose purpose) {
         String templateId = "protocol." + purpose.wireName();
         return switch (purpose) {
-            case ISSUE_FILE, ISSUE_DIFF, PATTERN, COUPLING -> templates.render(templateId,
+            case ISSUE_FILE, ISSUE_DIFF, ISSUE_PR, PATTERN, COUPLING -> templates.render(templateId,
                     Map.of("schema", SpecialistOutputContracts.forPurpose(purpose).protocolBlock()));
             case REPORT -> templates.render(templateId,
                     Map.of("citationMarker", ReportCitationContract.MARKER_EXAMPLE));

@@ -11,12 +11,15 @@ import com.codereview.common.ResultCode;
 import com.codereview.common.ReviewableFiles;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
+import com.codereview.git.FixedComparison;
+import com.codereview.git.FixedComparisonService;
 import com.codereview.git.GitHostClient;
 import com.codereview.git.GitHostClientRegistry;
 import com.codereview.git.GitRepoRef;
 import com.codereview.git.GitTree;
 import com.codereview.git.HostHttpException;
 import com.codereview.git.GitTreeEntry;
+import com.codereview.git.PullRequests;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -30,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -58,12 +62,21 @@ public class RepositoryReadService {
     private final Cache<String, RepositorySnapshots.PathList> treeCache;
 
     private final RepositoryProperties properties;
+    private final FixedComparisonService comparisons;
+
     public RepositoryReadService(AgentDatabase db, GitHostClientRegistry registry) {
         this(db, registry, new RepositoryProperties());
     }
-    @org.springframework.beans.factory.annotation.Autowired
+
     public RepositoryReadService(AgentDatabase db, GitHostClientRegistry registry, RepositoryProperties properties) {
+        this(db, registry, properties, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RepositoryReadService(AgentDatabase db, GitHostClientRegistry registry, RepositoryProperties properties,
+                                 FixedComparisonService comparisons) {
         this.properties = properties;
+        this.comparisons = comparisons;
         this.db = db;
         this.registry = registry;
         this.fileCache = Caffeine.newBuilder()
@@ -234,6 +247,108 @@ public class RepositoryReadService {
     }
 
     /**
+     * 项目仓库中的 PR 列表。只读取宿主元数据，不克隆镜像，也不把 PR 展开成提交。
+     */
+    public PullRequestViews.Page pullRequests(String projectId, String state, String targetBranch,
+                                              int page, int perPage) {
+        ProjectContext context = context(projectId);
+        String safeState = normalizePullState(state);
+        int safePage = Math.max(1, page);
+        int safeSize = Math.max(1, Math.min(perPage, 100));
+        PullRequests.Page result = call("读取 PR 列表", () -> client(context).pullRequests(
+                context.credential(), context.credentialType(), context.ref, safeState,
+                blankToNull(targetBranch), safePage, safeSize));
+        String provider = client(context).pullRequestProvider();
+        List<PullRequestViews.Item> items = result.items().stream()
+                .map(item -> toItem(context, item, provider))
+                .toList();
+        return new PullRequestViews.Page(items, result.hasMore());
+    }
+
+    /**
+     * PR 详情。同仓库时计算共同祖先；跨仓库、未开放或没有共同祖先时仍返回身份，并用 blocker 说明不能审查的原因。
+     */
+    public PullRequestViews.Detail pullRequest(String projectId, long number) {
+        LoadedPull loaded = loadPull(projectId, number);
+        return new PullRequestViews.Detail(loaded.item, loaded.mergeBase, loaded.blocker);
+    }
+
+    /** 当前 PR 的净变化清单。版本以这次读取到的源提交和目标提交为准。 */
+    public PullRequestViews.Changes pullRequestChanges(String projectId, long number) {
+        LoadedPull loaded = loadPull(projectId, number);
+        return new PullRequestViews.Changes(loaded.item.number(), loaded.item.sourceHead(),
+                loaded.item.targetHead(), loaded.mergeBase, loaded.completeness, loaded.blocker,
+                loaded.fileCount, count(loaded.files, "TEXT"), count(loaded.files, "BINARY"),
+                count(loaded.files, "UNREADABLE"), loaded.files);
+    }
+
+    /**
+     * 创建审查前重新读取 PR，并核对用户确认的三个版本。
+     * 任一版本变化都拒绝，不把旧确认改写成新提交。
+     */
+    public PullRequestViews.Binding bindPullRequest(String projectId, long number, String sourceHead,
+                                                    String targetHead, String mergeBase) {
+        String observedSource = RepositoryPaths.requireFixedSha(sourceHead);
+        String observedTarget = RepositoryPaths.requireFixedSha(targetHead);
+        String observedBase = RepositoryPaths.requireFixedSha(mergeBase);
+        LoadedPull loaded = loadPull(projectId, number);
+        if (loaded.blocker != null) {
+            throw pullBlocker(loaded);
+        }
+        if (!observedSource.equals(loaded.item.sourceHead())
+                || !observedTarget.equals(loaded.item.targetHead())
+                || !observedBase.equals(loaded.mergeBase)) {
+            throw new ApiException(ErrorCode.SOURCE_MOVED,
+                    "PR #" + number + " 的源提交、目标提交或共同祖先已变化，请刷新范围后重新提交",
+                    Map.of("pullNumber", number,
+                            "observedSourceHead", observedSource,
+                            "currentSourceHead", loaded.item.sourceHead() == null ? "UNKNOWN" : loaded.item.sourceHead(),
+                            "observedTargetHead", observedTarget,
+                            "currentTargetHead", loaded.item.targetHead() == null ? "UNKNOWN" : loaded.item.targetHead(),
+                            "observedMergeBase", observedBase,
+                            "currentMergeBase", loaded.mergeBase == null ? "UNKNOWN" : loaded.mergeBase));
+        }
+        return new PullRequestViews.Binding(loaded.item, loaded.mergeBase, loaded.completeness, loaded.files,
+                count(loaded.files, "TEXT"), count(loaded.files, "BINARY"), count(loaded.files, "UNREADABLE"));
+    }
+
+    /**
+     * 两个已经冻结的提交之间的单文件差异。{@code baseSha} 是比较基线本身，不再改取第一父提交。
+     */
+    public RepositorySnapshots.DiffSides diffRange(String projectId, String baseSha, String headSha, String path) {
+        ProjectContext context = context(projectId);
+        String base = RepositoryPaths.requireFixedSha(baseSha);
+        String head = RepositoryPaths.requireFixedSha(headSha);
+        String safePath = RepositoryPaths.requireSafePath(path);
+        FixedComparison.Result comparison = frozenComparison(context, base, head);
+        if (!comparison.complete()) {
+            throw new ApiException(ErrorCode.SNAPSHOT_INCOMPLETE,
+                    "PR 净变化清单超过上限，不能读取其中的单个文件");
+        }
+        FixedComparison.FileChange file = findChange(comparison, safePath);
+        if (file == null) {
+            throw new ApiException(ErrorCode.NOT_FOUND, "该净变化没有此文件：" + safePath);
+        }
+        if (!file.text()) {
+            throw new ApiException(ErrorCode.FILE_NOT_READABLE,
+                    "该净变化文件不可作为文本审查材料：" + file.path(),
+                    Map.of("reason", file.reason() == null ? file.category() : file.reason(),
+                            "category", file.category()));
+        }
+        boolean added = ChangedFile.ADDED.equals(file.status());
+        boolean removed = ChangedFile.REMOVED.equals(file.status());
+        String beforePath = file.oldPath() != null ? file.oldPath() : file.path();
+        RepositorySnapshots.Side after = removed
+                ? RepositorySnapshots.Side.missing("REMOVED")
+                : readSide(projectId, head, file.path());
+        RepositorySnapshots.Side before = added
+                ? RepositorySnapshots.Side.missing("ADDED")
+                : readSide(projectId, base, beforePath);
+        return new RepositorySnapshots.DiffSides(head, base, file.path(), file.oldPath(), file.status(),
+                null, before, after);
+    }
+
+    /**
      * 读取差异的一侧：把"不存在"与"存在但读不到"分开。
      *
      * <p>任一侧的宿主读取失败都不影响另一侧，保留具体错误码作为不可读原因；
@@ -387,6 +502,164 @@ public class RepositoryReadService {
             return HexFormat.of().formatHex(digest.digest(content.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 不可用", e);
+        }
+    }
+
+    private LoadedPull loadPull(String projectId, long number) {
+        if (number <= 0) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "PR 编号必须是正整数",
+                    Map.of("pullNumber", number));
+        }
+        ProjectContext context = context(projectId);
+        PullRequests.Item raw = call("读取 PR", () -> client(context).pullRequest(
+                context.credential(), context.credentialType(), context.ref, number));
+        PullRequestViews.Item item = toItem(context, raw, client(context).pullRequestProvider());
+        if (!item.sameRepository()) {
+            return LoadedPull.blocked(item, PullRequestViews.CROSS_REPOSITORY);
+        }
+        if (!openPull(item)) {
+            LoadedPull closed = compareSameRepository(context, item);
+            return new LoadedPull(item, closed.mergeBase, closed.completeness, closed.fileCount,
+                    closed.files, PullRequestViews.PR_NOT_OPEN);
+        }
+        return compareSameRepository(context, item);
+    }
+
+    private LoadedPull compareSameRepository(ProjectContext context, PullRequestViews.Item item) {
+        if (item.sourceHead() == null || item.targetHead() == null) {
+            return LoadedPull.blocked(item, PullRequestViews.NO_MERGE_BASE);
+        }
+        try {
+            FixedComparison.Result comparison = liveComparison(context, item.targetHead(), item.sourceHead());
+            List<PullRequestViews.FileChange> files = comparison.files().stream()
+                    .map(file -> new PullRequestViews.FileChange(file.path(), file.oldPath(), file.status(),
+                            file.category(), file.reason()))
+                    .toList();
+            String blocker = comparison.complete() ? null : PullRequestViews.TRUNCATED;
+            return new LoadedPull(item, comparison.mergeBase(), comparison.completeness(),
+                    comparison.fileCount(), files, blocker);
+        } catch (ApiException e) {
+            if (e.details() instanceof Map<?, ?> details
+                    && PullRequestViews.NO_MERGE_BASE.equals(details.get("reason"))) {
+                return LoadedPull.blocked(item, PullRequestViews.NO_MERGE_BASE);
+            }
+            throw e;
+        }
+    }
+
+    private FixedComparison.Result liveComparison(ProjectContext context, String targetHead, String sourceHead) {
+        return compare(context, targetHead, sourceHead, true);
+    }
+
+    private FixedComparison.Result frozenComparison(ProjectContext context, String mergeBase, String sourceHead) {
+        return compare(context, mergeBase, sourceHead, false);
+    }
+
+    private FixedComparison.Result compare(ProjectContext context, String base, String head, boolean findMergeBase) {
+        GitHostClient host = client(context);
+        if (comparisons == null) {
+            throw new ApiException(ErrorCode.INTERNAL_ERROR, "PR 比较组件未装配");
+        }
+        if (!host.supportsLocalComparison()) {
+            throw new ApiException(ErrorCode.REPO_UNREACHABLE,
+                    "本地镜像比较已关闭，无法计算 PR 净变化");
+        }
+        String cloneUrl = call("确定镜像地址", () -> host.mirrorCloneUrl(context.ref));
+        try {
+            return findMergeBase
+                    ? comparisons.between(cloneUrl, context.credential(), context.credentialType(),
+                    base, head, properties.getMaxFileBytes())
+                    : comparisons.trees(cloneUrl, context.credential(), context.credentialType(),
+                    base, head, properties.getMaxFileBytes());
+        } catch (BusinessException e) {
+            throw mapComparison(e);
+        }
+    }
+
+    private static ApiException mapComparison(BusinessException failure) {
+        String message = failure.getMessage() == null ? "计算 PR 净变化失败" : failure.getMessage();
+        if (message.contains("没有共同祖先")) {
+            return new ApiException(ErrorCode.VALIDATION_FAILED, message,
+                    Map.of("reason", PullRequestViews.NO_MERGE_BASE));
+        }
+        return new ApiException(ErrorCode.REPO_UNREACHABLE, "计算 PR 净变化失败：" + message);
+    }
+
+    private static ApiException pullBlocker(LoadedPull loaded) {
+        return switch (loaded.blocker) {
+            case PullRequestViews.CROSS_REPOSITORY -> new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "首版只审查已登记项目仓库内的 PR，不接受 fork 或其他仓库",
+                    Map.of("reason", PullRequestViews.CROSS_REPOSITORY, "pullNumber", loaded.item.number()));
+            case PullRequestViews.PR_NOT_OPEN -> new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "只能审查未合并且仍开放的 PR",
+                    Map.of("reason", PullRequestViews.PR_NOT_OPEN, "pullNumber", loaded.item.number(),
+                            "state", loaded.item.state() == null ? "" : loaded.item.state()));
+            case PullRequestViews.NO_MERGE_BASE -> new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "PR 的源提交和目标提交没有共同祖先",
+                    Map.of("reason", PullRequestViews.NO_MERGE_BASE, "pullNumber", loaded.item.number()));
+            case PullRequestViews.TRUNCATED -> new ApiException(ErrorCode.SNAPSHOT_INCOMPLETE,
+                    "PR 净变化超过 " + FixedComparison.MAX_FILES + " 个文件，不能把部分清单当作完整范围",
+                    Map.of("reason", PullRequestViews.TRUNCATED, "pullNumber", loaded.item.number(),
+                            "fileCount", loaded.fileCount));
+            default -> new ApiException(ErrorCode.VALIDATION_FAILED, "该 PR 不能发起审查",
+                    Map.of("reason", loaded.blocker));
+        };
+    }
+
+    private PullRequestViews.Item toItem(ProjectContext context, PullRequests.Item item, String provider) {
+        String projectRepository = context.ref.owner() + "/" + context.ref.repo();
+        boolean same = projectRepository.equalsIgnoreCase(nullToEmpty(item.sourceRepository()))
+                && projectRepository.equalsIgnoreCase(nullToEmpty(item.targetRepository()));
+        return new PullRequestViews.Item(item.number(), item.title(), item.state(), item.draft(),
+                item.merged(), item.author(), item.sourceBranch(), item.targetBranch(), item.sourceSha(),
+                item.targetSha(), item.sourceRepository(), item.targetRepository(), same, item.url(),
+                item.updatedAt(), provider);
+    }
+
+    private static FixedComparison.FileChange findChange(FixedComparison.Result comparison, String path) {
+        for (FixedComparison.FileChange file : comparison.files()) {
+            if (path.equals(file.path()) || path.equals(file.oldPath())) {
+                return file;
+            }
+        }
+        return null;
+    }
+
+    private static int count(List<PullRequestViews.FileChange> files, String category) {
+        int total = 0;
+        for (PullRequestViews.FileChange file : files) {
+            if (category.equals(file.category())) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    private static boolean openPull(PullRequestViews.Item item) {
+        return "open".equalsIgnoreCase(item.state()) && !item.merged();
+    }
+
+    private static String normalizePullState(String state) {
+        String value = state == null || state.isBlank() ? "open" : state.trim().toLowerCase(Locale.ROOT);
+        if (!value.equals("open") && !value.equals("closed") && !value.equals("all")) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "PR 状态只能是 open、closed 或 all",
+                    Map.of("state", state));
+        }
+        return value;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private record LoadedPull(PullRequestViews.Item item, String mergeBase, String completeness,
+                              int fileCount, List<PullRequestViews.FileChange> files, String blocker) {
+        private static LoadedPull blocked(PullRequestViews.Item item, String blocker) {
+            return new LoadedPull(item, null, null, 0, List.of(), blocker);
         }
     }
 

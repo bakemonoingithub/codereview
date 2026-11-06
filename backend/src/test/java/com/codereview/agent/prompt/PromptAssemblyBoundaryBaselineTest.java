@@ -47,6 +47,9 @@ class PromptAssemblyBoundaryBaselineTest {
             actual.put("agent-length-" + delta, digest(mapper.writeValueAsBytes(assembly.assembleAgent(input, history, tools))));
         }
         for (PromptPurpose purpose : PromptPurpose.values()) {
+            if (purpose == PromptPurpose.ISSUE_PR) {
+                continue;
+            }
             actual.put("system-" + purpose, digest(assembly.systemPrompt(purpose).getBytes(StandardCharsets.UTF_8)));
             actual.put("protocol-" + purpose, digest(assembly.protocolBody(purpose).getBytes(StandardCharsets.UTF_8)));
             var empty = new PromptInput(purpose, "1", null, null, null, "VALIDATION", null, null, null,

@@ -31,6 +31,10 @@ final class PromptSections {
     }
 
     static void appendScope(StringBuilder user, PromptInput input) {
+        if (input.pullRequest() != null) {
+            appendPullRequestScope(user, input);
+            return;
+        }
         section(user, "范围与版本");
         user.append("来源：").append(nullToUnknown(input.sourceKind()))
                 .append("；分支：").append(nullToUnknown(input.branch()))
@@ -39,6 +43,25 @@ final class PromptSections {
             user.append("；base：").append(input.baseSha());
         }
         user.append('\n');
+        appendTargetMaterials(user, input);
+    }
+
+    private static void appendPullRequestScope(StringBuilder user, PromptInput input) {
+        PromptInput.PullRequestScope pull = input.pullRequest();
+        section(user, "范围与版本");
+        user.append("来源：PR；编号：#").append(pull.number())
+                .append("；源分支：").append(nullToUnknown(pull.sourceBranch()))
+                .append("；目标分支：").append(nullToUnknown(pull.targetBranch()))
+                .append("；源提交：").append(nullToUnknown(input.headSha()))
+                .append("；目标提交：").append(nullToUnknown(pull.targetHead()))
+                .append("；共同祖先：").append(nullToUnknown(input.baseSha()))
+                .append('\n');
+        user.append("比较范围是共同祖先到源提交的净变化。BEFORE 是共同祖先，AFTER 是源提交，")
+                .append("不是第一父提交，也不是目标分支的当前内容。\n");
+        appendTargetMaterials(user, input);
+    }
+
+    private static void appendTargetMaterials(StringBuilder user, PromptInput input) {
         if (input.targets().isEmpty()) {
             user.append("目标材料：无（验证调用）\n");
         } else {
