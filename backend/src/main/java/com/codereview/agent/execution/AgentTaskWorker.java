@@ -549,7 +549,8 @@ public class AgentTaskWorker implements TaskWorker {
             String head = comparison.path("headSha").asText();
             String base = comparison.path("baseSha").isNull()
                     ? null : comparison.path("baseSha").asText();
-            comparisons.put(id, new AgentToolScope.Comparison(id, head, base));
+            String mode = comparison.path("mode").asText("COMMIT");
+            comparisons.put(id, new AgentToolScope.Comparison(id, head, base, mode));
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("id", id);
             entry.put("headSha", head);
@@ -569,11 +570,18 @@ public class AgentTaskWorker implements TaskWorker {
         for (JsonNode path : scopeNode.path("paths")) {
             paths.add(path.asText());
         }
+        String scopeDescription = scopeNode.path("description").isNull()
+                ? null : scopeNode.path("description").asText();
+        if ("PR".equals(scopeNode.path("kind").asText()) && !scopeNode.path("coverageNote").isNull()) {
+            String coverage = scopeNode.path("coverageNote").asText("");
+            scopeDescription = scopeDescription == null || scopeDescription.isBlank()
+                    ? coverage : scopeDescription + "\n" + coverage;
+        }
         AgentPromptInput promptInput = new AgentPromptInput(
                 input.path("requirements").asText(""), scopeNode.path("kind").asText("TEXT"),
                 scopeNode.path("branch").isNull() ? null : scopeNode.path("branch").asText(),
                 scopeNode.path("headSha").isNull() ? null : scopeNode.path("headSha").asText(),
-                scopeNode.path("description").isNull() ? null : scopeNode.path("description").asText(),
+                scopeDescription,
                 paths, promptVersions, promptComparisons,
                 config.path("prompt").path("content").isMissingNode() ? null
                         : config.path("prompt").path("content").asText(),

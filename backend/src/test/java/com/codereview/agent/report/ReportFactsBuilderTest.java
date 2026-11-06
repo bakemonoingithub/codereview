@@ -74,6 +74,24 @@ class ReportFactsBuilderTest {
         assertTrue(text.contains("未解决：未取得支付实现。"), text);
         assertTrue(text.contains("charge();"), text);
     }
+
+    @Test
+    void pullRequestFactsNameTheMergeBaseInsteadOfAParent() {
+        String snapshot = """
+                {"resultId":"r4","taskId":"t4","kind":"AGENT",
+                 "project":{"id":"p1","name":"订单服务"},
+                 "task":{"id":"t4","state":"SUCCEEDED","sourceKind":"PR","branch":"dev",
+                   "baseSha":"base-1","pullNumber":12},
+                 "target":{"headSha":"head-1"},
+                 "result":{"body":{"title":"净变化","summary":"只检查共同祖先到源提交。",
+                   "answerStatus":"ANSWERED","markdown":"结论","citations":[],"unresolved":[]}},
+                 "materials":[],"issues":[],"resultFeedback":null}
+                """;
+        var facts = builder.build(List.of(source(1, "r4", "AGENT", snapshot)));
+
+        assertTrue(facts.facts().get(1).text().contains("共同祖先 base-1"), facts.facts().get(1).text());
+        assertTrue(!facts.facts().get(1).text().contains("父 base-1"), facts.facts().get(1).text());
+    }
     @Test
     void preservesResultCommentsIncludingUnassessedComments() throws Exception {
         ObjectNode snapshot = (ObjectNode) json.readTree(patternSnapshot());

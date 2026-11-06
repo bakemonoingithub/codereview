@@ -12,10 +12,10 @@ vi.mock('vue-router', () => ({
   onBeforeRouteLeave: vi.fn(),
   onBeforeRouteUpdate: vi.fn()
 }))
-vi.mock('@/api/v2', () => ({ projectsApi: { detail: vi.fn() }, tasksApi: {
+vi.mock('@/api/v2', () => ({ projectsApi: { detail: vi.fn() }, repositoryApi: { pull: vi.fn() }, tasksApi: {
   detail: vi.fn(), statistics: vi.fn(), result: vi.fn(), materials: vi.fn(), calls: vi.fn(), cancel: vi.fn()
 } }))
-import { projectsApi, tasksApi } from '@/api/v2'
+import { projectsApi, repositoryApi, tasksApi } from '@/api/v2'
 import { recordFeedbackSave, feedbackDraftKey, storeFeedbackDraft, discardFeedbackDrafts } from '@/components/feedbackDrafts'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { Modal } from 'ant-design-vue'
@@ -68,6 +68,29 @@ describe('任务详情的轮询与目标隔离', () => {
     context.route.query.targetId = 'missing'; await flushPromises()
     expect(state(wrapper).selectedTargetId).toBe('a')
     expect(tasksApi.result).toHaveBeenLastCalledWith('t1', 'a')
+    wrapper.unmount()
+  })
+
+  it('PR 详情显示冻结覆盖，并提示当前版本已变化', async () => {
+    const frozen = 'a'.repeat(40)
+    vi.mocked(tasksApi.detail).mockResolvedValue({
+      ...task(), sourceKind: 'PR', pullNumber: 12, pullTitle: '修复重试',
+      sourceBranch: 'feature', targetBranch: 'dev', sourceHead: frozen, targetHead: 'b'.repeat(40),
+      mergeBase: 'c'.repeat(40), textFiles: 2, changedFiles: 3, selectedFiles: 1,
+      coverageNote: '二进制没有审查。', targets: [{ id: 'a', path: 'A.java', state: 'SUCCEEDED' }]
+    } as any)
+    vi.mocked(repositoryApi.pull).mockResolvedValue({
+      pullRequest: { number: 12, sourceHead: 'd'.repeat(40), targetHead: 'b'.repeat(40) },
+      mergeBase: 'c'.repeat(40), blocker: null
+    } as any)
+    const wrapper = await start()
+    expect(wrapper.text()).toContain('PR #12')
+    expect(wrapper.text()).toContain('修复重试')
+    expect(wrapper.text()).toContain('已选 1 / 文本 2 / 全部 3')
+    expect(wrapper.text()).toContain('二进制没有审查。')
+    await flushPromises()
+    expect(wrapper.findAll('a-alert-stub').map((alert) => alert.attributes('message')))
+      .toContain('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
     wrapper.unmount()
   })
 

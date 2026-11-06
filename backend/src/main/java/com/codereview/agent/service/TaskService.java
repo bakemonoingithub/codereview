@@ -785,7 +785,19 @@ public class TaskService {
                 source.path("pullNumber").isNumber() ? source.path("pullNumber").asLong() : null,
                 textOrNull(source, "sourceBranch"), textOrNull(source, "targetBranch"),
                 textOrNull(source, "sourceHead"), textOrNull(source, "targetHead"),
-                textOrNull(source, "mergeBase"));
+                textOrNull(source, "mergeBase"), textOrNull(source, "title"), textOrNull(source, "url"),
+                textOrNull(source, "coverageNote"),
+                countOrNull(input.path("coverage"), "changedFiles", source, "changedFiles"),
+                countOrNull(input.path("coverage"), "textFiles", source, "textFiles"),
+                countOrNull(input.path("coverage"), "binaryFiles", source, "binaryFiles"),
+                countOrNull(input.path("coverage"), "unreadableFiles", source, "unreadableFiles"),
+                countOrNull(input.path("coverage"), "selectedFiles", source, "selectedFiles"));
+    }
+
+    /** 专项覆盖写在 coverage，Agent 覆盖计数写在 source；都没有时保持 null。 */
+    private static Integer countOrNull(JsonNode primary, String primaryField, JsonNode fallback, String fallbackField) {
+        Integer value = integerOrNull(primary, primaryField);
+        return value != null ? value : integerOrNull(fallback, fallbackField);
     }
 
     private static String coverageNote(PullRequestViews.Binding pull, List<NormalizedTarget> targets) {

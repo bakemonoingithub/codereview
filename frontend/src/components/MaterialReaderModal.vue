@@ -47,7 +47,7 @@
             固定版本全文
           </a-button>
           <a-button
-            v-if="metadata.side !== 'FILE'"
+            v-if="metadata.side !== 'FILE' && !hideCommitDiff"
             size="small"
             :type="mode === 'diff' ? 'primary' : 'default'"
             @click="loadDiff"
@@ -101,6 +101,7 @@ const props = defineProps<{
   projectId: string
   headSha: string
   materialId: string
+  hideCommitDiff?: boolean
   focusStart?: number | null
   focusEnd?: number | null
   focusLabel?: string

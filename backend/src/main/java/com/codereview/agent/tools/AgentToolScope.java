@@ -63,10 +63,18 @@ public record AgentToolScope(String projectId, Map<String, String> versions,
     }
 
     /**
-     * 比较关系：{@code headSha} 为固定提交，{@code baseSha} 为第一父提交；
-     * 根提交的 base 为 null，读取时不伪造 SHA。
+     * 比较关系。{@code COMMIT} 的 base 是第一父提交；{@code RANGE} 的 base 已是比较基线本身，
+     * 读取时不再改取第一父提交。
      */
-    public record Comparison(String id, String headSha, String baseSha) {
+    public record Comparison(String id, String headSha, String baseSha, String mode) {
+
+        public Comparison(String id, String headSha, String baseSha) {
+            this(id, headSha, baseSha, "COMMIT");
+        }
+
+        public boolean range() {
+            return "RANGE".equals(mode);
+        }
 
         public Comparison {
             if (id == null || id.isBlank()) {

@@ -70,6 +70,7 @@ declare module 'vue' {
     PageNotice: typeof import('./src/components/PageNotice.vue')['default']
     PromptInfoPreview: typeof import('./src/components/PromptInfoPreview.vue')['default']
     PromptVersionSelect: typeof import('./src/components/PromptVersionSelect.vue')['default']
+    PullRequestPickerModal: typeof import('./src/components/PullRequestPickerModal.vue')['default']
     RecordDeleteModal: typeof import('./src/components/RecordDeleteModal.vue')['default']
     ReportMarkdown: typeof import('./src/components/ReportMarkdown.vue')['default']
     ReportResultPickerModal: typeof import('./src/components/ReportResultPickerModal.vue')['default']

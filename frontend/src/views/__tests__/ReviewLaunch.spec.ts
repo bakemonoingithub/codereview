@@ -10,7 +10,7 @@ const context = vi.hoisted(() => ({ route: { query: {} as Record<string, string>
 vi.mock('vue-router', () => ({ useRoute: () => context.route, useRouter: () => ({ push: context.push }) }))
 vi.mock('@/api/v2', () => ({
   projectsApi: { list: vi.fn() }, modelsApi: { list: vi.fn() }, promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() },
-  repositoryApi: { head: vi.fn(), commits: vi.fn(), commit: vi.fn(), branches: vi.fn() },
+  repositoryApi: { head: vi.fn(), commits: vi.fn(), commit: vi.fn(), branches: vi.fn(), pulls: vi.fn(), pullChanges: vi.fn() },
   tasksApi: { create: vi.fn(), copyInput: vi.fn(), detail: vi.fn() }
 }))
 import { projectsApi, modelsApi, repositoryApi, tasksApi, promptsApi } from '@/api/v2'
@@ -517,6 +517,41 @@ describe('发起弹窗骨架', () => {
     expect(note.attributes('rows')).toBeUndefined()
     expect(note.attributes('show-count')).toBe('')
     expect(note.vm.$.vnode.props['auto-size']).toEqual({ minRows: 2, maxRows: 4 })
+    w.unmount()
+  })
+
+  it('复制 PR 参数时重新读取当前净变化，不提交旧 SHA', async () => {
+    context.route.query = { copyFrom: 'old-task' }
+    const oldHead = 'a'.repeat(40)
+    const sourceHead = 'b'.repeat(40)
+    vi.mocked(tasksApi.copyInput).mockResolvedValue({
+      projectId: 'p1', specialistType: 'ISSUE', sourceKind: 'PR', branch: 'dev',
+      targets: [
+        { path: 'src/A.java', oldPath: null, note: '保留' },
+        { path: 'gone.java', oldPath: null, note: '' }
+      ],
+      modelConfigId: 'm1', smartSplit: false, reobserveHead: true, pullNumber: 12
+    } as any)
+    vi.mocked(tasksApi.detail).mockResolvedValue({ sourceHead: oldHead, headSha: oldHead } as any)
+    vi.mocked(repositoryApi.pullChanges).mockResolvedValue({
+      number: 12, sourceHead, targetHead: 'c'.repeat(40), mergeBase: 'd'.repeat(40),
+      completeness: 'COMPLETE', blocker: null, fileCount: 2, textFiles: 1, binaryFiles: 1, unreadableFiles: 0,
+      files: [
+        { path: 'src/A.java', oldPath: null, status: 'modified', category: 'TEXT', reason: null },
+        { path: 'pic.bin', oldPath: null, status: 'added', category: 'BINARY', reason: 'BINARY' }
+      ]
+    } as any)
+    const w = await start(); const s = state(w)
+    expect(repositoryApi.pullChanges).toHaveBeenCalledWith('p1', 12)
+    expect(s.form.sourceHead).toBe(sourceHead)
+    expect(s.form.targets).toEqual([{ path: 'src/A.java', oldPath: null, note: '保留' }])
+    expect(s.pullNotice).toContain('未沿用旧提交')
+    await s.submit()
+    const body = vi.mocked(tasksApi.create).mock.calls[0][0]
+    expect(body.source).toEqual({
+      kind: 'PR', pullNumber: 12, sourceHead, targetHead: 'c'.repeat(40), mergeBase: 'd'.repeat(40)
+    })
+    expect(body.targets.map((target: { path: string }) => target.path)).toEqual(['src/A.java'])
     w.unmount()
   })
 

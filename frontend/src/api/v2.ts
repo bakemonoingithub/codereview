@@ -230,7 +230,67 @@ export const repositoryApi = {
   diff: (projectId: string, sha: string, path: string) =>
     v2
       .get<DiffSides>(`/projects/${projectId}/diff`, { params: { sha, path } })
-      .then((r) => r.data)
+      .then((r) => r.data),
+  pulls: (projectId: string, page = 1, perPage = 30, state = 'open', targetBranch?: string) =>
+    v2.get<PullRequestPage>(`/projects/${projectId}/pulls`, {
+      params: { page, perPage, state, targetBranch }
+    }).then((r) => r.data),
+  pull: (projectId: string, number: number) =>
+    v2.get<PullRequestDetail>(`/projects/${projectId}/pulls/${number}`).then((r) => r.data),
+  pullChanges: (projectId: string, number: number) =>
+    v2.get<PullRequestChanges>(`/projects/${projectId}/pulls/${number}/changes`).then((r) => r.data)
+}
+
+export interface PullRequestItem {
+  number: number
+  title: string
+  state: string
+  draft: boolean
+  merged: boolean
+  author: string | null
+  sourceBranch: string | null
+  targetBranch: string | null
+  sourceHead: string | null
+  targetHead: string | null
+  sourceRepository: string | null
+  targetRepository: string | null
+  sameRepository: boolean
+  url: string | null
+  updatedAt: string | null
+  provider: string | null
+}
+
+export interface PullRequestPage {
+  items: PullRequestItem[]
+  hasMore: boolean
+}
+
+export interface PullRequestDetail {
+  pullRequest: PullRequestItem
+  mergeBase: string | null
+  blocker: string | null
+}
+
+export interface PullRequestFileChange {
+  path: string
+  oldPath: string | null
+  status: string
+  category: string
+  reason: string | null
+}
+
+export interface PullRequestChanges {
+  number: number
+  sourceHead: string | null
+  targetHead: string | null
+  mergeBase: string | null
+  completeness: string | null
+  blocker: string | null
+  fileCount: number
+  textFiles: number
+  binaryFiles: number
+  unreadableFiles: number
+  files: PullRequestFileChange[]
 }
 
 export interface TaskTargetInput {
@@ -240,12 +300,16 @@ export interface TaskTargetInput {
 }
 
 export interface AgentTaskScopeInput {
-  kind: 'TEXT' | 'FILES' | 'COMMITS'
+  kind: 'TEXT' | 'FILES' | 'COMMITS' | 'PR'
   branch?: string
   observedSha?: string
   paths?: string[]
   commits?: string[]
   description?: string
+  pullNumber?: number
+  sourceHead?: string
+  targetHead?: string
+  mergeBase?: string
 }
 
 export interface AgentTaskCreateInput {
@@ -382,11 +446,15 @@ export interface TaskCreateInput {  projectId: string
   route?: string
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
   source: {
-    kind: 'FILES' | 'DIFF'
+    kind: 'FILES' | 'DIFF' | 'PR'
     branch?: string
     observedSha?: string
     commitSha?: string
     baseSha?: string
+    pullNumber?: number | null
+    sourceHead?: string
+    targetHead?: string
+    mergeBase?: string
   }
   targets: TaskTargetInput[]
   modelConfigId: string
@@ -421,10 +489,24 @@ export interface TaskView {
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
   state: string
   stopReason: string | null
-  sourceKind: 'FILES' | 'DIFF'
+  sourceKind: 'FILES' | 'DIFF' | 'PR'
   branch: string | null
   headSha: string | null
   baseSha: string | null
+  pullNumber?: number | null
+  sourceBranch?: string | null
+  targetBranch?: string | null
+  sourceHead?: string | null
+  targetHead?: string | null
+  mergeBase?: string | null
+  pullTitle?: string | null
+  pullUrl?: string | null
+  coverageNote?: string | null
+  changedFiles?: number | null
+  textFiles?: number | null
+  binaryFiles?: number | null
+  unreadableFiles?: number | null
+  selectedFiles?: number | null
   smartSplit: boolean
   revision: number
   createdAt: string
@@ -486,7 +568,7 @@ export interface TaskStatistics {
 export interface TaskCopyInput {  projectId: string
   route: string
   specialistType: 'ISSUE' | 'PATTERN' | 'COUPLING'
-  sourceKind: 'FILES' | 'DIFF'
+  sourceKind: 'FILES' | 'DIFF' | 'PR'
   branch: string | null
   commitSha: string | null
   baseSha: string | null
@@ -497,6 +579,7 @@ export interface TaskCopyInput {  projectId: string
   smartSplit: boolean
   reobserveHead: boolean
   name: string | null
+  pullNumber?: number | null
 }
 
 export interface IssueView {
@@ -761,7 +844,7 @@ export interface ReportCandidate {
   projectName: string | null
   taskRoute: string
   taskState: string
-  sourceKind: 'FILES' | 'DIFF'
+  sourceKind: 'FILES' | 'DIFF' | 'PR'
   path: string | null
   oldPath: string | null
   headSha: string | null

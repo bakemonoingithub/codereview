@@ -13,14 +13,17 @@ vi.mock('vue-router', () => ({
 }))
 vi.mock('@/api/v2', () => ({
   tasksApi: { detail: vi.fn(), cancel: vi.fn() },
+  projectsApi: { detail: vi.fn() },
+  repositoryApi: { pull: vi.fn(), file: vi.fn() },
   agentTasksApi: {
     progress: vi.fn(),
     toolCalls: vi.fn(),
     toolCall: vi.fn(),
-    result: vi.fn()
+    result: vi.fn(),
+    copyInput: vi.fn()
   }
 }))
-import { agentTasksApi, tasksApi } from '@/api/v2'
+import { agentTasksApi, repositoryApi, tasksApi } from '@/api/v2'
 
 const state = (wrapper: any) => wrapper.vm.$.setupState as any
 const page = (items: unknown[], total = items.length) => ({
@@ -90,6 +93,32 @@ beforeEach(() => {
 })
 
 describe('Agent 任务详情', () => {
+  it('PR 输入显示三个冻结版本和当前版本变化', async () => {
+    const frozen = 'a'.repeat(40)
+    vi.mocked(tasksApi.detail).mockResolvedValue({
+      ...task('SUCCEEDED'), sourceKind: 'PR', pullNumber: 9, pullTitle: '调整重试',
+      pullUrl: 'https://example/9', sourceBranch: 'feature', targetBranch: 'dev',
+      sourceHead: frozen, targetHead: 'b'.repeat(40), mergeBase: 'c'.repeat(40),
+      textFiles: 2, binaryFiles: 1, unreadableFiles: 0, coverageNote: '二进制没有审查。'
+    } as any)
+    vi.mocked(agentTasksApi.copyInput).mockResolvedValue({
+      projectId: 'p1', requirements: '检查净变化', scope: { kind: 'PR', pullNumber: 9 }
+    } as any)
+    vi.mocked(repositoryApi.pull).mockResolvedValue({
+      pullRequest: { sourceHead: 'e'.repeat(40), targetHead: 'b'.repeat(40) },
+      mergeBase: 'c'.repeat(40), blocker: null
+    } as any)
+    const wrapper = await start()
+    expect(wrapper.text()).toContain('PR #9')
+    expect(wrapper.text()).toContain('调整重试')
+    expect(wrapper.text()).toContain('共同祖先')
+    expect(wrapper.text()).toContain('二进制没有审查。')
+    await flushPromises()
+    expect(wrapper.findAll('a-alert-stub').map((alert) => alert.attributes('message')))
+      .toContain('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
+    wrapper.unmount()
+  })
+
   it('已完成的 Agent 任务展示结果、来源与未解决事项', async () => {
     const wrapper = await start()
     const s = state(wrapper)
