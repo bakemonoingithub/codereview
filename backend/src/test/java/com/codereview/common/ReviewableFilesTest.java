@@ -90,6 +90,26 @@ class ReviewableFilesTest {
         assertFalse(ReviewableFiles.isReviewable("backup.java\\notes"));
     }
 
+    /** 盘符、两侧空白和连续分隔符都不进入文件名；仅扩展名的点文件仍没有扩展名。 */
+    @Test
+    void leafNameDropsDrivePrefixAndSurroundingSpace() {
+        assertEquals("A.java", ReviewableFiles.baseName("C:\\src\\A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("C:A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("c:/src//A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("  src\\\\A.java  "));
+        assertEquals("", ReviewableFiles.baseName("C:\\"));
+        assertEquals("", ReviewableFiles.baseName("C:"));
+
+        assertEquals("java", ReviewableFiles.extensionOf("C:A.java"));
+        assertEquals("java", ReviewableFiles.extensionOf("  src/A.java  "));
+        assertEquals("", ReviewableFiles.extensionOf("dir/.java"));
+        assertEquals("", ReviewableFiles.extensionOf(".java"));
+        assertTrue(ReviewableFiles.isReviewable("C:\\src\\A.java"));
+        assertTrue(ReviewableFiles.isReviewable("  src/A.java  "));
+        assertFalse(ReviewableFiles.isReviewable("dir/.java"));
+        assertFalse(ReviewableFiles.isReviewable("C:\\logo.png"));
+    }
+
     @Test
     void nullAndEmptyAreNotReviewable() {
         assertFalse(ReviewableFiles.isReviewable(null));

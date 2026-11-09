@@ -51,22 +51,34 @@ public final class ReviewableFiles {
     }
 
     /**
-     * 路径最后一段。正斜杠与反斜杠都是分隔符，末尾分隔符忽略。
-     * 空白路径返回空串。
+     * 路径最后一段。正斜杠与反斜杠都是分隔符，连续分隔符与末尾分隔符忽略。
+     * 去掉两侧空白和开头的 Windows 盘符（如 {@code C:}）。没有文件名时返回空串。
      */
     public static String baseName(String path) {
         if (path == null || path.isBlank()) {
             return "";
         }
-        int end = path.length();
-        while (end > 0 && isSeparator(path.charAt(end - 1))) {
+        String normalized = stripDrivePrefix(path.trim());
+        int end = normalized.length();
+        while (end > 0 && isSeparator(normalized.charAt(end - 1))) {
             end--;
         }
         int start = end;
-        while (start > 0 && !isSeparator(path.charAt(start - 1))) {
+        while (start > 0 && !isSeparator(normalized.charAt(start - 1))) {
             start--;
         }
-        return path.substring(start, end);
+        return normalized.substring(start, end);
+    }
+
+    private static String stripDrivePrefix(String path) {
+        if (path.length() >= 2 && isDriveLetter(path.charAt(0)) && path.charAt(1) == ':') {
+            return path.substring(2);
+        }
+        return path;
+    }
+
+    private static boolean isDriveLetter(char c) {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
 
     private static boolean isSeparator(char c) {

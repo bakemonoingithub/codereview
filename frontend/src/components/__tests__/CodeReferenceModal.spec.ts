@@ -93,6 +93,16 @@ describe('代码引用阅读', () => {
     wrapper.unmount()
   })
 
+  it('标题去掉 Windows 盘符；没有文件名时不用盘符顶上', async () => {
+    const named = await start({ path: 'C:\\src\\Order.java', references: [] })
+    expect(named.get('h2').text()).toBe('Order.java')
+    named.unmount()
+
+    const driveOnly = await start({ path: 'C:\\', references: [] })
+    expect(driveOnly.get('h2').text()).toBe('未命名文件')
+    driveOnly.unmount()
+  })
+
   it('按文件读取固定版本全文，合并同问题证据并打开当前范围', async () => {
     const wrapper = await start()
 

@@ -207,7 +207,7 @@ const navDisabled = computed(() => busy.value || !!loadError.value || references
 const canPrev = computed(() => !navDisabled.value && activeIndex.value > 0)
 const canNext = computed(() => !navDisabled.value && activeIndex.value < references.value.length - 1)
 
-const fileName = computed(() => baseName(props.path) || props.path)
+const fileName = computed(() => baseName(props.path) || '未命名文件')
 const shortSha = computed(() => props.sha ? props.sha.slice(0, 12) : '未记录')
 
 function fmtRange(ref: { startLine: number; endLine: number }): string {

@@ -17,6 +17,17 @@ describe('fileName / baseName', () => {
     expect(fileName('src\\main\\java\\Order.java')).toBe('Order.java')
     expect(fileName(null)).toBe('Agent Markdown')
     expect(fileName('   ')).toBe('Agent Markdown')
-    expect(fileName('///')).toBe('///')
+    expect(fileName('///')).toBe('Agent Markdown')
+  })
+
+  it('去掉盘符和两侧空白，连续分隔符不影响最后一段', () => {
+    expect(baseName('C:\\src\\Order.java')).toBe('Order.java')
+    expect(baseName('C:Order.java')).toBe('Order.java')
+    expect(baseName('c:/src//Order.java')).toBe('Order.java')
+    expect(baseName('  src\\\\Order.java  ')).toBe('Order.java')
+    expect(baseName('C:\\')).toBe('')
+    expect(baseName('.java')).toBe('.java')
+    expect(fileName('C:\\src\\Order.java')).toBe('Order.java')
+    expect(fileName('C:\\')).toBe('Agent Markdown')
   })
 })

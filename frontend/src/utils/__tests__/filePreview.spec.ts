@@ -21,6 +21,16 @@ describe('extensionOf / languageOf', () => {
     expect(languageOf('src\\main\\A.java')).toBe('java')
   })
 
+  it('盘符、连续分隔符和两侧空白不影响扩展名；点文件没有扩展名', () => {
+    expect(extensionOf('C:\\src\\A.java')).toBe('java')
+    expect(extensionOf('C:A.JAVA')).toBe('java')
+    expect(extensionOf('c:/src//A.java')).toBe('java')
+    expect(extensionOf('  src\\A.java  ')).toBe('java')
+    expect(extensionOf('dir/.java')).toBe('')
+    expect(extensionOf('.java')).toBe('')
+    expect(languageOf('C:\\src\\A.java')).toBe('java')
+  })
+
   it('白名单里的常见类型都有语言归属', () => {
     expect(languageOf('src/A.java')).toBe('java')
     expect(languageOf('a/b/x.ts')).toBe('typescript')
