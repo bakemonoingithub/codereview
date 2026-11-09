@@ -87,6 +87,12 @@ beforeEach(() => {
 })
 
 describe('代码引用阅读', () => {
+  it('标题只显示路径最后一段，反斜杠同样切开', async () => {
+    const wrapper = await start({ path: 'src\\main\\Order.java', references: [] })
+    expect(wrapper.get('h2').text()).toBe('Order.java')
+    wrapper.unmount()
+  })
+
   it('按文件读取固定版本全文，合并同问题证据并打开当前范围', async () => {
     const wrapper = await start()
 

@@ -16,6 +16,9 @@ describe('extensionOf / languageOf', () => {
     expect(extensionOf('.gitignore')).toBe('')
     expect(extensionOf('Makefile')).toBe('')
     expect(extensionOf('a/b/c.d/e')).toBe('')
+    expect(extensionOf('backup.java\\src\\A.JAVA')).toBe('java')
+    expect(extensionOf('backup.java\\notes')).toBe('')
+    expect(languageOf('src\\main\\A.java')).toBe('java')
   })
 
   it('白名单里的常见类型都有语言归属', () => {

@@ -72,6 +72,24 @@ class ReviewableFilesTest {
         assertTrue(ReviewableFiles.isReviewable("com.example/A.java"));
     }
 
+    /** 反斜杠与末尾分隔符也只认最后一段，避免把 {@code java\} 当成扩展名。 */
+    @Test
+    void leafNameAcceptsBackslashAndTrailingSeparator() {
+        assertEquals("A.java", ReviewableFiles.baseName("src\\main\\A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("src/main/A.java/"));
+        assertEquals("logo.png", ReviewableFiles.baseName("com.example\\logo.png"));
+        assertEquals("", ReviewableFiles.baseName(null));
+        assertEquals("", ReviewableFiles.baseName("///"));
+
+        assertEquals("java", ReviewableFiles.extensionOf("backup.java\\src\\A.java"));
+        assertEquals("java", ReviewableFiles.extensionOf("src\\A.java\\"));
+        assertEquals("", ReviewableFiles.extensionOf("backup.java\\notes"));
+        assertTrue(ReviewableFiles.isReviewable("src\\main\\A.java"));
+        assertTrue(ReviewableFiles.isReviewable("src\\A.java\\"));
+        assertFalse(ReviewableFiles.isReviewable("com.example\\logo.png"));
+        assertFalse(ReviewableFiles.isReviewable("backup.java\\notes"));
+    }
+
     @Test
     void nullAndEmptyAreNotReviewable() {
         assertFalse(ReviewableFiles.isReviewable(null));
