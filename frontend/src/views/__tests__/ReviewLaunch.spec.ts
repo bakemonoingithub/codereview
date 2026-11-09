@@ -587,6 +587,35 @@ describe('发起弹窗骨架', () => {
     w.unmount()
   })
 
+  it('PR 刷新失败时保留旧版本并继续阻止提交', async () => {
+    const w = await start(); const s = state(w)
+    const sourceHead = 'a'.repeat(40)
+    s.form.sourceKind = 'PR'
+    await flushPromises()
+    s.form.modelConfigId = 'm1'
+    s.form.pullNumber = 12
+    s.form.sourceHead = sourceHead
+    s.form.targetHead = 'c'.repeat(40)
+    s.form.mergeBase = 'd'.repeat(40)
+    s.pullFiles.splice(0, s.pullFiles.length, {
+      path: 'src/A.java', oldPath: null, status: 'modified', category: 'TEXT', reason: null
+    })
+    s.form.targets = [{ path: 'src/A.java', oldPath: null, note: '旧目标' }]
+    s.sourceMoved = true
+    vi.mocked(repositoryApi.pullChanges).mockRejectedValue(new Error('网络失败'))
+    await s.refreshMovedSource()
+    s.form.targets = [{ path: 'src/A.java', oldPath: null, note: '重新勾选' }]
+    expect(s.form.sourceHead).toBe(sourceHead)
+    expect(s.form.targetHead).toBe('c'.repeat(40))
+    expect(s.pullFiles).toHaveLength(1)
+    expect(s.pullError).toContain('网络失败')
+    expect(s.pullNotice).not.toContain('已重新读取')
+    expect(s.sourceMoved).toBe(true)
+    expect(s.canSubmit).toBe(false)
+    expect(w.text()).toContain('刷新版本与范围')
+    w.unmount()
+  })
+
   it('复制 PR 参数时重新读取当前净变化，不提交旧 SHA', async () => {
     context.route.query = { copyFrom: 'old-task' }
     const oldHead = 'a'.repeat(40)

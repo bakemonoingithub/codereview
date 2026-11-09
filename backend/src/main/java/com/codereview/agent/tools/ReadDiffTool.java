@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * {@code read_diff}：一个冻结比较关系的变更清单或逐 hunk 前后侧内容。
@@ -215,14 +216,29 @@ public class ReadDiffTool {
     }
 
     private static void appendFailure(StringBuilder text, String name, RepositorySnapshots.Side side) {
-        if (side != null && RepositorySnapshots.Side.UNREADABLE.equals(side.status())) {
-            text.append(name).append("读取失败：").append(side.reason() == null ? "READ_FAILED" : side.reason()).append("。");
+        if (side == null || unexpectedAbsence(side)) {
+            String reason = side == null || side.reason() == null ? "NOT_AVAILABLE" : side.reason();
+            text.append(name).append("读取失败：").append(reason).append("。");
         }
     }
 
+    /** 只有新增、删除或根提交明确导致的缺侧可以当成空文件。 */
     private static boolean failed(RepositorySnapshots.Side side) {
-        return side == null || RepositorySnapshots.Side.UNREADABLE.equals(side.status());
+        return side == null || unexpectedAbsence(side);
     }
+
+    private static boolean unexpectedAbsence(RepositorySnapshots.Side side) {
+        if (RepositorySnapshots.Side.UNREADABLE.equals(side.status())) {
+            return true;
+        }
+        return RepositorySnapshots.Side.MISSING.equals(side.status()) && !expectedAbsence(side.reason());
+    }
+
+    private static boolean expectedAbsence(String reason) {
+        return reason != null && EXPECTED_ABSENCE.contains(reason);
+    }
+
+    private static final Set<String> EXPECTED_ABSENCE = Set.of("ADDED", "REMOVED", "ROOT_COMMIT");
 
     private ToolEnvelope hunks(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
                                AgentToolScope.Comparison comparison, ToolCursor cursor) {
@@ -230,12 +246,15 @@ public class ReadDiffTool {
                 repository.diff(scope.projectId(), comparison.headSha(), invocation.path()));
     }
 
-    /** 只有确实不存在的一侧才能当成空文本；读取失败不得走这里。 */
+    /** 只有明确的新增、删除或根提交缺侧才能当成空文本。 */
     private static String sideText(RepositorySnapshots.Side side) {
         if (side != null && side.present()) {
             return side.content() == null ? "" : side.content();
         }
-        return "";
+        if (side != null && expectedAbsence(side.reason())) {
+            return "";
+        }
+        throw new IllegalStateException("非预期缺侧不能合成差异");
     }
 
     private static String unified(String before, String after) {

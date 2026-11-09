@@ -168,6 +168,25 @@ class ReadDiffToolTest {
     }
 
     @Test
+    void unexpectedMissingSideIsNotReportedAsANewFile() {
+        AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
+                AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));
+        when(repository.diffRange("p1", BASE, HEAD, PATH)).thenReturn(new RepositorySnapshots.DiffSides(
+                HEAD, BASE, PATH, null, "modified", null,
+                RepositorySnapshots.Side.missing("NOT_AVAILABLE"),
+                RepositorySnapshots.Side.present("class A {\n    int value;\n}\n")));
+
+        ToolEnvelope envelope = tool.execute("call-1", invocation(PATH), range);
+
+        assertEquals(ToolEnvelope.UNREADABLE, envelope.status());
+        assertEquals(ToolEnvelope.UNKNOWN, envelope.completeness());
+        assertTrue(envelope.materials().isEmpty());
+        assertTrue(envelope.diagnostic().contains("NOT_AVAILABLE"));
+        assertTrue(envelope.diagnostic().contains("不能据此判断"));
+        assertFalse(((Map<?, ?>) envelope.data()).containsKey("hunks"));
+    }
+
+    @Test
     void missingBeforeSideStillShowsAnAddition() {
         AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
                 AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));

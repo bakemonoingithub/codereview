@@ -1023,16 +1023,16 @@ function removeTarget(index: number) {
 }
 
 async function refreshMovedSource() {
-  sourceMoved.value = false
-  form.targets = []
   if (form.sourceKind === 'PR' && form.pullNumber) {
-    await confirmPull(form.pullNumber, true)
-    if (form.pullNumber) {
-      form.targets = []
-      pullNotice.value = '已重新读取 PR 的三个版本和净变化，请重新确认目标文件。'
-    }
+    const refreshed = await confirmPull(form.pullNumber, true)
+    if (!refreshed) return
+    sourceMoved.value = false
+    form.targets = []
+    pullNotice.value = '已重新读取 PR 的三个版本和净变化，请重新确认目标文件。'
     return
   }
+  sourceMoved.value = false
+  form.targets = []
   if (form.sourceKind === 'DIFF') {
     await loadCommitDetail(form.commitSha)
     return
@@ -1100,8 +1100,8 @@ async function openPullPicker() {
   await loadPulls()
 }
 
-async function confirmPull(number: number, acceptCurrent = false) {
-  if (!form.projectId) return
+async function confirmPull(number: number, acceptCurrent = false): Promise<boolean> {
+  if (!form.projectId) return false
   const projectId = form.projectId
   const epoch = pullsEpoch
   pullError.value = ''
@@ -1110,20 +1110,20 @@ async function confirmPull(number: number, acceptCurrent = false) {
   const previous = form.sourceHead
   try {
     const changes = await repositoryApi.pullChanges(projectId, number)
-    if (epoch !== pullsEpoch || projectId !== form.projectId) return
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return false
     if (changes.blocker && changes.blocker !== 'TRUNCATED') {
       pullError.value = changes.blocker === 'NO_MERGE_BASE'
         ? '这个 PR 没有共同祖先，不能审查。'
         : changes.blocker === 'CROSS_REPOSITORY'
           ? '首版不接受其他仓库或 fork 的 PR。'
           : '这个 PR 当前不能审查。'
-      clearPull()
-      return
+      if (!acceptCurrent) clearPull()
+      return false
     }
     if (changes.blocker === 'TRUNCATED') {
       pullError.value = '变更文件超过上限，不能把部分清单当作完整 PR。'
-      clearPull()
-      return
+      if (!acceptCurrent) clearPull()
+      return false
     }
     if (!acceptCurrent && previous && previous !== changes.sourceHead) pullMoved.value = true
     const item = pulls.value.find((pull) => pull.number === number)
@@ -1139,8 +1139,10 @@ async function confirmPull(number: number, acceptCurrent = false) {
     form.targets = changes.files.filter((file) => file.category === 'TEXT').map((file) => ({
       path: file.path, oldPath: file.oldPath, note: ''
     }))
+    return true
   } catch (failure) {
     pullError.value = (failure as Error).message || 'PR 净变化读取失败'
+    return false
   }
 }
 
