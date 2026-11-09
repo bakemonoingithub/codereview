@@ -27,6 +27,12 @@ const commit = (commitSha: string, message: string, author = '作者') => ({
   date: '2026-10-24T08:00:00Z'
 })
 const state = (wrapper: any) => wrapper.vm.$.setupState as any
+const pullItem = (number: number, title: string) => ({
+  number, title, state: 'open', draft: false, merged: false, author: '作者',
+  sourceBranch: 'feature', targetBranch: 'main', sourceHead: null, targetHead: null,
+  sourceRepository: 'acme/a', targetRepository: 'acme/a', sameRepository: true,
+  url: null, updatedAt: null, provider: 'github'
+})
 async function start() {
   const wrapper = mount(ReviewLaunch, { global: { stubs: { ...namedAntStubs, ScopePickerModal: true, RouterLink: true,
     'a-modal': { name: 'AModal', template: '<div class="modal-stub"><slot /></div>' } } } })
@@ -517,6 +523,67 @@ describe('发起弹窗骨架', () => {
     expect(note.attributes('rows')).toBeUndefined()
     expect(note.attributes('show-count')).toBe('')
     expect(note.vm.$.vnode.props['auto-size']).toEqual({ minRows: 2, maxRows: 4 })
+    w.unmount()
+  })
+
+  it('切换项目后清空已选 PR，并丢弃旧项目迟到的列表', async () => {
+    vi.mocked(projectsApi.list).mockResolvedValue(page([
+      { id: 'p1', name: '甲', repoUrl: 'repo-a', currentBranch: 'main' },
+      { id: 'p2', name: '乙', repoUrl: 'repo-b', currentBranch: 'dev' }
+    ]) as any)
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'PR'
+    s.pulls.splice(0, s.pulls.length, pullItem(12, '甲仓库'))
+    s.form.pullNumber = 12
+    s.form.pullTitle = '甲仓库'
+    s.form.sourceHead = 'a'.repeat(40)
+    s.form.targetHead = 'b'.repeat(40)
+    s.form.mergeBase = 'c'.repeat(40)
+    const late = deferred<any>()
+    vi.mocked(repositoryApi.pulls).mockImplementation((async (projectId: string) => projectId === 'p1'
+      ? late.promise
+      : { items: [pullItem(7, '乙仓库')], hasMore: false }) as any)
+    const inflight = s.loadPullPage(1, true)
+    s.form.projectId = 'p2'
+    await flushPromises()
+    late.resolve({ items: [pullItem(12, '甲仓库迟到')], hasMore: false })
+    await inflight
+    await flushPromises()
+    expect(s.form.pullNumber).toBeNull()
+    expect(s.form.sourceHead).toBe('')
+    expect(s.pulls.map((item: { title: string }) => item.title)).not.toContain('甲仓库迟到')
+    await s.openPullPicker()
+    expect(repositoryApi.pulls).toHaveBeenCalledWith('p2', 1, 30, 'open')
+    expect(s.pulls.map((item: { number: number }) => item.number)).toEqual([7])
+    w.unmount()
+  })
+
+  it('PR 版本移动后重新读取三个版本和净变化，并清空目标', async () => {
+    const w = await start(); const s = state(w)
+    const sourceHead = 'b'.repeat(40)
+    s.form.sourceKind = 'PR'
+    s.form.pullNumber = 12
+    s.form.sourceHead = 'a'.repeat(40)
+    s.form.targetHead = 'c'.repeat(40)
+    s.form.mergeBase = 'd'.repeat(40)
+    s.form.targets = [{ path: 'src/A.java', oldPath: null, note: '旧目标' }]
+    s.sourceMoved = true
+    vi.mocked(repositoryApi.pullChanges).mockResolvedValue({
+      number: 12, sourceHead, targetHead: 'e'.repeat(40), mergeBase: 'f'.repeat(40),
+      completeness: 'COMPLETE', blocker: null, fileCount: 1, textFiles: 1, binaryFiles: 0, unreadableFiles: 0,
+      files: [{ path: 'src/A.java', oldPath: null, status: 'modified', category: 'TEXT', reason: null }]
+    } as any)
+    const headCalls = vi.mocked(repositoryApi.head).mock.calls.length
+    await s.refreshMovedSource()
+    expect(repositoryApi.pullChanges).toHaveBeenCalledWith('p1', 12)
+    expect(repositoryApi.head).toHaveBeenCalledTimes(headCalls)
+    expect(s.form.sourceHead).toBe(sourceHead)
+    expect(s.form.targetHead).toBe('e'.repeat(40))
+    expect(s.form.mergeBase).toBe('f'.repeat(40))
+    expect(s.form.targets).toEqual([])
+    expect(s.pullFiles).toHaveLength(1)
+    expect(s.pullNotice).toContain('重新确认目标文件')
+    expect(s.sourceMoved).toBe(false)
     w.unmount()
   })
 

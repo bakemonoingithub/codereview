@@ -301,6 +301,34 @@ describe('Agent 发起表单', () => {
     wrapper.unmount()
   })
 
+  it('切换项目后清空已选 PR，并丢弃旧项目迟到的列表', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    s.projects.push({ id: 'p2', name: '乙', currentBranch: 'dev' })
+    s.form.kind = 'PR'
+    s.form.pullNumber = 12
+    s.form.pullTitle = '甲仓库'
+    s.form.sourceHead = 'a'.repeat(40)
+    s.form.targetHead = 'b'.repeat(40)
+    s.form.mergeBase = 'c'.repeat(40)
+    s.pulls.push({ number: 12, title: '甲仓库', sourceBranch: 'feature', targetBranch: 'main', author: '作者' })
+    let release!: (value: any) => void
+    vi.mocked(repositoryApi.pulls).mockImplementation((async (projectId: string) => projectId === 'p1'
+      ? new Promise(resolve => { release = resolve })
+      : { items: [{ number: 7, title: '乙仓库', sourceBranch: 'dev', targetBranch: 'main', author: '作者' }], hasMore: false }) as any)
+    const inflight = s.loadPullPage(1, true)
+    await s.selectProject('p2')
+    release({ items: [{ number: 12, title: '甲仓库迟到' }], hasMore: false })
+    await inflight
+    await flushPromises()
+    expect(s.form.pullNumber).toBeNull()
+    expect(s.form.sourceHead).toBe('')
+    expect(s.pulls.map((item: { title: string }) => item.title)).not.toContain('甲仓库迟到')
+    await s.openPullPicker()
+    expect(repositoryApi.pulls).toHaveBeenCalledWith('p2', 1, 30, 'open')
+    expect(s.pulls.map((item: { number: number }) => item.number)).toEqual([7])
+    wrapper.unmount()
+  })
+
   it('复制 PR 参数时重新读取当前净变化，不提交旧 SHA', async () => {
     context.route.query = { copyFrom: 'old-task' }
     const sourceHead = 'e'.repeat(40)

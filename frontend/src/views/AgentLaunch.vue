@@ -352,6 +352,7 @@ const pullsHasMore = ref(false)
 const pullsLoading = ref(false)
 const pullsLoadingMore = ref(false)
 const pullsError = ref('')
+let pullsEpoch = 0
 const pullError = ref('')
 const pullTextCount = ref(0)
 const pullBinaryCount = ref(0)
@@ -429,6 +430,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', closeDropdownOnScroll, true)
   guidancePromptEpoch++
   headEpoch++
+  pullsEpoch++
 })
 
 onMounted(async () => {
@@ -523,6 +525,25 @@ function onBranchChange() {
 }
 
 async function selectProject(projectId: string) {
+  pullsEpoch++
+  pulls.value = []
+  pullsPage.value = 0
+  pullsHasMore.value = false
+  pullsError.value = ''
+  pullsLoading.value = false
+  pullsLoadingMore.value = false
+  pullPickerOpen.value = false
+  form.pullNumber = null
+  form.pullTitle = ''
+  form.sourceHead = ''
+  form.targetHead = ''
+  form.mergeBase = ''
+  pullTextCount.value = 0
+  pullBinaryCount.value = 0
+  pullUnreadableCount.value = 0
+  pullMoved.value = false
+  pullError.value = ''
+  pullNotice.value = ''
   headEpoch++
   headLoading.value = false
   headError.value = ''
@@ -728,36 +749,45 @@ function toggleCommit(sha: string) {
 }
 
 async function loadPullPage(pageNumber: number, replace: boolean) {
-  if (!form.projectId) return
+  if (!form.projectId || pullsLoading.value || pullsLoadingMore.value) return
+  const projectId = form.projectId
+  const epoch = pullsEpoch
   if (replace) pullsLoading.value = true
   else pullsLoadingMore.value = true
   pullsError.value = ''
   try {
-    const page = await repositoryApi.pulls(form.projectId, pageNumber, 30, 'open')
+    const page = await repositoryApi.pulls(projectId, pageNumber, 30, 'open')
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
     pulls.value = replace ? page.items : pulls.value.concat(page.items)
     pullsPage.value = pageNumber
     pullsHasMore.value = page.hasMore
   } catch (failure) {
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
     pullsError.value = (failure as Error).message || 'PR 列表读取失败'
   } finally {
-    pullsLoading.value = false
-    pullsLoadingMore.value = false
+    if (epoch === pullsEpoch) {
+      pullsLoading.value = false
+      pullsLoadingMore.value = false
+    }
   }
 }
-async function loadPulls() { pulls.value = []; await loadPullPage(1, true) }
+async function loadPulls() { await loadPullPage(1, true) }
 async function loadMorePulls() { if (pullsHasMore.value) await loadPullPage(pullsPage.value + 1, false) }
 async function openPullPicker() {
   pullPickerOpen.value = true
-  if (!pulls.value.length) await loadPulls()
+  await loadPulls()
 }
 async function confirmPull(number: number) {
   if (!form.projectId) return
+  const projectId = form.projectId
+  const epoch = pullsEpoch
   pullError.value = ''
   pullNotice.value = ''
   pullMoved.value = false
   const previous = form.sourceHead
   try {
-    const changes = await repositoryApi.pullChanges(form.projectId, number)
+    const changes = await repositoryApi.pullChanges(projectId, number)
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
     if (changes.blocker || changes.textFiles === 0) {
       pullError.value = changes.textFiles === 0 || changes.blocker === 'NO_TEXT_CHANGES'
         ? '该 PR 没有可审查的文本变更。'

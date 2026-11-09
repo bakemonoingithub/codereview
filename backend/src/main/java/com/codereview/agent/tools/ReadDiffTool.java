@@ -7,6 +7,7 @@ import com.codereview.agent.repository.RepositorySnapshots;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
 import com.codereview.git.FixedComparison;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.HistogramDiff;
 import org.eclipse.jgit.diff.RawText;
@@ -32,10 +33,12 @@ public class ReadDiffTool {
 
     private final RepositoryReadService repository;
     private final ToolMaterialStore materials;
+    private final ObjectMapper mapper;
 
-    public ReadDiffTool(RepositoryReadService repository, ToolMaterialStore materials) {
+    public ReadDiffTool(RepositoryReadService repository, ToolMaterialStore materials, ObjectMapper mapper) {
         this.repository = repository;
         this.materials = materials;
+        this.mapper = mapper;
     }
 
     public ToolEnvelope execute(String toolCallId, ToolInvocation invocation, AgentToolScope scope) {
@@ -55,13 +58,8 @@ public class ReadDiffTool {
                                    AgentToolScope.Comparison comparison, ToolCursor cursor) {
         FixedComparison.Result result = repository.frozenRange(scope.projectId(),
                 comparison.baseSha(), comparison.headSha());
-        List<FixedComparison.FileChange> files = result.files();
-        int offset = Math.min(cursor.offset(), files.size());
-        List<Map<String, Object>> items = new ArrayList<>();
-        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
-        int index = offset;
-        while (index < files.size() && items.size() < scope.limits().getDiffMaxItems()) {
-            FixedComparison.FileChange file = files.get(index);
+        List<Map<String, Object>> all = new ArrayList<>();
+        for (FixedComparison.FileChange file : result.files()) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("path", file.path());
             if (file.oldPath() != null && !file.oldPath().isBlank()) {
@@ -72,28 +70,13 @@ public class ReadDiffTool {
             if (file.reason() != null) {
                 item.put("reason", file.reason());
             }
-            int cost = file.path().length() * 2 + 180;
-            if (!items.isEmpty() && cost > budget) {
-                break;
-            }
-            budget -= cost;
-            items.add(item);
-            index++;
+            all.add(item);
         }
-        boolean more = index < files.size();
         boolean truncated = !result.complete();
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("comparisonId", comparison.id());
-        data.put("headSha", comparison.headSha());
-        data.put("baseSha", comparison.baseSha());
-        data.put("totalFiles", truncated ? result.fileCount() : files.size());
-        data.put("items", items);
-        data.put("hint", "读取某个文本文件的逐 hunk 内容时再次调用本工具并传入 path；二进制和无法读取的文件没有审查");
-        String diagnostic = truncated ? "净变化清单不完整，不能把已返回的部分当成全部变更" : null;
-        return new ToolEnvelope(toolCallId, ToolEnvelope.OK, scope.versionRefs(), comparison.id(),
-                List.of(), data,
-                more || truncated ? ToolEnvelope.PARTIAL : ToolEnvelope.COMPLETE,
-                more ? ToolCursor.encode(invocation, index) : null, diagnostic);
+        return page(toolCallId, invocation, scope, comparison, cursor, all,
+                truncated ? result.fileCount() : all.size(), truncated,
+                "净变化清单不完整，不能把已返回的部分当成全部变更",
+                "读取某个文本文件的逐 hunk 内容时再次调用本工具并传入 path；二进制和无法读取的文件没有审查");
     }
 
     private ToolEnvelope hunksRange(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
@@ -101,6 +84,9 @@ public class ReadDiffTool {
         try {
             RepositorySnapshots.DiffSides sides = repository.diffRange(scope.projectId(),
                     comparison.baseSha(), comparison.headSha(), invocation.path());
+            if (failed(sides.before()) || failed(sides.after())) {
+                return unreadSides(toolCallId, scope, comparison, sides);
+            }
             String patch = sides.patch();
             if (patch == null || patch.isBlank()) {
                 patch = unified(sideText(sides.before()), sideText(sides.after()));
@@ -127,12 +113,8 @@ public class ReadDiffTool {
                               AgentToolScope.Comparison comparison, ToolCursor cursor) {
         CommitDetail detail = repository.commit(scope.projectId(), comparison.headSha());
         List<ChangedFile> files = detail.files() == null ? List.of() : detail.files();
-        int offset = Math.min(cursor.offset(), files.size());
-        List<Map<String, Object>> items = new ArrayList<>();
-        int budget = scope.limits().getEnvelopeMaxBytes() - 512;
-        int index = offset;
-        while (index < files.size() && items.size() < scope.limits().getDiffMaxItems()) {
-            ChangedFile file = files.get(index);
+        List<Map<String, Object>> all = new ArrayList<>();
+        for (ChangedFile file : files) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("path", file.path());
             if (file.previousPath() != null && !file.previousPath().isBlank()) {
@@ -145,29 +127,101 @@ public class ReadDiffTool {
             if (file.deletions() != null) {
                 item.put("deletions", file.deletions());
             }
-            int cost = file.path().length() * 2 + 160;
-            if (!items.isEmpty() && cost > budget) {
+            all.add(item);
+        }
+        return page(toolCallId, invocation, scope, comparison, cursor, all, all.size(),
+                detail.truncated(), "宿主返回的变更清单不完整",
+                "读取某个文件的逐 hunk 内容时再次调用本工具并传入 path");
+    }
+
+    /**
+     * 按序列化后的整页字节分页。估算路径长度会漏掉旧路径和 JSON 开销，
+     * 整页超限时外层会拒绝发送，模型也就拿不到下一页游标。
+     */
+    private ToolEnvelope page(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
+                              AgentToolScope.Comparison comparison, ToolCursor cursor,
+                              List<Map<String, Object>> all, int totalFiles, boolean sourceTruncated,
+                              String truncatedDiagnostic, String hint) {
+        int offset = Math.min(cursor.offset(), all.size());
+        List<Map<String, Object>> items = new ArrayList<>();
+        int index = offset;
+        while (index < all.size() && items.size() < scope.limits().getDiffMaxItems()) {
+            items.add(all.get(index));
+            boolean moreAfter = index + 1 < all.size();
+            ToolEnvelope candidate = listed(toolCallId, scope, comparison, items, totalFiles, hint,
+                    moreAfter, sourceTruncated, moreAfter ? index + 1 : offset, truncatedDiagnostic, invocation);
+            if (ToolEnvelopes.size(mapper, candidate) <= scope.limits().getEnvelopeMaxBytes()) {
+                index++;
+                continue;
+            }
+            items.remove(items.size() - 1);
+            if (!items.isEmpty()) {
                 break;
             }
-            budget -= cost;
-            items.add(item);
-            index++;
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("comparisonId", comparison.id());
+            data.put("path", all.get(index).get("path"));
+            data.put("note", "单个变更项无法装入工具返回上限");
+            return new ToolEnvelope(toolCallId, ToolEnvelope.ERROR, scope.versionRefs(), comparison.id(),
+                    List.of(), data, ToolEnvelope.UNKNOWN, null,
+                    "单个变更项超过工具返回上限，请改用 read_code 按路径读取");
         }
+        boolean more = index < all.size();
+        return listed(toolCallId, scope, comparison, items, totalFiles, hint, more, sourceTruncated,
+                index, truncatedDiagnostic, invocation);
+    }
 
-        boolean more = index < files.size();
-        boolean truncated = detail.truncated();
+    private ToolEnvelope listed(String toolCallId, AgentToolScope scope, AgentToolScope.Comparison comparison,
+                                List<Map<String, Object>> items, int totalFiles, String hint, boolean more,
+                                boolean sourceTruncated, int nextOffset, String truncatedDiagnostic,
+                                ToolInvocation invocation) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("comparisonId", comparison.id());
         data.put("headSha", comparison.headSha());
         data.put("baseSha", comparison.baseSha());
-        data.put("totalFiles", files.size());
+        data.put("totalFiles", totalFiles);
         data.put("items", items);
-        data.put("hint", "读取某个文件的逐 hunk 内容时再次调用本工具并传入 path");
-        String diagnostic = truncated ? "宿主返回的变更清单不完整" : null;
+        data.put("hint", hint);
         return new ToolEnvelope(toolCallId, ToolEnvelope.OK, scope.versionRefs(), comparison.id(),
                 List.of(), data,
-                more || truncated ? ToolEnvelope.PARTIAL : ToolEnvelope.COMPLETE,
-                more ? ToolCursor.encode(invocation, index) : null, diagnostic);
+                more || sourceTruncated ? ToolEnvelope.PARTIAL : ToolEnvelope.COMPLETE,
+                more ? ToolCursor.encode(invocation, nextOffset) : null,
+                sourceTruncated ? truncatedDiagnostic : null);
+    }
+
+    private ToolEnvelope unreadSides(String toolCallId, AgentToolScope scope,
+                                     AgentToolScope.Comparison comparison, RepositorySnapshots.DiffSides sides) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("comparisonId", comparison.id());
+        data.put("path", sides.path());
+        data.put("headSha", sides.headSha());
+        data.put("baseSha", sides.baseSha());
+        data.put("status", sides.status());
+        data.put("beforeStatus", sides.before().status());
+        data.put("beforeReason", sides.before().reason());
+        data.put("afterStatus", sides.after().status());
+        data.put("afterReason", sides.after().reason());
+        data.put("note", "有一侧读取失败，不能把未读到的内容当成新增或删除");
+        return new ToolEnvelope(toolCallId, ToolEnvelope.UNREADABLE, scope.versionRefs(), comparison.id(),
+                List.of(), data, ToolEnvelope.UNKNOWN, null, failureText(sides));
+    }
+
+    private static String failureText(RepositorySnapshots.DiffSides sides) {
+        StringBuilder text = new StringBuilder();
+        appendFailure(text, "修改前", sides.before());
+        appendFailure(text, "修改后", sides.after());
+        text.append("不能据此判断文件是本次新增或删除。");
+        return text.toString();
+    }
+
+    private static void appendFailure(StringBuilder text, String name, RepositorySnapshots.Side side) {
+        if (side != null && RepositorySnapshots.Side.UNREADABLE.equals(side.status())) {
+            text.append(name).append("读取失败：").append(side.reason() == null ? "READ_FAILED" : side.reason()).append("。");
+        }
+    }
+
+    private static boolean failed(RepositorySnapshots.Side side) {
+        return side == null || RepositorySnapshots.Side.UNREADABLE.equals(side.status());
     }
 
     private ToolEnvelope hunks(String toolCallId, ToolInvocation invocation, AgentToolScope scope,
@@ -176,8 +230,12 @@ public class ReadDiffTool {
                 repository.diff(scope.projectId(), comparison.headSha(), invocation.path()));
     }
 
+    /** 只有确实不存在的一侧才能当成空文本；读取失败不得走这里。 */
     private static String sideText(RepositorySnapshots.Side side) {
-        return side != null && side.present() ? side.content() : "";
+        if (side != null && side.present()) {
+            return side.content() == null ? "" : side.content();
+        }
+        return "";
     }
 
     private static String unified(String before, String after) {

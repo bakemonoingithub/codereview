@@ -21,7 +21,7 @@
         v-if="sourceMoved"
         type="warning"
         show-icon
-        message="分支版本已移动，尚未创建任务。请重新核对文件范围。"
+        :message="sourceMovedMessage"
       >
         <template #action>
           <a-button size="small" @click="refreshMovedSource">刷新版本与范围</a-button>
@@ -395,6 +395,7 @@ const pullsHasMore = ref(false)
 const pullsLoading = ref(false)
 const pullsLoadingMore = ref(false)
 const pullsError = ref('')
+let pullsEpoch = 0
 const pullFiles = ref<PullRequestFileChange[]>([])
 const pullTextCount = ref(0)
 const pullBinaryCount = ref(0)
@@ -447,6 +448,11 @@ const selectedCommitSubject = computed(() => {
   const message = selected?.message || (commitDetail.value?.sha === form.commitSha ? commitDetail.value.message : '')
   return String(message || '').split('\n')[0]
 })
+const sourceMovedMessage = computed(() => form.sourceKind === 'PR'
+  ? 'PR 版本已变化，尚未创建任务。请刷新后重新确认目标。'
+  : form.sourceKind === 'DIFF'
+    ? '提交版本已变化，尚未创建任务。请刷新后重新核对范围。'
+    : '分支版本已移动，尚未创建任务。请重新核对文件范围。')
 const scopeReady = computed(() =>
   !!form.projectId && !restoring.value && (form.sourceKind === 'FILES'
     ? !!form.observedSha && !headLoading.value
@@ -493,6 +499,7 @@ onBeforeUnmount(() => {
   commitLookupEpoch++
   detailEpoch++
   promptEpoch++
+  pullsEpoch++
 })
 
 watch(commitPickerOpen, (open, wasOpen) => {
@@ -589,9 +596,10 @@ watch(() => [form.projectId, form.branch, form.sourceKind], () => {
 watch(
   () => form.projectId,
   async (projectId) => {
-    if (restoring.value || !projectId) {
-      return
-    }
+    if (restoring.value) return
+    resetPullList()
+    clearPull()
+    if (!projectId) return
     const project = projects.value.find((item) => item.id === projectId)
     if (!project) return
     form.targets = []
@@ -1017,7 +1025,30 @@ function removeTarget(index: number) {
 async function refreshMovedSource() {
   sourceMoved.value = false
   form.targets = []
+  if (form.sourceKind === 'PR' && form.pullNumber) {
+    await confirmPull(form.pullNumber, true)
+    if (form.pullNumber) {
+      form.targets = []
+      pullNotice.value = '已重新读取 PR 的三个版本和净变化，请重新确认目标文件。'
+    }
+    return
+  }
+  if (form.sourceKind === 'DIFF') {
+    await loadCommitDetail(form.commitSha)
+    return
+  }
   await resolveHead()
+}
+
+function resetPullList() {
+  pullsEpoch++
+  pulls.value = []
+  pullsPage.value = 0
+  pullsHasMore.value = false
+  pullsError.value = ''
+  pullsLoading.value = false
+  pullsLoadingMore.value = false
+  pullPickerOpen.value = false
 }
 
 function clearPull() {
@@ -1035,26 +1066,28 @@ function clearPull() {
 async function loadPullPage(pageNumber: number, replace: boolean) {
   if (!form.projectId || pullsLoading.value || pullsLoadingMore.value) return
   const projectId = form.projectId
+  const epoch = pullsEpoch
   if (replace) pullsLoading.value = true
   else pullsLoadingMore.value = true
   pullsError.value = ''
   try {
     const page = await repositoryApi.pulls(projectId, pageNumber, 30, 'open')
-    if (projectId !== form.projectId) return
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
     pulls.value = replace ? page.items : pulls.value.concat(page.items)
     pullsPage.value = pageNumber
     pullsHasMore.value = page.hasMore
   } catch (failure) {
-    if (projectId !== form.projectId) return
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
     pullsError.value = (failure as Error).message || 'PR 列表读取失败'
   } finally {
-    pullsLoading.value = false
-    pullsLoadingMore.value = false
+    if (epoch === pullsEpoch) {
+      pullsLoading.value = false
+      pullsLoadingMore.value = false
+    }
   }
 }
 
 async function loadPulls() {
-  pulls.value = []
   await loadPullPage(1, true)
 }
 
@@ -1064,17 +1097,20 @@ async function loadMorePulls() {
 
 async function openPullPicker() {
   pullPickerOpen.value = true
-  if (!pulls.value.length) await loadPulls()
+  await loadPulls()
 }
 
-async function confirmPull(number: number) {
+async function confirmPull(number: number, acceptCurrent = false) {
   if (!form.projectId) return
+  const projectId = form.projectId
+  const epoch = pullsEpoch
   pullError.value = ''
   pullNotice.value = ''
   pullMoved.value = false
   const previous = form.sourceHead
   try {
-    const changes = await repositoryApi.pullChanges(form.projectId, number)
+    const changes = await repositoryApi.pullChanges(projectId, number)
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
     if (changes.blocker && changes.blocker !== 'TRUNCATED') {
       pullError.value = changes.blocker === 'NO_MERGE_BASE'
         ? '这个 PR 没有共同祖先，不能审查。'
@@ -1089,7 +1125,7 @@ async function confirmPull(number: number) {
       clearPull()
       return
     }
-    if (previous && previous !== changes.sourceHead) pullMoved.value = true
+    if (!acceptCurrent && previous && previous !== changes.sourceHead) pullMoved.value = true
     const item = pulls.value.find((pull) => pull.number === number)
     form.pullNumber = number
     form.pullTitle = item?.title || ''
