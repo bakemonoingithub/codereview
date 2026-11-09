@@ -63,7 +63,40 @@ describe('patch 增删行统计', () => {
     expect(countPatchLines(patch)).toEqual({ additions: 1, deletions: 1 })
   })
 
+  it('hunk 内以 ++ 或 -- 开头的正文仍计入增删', () => {
+    const patch = [
+      '--- a/x',
+      '+++ b/x',
+      '@@ -1,2 +1,2 @@',
+      '---- section',
+      '+++ section',
+      ' keep'
+    ].join('\n')
+    expect(countPatchLines(patch)).toEqual({ additions: 1, deletions: 1 })
+  })
+
+  it('下一个文件的头行不计入前一个 hunk 的增删', () => {
+    const patch = [
+      'diff --git a/x b/x',
+      'index 111..222 100644',
+      '--- a/x',
+      '+++ b/x',
+      '@@ -1 +1 @@',
+      '-a',
+      '+b',
+      'diff --git a/y b/y',
+      'index 333..444 100644',
+      '--- a/y',
+      '+++ b/y',
+      '@@ -1 +1 @@',
+      '-c',
+      '+d'
+    ].join('\n')
+    expect(countPatchLines(patch)).toEqual({ additions: 2, deletions: 2 })
+  })
+
   it('空 patch 记 0', () => {
     expect(countPatchLines(null)).toEqual({ additions: 0, deletions: 0 })
+    expect(countPatchLines('')).toEqual({ additions: 0, deletions: 0 })
   })
 })

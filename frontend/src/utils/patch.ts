@@ -48,15 +48,30 @@ export function buildExtendData<T>(items: Array<{ line?: number | null; data: T 
   return { newFile }
 }
 
-/** 统计 patch 中的新增/删除行数（用于在 diff 头部展示） */
+/**
+ * 统计 patch 中的新增/删除行数（用于在 diff 头部展示）。
+ *
+ * `--- a/…` 与 `+++ b/…` 只出现在 hunk 之外，用来标文件头。进入 `@@` 之后，
+ * 正文可以以 `++` 或 `--` 开头，补丁行就会变成 `+++…` / `---…`；若仍按前缀整行跳过，
+ * 这些增删会被当成头行丢掉。下一个 `diff --git` 重新离开 hunk，后一个文件的头行不计入。
+ */
 export function countPatchLines(patch?: string | null): { additions: number; deletions: number } {
   if (!patch) {
     return { additions: 0, deletions: 0 }
   }
   let additions = 0
   let deletions = 0
+  let inHunk = false
   for (const line of patch.split('\n')) {
-    if (line.startsWith('+++') || line.startsWith('---')) {
+    if (line.startsWith('diff --git ') || line.startsWith('index ')) {
+      inHunk = false
+      continue
+    }
+    if (line.startsWith('@@')) {
+      inHunk = true
+      continue
+    }
+    if (!inHunk && (line.startsWith('+++') || line.startsWith('---'))) {
       continue
     }
     if (line.startsWith('+')) {
