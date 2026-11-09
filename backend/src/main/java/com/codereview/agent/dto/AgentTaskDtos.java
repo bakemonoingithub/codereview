@@ -13,7 +13,7 @@ import java.util.List;
  * Agent 任务发起与复制参数。
  *
  * <p>与专项 DTO 分开：Agent 没有 specialistType、策略和逐文件目标，范围用
- * {@code TEXT / FILES / COMMITS} 表达；文件与提交互斥。这里只做字段级约束，
+ * {@code TEXT / FILES / COMMITS / PR} 表达；文件与提交互斥。这里只做字段级约束，
  * 版本、存在性与模型准在服务层校验。
  */
 public final class AgentTaskDtos {
@@ -38,17 +38,26 @@ public final class AgentTaskDtos {
     }
 
     public record Scope(
-            @NotBlank @Pattern(regexp = "TEXT|FILES|COMMITS", message = "范围只能是 TEXT、FILES 或 COMMITS")
+            @NotBlank @Pattern(regexp = "TEXT|FILES|COMMITS|PR", message = "范围只能是 TEXT、FILES、COMMITS 或 PR")
             String kind,
             @Size(max = 200) String branch,
             @Size(max = 40) String observedSha,
             @Size(max = 100) List<@NotBlank @Size(max = 512) String> paths,
             @Size(max = 20) List<@NotBlank @Size(max = 40) String> commits,
-            @Size(max = 2000) String description) {
+            @Size(max = 2000) String description,
+            Long pullNumber,
+            @Size(max = 40) String sourceHead,
+            @Size(max = 40) String targetHead,
+            @Size(max = 40) String mergeBase) {
 
         public Scope {
             paths = paths == null ? List.of() : List.copyOf(paths);
             commits = commits == null ? List.of() : List.copyOf(commits);
+        }
+
+        public Scope(String kind, String branch, String observedSha, List<String> paths,
+                     List<String> commits, String description) {
+            this(kind, branch, observedSha, paths, commits, description, null, null, null, null);
         }
     }
 

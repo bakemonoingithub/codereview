@@ -289,6 +289,17 @@ public class ReportInputService {
         taskNode.put("branch", source.branch());
         taskNode.put("commitSha", source.commitSha());
         taskNode.put("baseSha", source.baseSha());
+        JsonNode rawSource = readJsonOrNull(task.getInputSnapshot());
+        JsonNode raw = rawSource == null ? null : rawSource.path("source");
+        if (raw != null && raw.path("pullNumber").isNumber()) {
+            taskNode.put("pullNumber", raw.path("pullNumber").asLong());
+            copyText(taskNode, raw, "sourceHead");
+            copyText(taskNode, raw, "targetHead");
+            copyText(taskNode, raw, "mergeBase");
+            copyText(taskNode, raw, "sourceBranch");
+            copyText(taskNode, raw, "targetBranch");
+            copyText(taskNode, raw, "coverageNote");
+        }
 
         ObjectNode targetNode = node.putObject("target");
         targetNode.put("id", target == null ? null : target.getId());
@@ -622,6 +633,13 @@ public class ReportInputService {
         return new TaskSource(source == null || source.isMissingNode() ? "FILES" : source.path("kind").asText("FILES"),
                 textOrNull(source, "branch"), textOrNull(source, "commitSha"), textOrNull(source, "baseSha"),
                 textOrNull(source, "headSha"));
+    }
+
+    private static void copyText(ObjectNode target, JsonNode source, String field) {
+        String value = textOrNull(source, field);
+        if (value != null) {
+            target.put(field, value);
+        }
     }
 
     private static String textOrNull(JsonNode node, String field) {

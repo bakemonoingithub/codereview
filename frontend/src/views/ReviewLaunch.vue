@@ -21,7 +21,7 @@
         v-if="sourceMoved"
         type="warning"
         show-icon
-        message="分支版本已移动，尚未创建任务。请重新核对文件范围。"
+        :message="sourceMovedMessage"
       >
         <template #action>
           <a-button size="small" @click="refreshMovedSource">刷新版本与范围</a-button>
@@ -76,6 +76,7 @@
               <a-radio-group v-model:value="form.sourceKind" button-style="solid" @change="onSourceKindChange">
                 <a-radio-button value="FILES">文件内容</a-radio-button>
                 <a-radio-button value="DIFF">提交比较</a-radio-button>
+                <a-radio-button value="PR">PR</a-radio-button>
               </a-radio-group>
             </a-form-item>
           </div>
@@ -94,7 +95,25 @@
                 @change="onBranchChange"
               />
             </a-form-item>
-            <a-form-item v-if="form.sourceKind === 'FILES'" label="提交hash" required>
+            <template v-if="form.sourceKind === 'PR'">
+              <a-form-item class="full" label="待合并 PR" required>
+                <a-button :disabled="!form.projectId" :loading="pullsLoading" @click="openPullPicker">
+                  {{ form.pullNumber ? '更换 PR' : '选择 PR' }}
+                </a-button>
+                <div v-if="form.pullNumber" class="selected-commit">
+                  <code>#{{ form.pullNumber }}</code>
+                  <span>{{ form.pullTitle || '已选择 PR' }}</span>
+                </div>
+                <p v-if="form.sourceHead" class="muted small commit-help">
+                  源提交 {{ form.sourceHead.slice(0, 10) }} · 目标提交 {{ form.targetHead.slice(0, 10) }} · 共同祖先 {{ form.mergeBase.slice(0, 10) }}
+                  · 文本 {{ pullTextCount }} / 二进制 {{ pullBinaryCount }} / 无法读取 {{ pullUnreadableCount }}
+                </p>
+                <a-alert v-if="pullError" type="error" show-icon :message="pullError" />
+                <a-alert v-if="pullNotice" type="info" show-icon :message="pullNotice" />
+                <a-alert v-if="pullMoved" type="warning" show-icon message="PR 版本已变化，请重新确认范围后再发起。" />
+              </a-form-item>
+            </template>
+            <a-form-item v-else-if="form.sourceKind === 'FILES'" label="提交hash" required>
               <LaunchVersionPreview
                 :sha="form.observedSha"
                 :loading="headLoading"
@@ -134,7 +153,24 @@
                 </template>
               </a-alert>
             </a-form-item>
-            <a-form-item class="full" label="目标" required>
+            <a-form-item v-if="form.sourceKind === 'PR'" class="full" label="目标" required>
+              <p class="muted small">只列出净变化中的文本文件。未选、二进制和无法读取的文件不会记为已审查。</p>
+              <div v-if="pullFiles.length" class="target-list">
+                <label v-for="file in pullFiles" :key="file.path" class="target-row">
+                  <input
+                    type="checkbox"
+                    :disabled="file.category !== 'TEXT'"
+                    :checked="form.targets.some((target) => target.path === file.path)"
+                    @change="togglePullFile(file)"
+                  />
+                  <div class="target-main">
+                    <code>{{ file.path }}</code>
+                    <span class="muted small">{{ file.status }}<template v-if="file.category !== 'TEXT'"> · {{ file.reason || file.category }}</template></span>
+                  </div>
+                </label>
+              </div>
+            </a-form-item>
+            <a-form-item v-else class="full" label="目标" required>
               <div class="target-actions">
                 <a-button type="primary" ghost :disabled="!scopeReady" @click="scopeOpen = true">
                   {{ form.targets.length ? '调整文件范围' : '选择文件范围' }}
@@ -254,10 +290,23 @@
         @lookup="locateCommit"
         @clear-lookup="clearCommitLookup"
       />
+      <PullRequestPickerModal
+        v-model:open="pullPickerOpen"
+        :items="pulls"
+        :selected="form.pullNumber"
+        :has-more="pullsHasMore"
+        :loading="pullsLoading"
+        :loading-more="pullsLoadingMore"
+        :error="pullsError"
+        @confirm="confirmPull"
+        @load-more="loadMorePulls"
+        @retry="loadPulls"
+      />
       <ScopePickerModal
+        v-if="form.sourceKind !== 'PR'"
         v-model:open="scopeOpen"
         :project-id="form.projectId"
-        :mode="form.sourceKind"
+        :mode="form.sourceKind === 'DIFF' ? 'DIFF' : 'FILES'"
         :sha="form.observedSha"
         :commit-sha="form.commitSha"
         :branch="form.branch"
@@ -274,6 +323,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import CommitPickerModal from '@/components/CommitPickerModal.vue'
+import PullRequestPickerModal from '@/components/PullRequestPickerModal.vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
 import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
 import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
@@ -285,6 +335,8 @@ import {
   tasksApi,
   type CommitDetail,
   type CommitInfo,
+  type PullRequestFileChange,
+  type PullRequestItem,
   type ModelView,
   type ProjectView,
   type PromptSummary,
@@ -293,7 +345,7 @@ import {
 } from '@/api/v2'
 
 type SpecialistType = 'ISSUE' | 'PATTERN' | 'COUPLING'
-type SourceKind = 'FILES' | 'DIFF'
+type SourceKind = 'FILES' | 'DIFF' | 'PR'
 
 interface TargetRow {
   path: string
@@ -336,6 +388,21 @@ const commitDetail = ref<CommitDetail | null>(null)
 const commitDetailLoading = ref(false)
 const commitDetailError = ref('')
 const commitPickerOpen = ref(false)
+const pullPickerOpen = ref(false)
+const pulls = ref<PullRequestItem[]>([])
+const pullsPage = ref(0)
+const pullsHasMore = ref(false)
+const pullsLoading = ref(false)
+const pullsLoadingMore = ref(false)
+const pullsError = ref('')
+let pullsEpoch = 0
+const pullFiles = ref<PullRequestFileChange[]>([])
+const pullTextCount = ref(0)
+const pullBinaryCount = ref(0)
+const pullUnreadableCount = ref(0)
+const pullError = ref('')
+const pullNotice = ref('')
+const pullMoved = ref(false)
 const locatedCommit = ref<CommitInfo | null>(null)
 const commitLookupLoading = ref(false)
 const commitLookupError = ref('')
@@ -355,6 +422,11 @@ const form = reactive({
   observedSha: '',
   commitSha: '',
   baseSha: '',
+  pullNumber: null as number | null,
+  pullTitle: '',
+  sourceHead: '',
+  targetHead: '',
+  mergeBase: '',
   targets: [] as TargetRow[],
   modelConfigId: '',
   promptId: '',
@@ -376,10 +448,17 @@ const selectedCommitSubject = computed(() => {
   const message = selected?.message || (commitDetail.value?.sha === form.commitSha ? commitDetail.value.message : '')
   return String(message || '').split('\n')[0]
 })
+const sourceMovedMessage = computed(() => form.sourceKind === 'PR'
+  ? 'PR 版本已变化，尚未创建任务。请刷新后重新确认目标。'
+  : form.sourceKind === 'DIFF'
+    ? '提交版本已变化，尚未创建任务。请刷新后重新核对范围。'
+    : '分支版本已移动，尚未创建任务。请重新核对文件范围。')
 const scopeReady = computed(() =>
   !!form.projectId && !restoring.value && (form.sourceKind === 'FILES'
     ? !!form.observedSha && !headLoading.value
-    : !!form.commitSha && commitDetail.value?.sha === form.commitSha)
+    : form.sourceKind === 'PR'
+      ? !!form.pullNumber && !!form.sourceHead && !!form.mergeBase && !pullMoved.value
+      : !!form.commitSha && commitDetail.value?.sha === form.commitSha)
 )
 const canSubmit = computed(
   () =>
@@ -388,7 +467,7 @@ const canSubmit = computed(
       !!form.promptVersionId && !!selectedPromptVersion.value)) &&
     form.targets.length > 0 &&
     !!form.modelConfigId &&
-    (form.sourceKind === 'FILES' ? !!form.observedSha : !!form.commitSha) &&
+    (form.sourceKind === 'FILES' ? !!form.observedSha : form.sourceKind === 'PR' ? !!form.pullNumber : !!form.commitSha) &&
     !submitting.value
 )
 
@@ -420,6 +499,7 @@ onBeforeUnmount(() => {
   commitLookupEpoch++
   detailEpoch++
   promptEpoch++
+  pullsEpoch++
 })
 
 watch(commitPickerOpen, (open, wasOpen) => {
@@ -516,9 +596,10 @@ watch(() => [form.projectId, form.branch, form.sourceKind], () => {
 watch(
   () => form.projectId,
   async (projectId) => {
-    if (restoring.value || !projectId) {
-      return
-    }
+    if (restoring.value) return
+    resetPullList()
+    clearPull()
+    if (!projectId) return
     const project = projects.value.find((item) => item.id === projectId)
     if (!project) return
     form.targets = []
@@ -540,10 +621,11 @@ watch(
     if (restoring.value) {
       return
     }
-    if (type !== 'ISSUE' && form.sourceKind === 'DIFF') {
+    if (type !== 'ISSUE' && (form.sourceKind === 'DIFF' || form.sourceKind === 'PR')) {
       form.sourceKind = 'FILES'
       form.targets = []
       form.commitSha = ''
+      form.pullNumber = null
     }
   }
 )
@@ -557,10 +639,16 @@ watch(
     form.targets = []
     form.commitSha = ''
     form.baseSha = ''
+    form.pullNumber = null
+    form.sourceHead = ''
+    form.targetHead = ''
+    form.mergeBase = ''
+    pullFiles.value = []
+    pullMoved.value = false
     commitDetail.value = null
     if (kind === 'FILES') {
       await resolveHead()
-    } else {
+    } else if (kind === 'DIFF') {
       await loadCommits()
     }
   }
@@ -637,6 +725,19 @@ async function loadCopy() {
       }
     } else if (copy.sourceKind === 'DIFF') {
       await loadCommitDetail(copy.commitSha || '')
+    } else if (copy.sourceKind === 'PR' && copy.pullNumber) {
+      const previousTargets = form.targets.map((target) => ({ ...target }))
+      await confirmPull(Number(copy.pullNumber))
+      if (!form.pullNumber) return
+      const kept = previousTargets.filter((target) => pullFiles.value.some(
+        (file) => file.path === target.path && file.category === 'TEXT'))
+      if (kept.length) form.targets = kept
+      else if (previousTargets.length) {
+        pullNotice.value = '原先选择的文件已不在当前净变化中，已改为当前可审查文本文件。'
+      }
+      if (original.sourceHead && original.sourceHead !== form.sourceHead) {
+        pullNotice.value = '已按当前 PR 重新读取版本，未沿用旧提交。请核对目标文件后再发起。'
+      }
     }
   } catch (failure) {
     formError.value = (failure as Error).message || '复制历史参数失败'
@@ -689,7 +790,7 @@ async function syncBranches(preferred: string) {
     formError.value = ''
     form.branch = next
     if (form.sourceKind === 'FILES') await resolveHead()
-    else await loadCommits()
+    else if (form.sourceKind === 'DIFF') await loadCommits()
   } catch (failure) {
     if (epoch !== branchEpoch || projectId !== form.projectId || restoring.value) return
     branches.value = []
@@ -712,8 +813,10 @@ async function onBranchChange() {
   form.targets = []
   if (form.sourceKind === 'FILES') {
     await resolveHead()
-  } else {
+  } else if (form.sourceKind === 'DIFF') {
     await loadCommits()
+  } else {
+    clearPull()
   }
 }
 
@@ -920,9 +1023,134 @@ function removeTarget(index: number) {
 }
 
 async function refreshMovedSource() {
+  if (form.sourceKind === 'PR' && form.pullNumber) {
+    const refreshed = await confirmPull(form.pullNumber, true)
+    if (!refreshed) return
+    sourceMoved.value = false
+    form.targets = []
+    pullNotice.value = '已重新读取 PR 的三个版本和净变化，请重新确认目标文件。'
+    return
+  }
   sourceMoved.value = false
   form.targets = []
+  if (form.sourceKind === 'DIFF') {
+    await loadCommitDetail(form.commitSha)
+    return
+  }
   await resolveHead()
+}
+
+function resetPullList() {
+  pullsEpoch++
+  pulls.value = []
+  pullsPage.value = 0
+  pullsHasMore.value = false
+  pullsError.value = ''
+  pullsLoading.value = false
+  pullsLoadingMore.value = false
+  pullPickerOpen.value = false
+}
+
+function clearPull() {
+  form.pullNumber = null
+  form.pullTitle = ''
+  form.sourceHead = ''
+  form.targetHead = ''
+  form.mergeBase = ''
+  pullFiles.value = []
+  pullMoved.value = false
+  pullError.value = ''
+  pullNotice.value = ''
+}
+
+async function loadPullPage(pageNumber: number, replace: boolean) {
+  if (!form.projectId || pullsLoading.value || pullsLoadingMore.value) return
+  const projectId = form.projectId
+  const epoch = pullsEpoch
+  if (replace) pullsLoading.value = true
+  else pullsLoadingMore.value = true
+  pullsError.value = ''
+  try {
+    const page = await repositoryApi.pulls(projectId, pageNumber, 30, 'open')
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
+    pulls.value = replace ? page.items : pulls.value.concat(page.items)
+    pullsPage.value = pageNumber
+    pullsHasMore.value = page.hasMore
+  } catch (failure) {
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return
+    pullsError.value = (failure as Error).message || 'PR 列表读取失败'
+  } finally {
+    if (epoch === pullsEpoch) {
+      pullsLoading.value = false
+      pullsLoadingMore.value = false
+    }
+  }
+}
+
+async function loadPulls() {
+  await loadPullPage(1, true)
+}
+
+async function loadMorePulls() {
+  if (pullsHasMore.value) await loadPullPage(pullsPage.value + 1, false)
+}
+
+async function openPullPicker() {
+  pullPickerOpen.value = true
+  await loadPulls()
+}
+
+async function confirmPull(number: number, acceptCurrent = false): Promise<boolean> {
+  if (!form.projectId) return false
+  const projectId = form.projectId
+  const epoch = pullsEpoch
+  pullError.value = ''
+  pullNotice.value = ''
+  pullMoved.value = false
+  const previous = form.sourceHead
+  try {
+    const changes = await repositoryApi.pullChanges(projectId, number)
+    if (epoch !== pullsEpoch || projectId !== form.projectId) return false
+    if (changes.blocker && changes.blocker !== 'TRUNCATED') {
+      pullError.value = changes.blocker === 'NO_MERGE_BASE'
+        ? '这个 PR 没有共同祖先，不能审查。'
+        : changes.blocker === 'CROSS_REPOSITORY'
+          ? '首版不接受其他仓库或 fork 的 PR。'
+          : '这个 PR 当前不能审查。'
+      if (!acceptCurrent) clearPull()
+      return false
+    }
+    if (changes.blocker === 'TRUNCATED') {
+      pullError.value = '变更文件超过上限，不能把部分清单当作完整 PR。'
+      if (!acceptCurrent) clearPull()
+      return false
+    }
+    if (!acceptCurrent && previous && previous !== changes.sourceHead) pullMoved.value = true
+    const item = pulls.value.find((pull) => pull.number === number)
+    form.pullNumber = number
+    form.pullTitle = item?.title || ''
+    form.sourceHead = changes.sourceHead || ''
+    form.targetHead = changes.targetHead || ''
+    form.mergeBase = changes.mergeBase || ''
+    pullFiles.value = changes.files
+    pullTextCount.value = changes.textFiles
+    pullBinaryCount.value = changes.binaryFiles
+    pullUnreadableCount.value = changes.unreadableFiles
+    form.targets = changes.files.filter((file) => file.category === 'TEXT').map((file) => ({
+      path: file.path, oldPath: file.oldPath, note: ''
+    }))
+    return true
+  } catch (failure) {
+    pullError.value = (failure as Error).message || 'PR 净变化读取失败'
+    return false
+  }
+}
+
+function togglePullFile(file: PullRequestFileChange) {
+  if (file.category !== 'TEXT') return
+  const index = form.targets.findIndex((target) => target.path === file.path)
+  if (index >= 0) form.targets.splice(index, 1)
+  else form.targets.push({ path: file.path, oldPath: file.oldPath, note: '' })
 }
 
 async function submit() {
@@ -937,12 +1165,20 @@ async function submit() {
     const source =
       form.sourceKind === 'FILES'
         ? { kind: 'FILES' as const, branch: form.branch, observedSha: form.observedSha }
-        : {
-            kind: 'DIFF' as const,
-            branch: form.branch,
-            commitSha: form.commitSha,
-            baseSha: form.baseSha || undefined
-          }
+        : form.sourceKind === 'PR'
+          ? {
+              kind: 'PR' as const,
+              pullNumber: form.pullNumber,
+              sourceHead: form.sourceHead,
+              targetHead: form.targetHead,
+              mergeBase: form.mergeBase
+            }
+          : {
+              kind: 'DIFF' as const,
+              branch: form.branch,
+              commitSha: form.commitSha,
+              baseSha: form.baseSha || undefined
+            }
     const name = form.name.trim()
     const body = {
       projectId: form.projectId,

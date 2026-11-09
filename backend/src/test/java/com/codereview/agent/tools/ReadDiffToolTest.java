@@ -4,6 +4,8 @@ import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.repository.RepositorySnapshots;
 import com.codereview.git.ChangedFile;
 import com.codereview.git.CommitDetail;
+import com.codereview.git.FixedComparison;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -43,13 +46,29 @@ class ReadDiffToolTest {
 
     @BeforeEach
     void setUp() {
-        tool = new ReadDiffTool(repository, materialStore);
+        tool = new ReadDiffTool(repository, materialStore, new ObjectMapper());
         when(materialStore.save(anyString(), any())).thenAnswer(invocation -> {
             ToolEnvelope.ToolMaterial draft = invocation.getArgument(1);
             return new ToolEnvelope.ToolMaterial("m-" + draft.side() + "-" + draft.startLine(),
                     draft.path(), draft.side(), draft.sha(), draft.startLine(), draft.endLine(),
                     draft.contentHash(), draft.completeness(), draft.content());
         });
+    }
+
+    @Test
+    void rangeComparisonListsFrozenFilesWithoutReadingTheCommit() {
+        AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
+                AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));
+        when(repository.frozenRange("p1", BASE, HEAD)).thenReturn(new FixedComparison.Result(
+                null, HEAD, BASE, FixedComparison.COMPLETE, 1, List.of(
+                new FixedComparison.FileChange("src/A.java", "src/Old.java", "renamed", "TEXT", null))));
+
+        ToolEnvelope envelope = tool.execute("call-1", invocation(null), range);
+
+        assertEquals("src/A.java", ((Map<?, ?>) ((List<?>) ((Map<?, ?>) envelope.data()).get("items")).get(0)).get("path"));
+        assertEquals("src/Old.java", ((Map<?, ?>) ((List<?>) ((Map<?, ?>) envelope.data()).get("items")).get(0)).get("oldPath"));
+        assertEquals(ToolEnvelope.COMPLETE, envelope.completeness());
+        org.mockito.Mockito.verify(repository, org.mockito.Mockito.never()).commit(any(), any());
     }
 
     @Test
@@ -126,6 +145,99 @@ class ReadDiffToolTest {
         assertEquals(ToolEnvelope.UNREADABLE, envelope.status());
         assertEquals(ToolEnvelope.UNKNOWN, envelope.completeness());
         assertTrue(envelope.materials().isEmpty());
+    }
+
+    @Test
+    void unreadableSideIsNotReportedAsANewFile() {
+        AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
+                AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));
+        when(repository.diffRange("p1", BASE, HEAD, PATH)).thenReturn(new RepositorySnapshots.DiffSides(
+                HEAD, BASE, PATH, null, "modified", null,
+                RepositorySnapshots.Side.unreadable("RATE_LIMITED"),
+                RepositorySnapshots.Side.present("class A {\n    int value;\n}\n")));
+
+        ToolEnvelope envelope = tool.execute("call-1", invocation(PATH), range);
+
+        assertEquals(ToolEnvelope.UNREADABLE, envelope.status());
+        assertEquals(ToolEnvelope.UNKNOWN, envelope.completeness());
+        assertTrue(envelope.materials().isEmpty());
+        assertTrue(envelope.diagnostic().contains("RATE_LIMITED"));
+        assertTrue(envelope.diagnostic().contains("不能据此判断"));
+        assertFalse(((Map<?, ?>) envelope.data()).containsKey("hunks"));
+        assertTrue(String.valueOf(((Map<?, ?>) envelope.data()).get("note")).contains("不能把未读到的内容当成新增或删除"));
+    }
+
+    @Test
+    void unexpectedMissingSideIsNotReportedAsANewFile() {
+        AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
+                AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));
+        when(repository.diffRange("p1", BASE, HEAD, PATH)).thenReturn(new RepositorySnapshots.DiffSides(
+                HEAD, BASE, PATH, null, "modified", null,
+                RepositorySnapshots.Side.missing("NOT_AVAILABLE"),
+                RepositorySnapshots.Side.present("class A {\n    int value;\n}\n")));
+
+        ToolEnvelope envelope = tool.execute("call-1", invocation(PATH), range);
+
+        assertEquals(ToolEnvelope.UNREADABLE, envelope.status());
+        assertEquals(ToolEnvelope.UNKNOWN, envelope.completeness());
+        assertTrue(envelope.materials().isEmpty());
+        assertTrue(envelope.diagnostic().contains("NOT_AVAILABLE"));
+        assertTrue(envelope.diagnostic().contains("不能据此判断"));
+        assertFalse(((Map<?, ?>) envelope.data()).containsKey("hunks"));
+    }
+
+    @Test
+    void missingBeforeSideStillShowsAnAddition() {
+        AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
+                AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));
+        when(repository.diffRange("p1", BASE, HEAD, PATH)).thenReturn(new RepositorySnapshots.DiffSides(
+                HEAD, BASE, PATH, null, "added", null,
+                RepositorySnapshots.Side.missing("ADDED"),
+                RepositorySnapshots.Side.present("class A {}\n")));
+
+        ToolEnvelope envelope = tool.execute("call-1", invocation(PATH), range);
+
+        assertEquals(ToolEnvelope.OK, envelope.status());
+        assertEquals(ToolEnvelope.COMPLETE, envelope.completeness());
+        assertFalse(envelope.materials().isEmpty());
+    }
+
+    @Test
+    void longRenamePathsPageBySerializedBytes() {
+        String oldPath = "legacy/module/".repeat(1200) + "OrderService.java";
+        AgentToolScope range = new AgentToolScope("p1", Map.of("V1", HEAD, "V2", BASE),
+                AgentToolScope.comparisonsOf(new AgentToolScope.Comparison("C1", HEAD, BASE, "RANGE")));
+        when(repository.frozenRange("p1", BASE, HEAD)).thenReturn(new FixedComparison.Result(
+                null, HEAD, BASE, FixedComparison.COMPLETE, 2, List.of(
+                new FixedComparison.FileChange("src/OrderService.java", oldPath, "renamed", "TEXT", null),
+                new FixedComparison.FileChange("src/Next.java", oldPath + ".bak", "renamed", "TEXT", null))));
+
+        ToolEnvelope first = tool.execute("call-1", invocation(null), range);
+
+        assertEquals(ToolEnvelope.PARTIAL, first.completeness());
+        assertNotNull(first.nextCursor());
+        assertTrue(ToolEnvelopes.size(new ObjectMapper(), first) <= ToolLimits.ENVELOPE_MAX_BYTES);
+        List<?> firstItems = (List<?>) ((Map<?, ?>) first.data()).get("items");
+        assertEquals(1, firstItems.size());
+        assertEquals("src/OrderService.java", ((Map<?, ?>) firstItems.get(0)).get("path"));
+
+        ToolEnvelope second = tool.execute("call-1", new ToolInvocation(AgentToolNames.READ_DIFF,
+                null, null, "C1", null, null, ToolLimits.DIFF_MAX_HUNKS, first.nextCursor(),
+                null, null, List.of(), null, null), range);
+        assertEquals(ToolEnvelope.COMPLETE, second.completeness());
+        assertNull(second.nextCursor());
+        assertEquals("src/Next.java", ((Map<?, ?>) ((List<?>) ((Map<?, ?>) second.data()).get("items")).get(0)).get("path"));
+        assertTrue(ToolEnvelopes.size(new ObjectMapper(), second) <= ToolLimits.ENVELOPE_MAX_BYTES);
+
+        when(repository.commit("p1", HEAD)).thenReturn(new CommitDetail(HEAD, List.of(BASE), "msg", "author",
+                "today", 1, 1, 2, false, List.of(
+                new ChangedFile("src/OrderService.java", oldPath, "renamed", 1, 1, 2, null),
+                new ChangedFile("src/Next.java", oldPath + ".bak", "renamed", 1, 1, 2, null))));
+        ToolEnvelope commitPage = tool.execute("call-2", invocation(null), scope);
+        assertEquals(ToolEnvelope.PARTIAL, commitPage.completeness());
+        assertNotNull(commitPage.nextCursor());
+        assertEquals(1, ((List<?>) ((Map<?, ?>) commitPage.data()).get("items")).size());
+        assertTrue(ToolEnvelopes.size(new ObjectMapper(), commitPage) <= ToolLimits.ENVELOPE_MAX_BYTES);
     }
 
     @Test

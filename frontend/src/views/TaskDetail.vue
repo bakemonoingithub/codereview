@@ -62,6 +62,16 @@
 
         <div class="detail-grid">
           <aside class="card targets">
+            <div v-if="task.sourceKind === 'PR'" class="pr-summary">
+              <strong>PR #{{ task.pullNumber || '?' }}</strong>
+              <span v-if="task.pullTitle"> {{ task.pullTitle }}</span>
+              <p class="muted small">
+                {{ task.sourceBranch || '源分支未记录' }} → {{ task.targetBranch || '目标分支未记录' }}
+                · 已选 {{ task.targets.length }} / 文本 {{ task.textFiles ?? '未记录' }} / 全部 {{ task.changedFiles ?? '未记录' }}
+              </p>
+              <p class="muted small">{{ task.coverageNote || '未选择、二进制和无法读取的文件没有审查。' }}</p>
+              <a-alert v-if="pullVersionNote" type="warning" show-icon :message="pullVersionNote" />
+            </div>
             <div class="section-head">
               <strong>目标文件</strong>
               <span class="spacer" />
@@ -219,6 +229,7 @@
       :task-id="task.id"
       :project-id="task.projectId"
       :head-sha="task.headSha || ''"
+      :hide-commit-diff="task.sourceKind === 'PR'"
       :material-id="materialId"
     />
     <CodeReferenceModal
@@ -262,6 +273,7 @@ import { taskLabel } from '@/utils/taskLabel'
 import type { CodeReferencePayload } from '@/utils/codeReferences'
 import {
   projectsApi,
+  repositoryApi,
   tasksApi,
   type CallSummary,
   type MaterialView,
@@ -273,6 +285,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const task = ref<TaskView | null>(null)
+const pullVersionNote = ref('')
 const projectName = ref('')
 const taskLoading = ref(false)
 const refreshing = ref(false)
@@ -351,6 +364,13 @@ const inputVersion = computed(() => {
   const head = inputTarget.value?.headSha || task.value?.headSha
   const base = inputTarget.value?.baseSha || task.value?.baseSha
   const after = head || '源码版本未记录'
+  if (task.value?.sourceKind === 'PR') {
+    const source = task.value.sourceHead || head || '源提交未记录'
+    const ancestor = task.value.mergeBase || base || '共同祖先未记录'
+    const target = task.value.targetHead || '目标提交未记录'
+    const label = `PR #${task.value.pullNumber || '?'} · ${String(ancestor).slice(0, 12)}（共同祖先）→ ${String(source).slice(0, 12)}（源提交）`
+    return { label, full: `${label} · 目标提交 ${target}` }
+  }
   if (task.value?.sourceKind === 'DIFF') {
     const before = base || '比较基线未记录'
     return {
@@ -432,6 +452,27 @@ onBeforeUnmount(() => {
   stopPoll()
 })
 
+async function checkPullVersion(current: TaskView) {
+  pullVersionNote.value = ''
+  if (current.sourceKind !== 'PR' || current.pullNumber == null) return
+  try {
+    const detail = await repositoryApi.pull(current.projectId, Number(current.pullNumber))
+    const live = detail.pullRequest
+    const moved = Boolean(
+      (current.sourceHead && live.sourceHead && current.sourceHead !== live.sourceHead)
+      || (current.targetHead && live.targetHead && current.targetHead !== live.targetHead)
+      || (current.mergeBase && detail.mergeBase && current.mergeBase !== detail.mergeBase)
+    )
+    if (moved) {
+      pullVersionNote.value = '当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。'
+    } else if (detail.blocker === 'PR_NOT_OPEN') {
+      pullVersionNote.value = '该 PR 已不再处于未合并的 open 状态。历史结果仍可阅读。'
+    }
+  } catch {
+    pullVersionNote.value = '暂时无法核对当前 PR 版本，本页仍显示发起时冻结的版本。'
+  }
+}
+
 async function loadTask() {
   const epoch = ++taskEpoch
   const id = String(route.params.id)
@@ -443,6 +484,7 @@ async function loadTask() {
     const loaded = await tasksApi.detail(id)
     if (epoch !== taskEpoch || disposed) return
     task.value = loaded
+    void checkPullVersion(loaded)
     if (!loaded.targets.some(target => target.id === selectedTargetId.value)) {
       if (selectedTargetId.value) message.warning('原目标已不可用，已切换到当前任务目标')
       selectedTargetId.value = loaded.targets[0]?.id || ''

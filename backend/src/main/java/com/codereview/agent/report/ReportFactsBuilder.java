@@ -143,9 +143,10 @@ public class ReportFactsBuilder {
         String path = text(target, "path");
         String oldPath = text(target, "oldPath");
         String versionKey = projectId + "|" + nullToEmpty(headSha) + "|" + nullToEmpty(baseSha);
+        String baseRole = "PR".equals(text(task, "sourceKind")) ? "共同祖先 " : "父 ";
         String groupLabel = (blank(projectName) ? nullToUnknown(projectId) : projectName)
                 + "（" + projectId + "）@" + nullToUnknown(headSha)
-                + (blank(baseSha) ? "" : "（父 " + baseSha + "）");
+                + (blank(baseSha) ? "" : "（" + baseRole + baseSha + "）");
 
         String summary = summaryOf(kind, body);
         List<JsonNode> issues = array(snapshot.path("issues"));
@@ -263,7 +264,8 @@ public class ReportFactsBuilder {
         text.append("项目：").append(nullToUnknown(projectName)).append("｜仓库：")
                 .append(nullToUnknown(repoUrl)).append("｜版本：").append(nullToUnknown(headSha));
         if (!blank(baseSha)) {
-            text.append("（父 ").append(baseSha).append("）");
+            text.append("（").append("PR".equals(text(task, "sourceKind")) ? "共同祖先 " : "父 ")
+                    .append(baseSha).append("）");
         }
         text.append('\n');
         text.append("任务：").append(text(task, "id")).append("｜状态：").append(text(task, "state"))

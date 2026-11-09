@@ -193,7 +193,12 @@ public class AgentTaskService {
         for (JsonNode commit : scope.path("commits")) {
             commits.add(commit.path("commitSha").asText());
         }
-        AgentTaskDtos.Scope copyScope = new AgentTaskDtos.Scope(
+        boolean pullRequest = "PR".equals(scope.path("kind").asText());
+        AgentTaskDtos.Scope copyScope = pullRequest
+                ? new AgentTaskDtos.Scope("PR", textOrNull(scope, "targetBranch"), null, List.of(), List.of(),
+                textOrNull(scope, "description"), scope.path("pullNumber").isNumber()
+                ? scope.path("pullNumber").asLong() : null, null, null, null)
+                : new AgentTaskDtos.Scope(
                 scope.path("kind").asText("TEXT"), textOrNull(scope, "branch"),
                 textOrNull(scope, "observedSha"), paths, commits, textOrNull(scope, "description"));
         String guidanceId = textOrNull(input.path("guidance"), "promptId");
@@ -235,6 +240,7 @@ public class AgentTaskService {
                 }
                 yield fromCommits(scope, project, description);
             }
+            case "PR" -> fromPull(scope, project, description);
             default -> throw new ApiException(ErrorCode.VALIDATION_FAILED, "不支持的范围类型：" + kind);
         };
     }
@@ -302,7 +308,46 @@ public class AgentTaskService {
             comparison++;
         }
         List<VersionBinding> ordered = new ArrayList<>(versions.values());
-        return new ScopePlan("COMMITS", description, null, null, null, List.of(), commits, ordered);
+        return new ScopePlan("COMMITS", description, null, null, null, List.of(), commits, ordered, null);
+    }
+
+    /** PR：一次调查，只冻结一个共同祖先到源提交的比较关系。 */
+    private ScopePlan fromPull(AgentTaskDtos.Scope scope, AgentProject project, String description) {
+        if (!scope.paths().isEmpty() || !scope.commits().isEmpty()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "PR 范围不逐项选择文件或提交");
+        }
+        if (scope.pullNumber() == null || scope.pullNumber() <= 0) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "PR 范围缺少 pullNumber");
+        }
+        var binding = repository.bindPullRequest(project.getId(), scope.pullNumber(),
+                scope.sourceHead(), scope.targetHead(), scope.mergeBase());
+        if (binding.textFiles() == 0) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "该 PR 没有可审查的文本变更，不能创建 Agent 调查",
+                    Map.of("reason", "NO_TEXT_CHANGES", "pullNumber", scope.pullNumber(),
+                            "binaryFiles", binding.binaryFiles(), "unreadableFiles", binding.unreadableFiles()));
+        }
+        var item = binding.pullRequest();
+        Map<String, VersionBinding> versions = new LinkedHashMap<>();
+        versionRef(versions, item.sourceHead(), "SOURCE");
+        if (binding.mergeBase() != null && !binding.mergeBase().equalsIgnoreCase(item.sourceHead())) {
+            versionRef(versions, binding.mergeBase(), "BASE");
+        }
+        if (item.targetHead() != null && versions.values().stream()
+                .noneMatch(version -> version.sha().equalsIgnoreCase(item.targetHead()))) {
+            versionRef(versions, item.targetHead(), "TARGET");
+        }
+        String note = coverageNote(binding);
+        PullPlan pull = new PullPlan(item.number(), item.title(), item.url(), item.provider(),
+                item.sourceBranch(), item.targetBranch(), item.sourceHead(), item.targetHead(),
+                binding.mergeBase(), note, binding.textFiles(), binding.binaryFiles(), binding.unreadableFiles());
+        return new ScopePlan("PR", description, item.targetBranch(), item.sourceHead(), item.sourceHead(),
+                List.of(), List.of(), new ArrayList<>(versions.values()), pull);
+    }
+
+    private static String coverageNote(com.codereview.agent.repository.PullRequestViews.Binding pull) {
+        return "该 PR 净变化共 " + pull.files().size() + " 个文件，其中文本 " + pull.textFiles()
+                + "、二进制 " + pull.binaryFiles() + "、无法读取 " + pull.unreadableFiles()
+                + "。本次调查整个净变化；二进制和无法读取的文件没有审查，不能写成已检查或没有问题。";
     }
 
     private static String versionRef(Map<String, VersionBinding> versions, String sha, String role) {
@@ -434,12 +479,18 @@ public class AgentTaskService {
         source.put("kind", plan.kind());
         putNullable(source, "branch", plan.branch());
         putNullable(source, "headSha", plan.headSha());
-        putNullable(source, "baseSha", null);
+        putNullable(source, "baseSha", plan.pull() == null ? null : plan.pull().mergeBase());
+        if (plan.pull() != null) {
+            writePull(source, plan.pull());
+        }
         root.putArray("targets");
 
         ObjectNode scope = root.putObject("scope");
         scope.put("kind", plan.kind());
         putNullable(scope, "description", plan.description());
+        if (plan.pull() != null) {
+            writePull(scope, plan.pull());
+        }
         putNullable(scope, "branch", plan.branch());
         putNullable(scope, "observedSha", plan.observedSha());
         putNullable(scope, "headSha", plan.headSha());
@@ -461,6 +512,7 @@ public class AgentTaskService {
             node.put("id", comparison.id());
             node.put("headSha", comparison.headSha());
             putNullable(node, "baseSha", comparison.baseSha());
+            node.put("mode", comparison.mode());
         }
         ArrayNode versions = scope.putArray("versions");
         for (VersionBinding version : plan.versions()) {
@@ -654,19 +706,52 @@ public class AgentTaskService {
         }
     }
 
-    private record ComparisonPlan(String id, String headSha, String baseSha) {
+    private record ComparisonPlan(String id, String headSha, String baseSha, String mode) {
+        private ComparisonPlan(String id, String headSha, String baseSha) {
+            this(id, headSha, baseSha, "COMMIT");
+        }
+    }
+
+    private record PullPlan(long number, String title, String url, String provider, String sourceBranch,
+                            String targetBranch, String sourceHead, String targetHead, String mergeBase,
+                            String coverageNote, int textFiles, int binaryFiles, int unreadableFiles) {
     }
 
     private record ScopePlan(String kind, String description, String branch, String observedSha,
                              String headSha, List<String> paths, List<CommitPlan> commits,
-                             List<VersionBinding> versions) {
+                             List<VersionBinding> versions, PullPlan pull) {
+
+        private ScopePlan(String kind, String description, String branch, String observedSha,
+                          String headSha, List<String> paths, List<CommitPlan> commits,
+                          List<VersionBinding> versions) {
+            this(kind, description, branch, observedSha, headSha, paths, commits, versions, null);
+        }
 
         List<ComparisonPlan> comparisons() {
+            if (pull != null) {
+                return List.of(new ComparisonPlan("C1", pull.sourceHead(), pull.mergeBase(), "RANGE"));
+            }
             List<ComparisonPlan> items = new ArrayList<>();
             for (CommitPlan commit : commits) {
                 items.add(new ComparisonPlan(commit.comparisonId(), commit.headSha(), commit.baseSha()));
             }
             return items;
         }
+    }
+
+    private static void writePull(ObjectNode node, PullPlan pull) {
+        node.put("pullNumber", pull.number());
+        putNullable(node, "title", pull.title());
+        putNullable(node, "url", pull.url());
+        putNullable(node, "provider", pull.provider());
+        putNullable(node, "sourceBranch", pull.sourceBranch());
+        putNullable(node, "targetBranch", pull.targetBranch());
+        putNullable(node, "sourceHead", pull.sourceHead());
+        putNullable(node, "targetHead", pull.targetHead());
+        putNullable(node, "mergeBase", pull.mergeBase());
+        putNullable(node, "coverageNote", pull.coverageNote());
+        node.put("textFiles", pull.textFiles());
+        node.put("binaryFiles", pull.binaryFiles());
+        node.put("unreadableFiles", pull.unreadableFiles());
     }
 }

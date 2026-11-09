@@ -55,7 +55,13 @@
                   <dt>审查项目</dt><dd>{{ source.snapshot.project?.name || source.snapshot.project?.id || '项目未记录' }}</dd>
                   <dt>审查类型</dt><dd>{{ kindText(source.snapshot.kind) }}</dd>
                   <template v-if="sourceVersion.branch"><dt>分支</dt><dd><code>{{ sourceVersion.branch }}</code></dd></template>
-                  <template v-if="sourceVersion.baseSha">
+                  <template v-if="sourceVersion.pullRequest">
+                    <dt>PR</dt><dd><code>#{{ sourceVersion.pullNumber || '未记录' }}</code></dd>
+                    <dt>共同祖先</dt><dd><code>{{ sourceVersion.baseSha || '未记录' }}</code></dd>
+                    <dt>源提交</dt><dd><code>{{ sourceVersion.sourceHead || sourceVersion.headSha || '未记录' }}</code></dd>
+                    <dt>目标提交</dt><dd><code>{{ sourceVersion.targetHead || '未记录' }}</code></dd>
+                  </template>
+                  <template v-else-if="sourceVersion.baseSha">
                     <dt>修改前版本</dt><dd><code>{{ sourceVersion.baseSha }}</code></dd>
                     <dt>修改后版本</dt><dd><code>{{ sourceVersion.headSha || '版本未记录' }}</code></dd>
                   </template>
@@ -151,10 +157,15 @@ const originalDetailHref = computed(() => originalTaskId.value && source.value?.
 const targetName = computed(() => source.value?.snapshot?.target?.path?.split(/[\\/]/).pop() || '')
 const sourceVersion = computed(() => {
   const snapshot = source.value?.snapshot
+  const task = snapshot?.task
   return {
-    branch: snapshot?.task?.branch,
-    baseSha: snapshot?.target?.baseSha || snapshot?.task?.baseSha,
-    headSha: snapshot?.target?.headSha || snapshot?.task?.commitSha
+    branch: task?.branch,
+    baseSha: snapshot?.target?.baseSha || task?.baseSha,
+    headSha: snapshot?.target?.headSha || task?.commitSha,
+    pullRequest: task?.sourceKind === 'PR',
+    pullNumber: task?.pullNumber,
+    sourceHead: task?.sourceHead,
+    targetHead: task?.targetHead
   }
 })
 const usesItemFeedback = computed(() => {

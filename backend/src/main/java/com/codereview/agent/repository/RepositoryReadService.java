@@ -314,6 +314,13 @@ public class RepositoryReadService {
                 count(loaded.files, "TEXT"), count(loaded.files, "BINARY"), count(loaded.files, "UNREADABLE"));
     }
 
+    /** 已冻结的共同祖先到源提交的完整比较。同一组 SHA 复用缓存，不按文件重复扫描。 */
+    public FixedComparison.Result frozenRange(String projectId, String baseSha, String headSha) {
+        ProjectContext context = context(projectId);
+        return frozenComparison(context, RepositoryPaths.requireFixedSha(baseSha),
+                RepositoryPaths.requireFixedSha(headSha));
+    }
+
     /**
      * 两个已经冻结的提交之间的单文件差异。{@code baseSha} 是比较基线本身，不再改取第一父提交。
      */
