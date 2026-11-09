@@ -66,6 +66,10 @@ class SrfFeedbackContractTest {
         String resultId = sample.path("resultView").path("id").asText();
         String resultUrl = "/api/v2/review-tasks/" + taskId + "/targets/" + sample.path("targetId").asText() + "/result";
         assertEquals(sample.path("resultView"), response(get(resultUrl), 200));
+        JsonNode resultWithFeedback = response(get(resultUrl).param("includeItemFeedback", "true"), 200);
+        assertTrue(resultWithFeedback.path("itemFeedback").isObject());
+        assertEquals(0, resultWithFeedback.path("itemFeedback").size());
+        assertEquals(!"ISSUE".equals(kind), resultWithFeedback.path("hasLegacyFeedback").asBoolean());
         // 没有新评价时不得把历史整份结果的 100% 当作条目准确率。
         String countField = "ISSUE".equals(kind) ? "issues" : "PATTERN".equals(kind) ? "patterns" : "couplings";
         JsonNode initial = response(get("/api/v2/review-tasks/" + taskId + "/statistics"), 200).path(countField);
@@ -85,6 +89,15 @@ class SrfFeedbackContractTest {
         }
         assertEquals(sample.path("statistics"), response(get("/api/v2/review-tasks/" + taskId + "/statistics"), 200));
         assertEquals(sample.path("resultView"), response(get(resultUrl), 200), "反馈不得改写分析正文或条目身份");
+        JsonNode summaries = response(get(resultUrl).param("includeItemFeedback", "true"), 200).path("itemFeedback");
+        assertEquals(sample.path("feedbacks").size(), summaries.size());
+        for (JsonNode expected : sample.path("feedbacks")) {
+            JsonNode summary = summaries.path(expected.path("subjectId").asText());
+            assertEquals(expected.path("assessment"), summary.path("assessment"));
+            assertEquals(!expected.path("comment").asText("").isBlank(), summary.path("hasComment").asBoolean());
+            assertEquals(expected.path("revision"), summary.path("revision"));
+            assertFalse(summary.has("comment"));
+        }
         JsonNode candidates = response(get("/api/v2/reports/candidates"), 200).path("items");
         assertEquals(1, candidates.size());
         if (!"ISSUE".equals(kind)) assertEquals(sample.path("statistics").path(countField), candidates.get(0).path("itemFeedback"));

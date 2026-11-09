@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import com.codereview.agent.dto.TaskDtos;
 import com.codereview.agent.entity.AgentCallMaterial;
+import com.codereview.agent.entity.AgentFeedback;
 import com.codereview.agent.entity.AgentIssue;
 import com.codereview.agent.entity.AgentMaterial;
 import com.codereview.agent.entity.AgentModelCall;
@@ -19,6 +20,7 @@ import com.codereview.agent.execution.TaskDispatchService;
 import com.codereview.agent.execution.TaskProperties;
 import com.codereview.agent.invocation.ModelInvocationProperties;
 import com.codereview.agent.mapper.AgentCallMaterialMapper;
+import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentMaterialMapper;
 import com.codereview.agent.mapper.AgentModelCallMapper;
@@ -30,6 +32,8 @@ import com.codereview.agent.mapper.AgentTaskTargetMapper;
 import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentTime;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +46,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TaskDetailReadTest {
@@ -58,6 +64,7 @@ class TaskDetailReadTest {
     private AgentTaskTargetMapper targetMapper;
     private AgentReviewResultMapper resultMapper;
     private AgentIssueMapper issueMapper;
+    private AgentFeedbackMapper feedbackMapper;
     private AgentModelCallMapper callMapper;
     private AgentCallMaterialMapper callMaterialMapper;
     private AgentMaterialMapper materialMapper;
@@ -66,7 +73,7 @@ class TaskDetailReadTest {
 
     @BeforeEach
     void setUp() {
-        for (Class<?> entity : List.of(AgentReviewResult.class, AgentIssue.class,
+        for (Class<?> entity : List.of(AgentReviewResult.class, AgentIssue.class, AgentFeedback.class,
                 AgentModelCall.class, AgentCallMaterial.class, AgentMaterial.class)) {
             com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(
                     new org.apache.ibatis.builder.MapperBuilderAssistant(
@@ -82,6 +89,7 @@ class TaskDetailReadTest {
         targetMapper = mock(AgentTaskTargetMapper.class);
         resultMapper = mock(AgentReviewResultMapper.class);
         issueMapper = mock(AgentIssueMapper.class);
+        feedbackMapper = mock(AgentFeedbackMapper.class);
         callMapper = mock(AgentModelCallMapper.class);
         callMaterialMapper = mock(AgentCallMaterialMapper.class);
         materialMapper = mock(AgentMaterialMapper.class);
@@ -92,6 +100,7 @@ class TaskDetailReadTest {
         when(db.mapper(AgentReviewResultItemMapper.class)).thenReturn(itemMapper);
         TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), AgentReviewResultItem.class);
         when(db.mapper(AgentIssueMapper.class)).thenReturn(issueMapper);
+        when(db.mapper(AgentFeedbackMapper.class)).thenReturn(feedbackMapper);
         when(db.mapper(AgentModelCallMapper.class)).thenReturn(callMapper);
         when(db.mapper(AgentCallMaterialMapper.class)).thenReturn(callMaterialMapper);
         when(db.mapper(AgentMaterialMapper.class)).thenReturn(materialMapper);
@@ -103,16 +112,32 @@ class TaskDetailReadTest {
 
     @Test
     void readsStableItemsAndRefusesIncompleteIndexWithoutCreatingIds() {
-        var result = ResultItemIndexTest.result("PATTERN", 1);
+        var result = ResultItemIndexTest.result("PATTERN", 2);
         result.setTaskId(TASK_ID); result.setTargetId(TARGET_ID); result.setProvenance("{}");
         when(resultMapper.selectList(any())).thenReturn(List.of(result));
         var item = ResultItemIndexTest.item(result, 1);
-        when(itemMapper.selectList(any())).thenReturn(List.of(item));
-        var view = service.result(TASK_ID, TARGET_ID);
+        var unassessedItem = ResultItemIndexTest.item(result, 2);
+        when(itemMapper.selectList(any())).thenReturn(List.of(item, unassessedItem));
+        when(feedbackMapper.selectList(any())).thenReturn(List.of(
+                feedback("PATTERN", item.getId(), null, "人工评论", 2),
+                feedback("RESULT", result.getId(), "ACCURATE", null, 1)));
+        var view = service.result(TASK_ID, TARGET_ID, true);
         assertEquals(item.getId(), view.items().get(0).id());
         assertEquals(1, view.items().get(0).ordinal());
+        assertEquals(new TaskDtos.ItemFeedbackView(null, true, 2), view.itemFeedback().get(item.getId()));
+        assertEquals(1, view.itemFeedback().size());
+        assertTrue(view.hasLegacyFeedback());
+        JsonNode summary = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                .valueToTree(view.itemFeedback().get(item.getId()));
+        assertTrue(summary.path("assessment").isNull());
+        assertFalse(summary.has("comment"));
+        var query = org.mockito.ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(feedbackMapper).selectList(query.capture());
+        query.getValue().getSqlSegment();
+        assertTrue(query.getValue().getParamNameValuePairs().values().containsAll(
+                List.of("PATTERN", "RESULT", item.getId(), unassessedItem.getId(), result.getId())));
         when(itemMapper.selectList(any())).thenReturn(List.of());
-        assertThrows(ApiException.class, () -> service.result(TASK_ID, TARGET_ID));
+        assertThrows(ApiException.class, () -> service.result(TASK_ID, TARGET_ID, false));
         org.mockito.Mockito.verify(itemMapper, org.mockito.Mockito.never()).insert(any(AgentReviewResultItem.class));
     }
 
@@ -139,14 +164,58 @@ class TaskDetailReadTest {
         issue.setLocations("[{\"path\":\"src/A.java\",\"startLine\":2}]");
         issue.setSourceUnits("[\"u1\"]");
         when(issueMapper.selectList(any())).thenReturn(List.of(issue));
+        when(feedbackMapper.selectList(any())).thenReturn(List.of(
+                feedback("ISSUE", issue.getId(), "UNKNOWN", " ", 4)));
 
-        TaskDtos.ResultView view = service.result(TASK_ID, TARGET_ID);
+        TaskDtos.ResultView view = service.result(TASK_ID, TARGET_ID, true);
 
         assertEquals("结论", view.body().path("summary").asText());
         assertEquals("COMPLETE", view.completeness());
         assertEquals("问题", view.issues().get(0).title());
         assertEquals("src/A.java", view.issues().get(0).locations().get(0).path("path").asText());
         assertEquals("abc", view.provenance().path("versions").path("headSha").asText());
+        assertEquals(new TaskDtos.ItemFeedbackView("UNKNOWN", false, 4), view.itemFeedback().get(issue.getId()));
+        assertFalse(view.hasLegacyFeedback());
+    }
+
+    @Test
+    void standardResultReadDoesNotQueryFeedback() {
+        var result = ResultItemIndexTest.result("PATTERN", 1);
+        result.setTaskId(TASK_ID);
+        result.setTargetId(TARGET_ID);
+        result.setProvenance("{}");
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+        when(itemMapper.selectList(any())).thenReturn(List.of(ResultItemIndexTest.item(result, 1)));
+
+        service.result(TASK_ID, TARGET_ID, false);
+
+        verify(feedbackMapper, never()).selectList(any());
+    }
+
+    @Test
+    void incompleteResultDoesNotReadFeedback() {
+        var result = ResultItemIndexTest.result("COUPLING", 1);
+        result.setTaskId(TASK_ID);
+        result.setTargetId(TARGET_ID);
+        result.setCompleteness("INCOMPLETE");
+        result.setProvenance("{}");
+        when(resultMapper.selectList(any())).thenReturn(List.of(result));
+
+        var view = service.result(TASK_ID, TARGET_ID, true);
+
+        assertTrue(view.itemFeedback().isEmpty());
+        assertFalse(view.hasLegacyFeedback());
+        verify(feedbackMapper, never()).selectList(any());
+    }
+
+    private static AgentFeedback feedback(String kind, String id, String assessment, String comment, int revision) {
+        AgentFeedback feedback = new AgentFeedback();
+        feedback.setSubjectKind(kind);
+        feedback.setSubjectId(id);
+        feedback.setAssessment(assessment);
+        feedback.setComment(comment);
+        feedback.setRevision(revision);
+        return feedback;
     }
 
     @Test
@@ -228,7 +297,7 @@ class TaskDetailReadTest {
         foreign.setTaskId(AgentIds.next());
         when(targetMapper.selectById(TARGET_ID)).thenReturn(foreign);
         assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
-                () -> service.result(TASK_ID, TARGET_ID)).errorCode());
+                () -> service.result(TASK_ID, TARGET_ID, false)).errorCode());
         assertEquals(ErrorCode.NOT_FOUND, assertThrows(ApiException.class,
                 () -> service.materials(TASK_ID, TARGET_ID)).errorCode());
     }
@@ -267,7 +336,7 @@ class TaskDetailReadTest {
         result.setBody("{broken"); result.setProvenance("{}");
         when(resultMapper.selectList(any())).thenReturn(List.of(result));
         assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class,
-                () -> service.result(TASK_ID, TARGET_ID)).errorCode());
+                () -> service.result(TASK_ID, TARGET_ID, false)).errorCode());
     }
 
     @Test
@@ -278,7 +347,7 @@ class TaskDetailReadTest {
         when(resultMapper.selectList(any())).thenReturn(List.of(result));
         when(issueMapper.selectList(any())).thenReturn(List.of(issue));
         assertEquals(ErrorCode.INTERNAL_ERROR, assertThrows(ApiException.class,
-                () -> service.result(TASK_ID, TARGET_ID)).errorCode());
+                () -> service.result(TASK_ID, TARGET_ID, false)).errorCode());
     }
 
     @Test

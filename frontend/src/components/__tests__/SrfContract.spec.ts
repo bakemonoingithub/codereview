@@ -48,6 +48,56 @@ beforeEach(() => {
 })
 
 describe('SRF 前后端共用契约样本', () => {
+  it.each(samples)('$kind 逐项阅读只挂载当前编辑器，索引使用已保存状态并标记草稿', async sample => {
+    const data = clone(sample.resultView)
+    const subjects = sample.kind === 'ISSUE' ? data.issues : data.items!
+    const ids = subjects.map(subject => subject.id)
+    const [first, second, third, fourth] = ids
+    const savedComment: FeedbackView = {
+      subjectKind: sample.kind as FeedbackView['subjectKind'], subjectId: second,
+      assessment: null, comment: '既有评论', revision: 1, updatedAt: '2026-10-27T10:05:00'
+    }
+    saved.set(key(sample.kind, second), savedComment)
+    data.itemFeedback = {
+      [second]: { assessment: null, hasComment: true, revision: 1 },
+      [third]: { assessment: 'ACCURATE', hasComment: false, revision: 1 },
+      [fourth]: { assessment: 'UNKNOWN', hasComment: false, revision: 1 }
+    }
+    const wrapper = mount(SpecialistReviewResultTab, {
+      props: { result: data, taskId: sample.taskId, navigateFindings: true }, ...options
+    })
+    await flushPromises()
+    const jump = (index: number) => wrapper.findAll('.index-button')[index]
+    expect(wrapper.findAll('.finding')).toHaveLength(1)
+    expect(wrapper.getComponent(FeedbackEditor).props('subjectId')).toBe(first)
+    expect(jump(0).classes()).toContain('pending')
+    expect(jump(1).classes()).toContain('comment')
+    expect(jump(2).classes()).toContain('accurate')
+    expect(jump(3).classes()).toContain('unknown')
+    expect(feedbackApi.get).toHaveBeenCalledTimes(1)
+
+    await input(wrapper.getComponent(FeedbackEditor)).setValue('未保存的评论')
+    expect(jump(0).classes()).toContain('pending')
+    expect(jump(0).find('.draft-dot').exists()).toBe(true)
+    await button(wrapper, '下一项 →').trigger('click')
+    expect(wrapper.emitted('update:findingIndex')?.at(-1)).toEqual([1])
+    await wrapper.setProps({ findingIndex: 1 }); await flushPromises()
+    expect(wrapper.getComponent(FeedbackEditor).props('subjectId')).toBe(second)
+    expect((input(wrapper).element as HTMLInputElement).value).toBe('既有评论')
+    expect(jump(1).attributes('aria-current')).toBe('true')
+
+    await jump(0).trigger('click')
+    expect(wrapper.emitted('update:findingIndex')?.at(-1)).toEqual([0])
+    await wrapper.setProps({ findingIndex: 0 }); await flushPromises()
+    expect((input(wrapper).element as HTMLInputElement).value).toBe('未保存的评论')
+    await button(wrapper, '保存反馈').trigger('click'); await flushPromises()
+    expect(jump(0).classes()).toContain('comment')
+    expect(jump(0).find('.draft-dot').exists()).toBe(false)
+    expect(wrapper.get('details.limitations').attributes('open')).toBeUndefined()
+    if (sample.kind === 'COUPLING') expect(wrapper.get('details.facts').attributes('open')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it.each(samples)('$kind 的反馈主体、重进读取、统计和冻结来源使用同一关联', async sample => {
     let wrapper = mount(SpecialistReviewResultTab, { props: { taskId: sample.taskId, result: clone(sample.resultView) }, ...options })
     await flushPromises()

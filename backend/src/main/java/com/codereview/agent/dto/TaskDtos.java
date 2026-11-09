@@ -2,6 +2,7 @@ package com.codereview.agent.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /** 任务 v2 请求与视图。任务成功不等于 HTTP 成功，异步创建返回 202。 */
 public final class TaskDtos {
@@ -69,7 +71,8 @@ public final class TaskDtos {
 
     public record TargetView(String id, int ordinal, String path, String oldPath, String baseSha,
                              String headSha, String note, String state, String errorCode, int revision,
-                             LocalDateTime createdAt, LocalDateTime updatedAt, Integer issueCount) {
+                             LocalDateTime createdAt, LocalDateTime updatedAt, Integer issueCount,
+                             Integer findingCount) {
     }
 
     public record ConfigView(String modelConfigId, String modelName, Integer modelRevision,
@@ -117,9 +120,13 @@ public final class TaskDtos {
     /** 统一详情读取：结果正文按保存时的 JSON 返回，不按当前模板重建。 */
     public record ResultView(String id, String targetId, String kind, String schemaVersion,
                              String completeness, LocalDateTime createdAt, JsonNode body,
-                             List<IssueView> issues, JsonNode provenance, List<ResultItemView> items) {
+                             List<IssueView> issues, JsonNode provenance, List<ResultItemView> items,
+                             @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, ItemFeedbackView> itemFeedback,
+                             @JsonInclude(JsonInclude.Include.NON_NULL) Boolean hasLegacyFeedback) {
     }
 
+    public record ItemFeedbackView(@JsonInclude(JsonInclude.Include.ALWAYS) String assessment,
+                                   boolean hasComment, int revision) { }
     public record ResultItemView(String id, String kind, int ordinal) { }
 
     public record IssueView(String id, int ordinal, String category, String severity, String title,

@@ -474,6 +474,8 @@ export interface TaskTargetView {
   note: string | null
   state: string
   errorCode: string | null
+  /** 完整结果中的问题、模式候选或依赖解读数量；无法计数时为 null。 */
+  findingCount?: number | null
   /** 没有完整问题结果或不是问题审查时为 null。 */
   issueCount: number | null
   revision: number
@@ -637,6 +639,9 @@ export interface ResultView {
     limitations?: string[]
   }
   items?: Array<{ id: string; kind: 'PATTERN' | 'COUPLING'; ordinal: number }>
+  /** 已保存的逐项反馈摘要。键缺失表示该项没有记录，整个字段缺失表示未提供摘要。 */
+  itemFeedback?: Record<string, { assessment: FeedbackView['assessment']; hasComment: boolean; revision: number }>
+  hasLegacyFeedback?: boolean
   issues: IssueView[]
   provenance: {
     versions?: { headSha?: string; baseSha?: string; path?: string; oldPath?: string }
@@ -732,8 +737,10 @@ export const tasksApi = {
   copyInput: (id: string) => v2.get<TaskCopyInput>(`/review-tasks/${id}/copy-input`).then((r) => r.data),
   cancel: (id: string, expectedRevision: number) =>
     v2.post<TaskView>(`/review-tasks/${id}/cancel`, { expectedRevision }).then((r) => r.data),
-  result: (taskId: string, targetId: string) =>
-    v2.get<ResultView>(`/review-tasks/${taskId}/targets/${targetId}/result`).then((r) => r.data),
+  result: (taskId: string, targetId: string, includeItemFeedback = false) =>
+    v2.get<ResultView>(`/review-tasks/${taskId}/targets/${targetId}/result`, {
+      params: includeItemFeedback ? { includeItemFeedback: true } : undefined
+    }).then((r) => r.data),
   materials: (taskId: string, targetId: string) =>
     v2
       .get<MaterialView[]>(`/review-tasks/${taskId}/targets/${targetId}/materials`)

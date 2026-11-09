@@ -4,9 +4,7 @@
       <button type="button" class="back-link" @click="goBack">← 返回审查中心</button>
     </div>
 
-    <a-alert v-if="loadError" type="error" show-icon :message="loadError">
-      <template #action><a-button size="small" @click="loadTask">重试</a-button></template>
-    </a-alert>
+    <ReviewDetailNotices v-if="!task && loadError" :load-error="loadError" @retry="loadTask" />
 
     <a-spin :spinning="taskLoading">
       <template v-if="task">
@@ -34,30 +32,6 @@
             <a-button @click="router.push({ path: '/agents/new', query: { copyFrom: task.id } })">复制参数新建</a-button>
           </div>
         </div>
-
-        <a-alert
-          v-if="task.state === 'QUEUED' || task.state === 'RUNNING'"
-          class="mb16"
-          type="info"
-          show-icon
-          :message="`正在执行：${actionText(progress?.currentAction) || stateLabel(task.state)}`"
-          description="已查范围与调用逐步保存。此处只显示工具动作，不显示模型内部思考。"
-        />
-<!--        <a-alert-->
-<!--          v-else-if="task.state === 'SUCCEEDED'"-->
-<!--          class="mb16"-->
-<!--          type="info"-->
-<!--          show-icon-->
-<!--          message="审查材料、审查结果已固定保存。"-->
-<!--        />-->
-        <a-alert
-          v-else-if="task.state !== 'SUCCEEDED'"
-          class="mb16"
-          type="warning"
-          show-icon
-          :message="`${stateLabel(task.state)}${task.stopReason ? '：' + task.stopReason : ''}`"
-          description="已有记录仅供回看，未形成完整成功结果。"
-        />
 
         <div class="agent-meters">
           <div class="agent-meter">
@@ -88,8 +62,13 @@
             <progress aria-label="单轮输出 Token 预算" :value="progress?.outputUsage?.peakOutputTokens ?? undefined" :max="limitMax('outputTokens')" />
           </div>
         </div>
-        <p v-if="progressError" class="error-line">{{ progressError }}</p>
-
+        <ReviewDetailNotices
+          :load-error="loadError"
+          :status="statusNotice"
+          :pull-version-note="task.sourceKind === 'PR' ? pullVersionNote : undefined"
+          :data-error="progressError"
+          @retry="loadTask"
+        />
         <div class="tabbar">
           <button type="button" :class="{ active: activeTab === 'result' }" @click="activeTab = 'result'">审查结果</button>
           <button type="button" :class="{ active: activeTab === 'input' }" @click="activeTab = 'input'">审查输入</button>
@@ -200,7 +179,6 @@
                     一次调查整个净变化，不按提交逐项展开。
                   </small>
                   <p class="muted small">{{ task.coverageNote || '二进制和无法读取的文件没有审查。' }}</p>
-                  <a-alert v-if="pullVersionNote" type="warning" show-icon :message="pullVersionNote" />
                 </dd>
                 <dd v-else><code class="input-version" :title="inputVersion.full">{{ inputVersion.label }}</code></dd>
                 <template v-if="inputKind === 'TEXT'">
@@ -304,6 +282,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
+import ReviewDetailNotices from '@/components/ReviewDetailNotices.vue'
 import AgentResultPanel from '@/components/AgentResultPanel.vue'
 import CodeViewer from '@/components/CodeViewer.vue'
 import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
@@ -367,6 +346,22 @@ const activeTab = ref('result')
 
 const progress = ref<AgentProgress | null>(null)
 const progressError = ref('')
+const statusNotice = computed(() => {
+  const current = task.value
+  if (!current || current.state === 'SUCCEEDED') return
+  if (current.state === 'QUEUED' || current.state === 'RUNNING') {
+    return {
+      type: 'info' as const,
+      message: `正在执行：${actionText(progress.value?.currentAction) || stateLabel(current.state)}`,
+      description: '已查范围与调用逐步保存。此处只显示工具动作，不显示模型内部思考。'
+    }
+  }
+  return {
+    type: current.state === 'FAILED' ? 'error' as const : 'warning' as const,
+    message: `${stateLabel(current.state)}${current.stopReason ? '：' + current.stopReason : ''}`,
+    description: '已有记录仅供回看，未形成完整成功结果。'
+  }
+})
 const elapsedSeconds = computed(() => {
   const value = progress.value?.elapsedSeconds
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
@@ -906,7 +901,6 @@ function formatTime(value: string | null | undefined) {
 }
 .small { font-size: 12px; }
 .mono { font-family: var(--font-mono); }
-.mb16 { margin: 0 0 16px; }
 .agent-label {
   background: #eef2ff;
   color: #4f46e5;
@@ -935,7 +929,6 @@ function formatTime(value: string | null | undefined) {
 .agent-meter small { font-size: 11px; font-weight: 400; color: var(--muted); }
 .agent-meter progress { height: 5px; width: 100%; margin-top: auto; accent-color: var(--blue); }
 .agent-meter .meter-note { margin-bottom: 8px; font-size: 11px; }
-.error-line { color: var(--red); font-size: 12px; margin: -12px 0 16px; }
 .tabbar {
   display: flex;
   gap: 28px;

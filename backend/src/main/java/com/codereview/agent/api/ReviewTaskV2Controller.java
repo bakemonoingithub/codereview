@@ -101,8 +101,9 @@ public class ReviewTaskV2Controller {
     }
 
     @GetMapping("/{id}/targets/{targetId}/result")
-    public TaskDtos.ResultView result(@PathVariable String id, @PathVariable String targetId) {
-        return service.result(id, targetId);
+    public TaskDtos.ResultView result(@PathVariable String id, @PathVariable String targetId,
+                                      @RequestParam(defaultValue = "false") boolean includeItemFeedback) {
+        return service.result(id, targetId, includeItemFeedback);
     }
 
     @GetMapping("/{id}/targets/{targetId}/materials")

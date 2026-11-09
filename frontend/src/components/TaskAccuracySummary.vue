@@ -37,15 +37,6 @@ const scopeText = computed(() => props.specialistType === 'ISSUE'
 </script>
 
 <style scoped lang="less">
-.accuracy-summary {
-  padding: 13px 16px;
-  margin-bottom: 16px;
-  background: var(--notice);
-  border: 1px solid var(--notice-border);
-  border-radius: 14px;
-  color: var(--notice-ink);
-  font-size: 12px;
-}
 .row {
   display: flex;
   align-items: center;

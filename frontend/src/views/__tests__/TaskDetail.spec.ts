@@ -55,7 +55,7 @@ describe('任务详情的轮询与目标隔离', () => {
     const wrapper = await start()
     expect(state(wrapper).selectedTargetId).toBe('b')
     expect(state(wrapper).activeTab).toBe('result')
-    expect(tasksApi.result).toHaveBeenCalledWith('t1', 'b')
+    expect(tasksApi.result).toHaveBeenCalledWith('t1', 'b', true)
     wrapper.unmount()
   })
 
@@ -64,14 +64,14 @@ describe('任务详情的轮询与目标隔离', () => {
     const wrapper = await start()
     context.route.query.targetId = 'b'; await flushPromises()
     expect(state(wrapper).selectedTargetId).toBe('b')
-    expect(tasksApi.result).toHaveBeenLastCalledWith('t1', 'b')
+    expect(tasksApi.result).toHaveBeenLastCalledWith('t1', 'b', true)
     context.route.query.targetId = 'missing'; await flushPromises()
     expect(state(wrapper).selectedTargetId).toBe('a')
-    expect(tasksApi.result).toHaveBeenLastCalledWith('t1', 'a')
+    expect(tasksApi.result).toHaveBeenLastCalledWith('t1', 'a', true)
     wrapper.unmount()
   })
 
-  it('PR 详情显示冻结覆盖，并提示当前版本已变化', async () => {
+  it('PR 详情在标题下提示版本变化，目标文件上方不显示 PR 摘要', async () => {
     const frozen = 'a'.repeat(40)
     vi.mocked(tasksApi.detail).mockResolvedValue({
       ...task(), sourceKind: 'PR', pullNumber: 12, pullTitle: '修复重试',
@@ -84,58 +84,69 @@ describe('任务详情的轮询与目标隔离', () => {
       mergeBase: 'c'.repeat(40), blocker: null
     } as any)
     const wrapper = await start()
-    expect(wrapper.text()).toContain('PR #12')
-    expect(wrapper.text()).toContain('修复重试')
-    expect(wrapper.text()).toContain('已选 1 / 文本 2 / 全部 3')
-    expect(wrapper.text()).toContain('二进制没有审查。')
+    const sidebar = wrapper.get('.targets')
+    expect(sidebar.element.firstElementChild?.textContent).toBe('目标文件1 个')
+    expect(sidebar.text()).not.toContain('PR #12')
+    expect(sidebar.text()).not.toContain('修复重试')
+    expect(sidebar.text()).not.toContain('feature')
+    expect(sidebar.text()).not.toContain('已选 1 / 文本 2 / 全部 3')
+    expect(sidebar.text()).not.toContain('二进制没有审查。')
+    expect(sidebar.find('a-alert-stub').exists()).toBe(false)
+    const banner = wrapper.get('.detail-head + .review-detail-notices a-alert-stub[type="warning"]')
+    expect(banner.attributes('type')).toBe('warning')
+    expect(banner.attributes('message'))
+      .toBe('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
+    await wrapper.findAll('button').find(button => button.text() === '输入与配置')!.trigger('click')
     await flushPromises()
-    expect(wrapper.findAll('a-alert-stub').map((alert) => alert.attributes('message')))
-      .toContain('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
+    const version = wrapper.get('.input-pairs .input-version')
+    const label = 'PR #12 · cccccccccccc（共同祖先）→ aaaaaaaaaaaa（源提交）'
+    expect(version.text()).toBe(label)
+    expect(version.attributes('title')).toBe(`${label} · 目标提交 ${'b'.repeat(40)}`)
     wrapper.unmount()
   })
 
-  it('初次打开就显示所有文件的问题数，不依赖选中或结果详情加载', async () => {
-    const loaded = { ...task(), targets: [
-      { id: 'a', path: 'A.java', state: 'SUCCEEDED', issueCount: 6 },
-      { id: 'b', path: 'B.java', state: 'SUCCEEDED', issueCount: 3 }
+  it.each(['ISSUE', 'PATTERN', 'COUPLING'])('%s 初次打开就显示每个文件的发现数，不依赖结果详情', async (specialistType) => {
+    const loaded = { ...task(), specialistType, targets: [
+      { id: 'a', path: 'A.java', state: 'SUCCEEDED', findingCount: 6 },
+      { id: 'b', path: 'B.java', state: 'SUCCEEDED', findingCount: 3 }
     ] }
     vi.mocked(tasksApi.detail).mockResolvedValue(loaded as any)
     const pending = deferred<any>()
     vi.mocked(tasksApi.result).mockReturnValueOnce(pending.promise)
     const w = await start()
     expect(w.findAll('.target').map(row => row.text())).toEqual([
-      expect.stringContaining('6 个问题'), expect.stringContaining('3 个问题')
+      expect.stringContaining('6 项发现'), expect.stringContaining('3 项发现')
     ])
     expect(tasksApi.result).toHaveBeenCalledTimes(1)
     pending.resolve(result()); await flushPromises()
     await w.findAll('.target')[1].trigger('click'); await flushPromises()
     expect(w.findAll('.target').map(row => row.text())).toEqual([
-      expect.stringContaining('6 个问题'), expect.stringContaining('3 个问题')
+      expect.stringContaining('6 项发现'), expect.stringContaining('3 项发现')
     ])
     w.unmount()
   })
-  it('完整零问题显示 0，没有完整结果的文件不显示问题数', async () => {
+  it('完整结果可以显示 0，未完成和失败的文件不显示发现数', async () => {
     vi.mocked(tasksApi.detail).mockResolvedValue({ ...task(), targets: [
-      { id: 'a', path: 'A.java', state: 'SUCCEEDED', issueCount: 0 },
-      { id: 'b', path: 'B.java', state: 'RUNNING', issueCount: null },
-      { id: 'c', path: 'C.java', state: 'FAILED', errorCode: 'CONTEXT_LIMIT', issueCount: null }
+      { id: 'a', path: 'A.java', state: 'SUCCEEDED', findingCount: 0 },
+      { id: 'b', path: 'B.java', state: 'RUNNING', findingCount: null },
+      { id: 'c', path: 'C.java', state: 'FAILED', errorCode: 'CONTEXT_LIMIT', findingCount: null }
     ] } as any)
     const w = await start()
     const rows = w.findAll('.target')
-    expect(rows[0].text()).toContain('0 个问题')
-    expect(rows[1].text()).not.toContain('个问题')
-    expect(rows[2].text()).not.toContain('个问题')
+    expect(rows[0].text()).toContain('0 项发现')
+    expect(rows[1].text()).not.toContain('项发现')
+    expect(rows[2].text()).not.toContain('项发现')
     expect(rows[2].text()).toContain('CONTEXT_LIMIT')
     w.unmount()
   })
-  it('刷新任务时更新未选中文件的问题数', async () => {
+  it('刷新任务时兼容旧接口返回的问题数', async () => {
     const w = await start()
     vi.mocked(tasksApi.detail).mockResolvedValue({ ...task(), targets: [
       { id: 'a', path: 'A.java', state: 'SUCCEEDED', issueCount: 6 },
       { id: 'b', path: 'B.java', state: 'SUCCEEDED', issueCount: 2 }
     ] } as any)
     await state(w).loadTask()
-    expect(w.findAll('.target')[1].text()).toContain('2 个问题')
+    expect(w.findAll('.target')[1].text()).toContain('2 项发现')
     expect(state(w).selectedTargetId).toBe('a')
     w.unmount()
   })
@@ -196,6 +207,16 @@ describe('任务详情的轮询与目标隔离', () => {
     await s.loadTask(); expect(s.result.id).toBe('r-a'); expect(s.calls[0].id).toBe('c-a')
     expect(s.resultError).toBe('临时失败'); w.unmount()
   })
+  it.each([
+    ['QUEUED', '正在排队'], ['RUNNING', '正在审查'], ['FAILED', '审查失败'], ['CANCELLED', '已取消']
+  ])('文件处于 %s 且没有发布结果时显示对应状态', async (status, copy) => {
+    vi.mocked(tasksApi.detail).mockResolvedValue(task('t1', status) as any)
+    vi.mocked(tasksApi.result).mockRejectedValue(Object.assign(new Error('该目标还没有已发布结果'), { code: 'NOT_FOUND' }))
+    const w = await start()
+    expect(w.get('.content .empty').text()).toContain(copy)
+    expect(w.get('.content').find('a-alert-stub').exists()).toBe(false)
+    w.unmount()
+  })
   it('切换路由参数后旧任务响应不回填', async () => {
     const w = await start(); const pending = deferred<any>()
     vi.mocked(tasksApi.detail).mockReturnValueOnce(pending.promise)
@@ -238,14 +259,22 @@ describe('任务详情的轮询与目标隔离', () => {
     expect(w.text()).toContain('仅统计本任务已完成结果中的问题')
     w.unmount()
   })
-  it('没有明确判定时显示暂无判定，不显示 0% 或 100%', async () => {
-    vi.mocked(tasksApi.statistics).mockResolvedValue(statistics('ISSUE', {
-      issues: { total: 2, accurate: 0, inaccurate: 0, unknown: 1, unassessed: 1, accuracyPercent: null }
+  it('部分完成的耦合审查在文件列表前同时显示状态和未反馈统计', async () => {
+    vi.mocked(tasksApi.detail).mockResolvedValue({
+      ...task('t1', 'PARTIAL'), specialistType: 'COUPLING'
+    } as any)
+    vi.mocked(tasksApi.statistics).mockResolvedValue(statistics('COUPLING', {
+      results: { total: 2, accurate: 0, inaccurate: 0, unknown: 0, unassessed: 2, accuracyPercent: null },
+      couplings: { total: 10, accurate: 0, inaccurate: 0, unknown: 0, unassessed: 10, accuracyPercent: null }
     }) as any)
     const w = await start()
-    expect(w.text()).toContain('— · 暂无明确判定')
-    expect(w.text()).not.toContain('0%')
-    expect(w.text()).not.toContain('100%')
+    const notices = w.get('.detail-head + .review-detail-notices')
+    expect(notices.element.nextElementSibling).toBe(w.get('.detail-grid').element)
+    expect(notices.get('a-alert-stub[type="warning"]').attributes('message')).toContain('部分完成')
+    const summary = notices.get('a-alert-stub[type="info"]')
+    expect(summary.text()).toContain('本任务依赖解读判定准确率')
+    expect(summary.text()).toContain('— · 暂无明确判定')
+    expect(summary.text()).toContain('准确 0 · 不准确 0 · 无法判断 0 · 未反馈 10')
     w.unmount()
   })
   it('问题引用走专用代码阅读，材料入口仍走材料弹窗', async () => {

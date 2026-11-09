@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>专项审查 · 逐项阅读原型</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink:#17273a; --muted:#53667c; --line:#dce4ed; --paper:#fff; --bg:#f3f6fa;
+      --accent:#2358ab; --active:#eaf2ff; --dark:#17283e; --radius:12px;
+      font:14px/1.55 "Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); }
+    h1,h2,h3,h4,p,ul { margin:0; }
+    button,textarea { font:inherit; }
+    button { color:inherit; cursor:pointer; }
+    button:disabled { opacity:.48; cursor:default; }
+    :focus-visible { outline:3px solid #215eca; outline-offset:3px; }
+    .shell { background:var(--dark); color:#eaf1ff; }
+    .shell-inner { max-width:1520px; min-height:58px; margin:auto; padding:0 30px; display:flex; align-items:center; gap:14px; }
+    .brand-mark { display:grid; place-items:center; width:28px; height:28px; border-radius:8px; background:#dce9ff; color:#1a3c75; font:bold 14px ui-monospace,monospace; }
+    .shell-path { color:#b8c8df; font-size:12px; }
+    .prototype { margin-left:auto; padding:3px 9px; border:1px solid #61758e; border-radius:6px; font-size:12px; white-space:nowrap; }
+    main { max-width:1520px; margin:auto; padding:24px 30px 40px; }
+    .demo { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:10px 13px; border:1px dashed #a8b8cd; border-radius:10px; background:#f8faff; }
+    .demo strong { font-size:12px; color:#435978; padding-right:2px; }
+    .demo small { margin-left:auto; color:var(--muted); }
+    .plain,.primary,.choice { border:1px solid #c7d3e0; border-radius:7px; padding:5px 11px; background:var(--paper); font-size:13px; }
+    .plain:hover:not(:disabled),.choice:hover:not(:disabled) { border-color:var(--accent); }
+    .plain[aria-pressed="true"],.choice[aria-pressed="true"] { background:var(--active); border-color:#7196d2; color:#174889; font-weight:650; }
+    .primary { background:var(--accent); border-color:var(--accent); color:white; }
+    .task-head { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:20px 0 15px; }
+    h1 { font-size:clamp(22px,3vw,29px); line-height:1.3; font-weight:720; letter-spacing:-.03em; }
+    .task-meta { display:flex; align-items:center; flex-wrap:wrap; gap:9px; margin-top:8px; color:var(--muted); font-size:12px; }
+    .pill { display:inline-block; border-radius:6px; padding:2px 7px; background:#edf2f7; color:#435672; font-size:12px; white-space:nowrap; }
+    .pill.amber { background:#fff0d7; color:#78500e; }
+    .pill.blue { background:#eaf2ff; color:#184982; }
+    .pill.red { background:#fbe9e7; color:#942a24; }
+    .pill.green { background:#e5f5ed; color:#226044; }
+    .notice { padding:9px 13px; border-left:3px solid #c29131; background:#fff4df; color:#694813; border-radius:6px; margin-bottom:14px; font-size:13px; }
+    .workspace { display:grid; grid-template-columns:238px minmax(0,1fr); gap:16px; align-items:start; }
+    .surface,.files { background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); min-width:0; }
+    .files { position:sticky; top:16px; }
+    .file-head { display:flex; align-items:center; justify-content:space-between; padding:13px 14px; border-bottom:1px solid var(--line); }
+    .file-head span,.muted { color:var(--muted); font-size:12px; }
+    .file-list { padding:5px; display:grid; gap:2px; }
+    .file { text-align:left; border:1px solid transparent; border-radius:8px; padding:9px 9px; background:transparent; min-width:0; }
+    .file:hover { background:#f5f8fc; }
+    .file[aria-current="true"] { border-color:#c6dafa; background:var(--active); }
+    .file strong,.file small { display:block; overflow-wrap:anywhere; }
+    .file strong { font-size:13px; font-family:ui-monospace,Consolas,monospace; }
+    .file small { color:var(--muted); margin-top:3px; }
+    .file-meta { display:flex; gap:7px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+    .tabbar { display:flex; gap:23px; align-items:center; border-bottom:1px solid var(--line); padding:0 19px; }
+    .tab { background:none; border:0; border-bottom:2px solid transparent; padding:11px 0 9px; font-size:13px; }
+    .tab[aria-selected="true"] { color:var(--accent); border-color:var(--accent); font-weight:700; }
+    .content { padding:16px; min-width:0; }
+    .summary { border:1px solid #dbe6f5; background:#f6f9fe; border-radius:10px; padding:13px 15px; margin-bottom:14px; }
+    .summary-top { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:5px; }
+    h2 { font-size:17px; line-height:1.35; }
+    .summary p { color:#3c4f67; }
+    .inline { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
+    details { border:1px solid var(--line); border-radius:9px; background:#fafbfd; padding:0 13px; }
+    details summary { padding:10px 0; cursor:pointer; font-weight:650; }
+    details[open] { padding-bottom:12px; }
+    details p,details li { color:#435770; font-size:13px; }
+    details ul { padding-left:20px; }
+    .facts { margin-bottom:14px; }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; text-align:left; font-size:12px; }
+    td,th { padding:7px 8px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); }
+    .reader { display:grid; grid-template-columns:minmax(0,1fr) 224px; gap:13px; align-items:start; }
+    .reading-card,.index { border:1px solid var(--line); border-radius:10px; background:white; min-width:0; }
+    .reader-bar { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 13px; border-bottom:1px solid var(--line); background:#f8fafc; border-radius:10px 10px 0 0; }
+    .position { color:#304b72; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .finding { padding:14px 15px; }
+    .finding h3 { margin:6px 0 10px; font-size:20px; line-height:1.35; }
+    .finding dl { margin:0; display:grid; gap:8px; }
+    .finding dt { font-size:12px; font-weight:700; color:#435978; }
+    .finding dd { margin:1px 0 0; color:#30445f; }
+    .code-link { padding:0; border:0; background:none; color:#1f57a4; text-decoration:underline; text-underline-offset:3px; text-align:left; }
+    .feedback { border-top:1px solid var(--line); padding:11px 15px; background:#f8fafc; border-radius:0 0 10px 10px; }
+    .feedback-head,.feedback-foot { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; }
+    .feedback .inline { margin:7px 0; }
+    .feedback textarea { width:100%; min-height:52px; resize:vertical; background:white; color:var(--ink); padding:6px 8px; border:1px solid #c7d3e0; border-radius:6px; }
+    .feedback-foot { margin-top:5px; }
+    .link { border:0; background:none; color:var(--accent); padding:4px 6px; font-size:12px; }
+    .index { position:sticky; top:16px; padding:12px; }
+    .index h3 { font-size:15px; }
+    .index-head { display:flex; justify-content:space-between; align-items:center; gap:6px; }
+    .index-progress { margin:3px 0 9px; color:var(--muted); font-size:12px; }
+    .index-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; max-height:286px; padding:3px; overflow:auto; }
+    .jump { position:relative; display:flex; align-items:center; justify-content:center; gap:3px; min-height:34px; border:1px solid var(--status-line); border-radius:7px; background:var(--status-bg); color:var(--status-ink); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
+    .jump[aria-current="true"] { outline:2px solid #245ab0; outline-offset:1px; }
+    .jump:hover { border-color:var(--accent); }
+    .jump .draft-dot { position:absolute; right:2px; top:2px; width:6px; height:6px; background:#7c3aa8; border-radius:50%; }
+    .status-symbol { font-size:11px; }
+    .pending,.blocked { --status-bg:#f3f5f8; --status-ink:#4b5f77; --status-line:#cbd5e1; }
+    .accurate { --status-bg:#e8f6ef; --status-ink:#1b6344; --status-line:#9acdb3; }
+    .inaccurate { --status-bg:#fbeceb; --status-ink:#9a3028; --status-line:#e2aca7; }
+    .unknown { --status-bg:#fff1d9; --status-ink:#795310; --status-line:#e5c286; }
+    .comment { --status-bg:#eeeafa; --status-ink:#5a4192; --status-line:#c7b8e6; }
+    .legend { display:flex; flex-wrap:wrap; gap:5px 9px; border-top:1px solid var(--line); margin-top:10px; padding-top:9px; }
+    .legend-key { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:#495c75; white-space:nowrap; }
+    .legend-symbol { display:inline-grid; place-items:center; width:17px; height:17px; border-radius:4px; border:1px solid var(--status-line); color:var(--status-ink); background:var(--status-bg); }
+    .legend-key .violet { color:#7c3aa8; }
+    .boundary { margin-top:14px; }
+    .empty { text-align:center; padding:24px 18px; background:#f8fafc; border:1px dashed #bccbdb; border-radius:10px; }
+    .empty h3 { font-size:16px; margin-bottom:4px; }
+    .empty p { color:var(--muted); }
+    dialog { border:1px solid var(--line); border-radius:12px; max-width:min(620px,calc(100% - 32px)); padding:16px; color:var(--ink); }
+    dialog::backdrop { background:#12253e80; }
+    dialog pre { overflow:auto; padding:12px; background:#f0f4fa; border-radius:7px; }
+    .dialog-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+    @media (max-width:1100px) { .workspace { grid-template-columns:202px minmax(0,1fr); } .reader { grid-template-columns:minmax(0,1fr) 194px; } }
+    @media (max-width:900px) { .reader { grid-template-columns:1fr; } .index { position:static; grid-row:1; } .index-grid { grid-template-columns:repeat(auto-fill,minmax(38px,1fr)); max-height:115px; } }
+    @media (max-width:760px) {
+      .shell-inner,main { padding-left:12px; padding-right:12px; }
+      .shell-path { display:none; }
+      main { padding-top:13px; }
+      .task-head { margin:14px 0 9px; }
+      .workspace { grid-template-columns:1fr; gap:10px; }
+      .files { position:static; }
+      .file-list { display:flex; overflow:auto; }
+      .file-head { padding:8px 10px; }
+      .file { flex:0 0 165px; padding:6px 8px; }
+      .content { padding:10px; }
+      .tabbar { gap:17px; padding:0 12px; }
+    }
+    @media (max-width:560px) { .demo small { flex-basis:100%; } }
+  </style>
+</head>
+<body>
+  <header class="shell">
+    <div class="shell-inner"><span class="brand-mark" aria-hidden="true">&lt;/&gt;</span><strong>智能代码分析工具</strong><span class="shell-path">工作空间 / 审查中心 / 任务详情</span><span class="prototype">交互原型</span></div>
+  </header>
+  <main>
+    <section class="demo" aria-label="原型样例"><strong>切换样例</strong><div id="kinds" class="inline"></div><small>示例数据 · 反馈仅保存在当前页面</small></section>
+    <div id="task-head" class="task-head"></div>
+    <div id="task-notice"></div>
+    <div class="workspace">
+      <aside class="files" aria-label="目标文件"><div class="file-head"><strong>目标文件</strong><span id="file-count"></span></div><div class="file-list" id="files"></div></aside>
+      <section class="surface" aria-label="文件详情">
+        <div class="tabbar" role="tablist" aria-label="文件详情"><button class="tab" id="tab-result" role="tab" aria-selected="true" aria-controls="view" data-tab="result">审查结果</button><button class="tab" id="tab-input" role="tab" aria-selected="false" aria-controls="view" data-tab="input">输入与配置</button><button class="tab" id="tab-calls" role="tab" aria-selected="false" aria-controls="view" data-tab="calls">实际调用</button></div>
+        <div id="view" class="content" role="tabpanel" aria-labelledby="tab-result"></div>
+      </section>
+    </div>
+    <p id="announcement" class="sr-only" aria-live="polite"></p>
+  </main>
+  <dialog id="code-dialog"><div class="dialog-head"><h2>代码依据示例</h2><form method="dialog"><button class="plain">关闭</button></form></div><p id="code-caption" class="muted"></p><pre id="code-preview"></pre></dialog>
+  <script>
+    const samples = {
+      issue: {
+        label:'问题审查', noun:'问题', task:'订单提交链路审查', file:'backend/src/main/java/com/example/order/OrderSubmitService.java',
+        summary:'订单提交链路存在并发重试、库存回滚和金额校验风险。建议先处理会导致重复扣库存或错误入账的路径，再核对低严重度问题。',
+        boundaries:['仅核对本文件及已提供的库存、订单接口声明。','未取得支付回调实现和生产流量数据，无法判断线上触发频率。'],
+        findings:[
+          {title:'并发重试可能重复扣减库存',tag:'高严重度',status:'pending',line:86,sections:[['问题说明','两个请求使用同一个幂等键进入时，都可能在订单落库前读到空结果，并分别发起库存预留。'],['与本次变更的关系','本次将幂等检查移到了事务外，扩大了查询与写入之间的并发窗口。'],['修改建议','将幂等占位与首次执行绑定，在数据库唯一约束冲突时读取已经创建的订单。']]},
+          {title:'订单落库失败时库存预留未释放',tag:'高严重度',status:'accurate',line:117,sections:[['问题说明','库存预留成功后，订单保存异常会直接向上抛出，补偿路径没有被调用。'],['修改建议','用预留单号执行幂等释放，并记录失败后可重试的补偿任务。']]},
+          {title:'优惠总额可能超过商品金额',tag:'高严重度',status:'pending',line:149,sections:[['问题说明','叠加优惠券和会员折扣后，结算金额可能小于零。'],['修改建议','在生成支付请求前校验优惠总额和应付金额。']]},
+          {title:'恢复订单时沿用失效的配送报价',tag:'中严重度',status:'unknown',line:178,sections:[['问题说明','恢复流程从旧草稿读取配送报价，未核对报价有效期。'],['修改建议','在恢复提交前重新校验报价。']]},
+          {title:'批量商品校验只返回首项错误',tag:'低严重度',status:'inaccurate',line:203,sections:[['问题说明','校验方法在首个商品失败时提前返回，调用者需要逐项修正并重试。']]},
+          {title:'提交失败时记录完整收货地址',tag:'中严重度',status:'accurate',line:232,sections:[['问题说明','异常日志包含请求对象，可能写入手机号和详细地址。'],['修改建议','只记录订单标识和错误分类。']]},
+          {title:'撤销过程中没有区分库存超时和拒绝',tag:'中严重度',status:'pending',line:258,sections:[['问题说明','库存调用超时和库存不足使用同一个返回码，调用方无法决定是否安全重试。']]},
+          {title:'预售订单缺少发货时间校验',tag:'中严重度',status:'pending',line:271,sections:[['问题说明','用户提交的预售发货时间没有与商品策略核对。']]},
+          {title:'部分失败时清空了未提交的购物车项',tag:'高严重度',status:'unknown',line:306,sections:[['问题说明','清理购物车时按买家标识删除，影响范围可能超过本次订单的商品。']]},
+          {title:'取消事件未包含原订单版本',tag:'中严重度',status:'pending',line:321,sections:[['问题说明','下游无法依据版本号区分过时事件与最新取消操作。']]},
+          {title:'重复读取商品快照',tag:'低严重度',status:'accurate',line:354,sections:[['问题说明','校验和计价分别拉取同一批商品快照，增加请求耗时。']]},
+          {title:'收货方式字段缺少错误定位',tag:'低严重度',status:'pending',line:383,sections:[['问题说明','缺少收货方式时只返回通用校验失败，无法定位到表单字段。']]}
+        ]
+      },
+      pattern:{
+        label:'设计模式分析', noun:'模式候选', task:'订单事件处理设计模式分析', file:'backend/src/main/java/com/example/order/OrderEventDispatcher.java',
+        summary:'按事件类型选择处理器的结构最接近策略模式。失败处理与通知仍集中于调度器，其余候选需要结合调用方确认。',
+        boundaries:['候选基于当前实现结构，未核对系统设计文档和事件总线的全部订阅者。','无法根据静态材料确认重试与补偿是否由框架统一处理。'],
+        findings:[
+          {title:'策略模式',tag:'行为型',status:'pending',line:68,sections:[['目标承担的角色','调度器作为上下文，根据事件类型选择处理器。'],['模式说明','各处理器实现相同的处理接口，注册表承担选择职责；处理逻辑由具体实现提供。']]},
+          {title:'适配器模式',tag:'结构型',status:'accurate',line:105,sections:[['目标承担的角色','通知适配器把领域事件转换为外部消息网关的请求。'],['模式说明','领域事件模型与消息网关接口保持独立，通过显式转换消除接口差异。']]},
+          {title:'观察者模式',tag:'行为型',status:'unknown',line:126,sections:[['模式说明','同一事件允许通知多个监听器；当前文件只显示遍历调用，监听器是否能动态订阅仍待确认。']]},
+          {title:'简单工厂',tag:'创建型',status:'inaccurate',line:173,sections:[['模式说明','按类型从注册表返回处理器，看起来类似工厂；实例实际由依赖注入容器创建。']]}
+        ]
+      },
+      coupling:{
+        label:'耦合度分析', noun:'依赖解读', task:'订单提交服务依赖解读', file:'backend/src/main/java/com/example/order/OrderSubmitService.java',
+        summary:'解析得到的出向依赖主要分布在订单存储、库存、定价与支付接口。模型解读认为提交与补偿职责集中于同一个服务，建议结合事务边界复核。',
+        boundaries:['依赖事实仅对应本文件的解析版本，不包含全仓入向关系。','没有解析动态注册的支付网关，无法确认运行时绑定目标。'],
+        findings:[
+          {title:'订单写入和库存补偿共享协调入口',tag:'关系解读',status:'pending',line:117,sections:[['关系说明','提交服务同时调用订单仓储与库存网关。订单落库失败时，提交服务必须知道如何撤销此前的库存动作。'],['关联依赖','D01 OrderRepository · D02 InventoryGateway'],['调整建议','将库存预留和释放封装为同一接口，并明确补偿操作的幂等语义。']]},
+          {title:'支付网关依赖集中于提交末段',tag:'关系解读',status:'accurate',line:141,sections:[['关系说明','支付会话只在订单保存后创建，与前面的校验流程共享订单快照。'],['关联依赖','D03 PaymentGateway']]},
+          {title:'定价调用依赖完整买家模型',tag:'关系解读',status:'pending',line:152,sections:[['关系说明','定价接口接收买家实体，但当前使用的信息主要是会员等级与地区。'],['关联依赖','D04 PricingService'],['调整建议','核对接口的所有调用方后，再考虑提取专用的定价参数。']]},
+          {title:'日志接口直接读取订单实体',tag:'关系解读',status:'inaccurate',line:220,sections:[['关系说明','记录审计事件时将订单实体传入日志适配器，实体变更可能影响事件格式。'],['关联依赖','D05 AuditPublisher']]},
+          {title:'交易风控规则与订单状态绑定',tag:'关系解读',status:'unknown',line:248,sections:[['关系说明','调用方依据风控判定选择订单的下一状态，但规则来源不在当前材料中。'],['关联依赖','D06 FraudRuleClient']]},
+          {title:'重复请求依赖外部锁服务',tag:'关系解读',status:'pending',line:285,sections:[['关系说明','提交逻辑依赖锁服务的超时和续租语义；超时后是否继续执行需要核对调用约定。'],['关联依赖','D07 RequestLock']]}
+        ]
+      }
+    };
+
+      const byId = id => document.getElementById(id)
+      const escape = value => String(value).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[c])
+      const statuses = {
+        pending: ['未反馈', '○'], accurate: ['准确', '✓'], inaccurate: ['不准确', '×'],
+        unknown: ['无法判断', '?'], comment: ['仅评论', '▤'], blocked: ['不可反馈', '—']
+      }
+      const files = [
+        { id: 'many', state: '已完成', tone: 'green' },
+        { id: 'one', name: 'OrderRetryPolicy.java', state: '已完成', tone: 'green', hint: '单项发现' },
+        { id: 'zero', name: 'OrderId.java', state: '已完成', tone: 'green', hint: '零发现' },
+        { id: 'partial', name: 'InventoryReservationService.java', state: '片段可读', tone: 'amber' },
+        { id: 'failed', name: 'PaymentGatewayClient.java', state: '失败', tone: 'red' },
+        { id: 'waiting', name: 'OrderReconcileJob.java', state: '执行中', tone: 'blue' },
+        { id: 'cancelled', name: 'OrderExportJob.java', state: '已取消', tone: '' },
+        { id: 'legacy', name: 'OrderCoordinator.java', state: '已完成', tone: 'green', hint: '历史结果' }
+      ]
+      const dependencyFacts = [
+        ['D01', 'OrderRepository', '字段引用', 'OrderRepository.java', 29],
+        ['D02', 'InventoryGateway', '方法调用', 'InventoryGateway.java', 83],
+        ['D03', 'PricingService', '方法调用', 'PricingService.java', 96],
+        ['D04', 'PaymentClient', '方法调用', 'PaymentClient.java', 132],
+        ['D05', 'OrderEvents', '方法调用', 'OrderEvents.java', 145],
+        ['D06', 'StockRelease', '类型引用', 'StockRelease.java', 170],
+        ['D07', 'OrderRequest', '参数类型', 'OrderRequest.java', 62]
+      ]
+      const emptyCopy = {
+        issue: ['本次材料中未发现可说明的问题。', '未发现问题不代表已完整验证业务正确性。'],
+        pattern: ['未识别到有依据的模式候选。', '可查看文件结论与本次审查范围。'],
+        coupling: ['未形成有依据的依赖解读。', '上方仍可查看程序解析得到的文件级依赖事实。']
+      }
+    const issueCategories = ['并发', '可靠性', '逻辑', '逻辑', '易用性', '安全', '可靠性', '逻辑', '逻辑', '可靠性', '性能', '易用性']
+      const noResult = {
+        failed: ['文件审查失败', '材料超出处理上限。这个文件没有已发布结果。'],
+        waiting: ['正在审查此文件', '结果发布后，可在此阅读文件结论和各项发现。'],
+        cancelled: ['此文件已取消', '任务停止前未发布此文件的结果。']
+      }
+
+      let kind = 'issue'
+      let fileId = 'many'
+      let tab = 'result'
+      const positions = new Map()
+      const savedFeedback = new Map()
+      const drafts = new Map()
+
+      function key(index) { return kind + ':' + fileId + ':' + index }
+      function result() {
+        const sample = samples[kind]
+        const file = files.find(item => item.id === fileId)
+        const entries = fileId === 'many' ? sample.findings
+          : fileId === 'one' ? [sample.findings[1]]
+          : fileId === 'partial' || fileId === 'legacy' ? sample.findings.slice(0, 2) : []
+        const basename = file.name || sample.file.split('/').at(-1)
+        const path = file.name ? sample.file.slice(0, sample.file.lastIndexOf('/') + 1) + file.name : sample.file
+        const index = positions.get(key('selected')) || 0
+        return { sample, file, path, basename, entries, index, item: entries[index] }
+      }
+
+      function savedAt(index, item) {
+        if (savedFeedback.has(key(index))) return savedFeedback.get(key(index))
+        if (fileId === 'legacy') return { assessment: '', comment: '' }
+        if (fileId === 'many' && index === 2) return { assessment: '', comment: '需要结合本次变更前的行为确认。' }
+        return { assessment: item.status === 'pending' ? '' : item.status, comment: '' }
+      }
+      function canRate(index) { return fileId !== 'partial' && !(fileId === 'legacy' && index === 0) }
+      function statusAt(index, item) {
+        if (!canRate(index)) return 'blocked'
+        const saved = savedAt(index, item)
+        return saved.assessment || (saved.comment.trim() ? 'comment' : 'pending')
+      }
+      function button(label, action, options = {}) {
+        return `<button type="button" class="${options.className || 'plain'}" data-action="${action}"${options.disabled ? ' disabled' : ''}${options.attrs || ''}>${label}</button>`
+      }
+      function pill(label, tone = '') { return `<span class="pill ${tone}">${escape(label)}</span>` }
+      function announce(message) { byId('announcement').textContent = message }
+      function preserveFocus(action) {
+        document.querySelector(`[data-action="${action}"]:not(:disabled)`)?.focus({ preventScroll: true })
+      }
+
+      function renderShell(context) {
+        const { sample, file } = context
+        byId('kinds').innerHTML = Object.entries(samples).map(([value, data]) =>
+          button(data.label, `kind:${value}`, { attrs: ` aria-pressed="${kind === value}"` })
+        ).join('')
+        const running = file.id === 'waiting'
+        const cancelled = file.id === 'cancelled'
+        byId('task-head').innerHTML = `<div><h1>${escape(sample.task)}</h1><div class="task-meta">${pill(running ? '执行中' : cancelled ? '已取消' : '部分完成', running ? 'blue' : 'amber')}<span>订单服务</span><span>·</span><span>${sample.label}</span></div></div>`
+        byId('task-notice').innerHTML = running ? '' : `<p class="notice">${cancelled
+          ? '任务已取消：已完成文件仍可阅读，其他文件已停止。'
+          : '部分完成：成功文件的结果可阅读；失败文件没有完整结论，也不能作为报告材料。'}</p>`
+        byId('file-count').textContent = `${files.length} 个`
+        byId('files').innerHTML = files.map(item => {
+          const count = ({ many: sample.findings.length, one: 1, zero: 0, legacy: 2 })[item.id]
+          const name = item.name || sample.file.split('/').at(-1)
+        return button(`<strong>${escape(name)}</strong><span class="file-meta">${pill(item.state, item.tone)}${count === undefined ? '' : `<span class="muted">${count} 项发现</span>`}</span>${item.hint ? `<small>${item.hint}</small>` : ''}`,
+            `file:${item.id}`, { className: 'file', attrs: ` aria-current="${fileId === item.id}"` })
+        }).join('')
+        document.querySelectorAll('.tab').forEach(element => {
+          const active = element.dataset.tab === tab
+          element.setAttribute('aria-selected', active)
+          element.tabIndex = active ? 0 : -1
+        })
+        byId('view').setAttribute('aria-labelledby', 'tab-' + tab)
+      }
+
+      function renderFacts() {
+        if (kind !== 'coupling') return ''
+      const edges = fileId === 'many' ? dependencyFacts : dependencyFacts.slice(0, 2)
+      const coverage = Math.round(edges.length / (edges.length + 1) * 100)
+        return `<details class="facts"><summary>文件级依赖事实 <span class="muted"> · 程序解析 · 已定位 ${edges.length} 条</span></summary>
+        <p>固定版本 4e72d28 · 出向依赖 · 解析覆盖率 ${coverage}% · 1 个类型未可靠定位。</p>
+          <div class="table-wrap"><table><thead><tr><th>编号</th><th>目标类型</th><th>关系</th><th>声明文件</th><th>引用行</th></tr></thead><tbody>
+          ${edges.map(row => `<tr>${row.map(cell => `<td>${escape(cell)}</td>`).join('')}</tr>`).join('')}
+          </tbody></table></div></details>`
+      }
+
+      function indexContents({ entries, index, sample }) {
+        const counts = entries.reduce((summary, entry, ordinal) => {
+          const status = statusAt(ordinal, entry)
+          summary[status] = (summary[status] || 0) + 1
+          return summary
+        }, {})
+        const rated = ['accurate', 'inaccurate', 'unknown', 'comment'].reduce((count, status) => count + (counts[status] || 0), 0)
+        const jumps = entries.map((entry, ordinal) => {
+          const status = statusAt(ordinal, entry)
+          const [label, symbol] = statuses[status]
+          const dirty = drafts.has(key(ordinal))
+          const text = `${sample.noun} ${ordinal + 1} · ${entry.title} · ${label}${dirty ? ' · 有未保存修改' : ''}`
+          return button(`${String(ordinal + 1).padStart(2, '0')} <span class="status-symbol" aria-hidden="true">${symbol}</span>${dirty ? '<span class="draft-dot" aria-hidden="true"></span>' : ''}`, `jump:${ordinal}`,
+            { className: `jump ${status}`, attrs: ` title="${escape(text)}" aria-label="${escape(text)}" aria-current="${index === ordinal}"` })
+        }).join('')
+        return `<div class="index-head"><h3>发现索引</h3><span class="muted">${entries.length} 项</span></div>
+          <p class="index-progress">已反馈 ${rated} · 未反馈 ${counts.pending || 0}${counts.blocked ? ` · 不可反馈 ${counts.blocked}` : ''}</p>
+          <div class="index-grid" aria-label="按编号跳转">${jumps}</div>
+          <div class="legend" aria-label="反馈状态图例">
+          ${Object.entries(statuses).map(([id, [label, symbol]]) =>
+            `<span class="legend-key ${id}"><span class="legend-symbol" aria-hidden="true">${symbol}</span>${label}</span>`
+          ).join('')}<span class="legend-key"><span class="violet" aria-hidden="true">●</span>未保存</span></div>`
+      }
+
+      function renderFeedback({ index, item, sample }) {
+        if (!canRate(index)) {
+        const message = fileId === 'partial' ? '片段结果仅供阅读。只有完整文件结果支持反馈。' : '此历史条目缺少反馈标识，暂不可反馈。'
+          return `<div class="feedback"><span class="muted">${message}</span></div>`
+        }
+        const saved = savedAt(index, item)
+        const draft = drafts.get(key(index))
+        const input = draft || saved
+        return `<section class="feedback" aria-label="反馈">
+          <div class="feedback-head"><strong>${kind === 'issue' ? '这个问题是否准确？' : '这条结论是否准确？'}</strong><span id="feedback-state" class="muted">${draft ? '尚未保存' : statuses[statusAt(index, item)][0]}</span></div>
+          <div class="inline">${['accurate', 'inaccurate', 'unknown'].map(choice => button(statuses[choice][0], 'assessment:' + choice,
+            { className: 'choice', attrs: ` aria-pressed="${choice === input.assessment}"` })).join('')}
+            ${button('清除评价', 'assessment:', { className: 'link', disabled: !input.assessment })}</div>
+          <textarea id="comment" aria-label="反馈评论" placeholder="可选评论，可单独保存" rows="2">${escape(input.comment)}</textarea>
+          <div class="feedback-foot"><span class="muted">反馈仅作用于当前${sample.noun}。切换条目时保留输入。</span>${button('保存反馈', 'save', { className: 'primary', disabled: !draft })}</div>
+        </section>`
+      }
+
+      function renderReader(context) {
+        const { sample, entries, index, item, basename } = context
+        const tone = item.tag === '高严重度' ? 'red' : item.tag === '中严重度' ? 'amber' : 'blue'
+        return `<section class="reader" aria-label="逐项阅读">
+          <article class="reading-card">
+            <header class="reader-bar" id="reader-nav"><span class="position">${sample.noun} ${index + 1} / ${entries.length}</span>
+              <div class="inline">${button('← 上一项', 'prev', { disabled: index === 0 })}${button('下一项 →', 'next', { disabled: index === entries.length - 1 })}</div>
+            </header>
+        <div class="finding"><div class="inline">${pill(item.tag, tone)}${kind === 'issue' ? pill(issueCategories[sample.findings.indexOf(item)]) : ''}</div><h3 id="finding-title" tabindex="-1">${escape(item.title)}</h3>
+              <dl>${item.sections.map(([title, text]) => `<div><dt>${escape(title)}</dt><dd>${escape(text)}</dd></div>`).join('')}
+              <div><dt>${kind === 'issue' ? '问题位置' : '代码依据'}</dt><dd>${fileId === 'legacy' && index === 0
+                ? '<span class="muted">材料不可用</span>'
+                : button(`${escape(basename)}:${item.line} · 查看代码 ↗`, 'code', { className: 'code-link' })}</dd></div>
+              ${kind === 'issue' && index === 0 && fileId === 'many'
+                ? `<div><dt>辅助证据</dt><dd>${button('InventoryGateway.java:42 · 查看代码 ↗', 'evidence', { className: 'code-link' })}</dd></div>` : ''}</dl>
+            </div>
+            ${renderFeedback(context)}
+          </article><aside class="index" id="finding-index" aria-label="发现索引">${indexContents(context)}</aside>
+        </section>`
+      }
+
+      function renderResult(context) {
+        const { sample, entries } = context
+        if (noResult[fileId]) {
+          const [title, copy] = noResult[fileId]
+          return `<div class="empty"><h3>${title}</h3><p>${copy}</p></div>`
+        }
+        const partial = fileId === 'partial'
+        const summary = fileId === 'zero' ? emptyCopy[kind][0]
+          : partial ? '仅取得部分片段的分析内容。其余范围处理超限。'
+          : fileId === 'one' ? `本次材料支持一项${sample.noun}，具体依据见下方。`
+          : fileId === 'legacy' ? `此文件保留了两项历史${sample.noun}。`
+          : sample.summary
+        const labels = kind === 'issue' ? ['高严重度', '中严重度', '低严重度'] : []
+        const metrics = labels.map(label => pill(`${label} ${entries.filter(entry => entry.tag === label).length}`)).join('')
+        const boundaries = partial ? [...sample.boundaries, '后半段内容处理超限，未纳入结果。'] : sample.boundaries
+        return `${partial ? '<p class="notice">文件未完成：以下内容来自已成功的片段，不能作为完整文件结论或报告材料。</p>' : ''}
+          ${fileId === 'legacy' ? '<p class="notice">历史整份反馈仍保留在历史记录中。索引仅反映已保存的逐项反馈。</p>' : ''}
+          <section class="summary" aria-label="文件结论"><div class="summary-top"><h2>${partial ? '已取得的分析内容' : '审查结论'}</h2><div class="inline">${pill(`${entries.length} 项${partial ? '已取得的发现' : '发现'}`, 'blue')}${metrics}</div></div><p>${escape(summary)}</p></section>
+          ${renderFacts()}
+          ${entries.length ? renderReader(context) : `<div class="empty"><h3>没有可逐项阅读的发现</h3><p>${emptyCopy[kind][1]}</p></div>`}
+          <details class="boundary"><summary>审查边界与材料缺失 <span class="muted"> · ${boundaries.length} 项</span></summary><ul>${boundaries.map(line => `<li>${escape(line)}</li>`).join('')}</ul></details>`
+      }
+
+      function render() {
+        const context = result()
+        renderShell(context)
+        if (tab === 'result') byId('view').innerHTML = renderResult(context)
+        else if (tab === 'input') byId('view').innerHTML = `<section class="summary"><h2>输入与配置</h2><p>审查类型　${context.sample.label}</p><p>当前审查文件　${escape(context.path)}</p><p>源码版本　4e72d28（示例）</p></section>`
+        else byId('view').innerHTML = '<section class="empty"><h3>实际调用</h3><p>此页签仅用于演示切换后保留阅读位置和草稿。</p></section>'
+      }
+
+      function choose(index, action) {
+        const context = result()
+        if (index < 0 || index >= context.entries.length) return
+        positions.set(key('selected'), index)
+        const open = byId('view').querySelector('.boundary')?.open
+        const facts = byId('view').querySelector('.facts')?.open
+        render()
+        byId('view').querySelector('.boundary').open = !!open
+        const factsPanel = byId('view').querySelector('.facts')
+        if (factsPanel) factsPanel.open = !!facts
+        const moved = result()
+        announce(`${moved.sample.noun} ${index + 1} / ${moved.entries.length}，${moved.item.title}`)
+        const nav = byId('reader-nav')
+        if (nav.getBoundingClientRect().top < 0 || nav.getBoundingClientRect().top > innerHeight - 80) {
+          nav.scrollIntoView({ block: 'nearest' })
+        }
+        const nextFocus = document.querySelector(`[data-action="${action}"]:not(:disabled)`) || byId('finding-title')
+        nextFocus.focus({ preventScroll: true })
+      }
+
+      function updateFeedback(assessment, comment) {
+        const context = result()
+        const { index, item } = context
+        if (!item || !canRate(index)) return
+        const saved = savedAt(index, item)
+        if (assessment === saved.assessment && comment === saved.comment) drafts.delete(key(index))
+        else drafts.set(key(index), { assessment, comment })
+        const draft = drafts.has(key(index))
+        byId('feedback-state').textContent = draft ? '尚未保存' : statuses[statusAt(index, item)][0]
+        document.querySelector('[data-action="save"]').disabled = !draft
+        byId('finding-index').innerHTML = indexContents(context)
+        for (const button of document.querySelectorAll('[data-action^="assessment:"]')) {
+          const value = button.dataset.action.slice('assessment:'.length)
+          if (value) button.setAttribute('aria-pressed', value === assessment)
+          else button.disabled = !assessment
+        }
+      }
+
+      function openCode(action) {
+        const { item, basename } = result()
+        byId('code-caption').textContent = action === 'evidence' ? 'InventoryGateway.java · 第 42 行' : `${basename} · 第 ${item.line} 行`
+        byId('code-preview').textContent = action === 'evidence'
+          ? '42  Reservation reserve(OrderId id, List<Line> lines);'
+          : `${item.line}  // 代码材料为示例\n${item.line + 1}  var result = handler.process(request);\n${item.line + 2}  return result;`
+        byId('code-dialog').showModal()
+      }
+
+      document.addEventListener('click', event => {
+        const tabButton = event.target.closest('[data-tab]')
+        if (tabButton) { tab = tabButton.dataset.tab; render(); return }
+        const control = event.target.closest('[data-action]')
+        if (!control || control.disabled) return
+        const action = control.dataset.action
+        const [verb, value] = action.split(':')
+        const { index, item } = result()
+        if (verb === 'kind' || verb === 'file') {
+          if (verb === 'kind') { kind = value; fileId = 'many' }
+          else fileId = value
+          tab = 'result'
+          render()
+          preserveFocus(action)
+        } else if (verb === 'prev' || verb === 'next' || verb === 'jump') {
+          choose(verb === 'jump' ? Number(value) : index + (verb === 'prev' ? -1 : 1), action)
+        } else if (verb === 'assessment') {
+          updateFeedback(value, byId('comment').value)
+        } else if (verb === 'save') {
+          const draft = drafts.get(key(index))
+          if (!draft) return
+          savedFeedback.set(key(index), draft)
+          updateFeedback(draft.assessment, draft.comment)
+          byId('feedback-state').textContent = `已保存 · ${statuses[statusAt(index, item)][0]}`
+          byId('comment').focus({ preventScroll: true })
+          announce('示例反馈已保存')
+        } else if (verb === 'code' || verb === 'evidence') openCode(verb)
+      })
+      document.addEventListener('input', event => {
+        if (event.target.id !== 'comment') return
+        const { index, item } = result()
+        const input = drafts.get(key(index)) || savedAt(index, item)
+        updateFeedback(input.assessment, event.target.value)
+      })
+      document.querySelector('.tabbar').addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+        event.preventDefault()
+        const tabs = [...document.querySelectorAll('.tab')]
+        const index = tabs.indexOf(document.activeElement)
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+          : (index + (event.key === 'ArrowLeft' ? -1 : 1) + tabs.length) % tabs.length
+        tabs[next].click()
+        tabs[next].focus()
+      })
+      render()
+  </script>
+</body>
+</html>

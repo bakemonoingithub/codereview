@@ -9,6 +9,7 @@ import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.TaskDtos;
 import com.codereview.agent.entity.AgentCallMaterial;
 import com.codereview.agent.entity.AgentExecutionUnit;
+import com.codereview.agent.entity.AgentFeedback;
 import com.codereview.agent.entity.AgentIssue;
 import com.codereview.agent.entity.AgentMaterial;
 import com.codereview.agent.entity.AgentModelCall;
@@ -26,6 +27,7 @@ import com.codereview.agent.execution.TaskStates;
 import com.codereview.agent.invocation.ModelInvocationProperties;
 import com.codereview.agent.mapper.AgentCallMaterialMapper;
 import com.codereview.agent.mapper.AgentExecutionUnitMapper;
+import com.codereview.agent.mapper.AgentFeedbackMapper;
 import com.codereview.agent.mapper.AgentIssueMapper;
 import com.codereview.agent.mapper.AgentMaterialMapper;
 import com.codereview.agent.mapper.AgentModelCallMapper;
@@ -337,7 +339,7 @@ public class TaskService {
      * 统一详情：按目标读取最近一次结果。结果正文和来源都是发布时保存的 JSON，
      * 不按当前提示词或最新源码重建。
      */
-    public TaskDtos.ResultView result(String taskId, String targetId) {
+    public TaskDtos.ResultView result(String taskId, String targetId, boolean includeItemFeedback) {
         requireTask(taskId);
         requireTarget(taskId, targetId);
         List<AgentReviewResult> rows = db.mapper(AgentReviewResultMapper.class).selectList(
@@ -360,12 +362,52 @@ public class TaskService {
                         issue.getSuggestion(), readStoredJson(issue.getLocations(), true),
                         readStoredJson(issue.getSourceUnits(), true)))
                 .toList();
+        JsonNode body = readStoredJson(row.getBody(), false);
+        JsonNode provenance = readStoredJson(row.getProvenance(), false);
+        List<TaskDtos.ResultItemView> items = new ResultItemIndex(db, mapper).requireItems(row).stream()
+                .map(item -> new TaskDtos.ResultItemView(item.getId(), item.getKind(), item.getOrdinal()))
+                .toList();
+        Map<String, TaskDtos.ItemFeedbackView> itemFeedback = null;
+        Boolean hasLegacyFeedback = null;
+        if (includeItemFeedback) {
+            List<String> itemIds = "ISSUE".equals(row.getKind())
+                    ? issueViews.stream().map(TaskDtos.IssueView::id).toList()
+                    : items.stream().map(TaskDtos.ResultItemView::id).toList();
+            itemFeedback = new LinkedHashMap<>();
+            hasLegacyFeedback = false;
+            for (AgentFeedback feedback : resultFeedbackRows(row, itemIds)) {
+                boolean hasComment = feedback.getComment() != null && !feedback.getComment().isBlank();
+                if ("RESULT".equals(feedback.getSubjectKind())) {
+                    hasLegacyFeedback = feedback.getAssessment() != null || hasComment;
+                } else {
+                    itemFeedback.put(feedback.getSubjectId(), new TaskDtos.ItemFeedbackView(
+                            feedback.getAssessment(), hasComment, feedback.getRevision()));
+                }
+            }
+        }
         return new TaskDtos.ResultView(row.getId(), row.getTargetId(), row.getKind(),
                 row.getSchemaVersion(), row.getCompleteness(), row.getCreatedAt(),
-                readStoredJson(row.getBody(), false), issueViews, readStoredJson(row.getProvenance(), false),
-                new ResultItemIndex(db, mapper).requireItems(row).stream()
-                        .map(item -> new TaskDtos.ResultItemView(item.getId(), item.getKind(), item.getOrdinal()))
-                        .toList());
+                body, issueViews, provenance, items, itemFeedback, hasLegacyFeedback);
+    }
+
+    /** 只读取已校验结果的条目反馈。历史整份反馈单独判断，不能计入逐项反馈。 */
+    private List<AgentFeedback> resultFeedbackRows(AgentReviewResult result, List<String> itemIds) {
+        if (!"COMPLETE".equals(result.getCompleteness())) return List.of();
+        boolean includesLegacy = ResultItemIndex.supports(result);
+        if (!includesLegacy && (!"ISSUE".equals(result.getKind()) || itemIds.isEmpty())) return List.of();
+        LambdaQueryWrapper<AgentFeedback> query = new LambdaQueryWrapper<AgentFeedback>()
+                .select(AgentFeedback::getSubjectId, AgentFeedback::getSubjectKind,
+                        AgentFeedback::getAssessment, AgentFeedback::getComment, AgentFeedback::getRevision);
+        if (itemIds.isEmpty()) {
+            query.eq(AgentFeedback::getSubjectKind, "RESULT").eq(AgentFeedback::getSubjectId, result.getId());
+        } else {
+            query.eq(AgentFeedback::getSubjectKind, result.getKind()).in(AgentFeedback::getSubjectId, itemIds);
+            if (includesLegacy) {
+                query.or(legacy -> legacy.eq(AgentFeedback::getSubjectKind, "RESULT")
+                        .eq(AgentFeedback::getSubjectId, result.getId()));
+            }
+        }
+        return db.mapper(AgentFeedbackMapper.class).selectList(query);
     }
 
     /** 目标实际发送过的材料；同一材料被多次调用引用时合并为一条。 */
@@ -766,13 +808,15 @@ public class TaskService {
                 textOrNull(prompt, "id"), textOrNull(prompt, "name"),
                 textOrNull(prompt, "versionId"), integerOrNull(prompt, "versionNo"),
                 textOrNull(prompt, "content"));
-        Map<String, Integer> issueCounts = targetIssueCounts(task, targets);
+        Map<String, Integer> findingCounts = targetFindingCounts(task, targets);
         List<TaskDtos.TargetView> targetViews = targets.stream()
                 .map(target -> new TaskDtos.TargetView(target.getId(), target.getOrdinal(),
                         target.getPath(), target.getOldPath(), target.getBaseSha(), target.getHeadSha(),
                         target.getNote(), target.getState(), target.getErrorCode(),
                         target.getRevision() == null ? 0 : target.getRevision(),
-                        target.getCreatedAt(), target.getUpdatedAt(), issueCounts.get(target.getId())))
+                        target.getCreatedAt(), target.getUpdatedAt(),
+                        "ISSUE".equals(task.getSpecialistType()) ? findingCounts.get(target.getId()) : null,
+                        findingCounts.get(target.getId())))
                 .toList();
         return new TaskDtos.View(task.getId(), TaskNames.display(task.getName(), task.getId()),
                 task.getProjectId(), task.getRoute(),
@@ -809,23 +853,40 @@ public class TaskService {
                 + "未选择的文本、二进制和无法读取的内容都没有审查，不能写成已检查或没有问题。";
     }
 
-    /** 按最近发布的完整问题结果批量计数；没有完整结果时保留 null，不能补成零。 */
-    private Map<String, Integer> targetIssueCounts(AgentReviewTask task, List<AgentTaskTarget> targets) {
-        if (!"ISSUE".equals(task.getSpecialistType()) || targets.isEmpty()) {
+    /** 对每个目标的最新完整结果批量计数；没有可计数的结果时保留 null。 */
+    private Map<String, Integer> targetFindingCounts(AgentReviewTask task, List<AgentTaskTarget> targets) {
+        String kind = task.getSpecialistType();
+        if (targets.isEmpty() || !("ISSUE".equals(kind) || "PATTERN".equals(kind) || "COUPLING".equals(kind))) {
             return Map.of();
         }
-        List<AgentReviewResult> results = db.mapper(AgentReviewResultMapper.class).selectList(
-                new LambdaQueryWrapper<AgentReviewResult>()
-                        .select(AgentReviewResult::getId, AgentReviewResult::getTargetId,
-                                AgentReviewResult::getKind, AgentReviewResult::getCompleteness)
-                        .eq(AgentReviewResult::getTaskId, task.getId())
-                        .in(AgentReviewResult::getTargetId, targets.stream().map(AgentTaskTarget::getId).toList())
-                        .orderByDesc(AgentReviewResult::getCreatedAt));
+        boolean issueReview = "ISSUE".equals(kind);
+        LambdaQueryWrapper<AgentReviewResult> query = new LambdaQueryWrapper<AgentReviewResult>()
+                .eq(AgentReviewResult::getTaskId, task.getId())
+                .in(AgentReviewResult::getTargetId, targets.stream().map(AgentTaskTarget::getId).toList())
+                .orderByDesc(AgentReviewResult::getCreatedAt);
+        if (issueReview) {
+            query.select(AgentReviewResult::getId, AgentReviewResult::getTargetId,
+                    AgentReviewResult::getKind, AgentReviewResult::getCompleteness);
+        } else {
+            query.select(AgentReviewResult::getId, AgentReviewResult::getTargetId,
+                    AgentReviewResult::getKind, AgentReviewResult::getCompleteness, AgentReviewResult::getBody);
+        }
         Map<String, AgentReviewResult> latest = new LinkedHashMap<>();
-        results.forEach(result -> latest.putIfAbsent(result.getTargetId(), result));
-        List<String> resultIds = latest.values().stream()
-                .filter(result -> "ISSUE".equals(result.getKind()) && "COMPLETE".equals(result.getCompleteness()))
-                .map(AgentReviewResult::getId).toList();
+        db.mapper(AgentReviewResultMapper.class).selectList(query)
+                .forEach(result -> latest.putIfAbsent(result.getTargetId(), result));
+        latest.values().removeIf(result -> !kind.equals(result.getKind()) || !"COMPLETE".equals(result.getCompleteness()));
+        Map<String, Integer> countsByTarget = new LinkedHashMap<>();
+        if (!issueReview) {
+            String field = "PATTERN".equals(kind) ? "patterns" : "observations";
+            latest.forEach((targetId, result) -> {
+                JsonNode items = readJson(result.getBody()).path(field);
+                if (items.isArray()) {
+                    countsByTarget.put(targetId, items.size());
+                }
+            });
+            return countsByTarget;
+        }
+        List<String> resultIds = latest.values().stream().map(AgentReviewResult::getId).toList();
         if (resultIds.isEmpty()) {
             return Map.of();
         }
@@ -833,12 +894,7 @@ public class TaskService {
         db.mapper(AgentIssueMapper.class).selectList(new LambdaQueryWrapper<AgentIssue>()
                         .select(AgentIssue::getResultId).in(AgentIssue::getResultId, resultIds))
                 .forEach(issue -> countsByResult.merge(issue.getResultId(), 1, Integer::sum));
-        Map<String, Integer> countsByTarget = new LinkedHashMap<>();
-        latest.forEach((targetId, result) -> {
-            if ("ISSUE".equals(result.getKind()) && "COMPLETE".equals(result.getCompleteness())) {
-                countsByTarget.put(targetId, countsByResult.getOrDefault(result.getId(), 0));
-            }
-        });
+        latest.forEach((targetId, result) -> countsByTarget.put(targetId, countsByResult.getOrDefault(result.getId(), 0)));
         return countsByTarget;
     }
 

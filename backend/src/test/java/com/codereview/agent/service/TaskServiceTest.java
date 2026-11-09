@@ -433,9 +433,13 @@ class TaskServiceTest {
         var view = service.detail(TASK_ID);
 
         assertEquals(2, view.targets().get(0).issueCount());
+        assertEquals(2, view.targets().get(0).findingCount());
         assertEquals(0, view.targets().get(1).issueCount());
+        assertEquals(0, view.targets().get(1).findingCount());
         assertNull(view.targets().get(2).issueCount());
+        assertNull(view.targets().get(2).findingCount());
         assertNull(view.targets().get(3).issueCount());
+        assertNull(view.targets().get(3).findingCount());
         var resultQuery = ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper.class);
         verify(resultMapper).selectList(resultQuery.capture());
         assertFalse(resultQuery.getValue().getSqlSelect().contains("body"));
@@ -466,23 +470,53 @@ class TaskServiceTest {
         assertFalse(query.getValue().getParamNameValuePairs().containsValue("old"));
     }
 
-    @Test
-    void nonIssueTasksDoNotReportZeroIssues() {
+    @ParameterizedTest
+    @ValueSource(strings = {"PATTERN", "COUPLING"})
+    void detailCountsOnlyPublishedModelJudgmentsForNonIssueTasks(String kind) {
         AgentReviewTask task = task(TASK_ID, null);
-        task.setSpecialistType("PATTERN");
+        task.setSpecialistType(kind);
         when(taskMapper.selectById(TASK_ID)).thenReturn(task);
+        List<AgentTaskTarget> targets = java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(index -> {
+            AgentTaskTarget row = target();
+            row.setId("target-" + index);
+            row.setOrdinal(index);
+            return row;
+        }).toList();
+        when(targetMapper.selectList(any())).thenReturn(targets);
+        String field = "PATTERN".equals(kind) ? "patterns" : "observations";
+        String complete = """
+                {"%s":[{"name":"策略","title":"关系","explanation":"说明","evidence":[]}],"dependencies":[{},{}]}
+                """.formatted(field);
+        when(resultMapper.selectList(any())).thenReturn(List.of(
+                publishedResult("r1", "target-1", "COMPLETE", kind, complete),
+                publishedResult("r2", "target-2", "COMPLETE", kind, "{\"%s\":[]}".formatted(field)),
+                publishedResult("r3", "target-3", "COMPLETE", kind, "{\"summary\":\"旧版摘要\"}"),
+                publishedResult("r4-latest", "target-4", "INCOMPLETE", kind, complete),
+                publishedResult("r4-old", "target-4", "COMPLETE", kind, complete)));
 
-        assertNull(service.detail(TASK_ID).targets().get(0).issueCount());
-        verify(resultMapper, never()).selectList(any());
+        var view = service.detail(TASK_ID);
+
+        assertEquals(1, view.targets().get(0).findingCount());
+        assertEquals(0, view.targets().get(1).findingCount());
+        assertNull(view.targets().get(2).findingCount());
+        assertNull(view.targets().get(3).findingCount());
+        view.targets().forEach(target -> assertNull(target.issueCount()));
+        verify(resultMapper).selectList(any());
         verify(issueMapper, never()).selectList(any());
     }
 
     private static AgentReviewResult publishedResult(String id, String targetId, String completeness) {
+        return publishedResult(id, targetId, completeness, "ISSUE", null);
+    }
+
+    private static AgentReviewResult publishedResult(String id, String targetId, String completeness,
+                                                     String kind, String body) {
         AgentReviewResult result = new AgentReviewResult();
         result.setId(id);
         result.setTargetId(targetId);
-        result.setKind("ISSUE");
+        result.setKind(kind);
         result.setCompleteness(completeness);
+        result.setBody(body);
         return result;
     }
 

@@ -54,6 +54,10 @@ tab 外采用以下最小数据适配，作为本轮实现选择：
 
 `body`、`issues` 和 `schemaVersion` 原义不变；模型输出协议不新增 ID。问题、未完成结果返回空 `items`。完整模式／耦合结果的索引不完整时返回 `INTERNAL_ERROR`，不能给出虚假的可保存状态。
 
+专项详情请求结果时传入 `includeItemFeedback=true`。响应中的 `itemFeedback` 按稳定主体 ID 保存反馈摘要，每项包含 `assessment`、`hasComment` 和 `revision`。只评论的记录保留 `hasComment: true`，评论正文仍从单项反馈接口读取。已提供摘要时，缺少某个 ID 表示该项没有保存记录。旧服务缺少整个字段时，索引无法据此判断未读条目的反馈状态。
+
+`hasLegacyFeedback` 表示完整的模式或耦合结果曾保存整份评价或评论。历史整份反馈不进入 `itemFeedback`。未完整发布的结果返回空摘要，且 `hasLegacyFeedback` 为 `false`。默认请求省略这两个字段。
+
 反馈仍使用 `GET/PUT /api/v2/feedback/{subjectKind}/{subjectId}`，新增 PATTERN、COUPLING 两种主体。`subjectId` 必须属于对应类型的完整结果，且索引通过完整性核对。保存字段仍为 `assessment`、`comment`、`expectedRevision`；revision 条件更新及首次插入竞争保护沿用原实现。
 
 不存在的条目返回 `NOT_FOUND`；类型不匹配或所属结果未完成返回 `CONFLICT`；索引损坏返回 `INTERNAL_ERROR`；反馈版本过期返回 `REVISION_CONFLICT` 及最新反馈。ISSUE 和历史 RESULT 接口继续兼容。新结果 tab 和报告创建预览均不向 RESULT 主体保存新反馈。

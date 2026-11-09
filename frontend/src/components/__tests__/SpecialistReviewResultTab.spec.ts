@@ -105,6 +105,55 @@ describe('专项审查结果 tab', () => {
     missing.unmount()
   })
 
+  it('依赖解读使用可区分的最短类名，并保留可展开的全类名和未知依赖编号', () => {
+    const data = result('COUPLING')
+    data.body.observations = [{ title: '跨层依赖', explanation: '直接依赖存储', dependencyIds: ['d1', 'd2', 'missing'], evidence: [] }]
+    data.provenance.couplingFacts = {
+      resolvedOutgoingCount: 2, unresolvedTypeCount: 0, coverage: 1, sha: 'fixed', side: 'FILE', limitations: [],
+      edges: ['app.api.shared.Config', 'app.runtime.shared.Config'].map((targetType, index) => ({
+        id: 'd' + (index + 1), sourceType: 'app.core.Service', targetType, relation: 'FIELD', targetPath: 'Config.java', line: 3
+      }))
+    }
+    const wrapper = mount(SpecialistReviewResultTab, {
+      props: { result: data, taskId: 'task', navigateFindings: true }, ...options
+    })
+    const rows = wrapper.findAll('.dependency-details')
+    expect(rows.map(row => row.get('summary span').text())).toEqual([
+      'Service → api.shared.Config', 'Service → runtime.shared.Config'
+    ])
+    expect(rows[0].get('summary small').text()).toBe('· 字段')
+    expect(rows[0].get('summary').attributes('title')).toBe('app.core.Service → app.api.shared.Config')
+    expect(rows[0].get('.dependency-full-name').text()).toBe('app.core.Service → app.api.shared.Config')
+    expect(wrapper.get('.dependencies').text()).toContain('missing')
+    expect(wrapper.get('.facts').text()).toContain('app.core.Service → app.api.shared.Config')
+    wrapper.unmount()
+  })
+
+  it('逐项模式区分无发现、不可反馈和旧接口未返回反馈状态', async () => {
+    const data = patterns()
+    data.items = [data.items![0]]
+    data.hasLegacyFeedback = true
+    const wrapper = mount(SpecialistReviewResultTab, {
+      props: { result: data, taskId: 'task', navigateFindings: true }, ...options
+    })
+    const buttons = () => wrapper.findAll('.index-button')
+    expect(wrapper.html()).toContain('历史整份结果反馈')
+    expect(buttons()[0].classes()).toContain('blocked')
+    expect(buttons()[1].classes()).toContain('unavailable')
+    expect(wrapper.findComponent(FeedbackEditor).exists()).toBe(false)
+    await wrapper.setProps({ findingIndex: 1 })
+    expect(wrapper.getComponent(FeedbackEditor).props('subjectId')).toBe('p2')
+    await wrapper.setProps({ result: { ...data, completeness: 'INCOMPLETE' } })
+    expect(buttons().map(button => button.classes().includes('blocked'))).toEqual([true, true])
+    expect(wrapper.findComponent(FeedbackEditor).exists()).toBe(false)
+    await wrapper.setProps({ result: result('PATTERN') })
+    expect(wrapper.get('.finding-empty').text()).toContain('未识别到有依据的模式候选')
+    expect(wrapper.find('a-empty-stub').exists()).toBe(false)
+    expect(wrapper.find('.finding-toolbar').exists()).toBe(false)
+    expect(wrapper.find('.finding-index').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('缺失代码材料禁用链接；未知分类保留原值，模型文本不会执行 HTML', async () => {
     const data = patterns(); data.body.patterns![0].family = 'CUSTOM'
     data.body.summary = '<img src=x onerror=alert(1)>'

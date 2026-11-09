@@ -93,7 +93,7 @@ beforeEach(() => {
 })
 
 describe('Agent 任务详情', () => {
-  it('PR 输入显示三个冻结版本和当前版本变化', async () => {
+  it('在统计卡片与页签之间显示 PR 版本提示', async () => {
     const frozen = 'a'.repeat(40)
     vi.mocked(tasksApi.detail).mockResolvedValue({
       ...task('SUCCEEDED'), sourceKind: 'PR', pullNumber: 9, pullTitle: '调整重试',
@@ -109,13 +109,15 @@ describe('Agent 任务详情', () => {
       mergeBase: 'c'.repeat(40), blocker: null
     } as any)
     const wrapper = await start()
-    expect(wrapper.text()).toContain('PR #9')
-    expect(wrapper.text()).toContain('调整重试')
-    expect(wrapper.text()).toContain('共同祖先')
-    expect(wrapper.text()).toContain('二进制没有审查。')
-    await flushPromises()
-    expect(wrapper.findAll('a-alert-stub').map((alert) => alert.attributes('message')))
-      .toContain('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
+    const notices = wrapper.get('.agent-meters + .review-detail-notices')
+    const banner = notices.get('a-alert-stub[type="warning"]')
+    const tabs = wrapper.get('.tabbar')
+    expect(notices.element.nextElementSibling).toBe(tabs.element)
+    expect(banner.attributes('type')).toBe('warning')
+    expect(banner.attributes('message'))
+      .toBe('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
+    await tabs.findAll('button').find(button => button.text() === '审查输入')!.trigger('click')
+    expect(wrapper.get('.agent-input').find('a-alert-stub[type="warning"]').exists()).toBe(false)
     wrapper.unmount()
   })
 

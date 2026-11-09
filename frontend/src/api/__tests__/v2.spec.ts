@@ -139,6 +139,12 @@ describe('v2 客户端的真实响应链', () => {
     payload = { id: 'r1', kind: 'ISSUE', body: { summary: 'x' }, issues: [], provenance: {} }
     expect(await tasksApi.result('t1', 'g1')).toEqual(payload)
     expect(sent.url).toBe('/review-tasks/t1/targets/g1/result')
+    expect(sent.params).toBeUndefined()
+
+    payload = { id: 'r1', itemFeedback: {}, hasLegacyFeedback: false }
+    expect(await tasksApi.result('t1', 'g1', true)).toEqual(payload)
+    expect(sent.url).toBe('/review-tasks/t1/targets/g1/result')
+    expect(sent.params).toEqual({ includeItemFeedback: true })
 
     payload = [{ id: 'm1', path: 'src/A.java', sent: true }]
     expect(await tasksApi.materials('t1', 'g1')).toEqual(payload)

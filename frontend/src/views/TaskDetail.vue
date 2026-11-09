@@ -3,9 +3,7 @@
     <div class="back-row">
       <a-button type="link" @click="goBack">← 返回审查中心</a-button>
     </div>
-    <a-alert v-if="error" type="error" show-icon :message="error" class="mb16">
-      <template #action><a-button size="small" @click="loadTask">重试</a-button></template>
-    </a-alert>
+    <ReviewDetailNotices v-if="!task && error" :load-error="error" @retry="loadTask" />
     <a-spin :spinning="taskLoading">
       <template v-if="task">
         <div class="detail-head">
@@ -31,47 +29,20 @@
           </div>
         </div>
 
-        <a-alert
-          v-if="task.state === 'PARTIAL'"
-          type="warning"
-          show-icon
-          message="部分完成：成功文件的结果可阅读；失败文件没有完整结论，也不能作为报告材料。"
-          class="mb16"
-        />
-        <a-alert
-          v-if="task.state === 'CANCELLED'"
-          type="warning"
-          show-icon
-          message="任务已取消：已完成文件仍可阅读，其他文件已停止，不会自动继续。"
-          class="mb16"
-        />
-        <a-alert
-          v-if="task.state === 'FAILED'"
-          type="error"
-          show-icon
-          :message="`任务失败${task.stopReason ? '：' + task.stopReason : ''}`"
-          class="mb16"
-        />
-
-        <TaskAccuracySummary
-          v-if="stats && stats.issues.total + stats.results.total > 0"
-          :specialist-type="task.specialistType"
-          :stats="stats"
-        />
-        <p v-if="statsError" class="muted small mb16">{{ statsError }}</p>
+        <ReviewDetailNotices
+          :load-error="error"
+          :status="statusNotice"
+          :pull-version-note="task.sourceKind === 'PR' ? pullVersionNote : undefined"
+          :data-error="statsError"
+          @retry="loadTask"
+        >
+          <template v-if="stats && stats.issues.total + stats.results.total > 0" #summary>
+            <TaskAccuracySummary :specialist-type="task.specialistType" :stats="stats" />
+          </template>
+        </ReviewDetailNotices>
 
         <div class="detail-grid">
           <aside class="card targets">
-            <div v-if="task.sourceKind === 'PR'" class="pr-summary">
-              <strong>PR #{{ task.pullNumber || '?' }}</strong>
-              <span v-if="task.pullTitle"> {{ task.pullTitle }}</span>
-              <p class="muted small">
-                {{ task.sourceBranch || '源分支未记录' }} → {{ task.targetBranch || '目标分支未记录' }}
-                · 已选 {{ task.targets.length }} / 文本 {{ task.textFiles ?? '未记录' }} / 全部 {{ task.changedFiles ?? '未记录' }}
-              </p>
-              <p class="muted small">{{ task.coverageNote || '未选择、二进制和无法读取的文件没有审查。' }}</p>
-              <a-alert v-if="pullVersionNote" type="warning" show-icon :message="pullVersionNote" />
-            </div>
             <div class="section-head">
               <strong>目标文件</strong>
               <span class="spacer" />
@@ -88,14 +59,14 @@
               <span class="target-meta">
                 <StatusBadge :tone="stateTone(target.state)">{{ stateText(target.state) }}</StatusBadge>
                 <span v-if="target.errorCode" class="error">{{ target.errorCode }}</span>
-                <span v-else-if="target.issueCount != null" class="muted small">
-                  {{ target.issueCount }} 个问题
+                <span v-else-if="(target.findingCount ?? target.issueCount) != null" class="muted small">
+                  {{ target.findingCount ?? target.issueCount }} 项发现
                 </span>
               </span>
             </button>
           </aside>
 
-          <section class="card content">
+          <section class="card content" :class="{ 'with-result-reader': activeTab === 'result' && result }">
             <div class="tabbar">
               <button
                 v-for="tab in tabs"
@@ -113,11 +84,15 @@
                 <a-alert v-if="resultError" type="warning" show-icon :message="resultError" />
                 <SpecialistReviewResultTab
                   v-if="result"
+                  :key="result.id"
                   :task-id="task.id"
                   :result="result"
+                  navigate-findings
+                  :finding-index="findingPositions[result.id] ?? 0"
+                  @update:finding-index="findingPositions[result.id] = $event"
                   @open-code="openCodeReference"
                 />
-                <div v-else-if="!resultError" class="empty">该文件还没有已发布结果。</div>
+                <div v-else-if="!resultError" class="empty">{{ emptyResultMessage }}</div>
               </template>
 
               <template v-else-if="activeTab === 'materials'">
@@ -261,6 +236,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
+import ReviewDetailNotices from '@/components/ReviewDetailNotices.vue'
 import SpecialistReviewResultTab from '@/components/SpecialistReviewResultTab.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import TaskAccuracySummary from '@/components/TaskAccuracySummary.vue'
@@ -285,6 +261,17 @@ import {
 const route = useRoute()
 const router = useRouter()
 const task = ref<TaskView | null>(null)
+const statusNotice = computed(() => {
+  const current = task.value
+  switch (current?.state) {
+    case 'PARTIAL':
+      return { type: 'warning' as const, message: '部分完成：成功文件的结果可阅读；失败文件没有完整结论，也不能作为报告材料。' }
+    case 'CANCELLED':
+      return { type: 'warning' as const, message: '任务已取消：已完成文件仍可阅读，其他文件已停止，不会自动继续。' }
+    case 'FAILED':
+      return { type: 'error' as const, message: `任务失败${current.stopReason ? '：' + current.stopReason : ''}` }
+  }
+})
 const pullVersionNote = ref('')
 const projectName = ref('')
 const taskLoading = ref(false)
@@ -293,6 +280,7 @@ const error = ref('')
 const selectedTargetId = ref('')
 const activeTab = ref<'result' | 'materials' | 'calls'>('result')
 const result = ref<ResultView | null>(null)
+const findingPositions = ref<Record<string, number>>({})
 const resultError = ref('')
 const stats = ref<TaskStatistics | null>(null)
 const statsError = ref('')
@@ -359,6 +347,16 @@ const orderedMaterials = computed(() => [...materials.value].sort(
   (left, right) => materialRoleOrder(left.role) - materialRoleOrder(right.role)
 ))
 const inputTarget = computed(() => task.value?.targets.find(target => target.id === selectedTargetId.value))
+const emptyResultMessage = computed(() => {
+  switch (inputTarget.value?.state) {
+    case 'QUEUED': return '该文件正在排队，结果发布后可在此查看。'
+    case 'PREPARING':
+    case 'RUNNING': return '正在审查此文件，结果发布后可在此查看。'
+    case 'FAILED': return '此文件审查失败，没有已发布结果。'
+    case 'CANCELLED': return '此文件已取消，没有已发布结果。'
+    default: return '该文件还没有已发布结果。'
+  }
+})
 const inputVersion = computed(() => {
   const branch = task.value?.branch || '分支未记录'
   const head = inputTarget.value?.headSha || task.value?.headSha
@@ -452,11 +450,12 @@ onBeforeUnmount(() => {
   stopPoll()
 })
 
-async function checkPullVersion(current: TaskView) {
+async function checkPullVersion(current: TaskView, epoch: number) {
   pullVersionNote.value = ''
   if (current.sourceKind !== 'PR' || current.pullNumber == null) return
   try {
     const detail = await repositoryApi.pull(current.projectId, Number(current.pullNumber))
+    if (epoch !== taskEpoch || disposed) return
     const live = detail.pullRequest
     const moved = Boolean(
       (current.sourceHead && live.sourceHead && current.sourceHead !== live.sourceHead)
@@ -469,6 +468,7 @@ async function checkPullVersion(current: TaskView) {
       pullVersionNote.value = '该 PR 已不再处于未合并的 open 状态。历史结果仍可阅读。'
     }
   } catch {
+    if (epoch !== taskEpoch || disposed) return
     pullVersionNote.value = '暂时无法核对当前 PR 版本，本页仍显示发起时冻结的版本。'
   }
 }
@@ -484,7 +484,7 @@ async function loadTask() {
     const loaded = await tasksApi.detail(id)
     if (epoch !== taskEpoch || disposed) return
     task.value = loaded
-    void checkPullVersion(loaded)
+    void checkPullVersion(loaded, epoch)
     if (!loaded.targets.some(target => target.id === selectedTargetId.value)) {
       if (selectedTargetId.value) message.warning('原目标已不可用，已切换到当前任务目标')
       selectedTargetId.value = loaded.targets[0]?.id || ''
@@ -611,11 +611,14 @@ async function loadTarget() {  const epoch = ++loadEpoch
   callError.value = ''
   try {
     const [resultOutcome, materialOutcome, callOutcome] = await Promise.allSettled([
-      tasksApi.result(id, targetId), tasksApi.materials(id, targetId), readCallPages(id, targetId)
+      tasksApi.result(id, targetId, true), tasksApi.materials(id, targetId), readCallPages(id, targetId)
     ])
     if (epoch !== loadEpoch || disposed) return
     if (resultOutcome.status === 'fulfilled') result.value = resultOutcome.value
-    else resultError.value = (resultOutcome.reason as Error)?.message || '结果读取失败'
+    else {
+      const failure = resultOutcome.reason as (Error & { code?: string }) | undefined
+      if (failure?.code !== 'NOT_FOUND' || result.value) resultError.value = failure?.message || '结果读取失败'
+    }
     if (materialOutcome.status === 'fulfilled') materials.value = materialOutcome.value
     else materialError.value = (materialOutcome.reason as Error)?.message || '材料读取失败'
     if (callOutcome.status === 'fulfilled') {
@@ -777,9 +780,6 @@ function formatTime(value: string): string {
 .small {
   font-size: 12px;
 }
-.mb16 {
-  margin-bottom: 16px;
-}
 .detail-grid {
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr);
@@ -840,6 +840,9 @@ function formatTime(value: string): string {
 }
 .content {
   min-height: 500px;
+}
+.content.with-result-reader {
+  overflow: clip;
 }
 .tabbar {
   display: flex;
