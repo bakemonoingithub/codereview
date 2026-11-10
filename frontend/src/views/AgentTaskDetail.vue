@@ -169,16 +169,13 @@
                   <small class="muted input-note">按所选顺序逐项分析提交差异。</small>
                 </dd>
                 <dd v-else-if="inputKind === 'PR'">
-                  <code class="input-version">PR #{{ task.pullNumber || inputScope?.scope.pullNumber || '?' }}</code>
-                  <span v-if="task.pullTitle"> {{ task.pullTitle }}</span>
-                  <a v-if="task.pullUrl" :href="task.pullUrl" target="_blank" rel="noreferrer">打开 PR</a>
-                  <small class="muted input-note">
-                    {{ task.sourceBranch || '源分支未记录' }} → {{ task.targetBranch || '目标分支未记录' }}。
-                    源提交 {{ task.sourceHead || '未记录' }} · 目标提交 {{ task.targetHead || '未记录' }} · 共同祖先 {{ task.mergeBase || task.baseSha || '未记录' }}。
-                    文本 {{ task.textFiles ?? '未记录' }} / 二进制 {{ task.binaryFiles ?? '未记录' }} / 无法读取 {{ task.unreadableFiles ?? '未记录' }}。
-                    一次调查整个净变化，不按提交逐项展开。
-                  </small>
-                  <p class="muted small">{{ task.coverageNote || '二进制和无法读取的文件没有审查。' }}</p>
+                  <PullSourceVersion
+                    :pull-number="task.pullNumber || inputScope?.scope.pullNumber"
+                    :pull-url="task.pullUrl"
+                    :merge-base="task.mergeBase || task.baseSha"
+                    :source-head="task.sourceHead || task.headSha"
+                    :target-head="task.targetHead"
+                  />
                 </dd>
                 <dd v-else><code class="input-version" :title="inputVersion.full">{{ inputVersion.label }}</code></dd>
                 <template v-if="inputKind === 'TEXT'">
@@ -282,6 +279,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
+import PullSourceVersion from '@/components/PullSourceVersion.vue'
 import ReviewDetailNotices from '@/components/ReviewDetailNotices.vue'
 import AgentResultPanel from '@/components/AgentResultPanel.vue'
 import CodeViewer from '@/components/CodeViewer.vue'
@@ -472,7 +470,7 @@ async function checkPullVersion(current: TaskView) {
       || (current.mergeBase && detail.mergeBase && current.mergeBase !== detail.mergeBase)
     )
     if (moved) {
-      pullVersionNote.value = '当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。'
+      pullVersionNote.value = '当前 PR 版本已变化。本页结果仍对应发起时冻结的版本。'
     } else if (detail.blocker === 'PR_NOT_OPEN') {
       pullVersionNote.value = '该 PR 已不再处于未合并的 open 状态。历史结果仍可阅读。'
     }

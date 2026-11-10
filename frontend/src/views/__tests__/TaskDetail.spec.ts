@@ -74,7 +74,7 @@ describe('任务详情的轮询与目标隔离', () => {
   it('PR 详情在标题下提示版本变化，目标文件上方不显示 PR 摘要', async () => {
     const frozen = 'a'.repeat(40)
     vi.mocked(tasksApi.detail).mockResolvedValue({
-      ...task(), sourceKind: 'PR', pullNumber: 12, pullTitle: '修复重试',
+      ...task(), sourceKind: 'PR', pullNumber: 12, pullTitle: '修复重试', pullUrl: 'https://example/12',
       sourceBranch: 'feature', targetBranch: 'dev', sourceHead: frozen, targetHead: 'b'.repeat(40),
       mergeBase: 'c'.repeat(40), textFiles: 2, changedFiles: 3, selectedFiles: 1,
       coverageNote: '二进制没有审查。', targets: [{ id: 'a', path: 'A.java', state: 'SUCCEEDED' }]
@@ -95,13 +95,16 @@ describe('任务详情的轮询与目标隔离', () => {
     const banner = wrapper.get('.detail-head + .review-detail-notices a-alert-stub[type="warning"]')
     expect(banner.attributes('type')).toBe('warning')
     expect(banner.attributes('message'))
-      .toBe('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
+      .toBe('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本。')
     await wrapper.findAll('button').find(button => button.text() === '输入与配置')!.trigger('click')
     await flushPromises()
     const version = wrapper.get('.input-pairs .input-version')
     const label = 'PR #12 · cccccccccccc（共同祖先）→ aaaaaaaaaaaa（源提交）'
     expect(version.text()).toBe(label)
     expect(version.attributes('title')).toBe(`${label} · 目标提交 ${'b'.repeat(40)}`)
+    const link = wrapper.get('.input-pairs a[href="https://example/12"]')
+    expect(link.text()).toBe('打开 PR')
+    expect(link.attributes('target')).toBe('_blank')
     wrapper.unmount()
   })
 

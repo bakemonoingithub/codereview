@@ -93,7 +93,7 @@ beforeEach(() => {
 })
 
 describe('Agent 任务详情', () => {
-  it('在统计卡片与页签之间显示 PR 版本提示', async () => {
+  it('在统计卡片与页签之间显示 PR 版本提示，并在审查输入保留冻结版本和链接', async () => {
     const frozen = 'a'.repeat(40)
     vi.mocked(tasksApi.detail).mockResolvedValue({
       ...task('SUCCEEDED'), sourceKind: 'PR', pullNumber: 9, pullTitle: '调整重试',
@@ -115,8 +115,17 @@ describe('Agent 任务详情', () => {
     expect(notices.element.nextElementSibling).toBe(tabs.element)
     expect(banner.attributes('type')).toBe('warning')
     expect(banner.attributes('message'))
-      .toBe('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。')
+      .toBe('当前 PR 版本已变化。本页结果仍对应发起时冻结的版本。')
     await tabs.findAll('button').find(button => button.text() === '审查输入')!.trigger('click')
+    const version = wrapper.get('.input-pairs .input-version')
+    const label = 'PR #9 · cccccccccccc（共同祖先）→ aaaaaaaaaaaa（源提交）'
+    expect(version.text()).toBe(label)
+    expect(version.attributes('title')).toBe(`${label} · 目标提交 ${'b'.repeat(40)}`)
+    const link = wrapper.get('.input-pairs a[href="https://example/9"]')
+    expect(link.text()).toBe('打开 PR')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(version.element.parentElement?.textContent).toBe(`${label}打开 PR`)
+    expect(wrapper.text()).not.toContain('二进制没有审查。')
     expect(wrapper.get('.agent-input').find('a-alert-stub[type="warning"]').exists()).toBe(false)
     wrapper.unmount()
   })

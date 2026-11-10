@@ -108,7 +108,16 @@
                       <dt>审查类型</dt>
                       <dd>{{ typeText(task.specialistType) || '未知类型' }}</dd>
                       <dt>分支与源码版本</dt>
-                      <dd><code class="input-version" :title="inputVersion.full">{{ inputVersion.label }}</code></dd>
+                      <dd v-if="task.sourceKind === 'PR'">
+                        <PullSourceVersion
+                          :pull-number="task.pullNumber"
+                          :pull-url="task.pullUrl"
+                          :merge-base="task.mergeBase || inputTarget?.baseSha || task.baseSha"
+                          :source-head="task.sourceHead || inputTarget?.headSha || task.headSha"
+                          :target-head="task.targetHead"
+                        />
+                      </dd>
+                      <dd v-else><code class="input-version" :title="inputVersion.full">{{ inputVersion.label }}</code></dd>
                       <dt>当前审查文件</dt>
                       <dd>
                         <code>{{ inputTarget?.path || '文件路径未记录' }}</code>
@@ -236,6 +245,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import TaskDetailMetadata from '@/components/TaskDetailMetadata.vue'
+import PullSourceVersion from '@/components/PullSourceVersion.vue'
 import ReviewDetailNotices from '@/components/ReviewDetailNotices.vue'
 import SpecialistReviewResultTab from '@/components/SpecialistReviewResultTab.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
@@ -362,13 +372,6 @@ const inputVersion = computed(() => {
   const head = inputTarget.value?.headSha || task.value?.headSha
   const base = inputTarget.value?.baseSha || task.value?.baseSha
   const after = head || '源码版本未记录'
-  if (task.value?.sourceKind === 'PR') {
-    const source = task.value.sourceHead || head || '源提交未记录'
-    const ancestor = task.value.mergeBase || base || '共同祖先未记录'
-    const target = task.value.targetHead || '目标提交未记录'
-    const label = `PR #${task.value.pullNumber || '?'} · ${String(ancestor).slice(0, 12)}（共同祖先）→ ${String(source).slice(0, 12)}（源提交）`
-    return { label, full: `${label} · 目标提交 ${target}` }
-  }
   if (task.value?.sourceKind === 'DIFF') {
     const before = base || '比较基线未记录'
     return {
@@ -463,7 +466,7 @@ async function checkPullVersion(current: TaskView, epoch: number) {
       || (current.mergeBase && detail.mergeBase && current.mergeBase !== detail.mergeBase)
     )
     if (moved) {
-      pullVersionNote.value = '当前 PR 版本已变化。本页结果仍对应发起时冻结的版本，是否重审由你决定。'
+      pullVersionNote.value = '当前 PR 版本已变化。本页结果仍对应发起时冻结的版本。'
     } else if (detail.blocker === 'PR_NOT_OPEN') {
       pullVersionNote.value = '该 PR 已不再处于未合并的 open 状态。历史结果仍可阅读。'
     }
