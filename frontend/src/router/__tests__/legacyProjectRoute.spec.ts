@@ -1,7 +1,12 @@
 // @vitest-environment happy-dom
 // 需要 DOM：导入 @/router 会 createWebHashHistory()（读 location）
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import router from '@/router'
+
+// 保留真实路由和历史记录，避免导航测试加载页面及其依赖。
+vi.mock('@/layouts/BasicLayout.vue', () => ({ default: {} }))
+vi.mock('@/views/ReviewCenter.vue', () => ({ default: {} }))
+vi.mock('@/views/ProjectList.vue', () => ({ default: {} }))
 
 /**
  * 旧项目详情地址不再装载已退出的页面，统一转到现行项目列表。
