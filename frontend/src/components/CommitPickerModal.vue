@@ -31,9 +31,9 @@
       <a-button :disabled="!isFullSha" :loading="lookupLoading" @click="lookup">按 SHA 定位</a-button>
       <span class="muted loaded-count">已加载 {{ commits.length }} 条</span>
     </div>
-    <p class="muted search-note">
-      关键词仅筛选已加载提交的 SHA、说明或作者；完整 40 位 SHA 可直接定位当前仓库中的提交。<template v-if="multiple">点击多条提交即可连续勾选。</template>
-    </p>
+<!--    <p class="muted search-note">-->
+<!--      关键词仅筛选已加载提交的 SHA、说明或作者；完整 40 位 SHA 可直接定位当前仓库中的提交。<template v-if="multiple">点击多条提交即可连续勾选。</template>-->
+<!--    </p>-->
     <p v-if="multiple && maxSelections && draftShas.length >= maxSelections" class="muted search-note">
       已达选择上限；移除已选提交后可以继续选择。
     </p>

@@ -12,12 +12,13 @@ vi.mock('vue-router', () => ({
 }))
 vi.mock('@/api/v2', () => ({
   agentTasksApi: { create: vi.fn(), copyInput: vi.fn() },
+  tasksApi: { detail: vi.fn() },
   projectsApi: { list: vi.fn() },
   modelsApi: { list: vi.fn(), validateAgent: vi.fn() },
   promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() },
   repositoryApi: { branches: vi.fn(), head: vi.fn(), commits: vi.fn(), pulls: vi.fn(), pullChanges: vi.fn() }
 }))
-import { agentTasksApi, projectsApi, modelsApi, promptsApi, repositoryApi } from '@/api/v2'
+import { agentTasksApi, projectsApi, modelsApi, promptsApi, repositoryApi, tasksApi } from '@/api/v2'
 
 const page = (items: unknown[]) => ({ items, nextCursor: null, hasMore: false })
 const state = (wrapper: any) => wrapper.vm.$.setupState as any
@@ -336,6 +337,7 @@ describe('Agent 发起表单', () => {
       projectId: 'p1', modelConfigId: 'm1', requirements: '检查净变化',
       scope: { kind: 'PR', pullNumber: 8 }
     } as any)
+    vi.mocked(tasksApi.detail).mockResolvedValue({ pullUrl: 'https://example.test/pull/8' } as any)
     vi.mocked(repositoryApi.pullChanges).mockResolvedValue({
       number: 8, sourceHead, targetHead: 'f'.repeat(40), mergeBase: '1'.repeat(40),
       blocker: null, textFiles: 2, binaryFiles: 1, unreadableFiles: 1, fileCount: 4, files: []
@@ -344,11 +346,60 @@ describe('Agent 发起表单', () => {
     expect(repositoryApi.pullChanges).toHaveBeenCalledWith('p1', 8)
     expect(s.form.sourceHead).toBe(sourceHead)
     expect(s.pullNotice).toContain('未沿用旧提交')
+    expect(wrapper.get('.pr-link').attributes('href')).toBe('https://example.test/pull/8')
     await s.submit()
     const scope = vi.mocked(agentTasksApi.create).mock.calls[0][0].scope
     expect(scope).toMatchObject({ kind: 'PR', pullNumber: 8, sourceHead, mergeBase: '1'.repeat(40) })
     expect(scope.observedSha).toBeUndefined()
     expect(scope.commits).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('PR 变更读取期间遮罩范围摘要，失败后显示错误并可重新选择', async () => {
+    const wrapper = await start(); const s = state(wrapper)
+    s.form.kind = 'PR'
+    s.form.requirements = '检查净变化'
+    s.pulls.push({ number: 12, title: '更新支付校验', url: 'https://example.test/pull/12' })
+    const changes = {
+      number: 12, sourceHead: 'a'.repeat(40), targetHead: 'b'.repeat(40), mergeBase: 'c'.repeat(40),
+      completeness: 'COMPLETE', blocker: null, fileCount: 2, textFiles: 2, binaryFiles: 0, unreadableFiles: 0, files: []
+    }
+    vi.mocked(repositoryApi.pullChanges).mockResolvedValueOnce(changes)
+    await s.confirmPull(12)
+    expect(s.canSubmit).toBe(true)
+
+    let reject!: (error: Error) => void
+    vi.mocked(repositoryApi.pullChanges).mockReturnValueOnce(new Promise((_, fail) => { reject = fail }))
+    const pending = s.confirmPull(12)
+    await flushPromises()
+    const summary = wrapper.get('.pull-change-summary')
+    expect(summary.attributes('aria-busy')).toBe('true')
+    const spin = summary.element.closest('a-spin-stub')
+    expect(spin?.getAttribute('spinning')).toBe('true')
+    expect(spin?.getAttribute('tip')).toBe('正在读取 PR 变更文件…')
+    expect(s.canSubmit).toBe(false)
+
+    reject(new Error('请求超时'))
+    await pending
+    await flushPromises()
+    expect(wrapper.get('.pull-change-summary').attributes('aria-busy')).toBe('false')
+    expect(spin?.getAttribute('spinning')).toBe('false')
+    expect(wrapper.get('.pull-change-summary a-alert-stub').attributes('message')).toBe('请求超时')
+    expect(s.canSubmit).toBe(false)
+
+    vi.mocked(repositoryApi.pullChanges).mockResolvedValueOnce(changes)
+    await s.confirmPull(12)
+    await flushPromises()
+    const card = wrapper.get('[aria-label="PR 信息"]')
+    expect(card.get('.pr-number').text()).toBe('#12')
+    expect(card.get('.pr-title').text()).toBe('更新支付校验')
+    const link = card.get('.pr-link')
+    expect(link.attributes('href')).toBe('https://example.test/pull/12')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(card.findAll('.version-list dt').map(label => label.text())).toEqual(['源提交', '目标提交', '共同祖先'])
+    expect(card.findAll('.file-list dt').map(label => label.text())).toEqual(['文本文件', '二进制文件', '无法读取的文件'])
+    expect(card.findAll('.file-list .number').map(count => count.text())).toEqual(['2', '0', '0'])
+    expect(s.canSubmit).toBe(true)
     wrapper.unmount()
   })
 

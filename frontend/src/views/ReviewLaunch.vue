@@ -24,7 +24,7 @@
         :message="sourceMovedMessage"
       >
         <template #action>
-          <a-button size="small" @click="refreshMovedSource">刷新版本与范围</a-button>
+          <a-button size="small" :disabled="pullChangesLoading" @click="refreshMovedSource">刷新版本与范围</a-button>
         </template>
       </a-alert>
       <a-alert v-if="formError" type="error" show-icon :message="formError" />
@@ -84,7 +84,7 @@
 
         <template #scope>
           <div class="form-grid">
-            <a-form-item label="分支" required>
+            <a-form-item v-if="form.sourceKind !== 'PR'" label="分支" required>
               <a-select
                 :get-popup-container="getPopupContainer"
                 v-model:value="form.branch"
@@ -97,20 +97,23 @@
             </a-form-item>
             <template v-if="form.sourceKind === 'PR'">
               <a-form-item class="full" label="待合并 PR" required>
-                <a-button :disabled="!form.projectId" :loading="pullsLoading" @click="openPullPicker">
+                <a-button :disabled="!form.projectId || pullChangesLoading" :loading="pullsLoading" @click="openPullPicker">
                   {{ form.pullNumber ? '更换 PR' : '选择 PR' }}
                 </a-button>
-                <div v-if="form.pullNumber" class="selected-commit">
-                  <code>#{{ form.pullNumber }}</code>
-                  <span>{{ form.pullTitle || '已选择 PR' }}</span>
-                </div>
-                <p v-if="form.sourceHead" class="muted small commit-help">
-                  源提交 {{ form.sourceHead.slice(0, 10) }} · 目标提交 {{ form.targetHead.slice(0, 10) }} · 共同祖先 {{ form.mergeBase.slice(0, 10) }}
-                  · 文本 {{ pullTextCount }} / 二进制 {{ pullBinaryCount }} / 无法读取 {{ pullUnreadableCount }}
-                </p>
-                <a-alert v-if="pullError" type="error" show-icon :message="pullError" />
-                <a-alert v-if="pullNotice" type="info" show-icon :message="pullNotice" />
-                <a-alert v-if="pullMoved" type="warning" show-icon message="PR 版本已变化，请重新确认范围后再发起。" />
+                <PullSelectionCard
+                  :pull-number="form.pullNumber"
+                  :title="form.pullTitle"
+                  :pull-url="form.pullUrl"
+                  :source-head="form.sourceHead"
+                  :target-head="form.targetHead"
+                  :merge-base="form.mergeBase"
+                  :text-files="pullTextCount"
+                  :binary-files="pullBinaryCount"
+                  :unreadable-files="pullUnreadableCount"
+                  :error="pullError"
+                  :notice="pullNotice"
+                  :moved="pullMoved"
+                />
               </a-form-item>
             </template>
             <a-form-item v-else-if="form.sourceKind === 'FILES'" label="提交hash" required>
@@ -154,21 +157,25 @@
               </a-alert>
             </a-form-item>
             <a-form-item v-if="form.sourceKind === 'PR'" class="full" label="目标" required>
-              <p class="muted small">只列出净变化中的文本文件。未选、二进制和无法读取的文件不会记为已审查。</p>
-              <div v-if="pullFiles.length" class="target-list">
-                <label v-for="file in pullFiles" :key="file.path" class="target-row">
-                  <input
-                    type="checkbox"
-                    :disabled="file.category !== 'TEXT'"
-                    :checked="form.targets.some((target) => target.path === file.path)"
-                    @change="togglePullFile(file)"
-                  />
-                  <div class="target-main">
-                    <code>{{ file.path }}</code>
-                    <span class="muted small">{{ file.status }}<template v-if="file.category !== 'TEXT'"> · {{ file.reason || file.category }}</template></span>
+              <p class="muted small">只列出净变化中的文本文件。</p>
+              <a-spin v-if="pullChangesLoading || pullFiles.length" :spinning="pullChangesLoading" tip="正在读取 PR 变更文件…">
+                <div class="pull-change-targets" :aria-busy="pullChangesLoading">
+                  <div v-if="pullFiles.length" class="target-list">
+                    <label v-for="file in pullFiles" :key="file.path" class="target-row">
+                      <input
+                        type="checkbox"
+                        :disabled="pullChangesLoading || file.category !== 'TEXT'"
+                        :checked="form.targets.some((target) => target.path === file.path)"
+                        @change="togglePullFile(file)"
+                      />
+                      <div class="target-main">
+                        <code>{{ file.path }}</code>
+                        <span class="muted small">{{ file.status }}<template v-if="file.category !== 'TEXT'"> · {{ file.reason || file.category }}</template></span>
+                      </div>
+                    </label>
                   </div>
-                </label>
-              </div>
+                </div>
+              </a-spin>
             </a-form-item>
             <a-form-item v-else class="full" label="目标" required>
               <div class="target-actions">
@@ -177,9 +184,9 @@
                 </a-button>
                 <span class="muted">已选 {{ form.targets.length }} 个文件</span>
               </div>
-              <p v-if="!scopeReady" class="muted small">
-                请先选择项目，并等待固定版本或提交读取完成。
-              </p>
+<!--              <p v-if="!scopeReady" class="muted small">-->
+<!--                请先选择项目，并等待固定版本或提交读取完成。-->
+<!--              </p>-->
               <div v-if="form.targets.length" class="target-list">
                 <div v-for="(target, index) in form.targets" :key="target.path" class="target-row">
                   <div class="target-main">
@@ -327,6 +334,7 @@ import PullRequestPickerModal from '@/components/PullRequestPickerModal.vue'
 import ScopePickerModal from '@/components/ScopePickerModal.vue'
 import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
 import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
+import PullSelectionCard from '@/components/PullSelectionCard.vue'
 import {
   modelsApi,
   projectsApi,
@@ -396,6 +404,8 @@ const pullsLoading = ref(false)
 const pullsLoadingMore = ref(false)
 const pullsError = ref('')
 let pullsEpoch = 0
+let pullChangesEpoch = 0
+const pullChangesLoading = ref(false)
 const pullFiles = ref<PullRequestFileChange[]>([])
 const pullTextCount = ref(0)
 const pullBinaryCount = ref(0)
@@ -424,6 +434,7 @@ const form = reactive({
   baseSha: '',
   pullNumber: null as number | null,
   pullTitle: '',
+  pullUrl: '',
   sourceHead: '',
   targetHead: '',
   mergeBase: '',
@@ -457,7 +468,8 @@ const scopeReady = computed(() =>
   !!form.projectId && !restoring.value && (form.sourceKind === 'FILES'
     ? !!form.observedSha && !headLoading.value
     : form.sourceKind === 'PR'
-      ? !!form.pullNumber && !!form.sourceHead && !!form.mergeBase && !pullMoved.value
+      ? !!form.pullNumber && !!form.sourceHead && !!form.mergeBase && !pullMoved.value &&
+        !pullChangesLoading.value && !pullError.value
       : !!form.commitSha && commitDetail.value?.sha === form.commitSha)
 )
 const canSubmit = computed(
@@ -500,6 +512,7 @@ onBeforeUnmount(() => {
   detailEpoch++
   promptEpoch++
   pullsEpoch++
+  pullChangesEpoch++
 })
 
 watch(commitPickerOpen, (open, wasOpen) => {
@@ -568,12 +581,22 @@ async function applyBrowserPrefill(): Promise<boolean> {
 }
 
 // 来源身份一变化立即失效；异步监听器随后读取新身份。
-watch(() => [form.projectId, form.branch, form.sourceKind], () => {
+watch(() => [form.projectId, form.branch, form.sourceKind], ([projectId, , kind], [previousProjectId, , previousKind]) => {
   headEpoch++
   commitsEpoch++
   clearCommitLookup()
   detailEpoch++
   if (restoring.value) return
+  if (projectId !== previousProjectId || kind !== previousKind) {
+    pullChangesEpoch++
+    pullChangesLoading.value = false
+    if (kind === 'PR') {
+      branchEpoch++
+      branchesLoading.value = false
+      branches.value = []
+      formError.value = ''
+    }
+  }
   form.observedSha = ''
   lastObservedSha = ''
   form.commitSha = ''
@@ -602,6 +625,10 @@ watch(
     if (!projectId) return
     const project = projects.value.find((item) => item.id === projectId)
     if (!project) return
+    if (form.sourceKind === 'PR') {
+      form.branch = ''
+      return
+    }
     form.targets = []
     form.commitSha = ''
     form.baseSha = ''
@@ -640,13 +667,20 @@ watch(
     form.commitSha = ''
     form.baseSha = ''
     form.pullNumber = null
+    form.pullUrl = ''
     form.sourceHead = ''
     form.targetHead = ''
     form.mergeBase = ''
     pullFiles.value = []
     pullMoved.value = false
+    pullError.value = ''
+    pullNotice.value = ''
     commitDetail.value = null
-    if (kind === 'FILES') {
+    if (kind === 'PR') return
+    if (!branches.value.length && form.projectId && !branchesLoading.value) {
+      const project = projects.value.find((item) => item.id === form.projectId)
+      await syncBranches(form.branch || project?.currentBranch || '')
+    } else if (kind === 'FILES') {
       await resolveHead()
     } else if (kind === 'DIFF') {
       await loadCommits()
@@ -716,7 +750,7 @@ async function loadCopy() {
     form.promptVersionId = copy.promptVersionId || ''
     form.smartSplit = copy.smartSplit
     await loadPromptSelection(copy.promptId || '', copy.promptVersionId)
-    await refreshBranchOptions()
+    if (copy.sourceKind !== 'PR') await refreshBranchOptions()
     if (copy.sourceKind === 'FILES' && copy.reobserveHead) {
       await resolveHead()
       if (original.headSha && form.observedSha && form.observedSha !== original.headSha) {
@@ -727,8 +761,8 @@ async function loadCopy() {
       await loadCommitDetail(copy.commitSha || '')
     } else if (copy.sourceKind === 'PR' && copy.pullNumber) {
       const previousTargets = form.targets.map((target) => ({ ...target }))
-      await confirmPull(Number(copy.pullNumber))
-      if (!form.pullNumber) return
+      if (!(await confirmPull(Number(copy.pullNumber)))) return
+      form.pullUrl ||= original.pullUrl || ''
       const kept = previousTargets.filter((target) => pullFiles.value.some(
         (file) => file.path === target.path && file.category === 'TEXT'))
       if (kept.length) form.targets = kept
@@ -1054,6 +1088,7 @@ function resetPullList() {
 function clearPull() {
   form.pullNumber = null
   form.pullTitle = ''
+  form.pullUrl = ''
   form.sourceHead = ''
   form.targetHead = ''
   form.mergeBase = ''
@@ -1103,32 +1138,35 @@ async function openPullPicker() {
 async function confirmPull(number: number, acceptCurrent = false): Promise<boolean> {
   if (!form.projectId) return false
   const projectId = form.projectId
-  const epoch = pullsEpoch
+  const epoch = ++pullChangesEpoch
+  pullChangesLoading.value = true
   pullError.value = ''
   pullNotice.value = ''
   pullMoved.value = false
+  const samePull = form.pullNumber === number
   const previous = form.sourceHead
   try {
     const changes = await repositoryApi.pullChanges(projectId, number)
-    if (epoch !== pullsEpoch || projectId !== form.projectId) return false
-    if (changes.blocker && changes.blocker !== 'TRUNCATED') {
-      pullError.value = changes.blocker === 'NO_MERGE_BASE'
-        ? '这个 PR 没有共同祖先，不能审查。'
-        : changes.blocker === 'CROSS_REPOSITORY'
-          ? '首版不接受其他仓库或 fork 的 PR。'
-          : '这个 PR 当前不能审查。'
-      if (!acceptCurrent) clearPull()
+    if (epoch !== pullChangesEpoch) return false
+    if (changes.blocker) {
+      if (!acceptCurrent) {
+        clearPull()
+        form.targets = []
+      }
+      pullError.value = changes.blocker === 'TRUNCATED'
+        ? '变更文件超过上限，不能把部分清单当作完整 PR。'
+        : changes.blocker === 'NO_MERGE_BASE'
+          ? '这个 PR 没有共同祖先，不能审查。'
+          : changes.blocker === 'CROSS_REPOSITORY'
+            ? '首版不接受其他仓库或 fork 的 PR。'
+            : '这个 PR 当前不能审查。'
       return false
     }
-    if (changes.blocker === 'TRUNCATED') {
-      pullError.value = '变更文件超过上限，不能把部分清单当作完整 PR。'
-      if (!acceptCurrent) clearPull()
-      return false
-    }
-    if (!acceptCurrent && previous && previous !== changes.sourceHead) pullMoved.value = true
+    if (!acceptCurrent && samePull && previous && previous !== changes.sourceHead) pullMoved.value = true
     const item = pulls.value.find((pull) => pull.number === number)
     form.pullNumber = number
-    form.pullTitle = item?.title || ''
+    form.pullTitle = item?.title || (samePull ? form.pullTitle : '')
+    form.pullUrl = item?.url || (samePull ? form.pullUrl : '')
     form.sourceHead = changes.sourceHead || ''
     form.targetHead = changes.targetHead || ''
     form.mergeBase = changes.mergeBase || ''
@@ -1141,8 +1179,10 @@ async function confirmPull(number: number, acceptCurrent = false): Promise<boole
     }))
     return true
   } catch (failure) {
-    pullError.value = (failure as Error).message || 'PR 净变化读取失败'
+    if (epoch === pullChangesEpoch) pullError.value = (failure as Error).message || 'PR 净变化读取失败'
     return false
+  } finally {
+    if (epoch === pullChangesEpoch) pullChangesLoading.value = false
   }
 }
 
@@ -1285,6 +1325,9 @@ function idempotencyKey(): string {
 }
 .commit-help {
   margin: 7px 0 0;
+}
+.pull-change-targets[aria-busy='true'] {
+  min-height: 96px;
 }
 .target-list {
   margin-top: 10px;

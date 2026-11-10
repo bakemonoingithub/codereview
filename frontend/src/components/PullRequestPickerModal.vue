@@ -9,7 +9,7 @@
     @ok="confirm"
     @cancel="close"
   >
-    <p class="muted">从当前项目仓库选择未合并的 PR。已加载列表可按标题或编号筛选。</p>
+<!--    <p class="muted">从当前项目仓库选择未合并的 PR。已加载列表可按标题或编号筛选。</p>-->
     <a-input
       v-model:value="query"
       allow-clear
@@ -99,7 +99,19 @@ function close() {
 .list { max-height: 360px; overflow: auto; margin-top: 12px; border: 1px solid #e6ebf2; border-radius: 8px; }
 .row { display: flex; width: 100%; gap: 12px; align-items: center; text-align: left; padding: 10px 12px; border: 0; border-bottom: 1px solid #eef2f6; background: white; cursor: pointer; }
 .row.active { background: #eef4ff; }
-.number { color: #2458c5; font-family: ui-monospace, monospace; }
+.number {
+  flex: 0 0 auto;
+  min-width: 44px;
+  padding: 2px 7px;
+  border: 1px solid #c6d7f8;
+  border-radius: 8px;
+  background: #f4f7ff;
+  color: #2458c5;
+  font-family: SimHei, "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
 .main { flex: 1; min-width: 0; }
 .main strong, .main small { display: block; }
 .main small, .side { color: #667085; font-size: 12px; }

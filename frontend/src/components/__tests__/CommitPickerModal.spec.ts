@@ -79,8 +79,6 @@ describe('CommitPickerModal', () => {
     const wrapper = mountPicker({ commits: [alice, bob], hasMore: true })
     const input = wrapper.find('input')
 
-    expect(wrapper.text()).toContain('关键词仅筛选已加载提交')
-    expect(wrapper.text()).toContain('完整 40 位 SHA 可直接定位')
     expect(wrapper.findAll('.commit-row')).toHaveLength(2)
 
     await input.setValue('ALICE')

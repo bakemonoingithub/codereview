@@ -533,6 +533,7 @@ describe('发起弹窗骨架', () => {
     ]) as any)
     const w = await start(); const s = state(w)
     s.form.sourceKind = 'PR'
+    const branchCalls = vi.mocked(repositoryApi.branches).mock.calls.length
     s.pulls.splice(0, s.pulls.length, pullItem(12, '甲仓库'))
     s.form.pullNumber = 12
     s.form.pullTitle = '甲仓库'
@@ -551,10 +552,15 @@ describe('发起弹窗骨架', () => {
     await flushPromises()
     expect(s.form.pullNumber).toBeNull()
     expect(s.form.sourceHead).toBe('')
+    expect(vi.mocked(repositoryApi.branches)).toHaveBeenCalledTimes(branchCalls)
     expect(s.pulls.map((item: { title: string }) => item.title)).not.toContain('甲仓库迟到')
     await s.openPullPicker()
     expect(repositoryApi.pulls).toHaveBeenCalledWith('p2', 1, 30, 'open')
     expect(s.pulls.map((item: { number: number }) => item.number)).toEqual([7])
+    s.form.sourceKind = 'FILES'
+    await flushPromises()
+    expect(vi.mocked(repositoryApi.branches)).toHaveBeenLastCalledWith('p2')
+    expect(w.html()).toContain('placeholder="选择分支"')
     w.unmount()
   })
 
@@ -584,6 +590,48 @@ describe('发起弹窗骨架', () => {
     expect(s.pullFiles).toHaveLength(1)
     expect(s.pullNotice).toContain('重新确认目标文件')
     expect(s.sourceMoved).toBe(false)
+    w.unmount()
+  })
+
+  it('读取 PR 净变化时遮罩目标区域，失败后退出加载并可重新选择', async () => {
+    const w = await start(); const s = state(w)
+    s.form.sourceKind = 'PR'
+    await nextTick()
+    expect(w.html()).not.toContain('placeholder="选择分支"')
+    s.pulls.push({ ...pullItem(12, '更新支付校验'), url: 'http://gitea.example.test/team/repo/pulls/12' })
+    const pending = deferred<any>()
+    vi.mocked(repositoryApi.pullChanges).mockReturnValueOnce(pending.promise)
+    const failed = s.confirmPull(12)
+    await nextTick()
+    expect(w.get('.pull-change-targets').attributes('aria-busy')).toBe('true')
+    expect(s.canSubmit).toBe(false)
+
+    pending.reject(new Error('请求超时'))
+    await failed
+    await nextTick()
+    expect(w.find('.pull-change-targets').exists()).toBe(false)
+    expect(s.pullError).toBe('请求超时')
+
+    vi.mocked(repositoryApi.pullChanges).mockResolvedValueOnce({
+      number: 12, sourceHead: sha('a'), targetHead: sha('b'), mergeBase: sha('c'),
+      completeness: 'COMPLETE', blocker: null, fileCount: 1, textFiles: 1, binaryFiles: 0, unreadableFiles: 0,
+      files: [{ path: 'src/A.java', oldPath: null, status: 'modified', category: 'TEXT', reason: null }]
+    })
+    await s.confirmPull(12)
+    await nextTick()
+    const targets = w.get('.pull-change-targets')
+    expect(targets.attributes('aria-busy')).toBe('false')
+    expect(targets.text()).toContain('src/A.java')
+    const card = w.get('[aria-label="PR 信息"]')
+    expect(card.get('.pr-number').text()).toBe('#12')
+    expect(card.get('.pr-title').text()).toBe('更新支付校验')
+    const link = card.get('.pr-link')
+    expect(link.attributes('href')).toBe('http://gitea.example.test/team/repo/pulls/12')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(card.findAll('.version-list dt').map(label => label.text())).toEqual(['源提交', '目标提交', '共同祖先'])
+    expect(card.findAll('.version-list code').map(sha => sha.attributes('title'))).toEqual([sha('a'), sha('b'), sha('c')])
+    expect(card.findAll('.file-list .number').map(count => count.text())).toEqual(['1', '0', '0'])
+    expect(s.pullError).toBe('')
     w.unmount()
   })
 
@@ -628,7 +676,9 @@ describe('发起弹窗骨架', () => {
       ],
       modelConfigId: 'm1', smartSplit: false, reobserveHead: true, pullNumber: 12
     } as any)
-    vi.mocked(tasksApi.detail).mockResolvedValue({ sourceHead: oldHead, headSha: oldHead } as any)
+    vi.mocked(tasksApi.detail).mockResolvedValue({
+      sourceHead: oldHead, headSha: oldHead, pullUrl: 'https://example.test/pull/12'
+    } as any)
     vi.mocked(repositoryApi.pullChanges).mockResolvedValue({
       number: 12, sourceHead, targetHead: 'c'.repeat(40), mergeBase: 'd'.repeat(40),
       completeness: 'COMPLETE', blocker: null, fileCount: 2, textFiles: 1, binaryFiles: 1, unreadableFiles: 0,
@@ -642,6 +692,7 @@ describe('发起弹窗骨架', () => {
     expect(s.form.sourceHead).toBe(sourceHead)
     expect(s.form.targets).toEqual([{ path: 'src/A.java', oldPath: null, note: '保留' }])
     expect(s.pullNotice).toContain('未沿用旧提交')
+    expect(w.get('.pr-link').attributes('href')).toBe('https://example.test/pull/12')
     await s.submit()
     const body = vi.mocked(tasksApi.create).mock.calls[0][0]
     expect(body.source).toEqual({
