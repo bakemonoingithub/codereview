@@ -706,7 +706,8 @@ function statusText(status: string): string {
 .code-head {
   position: sticky;
   top: 0;
-  z-index: 1;
+  left: 0;
+  z-index: 3;
   padding: 12px 20px;
   background: #fff;
   border-bottom: 1px solid var(--line);
