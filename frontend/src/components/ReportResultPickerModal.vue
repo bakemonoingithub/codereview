@@ -18,7 +18,6 @@
       <a-input v-model:value="query" allow-clear placeholder="筛选已加载结果的任务、项目、路径或版本" />
       <span class="muted loaded-count">已加载 {{ candidates.length }} 个</span>
     </div>
-    <p class="muted search-note">关键词仅筛选已加载结果；项目和类型筛选覆盖全部候选。可跨筛选条件保留选择。</p>
 
     <div v-if="draft.size" class="selected-chips" aria-label="已选结果">
       <button v-for="item in draftList" :key="item.resultId" type="button" class="selected-chip"
@@ -207,10 +206,10 @@ function onScroll(event: Event) {
 .search-row :deep(.ant-input-affix-wrapper) { flex: 1; }
 .loaded-count { flex-shrink: 0; }
 .search-note { margin: 8px 0 12px; font-size: 12px; }
-.selected-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 78px; overflow: auto; margin-bottom: 12px; }
+.selected-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 78px; overflow: auto; margin: 12px 0; }
 .selected-chip { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid #c7ddff; border-radius: 6px; background: #eff6ff; color: #245bb3; padding: 3px 8px; cursor: pointer; }
 .load-error { margin-bottom: 12px; }
-.result-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+.result-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; margin-top: 12px; }
 .result-row { height: 100px; padding: 10px 14px; border-bottom: 1px solid #edf1f6; }
 .result-row:hover { background: #f7faff; }
 .result-row.selected { background: var(--soft, #eff6ff); box-shadow: inset 3px 0 0 var(--blue, #2563eb); }

@@ -1,23 +1,22 @@
 <template>
   <a-modal
-    :open="open" :footer="null" :closable="false" :keyboard="!codeOpen" :aria-label="`来源 S${ordinal} · 报告快照`"
+    :open="open" :footer="null" :closable="false" :keyboard="!codeOpen" :aria-label="`${sourceTitle} · ${readerState}`"
     width="min(1200px, calc(100vw - 40px))" :style="{ top: '4vh' }"
     wrap-class-name="report-source-modal" destroy-on-close @cancel="close"
   >
     <div class="source-reader">
       <header class="source-header">
         <div class="source-heading">
-          <h2>来源 S{{ ordinal }}</h2><span class="readonly-badge">报告快照 · 只读</span>
-          <span class="spacer" /><button type="button" class="close-button" aria-label="关闭来源" @click="close">×</button>
+          <h1>{{ sourceTitle }}</h1><span class="readonly-badge">{{ readerState }}</span>
         </div>
-        <p v-if="source" class="source-subtitle">
-          {{ source.snapshot.project?.name || source.snapshot.project?.id || '项目未记录' }} · {{ kindText(source.snapshot.kind) }}
+        <button type="button" class="close-button" aria-label="关闭弹窗" @click="close">×</button>
+        <p v-if="candidate || source" class="source-subtitle">
+          {{ projectName }}
           <template v-if="targetName"> · {{ targetName }}</template>
         </p>
-        <div class="notice"><span aria-hidden="true">ⓘ</span> 结果、反馈和材料以报告生成时保存的内容为准。</div>
       </header>
 
-      <div v-if="source && !error" class="reader-tabs" role="tablist" aria-label="冻结来源内容">
+      <div v-if="(source || previewResult) && !error" class="reader-tabs" role="tablist" :aria-label="candidate ? '审查结果预览' : '冻结来源内容'">
         <button v-for="tab in tabs" :id="`${readerId}-${tab.key}-tab`" :key="tab.key" type="button" role="tab"
           :class="{ active: activeTab === tab.key }" :aria-selected="activeTab === tab.key"
           :aria-controls="`${readerId}-${tab.key}-panel`" :tabindex="activeTab === tab.key ? 0 : -1"
@@ -29,53 +28,67 @@
           <a-alert v-if="error" type="error" show-icon :message="error">
             <template #action><a-button size="small" @click="load">重试</a-button></template>
           </a-alert>
-          <template v-else-if="source">
+          <template v-else-if="source || previewResult">
             <div v-if="activeTab === 'result'" :id="`${readerId}-result-panel`" role="tabpanel" :aria-labelledby="`${readerId}-result-tab`" tabindex="0">
-              <p class="feedback-summary">
-                当时反馈 · 准确 {{ frozenFeedback.accurate }} · 不准确 {{ frozenFeedback.inaccurate }} ·
-                无法判断 {{ frozenFeedback.unknown }} · 未反馈 {{ frozenFeedback.unassessed }}
-              </p>
               <AgentResultPanel v-if="agentBody" :body="agentBody" :show-download="false" @open-code="openCodeReference" />
-              <SpecialistReviewResultTab v-else-if="specialistResult" :result="specialistResult" :task-id="originalTaskId" read-only @open-code="openCodeReference">
-                <template #feedback="{ ordinal: itemOrdinal }">
+              <SpecialistReviewResultTab v-else-if="specialistResult" v-model:finding-index="findingIndex"
+                :result="specialistResult" :task-id="originalTaskId" read-only report-reader @open-code="openCodeReference">
+                <template v-if="source" #feedback="{ ordinal: itemOrdinal }">
                   <FrozenFeedbackView v-if="source.snapshot.kind === 'ISSUE' || usesItemFeedback" :feedback="itemFeedback(itemOrdinal)" />
                 </template>
+                <template v-if="source" #result-feedback>
+                  <section v-if="source.snapshot.kind !== 'ISSUE' && !usesItemFeedback" class="legacy-feedback">
+                    <FrozenFeedbackView title="当时整份结果反馈" :feedback="source.snapshot.resultFeedback" />
+                    <p class="legacy-note">当时保存的是整份评价，未分配给各条结论。</p>
+                  </section>
+                </template>
               </SpecialistReviewResultTab>
-              <a-empty v-else description="冻结快照中没有可浏览的结果" />
-              <section v-if="source.snapshot.kind !== 'ISSUE' && !usesItemFeedback" class="legacy-feedback">
+              <a-empty v-else :description="candidate ? '没有可浏览的审查结果' : '冻结快照中没有可浏览的结果'" />
+              <section v-if="source && !specialistResult && source.snapshot.kind !== 'ISSUE' && !usesItemFeedback" class="legacy-feedback">
                 <FrozenFeedbackView title="当时整份结果反馈" :feedback="source.snapshot.resultFeedback" />
                 <p v-if="source.snapshot.kind !== 'AGENT'" class="legacy-note">当时保存的是整份评价，未分配给各条结论。</p>
               </section>
+              <section v-if="!specialistResult && materialGaps.length" class="result-gaps" aria-label="材料缺口">
+                <h3>材料缺口 <span class="muted small">· {{ materialGaps.length }} 项</span></h3>
+                <ul class="material-gaps"><li v-for="(gap, index) in materialGaps" :key="index">{{ gap.code }}：{{ gap.subject }}，{{ gap.detail }}</li></ul>
+              </section>
+              <p v-if="source" class="feedback-summary">
+                当时反馈汇总 · 准确 {{ frozenFeedback.accurate }} · 不准确 {{ frozenFeedback.inaccurate }} ·
+                无法判断 {{ frozenFeedback.unknown }} · 未反馈 {{ frozenFeedback.unassessed }}
+              </p>
             </div>
 
             <div v-else :id="`${readerId}-input-panel`" class="review-input" role="tabpanel" :aria-labelledby="`${readerId}-input-tab`" tabindex="0">
               <section class="input-section" aria-label="来源范围">
                 <h3>来源范围</h3>
                 <dl class="input-pairs" aria-label="来源源码版本">
-                  <dt>审查项目</dt><dd>{{ source.snapshot.project?.name || source.snapshot.project?.id || '项目未记录' }}</dd>
-                  <dt>审查类型</dt><dd>{{ kindText(source.snapshot.kind) }}</dd>
+                  <dt>审查项目</dt><dd>{{ projectName }}</dd>
+                  <dt>审查类型</dt><dd>{{ kindText(candidate?.kind || source?.snapshot.kind) }}</dd>
                   <template v-if="sourceVersion.branch"><dt>分支</dt><dd><code>{{ sourceVersion.branch }}</code></dd></template>
-                  <template v-if="sourceVersion.pullRequest">
-                    <dt>PR</dt><dd><code>#{{ sourceVersion.pullNumber || '未记录' }}</code></dd>
-                    <dt>共同祖先</dt><dd><code>{{ sourceVersion.baseSha || '未记录' }}</code></dd>
-                    <dt>源提交</dt><dd><code>{{ sourceVersion.sourceHead || sourceVersion.headSha || '未记录' }}</code></dd>
-                    <dt>目标提交</dt><dd><code>{{ sourceVersion.targetHead || '未记录' }}</code></dd>
+                  <template v-if="sourceVersion.pullRequest && (!candidate || sourceVersion.pullNumber != null)">
+                    <dt>源码版本</dt>
+                    <dd>
+                      <PullSourceVersion :pull-number="sourceVersion.pullNumber" :pull-url="sourceVersion.pullUrl"
+                        :merge-base="sourceVersion.mergeBase" :source-head="sourceVersion.sourceHead || sourceVersion.headSha"
+                        :target-head="sourceVersion.targetHead" />
+                    </dd>
                   </template>
                   <template v-else-if="sourceVersion.baseSha">
-                    <dt>修改前版本</dt><dd><code>{{ sourceVersion.baseSha }}</code></dd>
-                    <dt>修改后版本</dt><dd><code>{{ sourceVersion.headSha || '版本未记录' }}</code></dd>
+                    <dt>{{ sourceVersion.pullRequest ? '共同祖先' : '修改前版本' }}</dt><dd><code>{{ sourceVersion.baseSha }}</code></dd>
+                    <dt>{{ sourceVersion.pullRequest ? '源提交' : '修改后版本' }}</dt><dd><code>{{ sourceVersion.headSha || '版本未记录' }}</code></dd>
                   </template>
                   <template v-else><dt>源码版本</dt><dd><code>{{ sourceVersion.headSha || '版本未记录' }}</code></dd></template>
-                  <template v-if="source.snapshot.target?.path"><dt>当前审查文件</dt><dd><code>{{ source.snapshot.target.path }}</code></dd></template>
-                  <template v-if="source.snapshot.target?.oldPath && source.snapshot.target.oldPath !== source.snapshot.target.path">
-                    <dt>原文件路径</dt><dd><code>{{ source.snapshot.target.oldPath }}</code></dd>
+                  <template v-if="targetPath"><dt>当前审查文件</dt><dd><code>{{ targetPath }}</code></dd></template>
+                  <template v-if="oldTargetPath && oldTargetPath !== targetPath">
+                    <dt>原文件路径</dt><dd><code>{{ oldTargetPath }}</code></dd>
                   </template>
                 </dl>
-                <p class="input-note">此快照未保存完整的模型、通用规则和本次要求。<template v-if="originalDetailHref">可打开原审查详情查看任务配置。</template></p>
+                <p v-if="source" class="input-note">此快照未保存完整的模型、通用规则和本次要求。<template v-if="originalDetailHref">可打开原审查详情查看任务配置。</template></p>
+                <p v-else-if="originalDetailHref" class="input-note">可打开原审查详情查看完整任务配置。</p>
               </section>
 
-              <section class="input-section" aria-label="代码材料">
-                <h3>代码材料 · {{ materials.length }} 份</h3>
+              <section v-if="source" class="input-section" aria-label="代码材料">
+                <h3>冻结代码材料 <span class="muted small">· {{ materials.length }} 份</span></h3>
                 <p class="muted small">以下是报告保存的代码材料；材料范围不代表完整任务输入。</p>
                 <ul v-if="materialGaps.length" class="material-gaps"><li v-for="(gap, index) in materialGaps" :key="index">{{ gap.code }}：{{ gap.subject }}，{{ gap.detail }}</li></ul>
                 <div v-for="(material, index) in materials" :key="material.metadata.id" class="material-row">
@@ -91,14 +104,15 @@
                 <a-empty v-if="!materials.length" description="此来源没有保存代码材料" />
               </section>
 
-              <section class="input-section" aria-label="冻结记录">
-                <h3>冻结记录</h3>
+              <section class="input-section" :aria-label="candidate ? '结果记录' : '冻结记录'">
+                <h3>{{ candidate ? '结果记录' : '冻结记录' }}</h3>
                 <dl class="input-pairs">
-                  <dt>来源编号</dt><dd>S{{ ordinal }}</dd>
+                  <template v-if="source"><dt>来源编号</dt><dd>S{{ ordinal }}</dd></template>
+                  <template v-if="candidate?.taskName"><dt>审查任务</dt><dd>{{ candidate.taskName }}</dd></template>
                   <dt>任务 ID</dt><dd><code>{{ originalTaskId || '未记录' }}</code></dd>
-                  <dt>结果 ID</dt><dd><code>{{ source.resultId || source.snapshot.resultId || '未记录' }}</code></dd>
-                  <dt>结果发布时间</dt><dd>{{ formatTime(source.snapshot.resultCreatedAt) }}</dd>
-                  <dt>冻结时间</dt><dd>{{ formatTime(source.snapshot.frozenAt) }}</dd>
+                  <dt>结果 ID</dt><dd><code>{{ candidate?.resultId || source?.resultId || source?.snapshot.resultId || '未记录' }}</code></dd>
+                  <dt>结果发布时间</dt><dd>{{ formatTime(candidate?.resultCreatedAt || source?.snapshot.resultCreatedAt) }}</dd>
+                  <template v-if="source"><dt>冻结时间</dt><dd>{{ formatTime(source.snapshot.frozenAt) }}</dd></template>
                 </dl>
               </section>
             </div>
@@ -108,17 +122,17 @@
 
       <footer class="reader-footer">
         <a v-if="originalDetailHref" :href="originalDetailHref" target="_blank" rel="noopener noreferrer" class="original-detail">打开原审查详情 ↗</a>
-<!--        <span v-if="originalDetailHref" class="muted small footer-note">查看完整任务配置、实际调用及当前反馈</span>-->
         <span v-if="source?.originalTaskAvailable === false" class="muted small">原审查已删除或不可用</span>
         <span class="spacer" /><a-button @click="close">关闭</a-button>
       </footer>
     </div>
 
     <CodeReferenceModal
-      v-if="source && codePayload" v-model:open="codeOpen" :task-id="originalTaskId" :project-id="source.snapshot.project?.id || ''"
+      v-if="(source || previewResult) && codePayload" v-model:open="codeOpen" :task-id="originalTaskId" :project-id="projectId"
       :scope="codePayload.scope" :path="codePayload.path" :sha="codePayload.sha || ''" :side="codePayload.side"
       :references="codePayload.references" :active-start="codePayload.startLine" :active-end="codePayload.endLine"
-      :evidence-count="codePayload.evidenceCount || 0" :frozen-materials="materials"
+      :evidence-count="codePayload.evidenceCount || 0" :frozen-materials="source ? materials : undefined"
+      :initial-mode="codePayload.sha ? 'full' : 'saved'"
     />
   </a-modal>
 </template>
@@ -126,44 +140,63 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { reportsApi, type AgentResultView, type MaterialDetail, type ReportSourceSnapshot, type ResultView } from '@/api/v2'
+import { agentTasksApi, reportsApi, tasksApi, type AgentResultView, type MaterialDetail, type ReportCandidate, type ReportSourceSnapshot, type ResultView, type TaskView } from '@/api/v2'
 import AgentResultPanel from '@/components/AgentResultPanel.vue'
 import SpecialistReviewResultTab from '@/components/SpecialistReviewResultTab.vue'
 import FrozenFeedbackView from '@/components/FrozenFeedbackView.vue'
 import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
+import PullSourceVersion from '@/components/PullSourceVersion.vue'
 import { buildCodeReferencePayload, type CodeReference, type CodeReferencePayload } from '@/utils/codeReferences'
 
-const props = defineProps<{ open: boolean; reportId: string; ordinal: number }>()
+const props = defineProps<{ open: boolean; reportId?: string; ordinal?: number; candidate?: ReportCandidate | null }>()
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const source = ref<ReportSourceSnapshot | null>(null)
+const previewResult = ref<ResultView | AgentResultView | null>(null)
+const previewTask = ref<TaskView | null>(null)
+let previewTaskRequested = false
 const tabs = [{ key: 'result', label: '审查结果' }, { key: 'input', label: '输入与配置' }] as const
 type ReaderTab = typeof tabs[number]['key']
 const activeTab = ref<ReaderTab>('result')
+const findingIndex = ref(0)
 const scroller = ref<HTMLElement | null>(null)
 const codeOpen = ref(false)
 const codePayload = ref<CodeReferencePayload | null>(null)
 let loadEpoch = 0
 onBeforeUnmount(() => { loadEpoch++ })
 
-const readerId = computed(() => `source-${props.reportId}-${props.ordinal}`)
-const originalTaskId = computed<string>(() => source.value?.snapshot?.taskId || source.value?.snapshot?.task?.id || '')
+const readerId = computed(() => props.candidate ? `preview-${props.candidate.resultId}` : `source-${props.reportId}-${props.ordinal}`)
+const sourceTitle = computed(() => {
+  if (props.candidate) return `预览 · ${kindText(props.candidate.kind)}`
+  return source.value ? `S${props.ordinal} · ${kindText(source.value.snapshot.kind)}` : `来源 S${props.ordinal}`
+})
+const readerState = computed(() => props.candidate ? '当前结果 · 只读' : '报告快照 · 只读')
+const projectId = computed<string>(() => props.candidate?.projectId || source.value?.snapshot.project?.id || '')
+const projectName = computed<string>(() => props.candidate?.projectName || source.value?.snapshot.project?.name || projectId.value || '项目未记录')
+const originalTaskId = computed<string>(() => props.candidate?.taskId || source.value?.snapshot?.taskId || source.value?.snapshot?.task?.id || '')
+const targetId = computed<string | null>(() => props.candidate?.targetId || source.value?.snapshot?.targetId || null)
 const originalDetailHref = computed(() => originalTaskId.value && source.value?.originalTaskAvailable !== false ? router.resolve({
   name: 'review-detail', params: { id: originalTaskId.value },
-  query: source.value?.snapshot?.targetId ? { targetId: source.value.snapshot.targetId } : {}
+  query: targetId.value ? { targetId: targetId.value } : {}
 }).href : null)
-const targetName = computed(() => source.value?.snapshot?.target?.path?.split(/[\\/]/).pop() || '')
+const targetPath = computed<string | null>(() => props.candidate?.path || source.value?.snapshot?.target?.path || null)
+const oldTargetPath = computed<string | null>(() => props.candidate?.oldPath || source.value?.snapshot?.target?.oldPath || null)
+const targetName = computed(() => targetPath.value?.split(/[\\/]/).pop() || '')
 const sourceVersion = computed(() => {
   const snapshot = source.value?.snapshot
-  const task = snapshot?.task
+  const candidate = props.candidate
+  const task = snapshot?.task || previewTask.value
+  const baseSha = candidate?.baseSha || snapshot?.target?.baseSha || task?.baseSha
   return {
-    branch: task?.branch,
-    baseSha: snapshot?.target?.baseSha || task?.baseSha,
-    headSha: snapshot?.target?.headSha || task?.commitSha,
-    pullRequest: task?.sourceKind === 'PR',
+    branch: candidate?.branch || task?.branch,
+    baseSha,
+    headSha: candidate?.headSha || snapshot?.target?.headSha || snapshot?.task?.commitSha || previewTask.value?.headSha,
+    pullRequest: (candidate?.sourceKind || task?.sourceKind) === 'PR',
     pullNumber: task?.pullNumber,
+    pullUrl: typeof task?.pullUrl === 'string' && /^https?:\/\//i.test(task.pullUrl) ? task.pullUrl : undefined,
+    mergeBase: task?.mergeBase || baseSha,
     sourceHead: task?.sourceHead,
     targetHead: task?.targetHead
   }
@@ -204,8 +237,13 @@ const materials = computed<MaterialDetail[]>(() => (source.value?.snapshot?.mate
   content: typeof material.content === 'string' ? material.content : '',
   complete: typeof material.content === 'string'
 })))
-const materialGaps = computed<any[]>(() => source.value?.snapshot?.result?.provenance?.materialGaps || [])
+const materialGaps = computed<NonNullable<ResultView['provenance']['materialGaps']>>(() => {
+  const gaps = source.value?.snapshot?.result?.provenance?.materialGaps ?? previewResult.value?.provenance?.materialGaps
+  return Array.isArray(gaps) ? gaps : []
+})
 const agentBody = computed<AgentResultView['body'] | null>(() => {
+  const preview = previewResult.value
+  if (preview && !('kind' in preview)) return preview.body
   const snapshot = source.value?.snapshot
   if (snapshot?.kind !== 'AGENT') return null
   const body = snapshot.result?.body
@@ -217,6 +255,8 @@ const agentBody = computed<AgentResultView['body'] | null>(() => {
   }
 })
 const specialistResult = computed<ResultView | null>(() => {
+  const preview = previewResult.value
+  if (preview && 'kind' in preview) return preview
   const snapshot = source.value?.snapshot
   const result = snapshot?.result
   if (!snapshot || snapshot.kind === 'AGENT' || !result?.body || !result?.provenance) return null
@@ -228,20 +268,37 @@ const specialistResult = computed<ResultView | null>(() => {
   } as ResultView
 })
 
-watch(() => [props.open, props.reportId, props.ordinal] as const, ([open]) => {
+watch(() => [props.open, props.reportId, props.ordinal, props.candidate] as const, ([open, reportId, ordinal, candidate]) => {
   loadEpoch++
   source.value = null
+  previewResult.value = null
+  previewTask.value = null
+  previewTaskRequested = false
+  findingIndex.value = 0
   codePayload.value = null
   codeOpen.value = false
   selectTab('result')
   error.value = ''
   loading.value = false
-  if (open && props.ordinal > 0) void load()
+  if (open && (candidate || (reportId && ordinal && ordinal > 0))) void load()
 }, { immediate: true, flush: 'sync' })
 
 function selectTab(tab: ReaderTab) {
   activeTab.value = tab
   if (scroller.value) scroller.value.scrollTop = 0
+  if (tab === 'input' && props.candidate?.sourceKind === 'PR' && !previewTaskRequested) {
+    void loadPreviewTask(props.candidate.taskId)
+  }
+}
+async function loadPreviewTask(taskId: string) {
+  const epoch = loadEpoch
+  previewTaskRequested = true
+  try {
+    const task = await tasksApi.detail(taskId)
+    if (epoch === loadEpoch) previewTask.value = task
+  } catch {
+    // Keep the candidate's saved versions visible when task details are unavailable.
+  }
 }
 async function onTabKeydown(event: KeyboardEvent, tab: ReaderTab) {
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
@@ -254,13 +311,22 @@ async function onTabKeydown(event: KeyboardEvent, tab: ReaderTab) {
 }
 async function load() {
   const epoch = ++loadEpoch
+  const { candidate, reportId, ordinal } = props
   loading.value = true
   error.value = ''
   try {
-    const loaded = await reportsApi.source(props.reportId, props.ordinal)
-    if (epoch === loadEpoch) source.value = loaded
+    if (candidate) {
+      if (candidate.kind !== 'AGENT' && !candidate.targetId) throw new Error('这条结果没有可查看的文件目标')
+      const result = candidate.kind === 'AGENT'
+        ? await agentTasksApi.result(candidate.taskId)
+        : await tasksApi.result(candidate.taskId, candidate.targetId!)
+      if (epoch === loadEpoch) previewResult.value = result
+    } else if (reportId && ordinal) {
+      const loaded = await reportsApi.source(reportId, ordinal)
+      if (epoch === loadEpoch) source.value = loaded
+    }
   } catch (failure) {
-    if (epoch === loadEpoch) error.value = (failure as Error).message || '冻结来源读取失败'
+    if (epoch === loadEpoch) error.value = (failure as Error).message || (candidate ? '审查结果读取失败' : '冻结来源读取失败')
   } finally {
     if (epoch === loadEpoch) loading.value = false
   }
@@ -275,10 +341,10 @@ function frozenReference(reference: CodeReference): CodeReference {
   return material ? { ...reference, path: material.path, sha: material.sha || undefined, side: material.side } : reference
 }
 function openCodeReference(value: CodeReferencePayload) {
-  codePayload.value = {
+  codePayload.value = source.value ? {
     ...buildCodeReferencePayload(frozenReference(value), value.references.map(frozenReference), value.scope),
     evidenceCount: value.evidenceCount
-  }
+  } : value
   codeOpen.value = true
 }
 function openMaterial(index: number) {
@@ -308,21 +374,22 @@ function formatTime(value?: string) { return value ? value.replace('T', ' ').sli
 </style>
 <style scoped lang="less">
 .source-reader { display: flex; flex-direction: column; height: min(900px, 92vh); min-height: 0; color: var(--ink); }
-.source-header { flex: none; padding: 20px 28px 14px; }
-.source-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.source-heading h2 { margin: 0; font-size: 22px; }
-.readonly-badge { padding: 1px 8px; border-radius: 6px; font-size: 12px; color: var(--badge-default-ink); background: var(--badge-default-bg); }
+.source-header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: start; padding: 20px 28px 14px; border-bottom: 1px solid var(--line); }
+.source-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-height: 32px; }
+.source-heading h1 { margin: 0; font-size: 22px; font-weight: 700; }
+.readonly-badge { padding: 1px 8px; border-radius: 6px; font-size: 12px; color: var(--badge-default-ink); background: var(--badge-default-bg); white-space: nowrap; }
 .close-button { border: 0; background: none; color: var(--faint); font-size: 25px; line-height: 1; cursor: pointer; width: 32px; height: 32px; border-radius: 7px; }
-.source-subtitle { margin: 4px 0 9px; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-.notice { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 12px; color: var(--notice-ink); background: var(--notice); border: 1px solid var(--notice-border); border-radius: 9px; }
+.source-subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
 .reader-tabs { display: flex; flex: none; gap: 28px; padding: 0 28px; border-bottom: 1px solid var(--line); }
 .reader-tabs button { padding: 12px 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
 .reader-tabs button.active { border-bottom-color: var(--blue); color: var(--blue); font-weight: 600; }
 .reader-content { flex: 1; min-height: 0; padding: 24px 28px; overflow: auto; overscroll-behavior: contain; }
-.feedback-summary { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
-.legacy-feedback { margin-top: 22px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.legacy-feedback :deep(.frozen-feedback) { border-top: 0; }
-.legacy-note { padding: 0 22px 16px; margin: 0; background: var(--bg); color: var(--muted); font-size: 12px; }
+.feedback-summary { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
+.legacy-feedback, .result-gaps { margin-top: 20px; border-top: 1px solid var(--line); }
+.legacy-feedback :deep(.frozen-feedback) { border: 0; }
+.legacy-note { padding: 0 16px 12px; margin: 0; background: var(--bg); color: var(--muted); font-size: 12px; }
+.result-gaps { padding-top: 16px; }
+.result-gaps h3 { margin: 0; font-size: 15px; }
 .input-section + .input-section { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
 .input-section h3 { margin: 0 0 16px; font-size: 15px; }
 .input-pairs { display: grid; grid-template-columns: 125px minmax(0, 1fr); gap: 12px 20px; margin: 0; font-size: 13px; }
@@ -348,7 +415,6 @@ code { font-family: var(--font-mono); font-size: 12px; }
   .source-header, .reader-content { padding: 16px; }
   .reader-tabs { padding: 0 16px; }
   .reader-footer { padding: 10px 16px; }
-  .footer-note { display: none; }
   .input-pairs { grid-template-columns: 90px minmax(0, 1fr); gap: 10px; }
   .material-row { align-items: flex-start; flex-direction: column; gap: 8px; }
 }

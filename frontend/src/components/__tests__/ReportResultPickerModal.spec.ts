@@ -84,7 +84,7 @@ describe('报告审查结果选择弹窗', () => {
     expect(wrapper.findAll('.result-main')).toHaveLength(1)
     await wrapper.find('input').setValue('b.java')
     expect(wrapper.findAll('.result-main')).toHaveLength(0)
-    expect(wrapper.text()).toContain('关键词仅筛选已加载结果')
+    expect(wrapper.get('input').attributes('placeholder')).toContain('筛选已加载结果')
     vi.mocked(reportsApi.candidates).mockResolvedValueOnce(page([candidate('a'), candidate('b')]))
     await state(wrapper).loadMore(); await flushPromises()
     expect(state(wrapper).candidates).toHaveLength(2)

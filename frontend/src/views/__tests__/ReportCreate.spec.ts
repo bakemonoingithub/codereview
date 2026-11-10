@@ -3,20 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ReportCreate from '@/views/ReportCreate.vue'
 import ReportResultPickerModal from '@/components/ReportResultPickerModal.vue'
+import ReportSourceModal from '@/components/ReportSourceModal.vue'
 import { namedAntStubs, silentStub } from '@/testUtils/antStubs'
 
 const context = vi.hoisted(() => ({ push: vi.fn() }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: context.push }) }))
 vi.mock('@/api/v2', () => ({
-  agentTasksApi: { result: vi.fn() },
   promptsApi: { list: vi.fn(), detail: vi.fn(), versions: vi.fn() },
   projectsApi: { list: vi.fn() },
   modelsApi: { list: vi.fn() },
-  reportsApi: { candidates: vi.fn(), freezeInputs: vi.fn(), start: vi.fn() },
-  tasksApi: { result: vi.fn() }
+  reportsApi: { candidates: vi.fn(), freezeInputs: vi.fn(), start: vi.fn() }
 }))
 
-import { agentTasksApi, modelsApi, projectsApi, promptsApi, reportsApi, tasksApi } from '@/api/v2'
+import { modelsApi, projectsApi, promptsApi, reportsApi } from '@/api/v2'
 
 const candidate = {
   resultId: 'result-1', taskId: 'task-1', targetId: 'target-1', kind: 'ISSUE' as const,
@@ -34,7 +33,7 @@ const stubs = {
   'a-breadcrumb': silentStub('a-breadcrumb-stub'),
   'a-breadcrumb-item': silentStub('a-breadcrumb-item-stub'),
   'a-modal': { name: 'AModal', template: '<div class="modal-stub"><slot /></div>' },
-  SpecialistResultView: true, AgentResultPanel: true, CodeReferenceModal: true
+  ReportSourceModal: true
 }
 
 async function start() {
@@ -198,49 +197,37 @@ describe('报告生成表单', () => {
     wrapper.unmount()
   })
 
-  it('目标只显示文件名，查看结果走已有结果接口', async () => {
+  it('选材和已选材料都用共用弹窗查看结果，预览关闭后保留勾选', async () => {
+    const row = { ...candidate, path: 'src/main/java/Order.java', oldPath: 'src/Order.java', taskName: '支付重试' }
+    vi.mocked(reportsApi.candidates).mockResolvedValue({ items: [row], nextCursor: null, hasMore: false })
     const wrapper = await start()
     const s = state(wrapper)
-    const row = { ...candidate, path: 'src/main/java/Order.java', oldPath: 'src/Order.java', taskName: '支付重试', targetId: 'target-1' }
     expect(s.fileName(row.path)).toBe('Order.java')
     expect(s.pathTitle(row)).toContain('src/main/java/Order.java')
-    vi.mocked(tasksApi.result).mockResolvedValue({ id: 'r', targetId: 'target-1', kind: 'ISSUE', body: { summary: '有风险' } } as any)
-    await s.openResult(row)
-    expect(tasksApi.result).toHaveBeenCalledWith('task-1', 'target-1')
-    expect(s.resultOpen).toBe(true)
-    expect(s.resultView.body.summary).toBe('有风险')
-    wrapper.unmount()
-  })
-  it('Agent 结果在表单内预览，保留材料不足状态及当前选材', async () => {
-    vi.mocked(agentTasksApi.result).mockResolvedValue({ id: 'agent-r', body: {
-      answerStatus: 'INSUFFICIENT_EVIDENCE', title: '调查', summary: '材料不足', markdown: '正文', citations: [], unresolved: ['未读取目标']
-    } } as any)
-    const wrapper = await start(); const s = state(wrapper)
-    s.selected.set(candidate.resultId, candidate)
-    await s.openResult({ ...candidate, kind: 'AGENT', path: null, targetId: null })
-    expect(agentTasksApi.result).toHaveBeenCalledWith('task-1')
-    expect(s.agentResult.body.answerStatus).toBe('INSUFFICIENT_EVIDENCE')
-    expect(s.selected.size).toBe(1)
-    expect(context.push).not.toHaveBeenCalled()
-    wrapper.unmount()
-  })
+    await wrapper.findAll('a-button-stub').find(button => button.text() === '选择审查结果')!.trigger('click')
+    await flushPromises()
+    const picker = wrapper.getComponent(ReportResultPickerModal)
+    await picker.get('.result-main').trigger('click')
+    await picker.findAll('a-button-stub').find(button => button.text() === '查看结果')!.trigger('click')
+    const preview = wrapper.getComponent(ReportSourceModal)
+    expect(preview.props()).toMatchObject({ open: true, candidate: row })
+    expect(picker.get('.result-main').attributes('aria-pressed')).toBe('true')
+    expect(s.selected.size).toBe(0)
 
-  it('切换结果或关闭预览后，迟到响应不能覆盖当前内容', async () => {
-    let resolveOld!: (value: any) => void
-    vi.mocked(tasksApi.result).mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
-      .mockResolvedValueOnce({ id: 'new-result', body: {} } as any)
-    const wrapper = await start(); const s = state(wrapper)
-    const pending = s.openResult(candidate)
-    await s.openResult({ ...candidate, taskId: 'new-task', targetId: 'new-target' })
-    resolveOld({ id: 'old-result' }); await pending
-    expect(s.resultView.id).toBe('new-result')
-    let resolveClosed!: (value: any) => void
-    vi.mocked(tasksApi.result).mockReturnValueOnce(new Promise(resolve => { resolveClosed = resolve }))
-    const closed = s.openResult(candidate)
-    s.resultOpen = false
-    resolveClosed({ id: 'closed-result' }); await closed
-    expect(s.resultView).toBeNull()
-    expect(s.resultLoading).toBe(false)
+    preview.vm.$emit('update:open', false)
+    await flushPromises()
+    expect(picker.props('open')).toBe(true)
+    expect(picker.get('.result-main').attributes('aria-pressed')).toBe('true')
+    await picker.findAll('a-button-stub').find(button => button.text() === '确定')!.trigger('click')
+    expect(s.selected.size).toBe(1)
+    expect(picker.props('open')).toBe(false)
+    const selected = wrapper.get('.selected-item')
+    expect(selected.get('.file-name').text()).toBe('Order.java')
+    await selected.findAll('a-button-stub').find(button => button.text() === '查看结果')!.trigger('click')
+    expect(wrapper.getComponent(ReportSourceModal).props()).toMatchObject({ open: true, candidate: row })
+    expect(wrapper.findAllComponents(ReportSourceModal)).toHaveLength(1)
+    expect(reportsApi.freezeInputs).not.toHaveBeenCalled()
+    expect(context.push).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 

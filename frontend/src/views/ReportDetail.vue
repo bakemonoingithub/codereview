@@ -90,9 +90,6 @@
                   :source-count="report.sources.length"
                   @citation="openSource"
                 />
-                <div class="notice">
-                  正文与下载使用同一份保存内容。引用 [S1] 可打开对应冻结来源；后续修改反馈、配置或源码不会替换本报告。
-                </div>
               </template>
               <div v-else-if="report.state === 'FAILED'" class="empty">
                 <a-empty description="没有可阅读的报告正文">
@@ -193,9 +190,6 @@
               <span v-if="source.kind === 'AGENT'" class="muted small">{{ source.summary || 'Agent 分析结果' }}</span>
               <code v-else class="source-path">{{ source.path || '文件路径未记录' }}</code>
             </button>
-            <p class="muted small">
-              正文中的 [S1] 等引用可打开对应来源；来源读取使用冻结快照，不重新查询当前配置或最新代码。
-            </p>
           </aside>
         </div>
       </template>
@@ -770,16 +764,6 @@ function formatTime(value: string) {
   margin-top: 2px;
 }
 .source-path { color: var(--muted); font-size: 12px; }
-.notice {
-  margin-top: 18px;
-  padding: 13px 16px;
-  background: var(--notice);
-  border: 1px solid var(--notice-border);
-  border-radius: 14px;
-  color: var(--notice-ink);
-  font-size: 12px;
-  line-height: 1.7;
-}
 .sources-panel > .muted,
 .sources-panel > p.muted {
   padding: 15px 18px;

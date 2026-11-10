@@ -1,5 +1,5 @@
 <template>
-  <div class="specialist-result-tab" :class="{ 'with-finding-navigation': navigationEnabled }">
+  <div class="specialist-result-tab" :class="{ 'with-finding-layout': usesFindingLayout, 'report-reader-result': reportReader }">
     <a-alert v-if="!complete" type="warning" show-icon class="incomplete"
       message="文件未完成：以下内容来自已成功的片段，不能作为完整文件结论或报告材料。" />
     <section class="conclusion" aria-label="专项总结">
@@ -7,7 +7,7 @@
       <h2 :class="{ 'conclusion-title': complete }">{{ complete ? '审查结论' : '已取得的分析内容' }}</h2>
       <p class="summary-text">{{ result.body.summary || '本次结果未提供摘要，请结合明细与材料边界阅读。' }}</p>
       <div class="metrics">
-        <span>{{ complete ? '共' : '已取得' }} <b>{{ entries.length }}</b> {{ navigationEnabled ? '项发现' : '条' + itemLabel }}</span>
+        <span>{{ complete ? '共' : '已取得' }} <b>{{ entries.length }}</b> {{ usesFindingLayout ? '项发现' : '条' + itemLabel }}</span>
         <template v-if="result.kind === 'ISSUE'">
           <span v-for="metric in severityCounts" :key="metric.severity">{{ severityText(metric.severity) }}严重度 <b>{{ metric.count }}</b></span>
         </template>
@@ -15,11 +15,11 @@
     </section>
 
     <component
-      :is="navigationEnabled ? 'details' : 'section'"
+      :is="usesFindingLayout ? 'details' : 'section'"
       v-if="result.kind === 'COUPLING' && result.provenance.couplingFacts"
       class="facts"
     >
-      <summary v-if="navigationEnabled" class="disclosure-title">
+      <summary v-if="usesFindingLayout" class="disclosure-title">
         文件级依赖事实 <span class="muted">· 程序解析 · 已定位 {{ result.provenance.couplingFacts.resolvedOutgoingCount }} 条</span>
       </summary>
       <template v-else><div class="eyebrow">程序解析</div><h3>文件级依赖事实</h3></template>
@@ -29,16 +29,16 @@
         <tr v-for="edge in result.provenance.couplingFacts.edges" :key="edge.id"><td>{{ edge.id }}</td><td>{{ edge.sourceType }} → {{ edge.targetType }}</td><td>{{ relationText(edge.relation) }}</td><td>{{ edge.targetPath }}</td><td>{{ edge.line }}</td></tr>
       </tbody></table></div>
     </component>
-    <h3 v-if="result.kind === 'COUPLING' && !navigationEnabled" class="section-title">模型关系解读 <span class="muted">· {{ entries.length }} 条</span></h3>
+    <h3 v-if="result.kind === 'COUPLING' && !usesFindingLayout" class="section-title">模型关系解读 <span class="muted">· {{ entries.length }} 条</span></h3>
     <a-alert
-      v-if="navigationEnabled && result.hasLegacyFeedback"
+      v-if="showFindingIndex && result.hasLegacyFeedback"
       type="info"
       show-icon
       class="incomplete"
       message="历史整份结果反馈保留在历史记录中。索引仅显示逐项反馈。"
     />
-    <div :class="{ 'finding-layout': navigationEnabled && entries.length }">
-      <div :class="{ 'finding-reader': navigationEnabled && entries.length }">
+    <div :class="{ 'finding-layout': showFindingIndex }">
+      <div :class="{ 'finding-reader': usesFindingLayout && entries.length }">
         <div v-if="navigationEnabled && entries.length" ref="findingToolbar" class="finding-toolbar">
           <span class="finding-position" aria-live="polite">{{ itemLabel }} {{ currentIndex + 1 }} / {{ entries.length }}</span>
           <div class="finding-actions">
@@ -46,12 +46,12 @@
             <a-button size="small" :disabled="currentIndex === entries.length - 1" @click="selectFinding(currentIndex + 1)">下一项 →</a-button>
           </div>
         </div>
-        <section v-if="navigationEnabled && !entries.length" class="finding-empty" aria-label="发现">
+        <section v-if="usesFindingLayout && !entries.length" class="finding-empty" aria-label="发现">
           <h3>{{ emptyFindingTitle }}</h3>
           <p>{{ emptyFindingText }}</p>
         </section>
         <template v-if="result.kind === 'ISSUE'">
-          <a-empty v-if="!navigationEnabled && !entries.length" description="基于本次材料未发现可说明的问题。未发现问题不等于完整验证了依赖实现或业务正确性。" />
+          <a-empty v-if="!usesFindingLayout && !entries.length" description="基于本次材料未发现可说明的问题。未发现问题不等于完整验证了依赖实现或业务正确性。" />
           <article v-for="{ entry: issue, index } in visibleEntries(result.body.issues)" :key="subjectId(index + 1) || index" class="finding" :data-severity="issue.severity">
             <header class="finding-head">
               <div class="meta"><span v-if="!navigationEnabled">问题 {{ number(index + 1) }}</span><a-tag :color="severityColor(issue.severity)">{{ severityText(issue.severity) }}严重度</a-tag><a-tag>{{ categoryText(issue.category) }}</a-tag></div>
@@ -76,7 +76,7 @@
         </template>
 
         <template v-else-if="result.kind === 'PATTERN'">
-          <a-empty v-if="!navigationEnabled && !entries.length" description="未识别到有依据的模式候选" />
+          <a-empty v-if="!usesFindingLayout && !entries.length" description="未识别到有依据的模式候选" />
           <article v-for="{ entry: pattern, index } in visibleEntries(result.body.patterns)" :key="subjectId(index + 1) || index" class="finding pattern">
             <header class="finding-head"><div class="meta"><span v-if="!navigationEnabled">候选 {{ number(index + 1) }}</span><a-tag color="purple">{{ familyText(pattern.family) }}</a-tag></div><h3>{{ pattern.name }}</h3></header>
             <div class="finding-content">
@@ -94,7 +94,7 @@
         </template>
 
         <template v-else-if="result.kind === 'COUPLING'">
-          <a-empty v-if="!navigationEnabled && !entries.length" description="未形成有依据的关系解释" />
+          <a-empty v-if="!usesFindingLayout && !entries.length" description="未形成有依据的关系解释" />
           <article v-for="{ entry: observation, index } in visibleEntries(result.body.observations)" :key="subjectId(index + 1) || index" class="finding coupling">
             <header class="finding-head"><div v-if="!navigationEnabled" class="meta">解读 {{ number(index + 1) }}</div><h3>{{ observation.title }}</h3></header>
             <div class="finding-content">
@@ -103,7 +103,7 @@
                 <h4>关联依赖</h4>
                 <div class="dependencies">
                   <template v-for="dependency in observation.dependencyIds.map(dependencyView)" :key="dependency.id">
-                    <details v-if="navigationEnabled && dependency.edge" class="dependency-details">
+                    <details v-if="usesFindingLayout && dependency.edge" class="dependency-details">
                       <summary :title="dependency.fullLabel">
                         <span>{{ dependency.shortLabel }}</span>
                         <small>· {{ relationText(dependency.edge.relation) }}</small>
@@ -125,12 +125,12 @@
             </slot>
           </article>
         </template>
-        <p v-if="navigationEnabled && entries.length && (!complete || !subjectId(currentIndex + 1))" class="finding-unavailable">
+        <p v-if="navigationEnabled && !readOnly && entries.length && (!complete || !subjectId(currentIndex + 1))" class="finding-unavailable">
           {{ complete ? '此条目缺少反馈标识，暂不可反馈。' : '片段结果仅供阅读。只有完整文件结果支持反馈。' }}
         </p>
       </div>
       <SpecialistFindingIndex
-        v-if="navigationEnabled && entries.length"
+        v-if="showFindingIndex"
         :items="indexItems"
         :active-index="currentIndex"
         :item-label="itemLabel"
@@ -138,8 +138,10 @@
       />
     </div>
     <a-alert v-if="!navigationEnabled && !readOnly && complete && entries.length && entries.some((_, index) => !subjectId(index + 1))" type="warning" show-icon message="部分结论缺少稳定标识，暂不能反馈。请完成条目索引校验后重新读取。" />
-    <component :is="navigationEnabled ? 'details' : 'aside'" v-if="limitations.length" class="limitations">
-      <summary v-if="navigationEnabled" class="disclosure-title">审查边界与材料缺失 <span class="muted">· {{ limitations.length }} 项</span></summary>
+    <slot name="result-feedback" />
+    <component :is="navigationEnabled && !reportReader ? 'details' : 'aside'" v-if="limitations.length" class="limitations">
+      <h3 v-if="reportReader">{{ limitationsTitle }} <span class="muted">· {{ limitations.length }} 项</span></h3>
+      <summary v-else-if="navigationEnabled" class="disclosure-title">审查边界与材料缺失 <span class="muted">· {{ limitations.length }} 项</span></summary>
       <h4 v-else>审查边界与材料缺失</h4>
       <ul><li v-for="(limitation, index) in limitations" :key="index">{{ limitation }}</li></ul>
     </component>
@@ -168,9 +170,10 @@ const props = withDefaults(defineProps<{
   result: ResultView
   taskId: string
   readOnly?: boolean
+  reportReader?: boolean
   navigateFindings?: boolean
   findingIndex?: number
-}>(), { readOnly: false, navigateFindings: false, findingIndex: 0 })
+}>(), { readOnly: false, reportReader: false, navigateFindings: false, findingIndex: 0 })
 const emit = defineEmits<{
   (event: 'open-code', value: CodeReferencePayload): void
   (event: 'feedback-saved'): void
@@ -179,11 +182,17 @@ const emit = defineEmits<{
 
 const kindText = computed(() => ({ ISSUE: '问题审查', PATTERN: '设计模式', COUPLING: '耦合度' } as Record<string, string>)[props.result.kind] || props.result.kind)
 
-const limitations = computed(() => [...new Set([
+const scopeLimitations = computed(() => [
   ...(props.result.body.limitations || []),
-  ...(props.result.provenance.couplingFacts?.limitations || []),
-  ...(props.result.provenance.materialGaps || []).map(gap => `${gap.code}：${gap.subject}，${gap.detail}`)
-])])
+  ...(props.result.provenance.couplingFacts?.limitations || [])
+])
+const materialGaps = computed(() => (props.result.provenance.materialGaps || [])
+  .map(gap => `${gap.code}：${gap.subject}，${gap.detail}`))
+const limitations = computed(() => [...new Set([...scopeLimitations.value, ...materialGaps.value])])
+const limitationsTitle = computed(() => {
+  if (!materialGaps.value.length) return '审查边界'
+  return scopeLimitations.value.length ? '审查边界与材料缺口' : '材料缺口'
+})
 function sideText(side: string): string {
   return ({ FILE: '文件', BEFORE: '修改前', AFTER: '修改后' } as Record<string, string>)[side] || side
 }
@@ -212,7 +221,7 @@ function dependencyView(id: string) {
   if (!edge) return { id, legacyLabel: id }
   const fullLabel = `${edge.sourceType} → ${edge.targetType}`
   const legacyLabel = `${fullLabel}（${edge.relation}）`
-  if (!navigationEnabled.value) return { id, legacyLabel }
+  if (!usesFindingLayout.value) return { id, legacyLabel }
   const label = (name: string) => dependencyNames.value.get(name) ?? name
   return { id, edge, fullLabel, shortLabel: `${label(edge.sourceType)} → ${label(edge.targetType)}`, legacyLabel }
 }
@@ -296,7 +305,9 @@ const complete = computed(() => props.result.completeness === 'COMPLETE')
 const entries = computed(() => props.result.kind === 'ISSUE' ? props.result.body.issues || []
   : props.result.kind === 'PATTERN' ? props.result.body.patterns || [] : props.result.body.observations || [])
 const itemLabel = computed(() => ({ ISSUE: '问题', PATTERN: '模式候选', COUPLING: '依赖解读' })[props.result.kind])
-const navigationEnabled = computed(() => props.navigateFindings && !props.readOnly)
+const navigationEnabled = computed(() => props.reportReader ? entries.value.length > 1 : props.navigateFindings && !props.readOnly)
+const usesFindingLayout = computed(() => props.reportReader || navigationEnabled.value)
+const showFindingIndex = computed(() => !props.reportReader && navigationEnabled.value && entries.value.length > 0)
 const emptyFindingTitle = computed(() => ({
   ISSUE: '基于本次材料未发现可说明的问题',
   PATTERN: '未识别到有依据的模式候选',
@@ -339,6 +350,10 @@ async function selectFinding(index: number) {
   await nextTick()
   const toolbar = findingToolbar.value
   if (!toolbar) return
+  if (props.reportReader) {
+    toolbar.scrollIntoView({ block: 'nearest' })
+    return
+  }
   const bounds = toolbar.getBoundingClientRect()
   const visibleTop = Number.parseFloat(window.getComputedStyle(toolbar).scrollMarginTop) || 0
   if (bounds.top < visibleTop || bounds.bottom > window.innerHeight) toolbar.scrollIntoView({ block: 'start' })
@@ -384,8 +399,8 @@ h4 { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .finding-head { padding: 18px 22px; border-bottom: 1px solid var(--line); }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .finding-content { padding: 22px; font-size: 14px; }
-.specialist-result-tab:not(.with-finding-navigation) .primary-copy { display: contents; }
-.specialist-result-tab:not(.with-finding-navigation) .primary-copy > p { margin-bottom: 20px; }
+.specialist-result-tab:not(.with-finding-layout) .primary-copy { display: contents; }
+.specialist-result-tab:not(.with-finding-layout) .primary-copy > p { margin-bottom: 20px; }
 .finding-content section { margin-top: 20px; }
 .change, .role { padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
 .suggestion { border-left: 3px solid var(--notice-border); background: var(--notice); border-radius: 0 8px 8px 0; padding: 14px 16px; }
@@ -404,13 +419,13 @@ th { color: var(--muted); font-weight: 500; }
 .limitations h4 { color: inherit; }
 .limitations ul { padding-left: 20px; margin-bottom: 0; font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
 .incomplete { margin-bottom: 18px; }
-.with-finding-navigation {
+.with-finding-layout {
   container-type: inline-size;
   --result-radius: 10px;
   --result-inset: 14px;
   --result-gap: 12px;
 }
-.with-finding-navigation > .conclusion {
+.with-finding-layout > .conclusion {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -419,25 +434,25 @@ th { color: var(--muted); font-weight: 500; }
   margin-bottom: var(--result-gap);
   border-radius: var(--result-radius);
 }
-.with-finding-navigation > .conclusion .eyebrow,
-.with-finding-navigation .summary-text { grid-column: 1 / -1; }
-.with-finding-navigation > .conclusion h2 { margin: 0; font-size: 17px; line-height: 1.45; }
-.with-finding-navigation > .conclusion .conclusion-title { font-weight: 700; }
-.with-finding-navigation > .conclusion .metrics { grid-column: 2; grid-row: 2; margin: 0; }
-.with-finding-navigation .summary-text { grid-row: 3; }
-.with-finding-navigation p { line-height: 1.65; }
-.with-finding-navigation .metrics { gap: 6px 12px; margin-top: 8px; }
-.with-finding-navigation .metrics b { font-size: inherit; margin: 0 2px; }
-.with-finding-navigation > details {
+.with-finding-layout > .conclusion .eyebrow,
+.with-finding-layout .summary-text { grid-column: 1 / -1; }
+.with-finding-layout > .conclusion h2 { margin: 0; font-size: 17px; line-height: 1.45; }
+.with-finding-layout > .conclusion .conclusion-title { font-weight: 700; }
+.with-finding-layout > .conclusion .metrics { grid-column: 2; grid-row: 2; margin: 0; }
+.with-finding-layout .summary-text { grid-row: 3; }
+.with-finding-layout p { line-height: 1.65; }
+.with-finding-layout .metrics { gap: 6px 12px; margin-top: 8px; }
+.with-finding-layout .metrics b { font-size: inherit; margin: 0 2px; }
+.with-finding-layout > details {
   padding: 0 var(--result-inset);
   border: 1px solid var(--line);
   border-radius: var(--result-radius);
   background: var(--bg);
   color: var(--ink);
 }
-.with-finding-navigation .facts { margin-bottom: var(--result-gap); }
-.with-finding-navigation .limitations { margin-top: var(--result-gap); }
-.with-finding-navigation > details[open] { padding-bottom: 12px; }
+.with-finding-layout .facts { margin-bottom: var(--result-gap); }
+.with-finding-layout .limitations { margin-top: var(--result-gap); }
+.with-finding-layout > details[open] { padding-bottom: 12px; }
 .disclosure-title { cursor: pointer; padding: 10px 0; font-weight: 600; }
 .disclosure-title .muted { font-size: 12px; font-weight: 400; }
 .finding-layout { display: grid; grid-template-columns: minmax(0, 1fr) 214px; align-items: start; gap: var(--result-gap); }
@@ -491,6 +506,11 @@ th { color: var(--muted); font-weight: 500; }
   font-size: 12px;
 }
 .finding-reader :deep(.feedback.conclusion) { padding: 12px var(--result-inset); background: var(--bg); }
+.report-reader-result .finding-toolbar { scroll-margin-top: var(--result-gap); }
+.report-reader-result .limitations { padding: 12px var(--result-inset); border-radius: var(--result-radius); }
+.report-reader-result .limitations h3 { font-size: 15px; }
+.report-reader-result .limitations h3 .muted { font-size: 12px; font-weight: 400; }
+.report-reader-result .limitations ul { margin-top: 6px; }
 .finding-empty {
   padding: 14px var(--result-inset);
   border: 1px dashed var(--line);
@@ -519,9 +539,9 @@ th { color: var(--muted); font-weight: 500; }
   .finding-layout .finding-index { grid-row: 1; position: static; }
 }
 @container (max-width: 520px) {
-  .with-finding-navigation > .conclusion { grid-template-columns: minmax(0, 1fr); }
-  .with-finding-navigation > .conclusion .metrics { grid-column: 1; grid-row: 3; }
-  .with-finding-navigation .summary-text { grid-row: 4; }
+  .with-finding-layout > .conclusion { grid-template-columns: minmax(0, 1fr); }
+  .with-finding-layout > .conclusion .metrics { grid-column: 1; grid-row: 3; }
+  .with-finding-layout .summary-text { grid-row: 4; }
 }
 @media (max-width: 700px) { .conclusion, .finding-head, .finding-content, .facts { padding: 16px; } }
 </style>

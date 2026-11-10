@@ -151,7 +151,10 @@ describe('SRF 前后端共用契约样本', () => {
     const source = mount(ReportSourceModal, { props: { open: true, reportId: 'frozen-report', ordinal: 1 }, ...options })
     await flushPromises()
     expect(source.find('.feedback-summary').text()).toContain('准确 1 · 不准确 1 · 无法判断 1 · 未反馈 1')
-    for (const expected of sample.feedbacks) expect(source.text()).toContain(expected.comment!)
+    for (const [index, expected] of sample.feedbacks.entries()) {
+      if (index > 0) await button(source, '下一项 →').trigger('click')
+      expect(source.find('.frozen-feedback').text()).toContain(expected.comment!)
+    }
     expect(source.text()).not.toContain('legacy whole result')
     expect(vi.mocked(feedbackApi.get).mock.calls.length).toBe(readsBeforeSource)
     source.unmount()

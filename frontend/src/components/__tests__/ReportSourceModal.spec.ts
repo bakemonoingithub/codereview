@@ -9,8 +9,14 @@ import AgentResultPanel from '@/components/AgentResultPanel.vue'
 import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
 import { namedAntStubs, silentStub } from '@/testUtils/antStubs'
 
-vi.mock('@/api/v2', () => ({ reportsApi: { source: vi.fn() }, feedbackApi: { get: vi.fn(), save: vi.fn() }, tasksApi: { material: vi.fn(), detail: vi.fn() }, repositoryApi: { file: vi.fn() } }))
-import { feedbackApi, reportsApi, tasksApi, repositoryApi } from '@/api/v2'
+vi.mock('@/api/v2', () => ({
+  reportsApi: { source: vi.fn(), freezeInputs: vi.fn() },
+  feedbackApi: { get: vi.fn(), save: vi.fn() },
+  tasksApi: { material: vi.fn(), detail: vi.fn(), result: vi.fn() },
+  agentTasksApi: { result: vi.fn() },
+  repositoryApi: { file: vi.fn() }
+}))
+import { agentTasksApi, feedbackApi, reportsApi, tasksApi, repositoryApi, type ReportCandidate, type ResultView } from '@/api/v2'
 
 const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: { template: '<div />' } }, { name: 'review-detail', path: '/reviews/:id', component: { template: '<div />' } }] })
 const options = { global: { plugins: [router], stubs: { ...namedAntStubs, 'a-modal': silentStub('modal') } } }
@@ -32,6 +38,9 @@ async function start() {
   await flushPromises()
   return wrapper
 }
+function findingButton(wrapper: Awaited<ReturnType<typeof start>>, label: string) {
+  return wrapper.findAll('.finding-toolbar a-button-stub').find(button => button.text() === label)!
+}
 beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(reportsApi.source).mockResolvedValue(snapshot() as any)
@@ -39,13 +48,15 @@ beforeEach(() => {
   vi.mocked(repositoryApi.file).mockResolvedValue({ content: '当前仓库代码' } as any)
 })
 
-afterEach(() => {
-  expect(feedbackApi.get).not.toHaveBeenCalled()
-  expect(feedbackApi.save).not.toHaveBeenCalled()
-  expect(tasksApi.detail).not.toHaveBeenCalled()
-})
-
 describe('报告冻结来源', () => {
+  afterEach(() => {
+    expect(feedbackApi.get).not.toHaveBeenCalled()
+    expect(feedbackApi.save).not.toHaveBeenCalled()
+    expect(tasksApi.detail).not.toHaveBeenCalled()
+    expect(tasksApi.result).not.toHaveBeenCalled()
+    expect(agentTasksApi.result).not.toHaveBeenCalled()
+  })
+
   it('原审查删除后隐藏跳转，仍展示冻结结果与代码证据', async () => {
     const data = { ...snapshot(), originalTaskAvailable: false }
     vi.mocked(reportsApi.source).mockResolvedValue(data as any)
@@ -58,19 +69,48 @@ describe('报告冻结来源', () => {
     wrapper.unmount()
   })
 
-  it('第 2 版快照在对应模式卡底显示冻结反馈，忽略旧整份评价', async () => {
+  it('多项发现只用上一项和下一项切换，保留来源结论与材料缺口', async () => {
     const data: any = snapshot()
     data.snapshot.snapshotVersion = 2; data.snapshot.kind = 'PATTERN'; data.snapshot.issues = []
-    data.snapshot.result.body = { patterns: [{ name: '策略模式', evidence: [] }, { name: '外观模式', evidence: [] }] }
+    data.snapshot.result.body = { summary: '两项模式候选', patterns: [
+      { name: '策略模式', evidence: [{ materialId: 'aux', startLine: 20, endLine: 20 }] },
+      { name: '外观模式', evidence: [] }
+    ] }
     data.snapshot.items = [{ id: 'p1', kind: 'PATTERN', ordinal: 1, feedback: { assessment: 'ACCURATE', comment: '冻结评论' } },
       { id: 'p2', kind: 'PATTERN', ordinal: 2, feedback: null }]
     data.snapshot.resultFeedback = { assessment: 'INACCURATE', comment: '历史整份意见' }
     vi.mocked(reportsApi.source).mockResolvedValue(data)
     const wrapper = await start()
     expect(wrapper.find('.feedback-summary').text()).toContain('准确 1 · 不准确 0 · 无法判断 0 · 未反馈 1')
-    expect(wrapper.findAll('.finding')[0].text()).toContain('策略模式')
-    expect(wrapper.findAll('.finding')[0].find('.frozen-feedback').text()).toContain('冻结评论')
+    expect(wrapper.findAll('.finding')).toHaveLength(1)
+    expect(wrapper.get('.finding h3').text()).toBe('策略模式')
+    expect(wrapper.get('.finding').text()).toContain('Guard.java : 20-20 · 修改前')
+    expect(wrapper.get('.finding .frozen-feedback').text()).toContain('冻结评论')
+    expect(wrapper.get('.finding-position').text()).toBe('模式候选 1 / 2')
+    expect(wrapper.find('[aria-label="发现索引"]').exists()).toBe(false)
+    expect(findingButton(wrapper, '← 上一项').attributes('disabled')).toBeDefined()
+    expect(findingButton(wrapper, '下一项 →').attributes('disabled')).toBeUndefined()
+    const limitations = wrapper.get('.limitations')
+    expect(limitations.text()).toContain('材料缺口')
+    expect(limitations.text()).toContain('父类源码未取得')
+    expect(wrapper.get('.conclusion').text()).toContain('两项模式候选')
     expect(wrapper.text()).not.toContain('历史整份意见')
+
+    await findingButton(wrapper, '下一项 →').trigger('click')
+    expect(wrapper.get('.finding h3').text()).toBe('外观模式')
+    expect(wrapper.get('.finding-position').text()).toBe('模式候选 2 / 2')
+    expect(findingButton(wrapper, '← 上一项').attributes('disabled')).toBeUndefined()
+    expect(findingButton(wrapper, '下一项 →').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('.finding .frozen-feedback').text()).toContain('未反馈')
+    expect(wrapper.get('.finding').text()).not.toContain('Guard.java')
+    expect(wrapper.text()).not.toContain('冻结评论')
+    expect(wrapper.get('.limitations').element).toBe(limitations.element)
+    expect(wrapper.get('.conclusion').text()).toContain('两项模式候选')
+
+    await findingButton(wrapper, '← 上一项').trigger('click')
+    expect(wrapper.get('.finding h3').text()).toBe('策略模式')
+    expect(wrapper.get('.finding .frozen-feedback').text()).toContain('冻结评论')
+    expect(wrapper.findComponent(FeedbackEditor).exists()).toBe(false)
     expect(tasksApi.material).not.toHaveBeenCalled()
     wrapper.unmount()
   })
@@ -89,6 +129,24 @@ describe('报告冻结来源', () => {
     expect(versions.findAll('code').map(code => code.text())).toEqual(['release', 'b'.repeat(40), 'a'.repeat(40), 'A.java'])
     expect(tasksApi.material).not.toHaveBeenCalled()
     expect(repositoryApi.file).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('PR 来源用一行显示已冻结的比较版本，目标提交在提示中', async () => {
+    const data: any = snapshot()
+    const mergeBase = 'a'.repeat(40)
+    const sourceHead = 'b'.repeat(40)
+    const targetHead = 'c'.repeat(40)
+    data.snapshot.task = { sourceKind: 'PR', pullNumber: 12, mergeBase, sourceHead, targetHead, baseSha: 'd'.repeat(40) }
+    vi.mocked(reportsApi.source).mockResolvedValue(data)
+    const wrapper = await start()
+    await wrapper.findAll('[role="tab"]')[1].trigger('click')
+    const versions = wrapper.get('[aria-label="来源源码版本"]')
+    const pr = versions.get('code')
+    expect(pr.text()).toBe(`PR #12 · ${mergeBase.slice(0, 12)}（共同祖先）→ ${sourceHead.slice(0, 12)}（源提交）`)
+    expect(pr.attributes('title')).toContain(`目标提交 ${targetHead}`)
+    expect(versions.text()).not.toContain('目标提交')
+    expect(versions.find('a').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -118,7 +176,7 @@ describe('报告冻结来源', () => {
     data.snapshot.result.body.issues = data.snapshot.issues.map((issue: any) => ({ ...issue, evidence: [] }))
     vi.mocked(reportsApi.source).mockResolvedValue(data)
     const wrapper = await start()
-    expect(wrapper.findAll('.finding')).toHaveLength(4)
+    expect(wrapper.get('.finding-position').text()).toBe('问题 1 / 4')
     expect(wrapper.find('.feedback-summary').text()).toContain('准确 1 · 不准确 1 · 无法判断 1 · 未反馈 1')
 
     data.snapshot.kind = 'AGENT'
@@ -135,6 +193,8 @@ describe('报告冻结来源', () => {
 
   it('展示冻结的辅助证据、变更关系与材料缺口，并按材料 ID 还原位置', async () => {
     const wrapper = await start()
+    expect(wrapper.find('.finding-toolbar').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="发现索引"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('删除幂等保护')
     expect(wrapper.text()).toContain('Guard.java : 20-20 · 修改前')
     expect(wrapper.text()).toContain('父类源码未取得')
@@ -177,6 +237,8 @@ describe('报告冻结来源', () => {
     expect(wrapper.findComponent(AgentResultPanel).exists()).toBe(true)
     expect(wrapper.text()).toContain('冻结的 Agent 结论')
     expect(wrapper.text()).toContain('父类未取得')
+    expect(wrapper.find('[aria-label="发现索引"]').exists()).toBe(false)
+    expect(wrapper.get('[aria-label="材料缺口"]').text()).toContain('父类源码未取得')
     await wrapper.find('.agent-evidence button').trigger('click')
     await flushPromises()
     expect(wrapper.findComponent(CodeReferenceModal).find('pre').text()).toContain('guard();')
@@ -224,7 +286,9 @@ describe('报告冻结来源', () => {
     vi.mocked(reportsApi.source).mockResolvedValue(data)
     const wrapper = await start()
     const header = wrapper.find('.source-header')
-    expect(header.text()).toContain('TaskService.java')
+    expect(header.get('.source-heading h1').text()).toBe('S1 · 问题审查')
+    expect(header.get('.source-heading .readonly-badge').text()).toBe('报告快照 · 只读')
+    expect(header.get('.source-subtitle').text().replace(/\s+/g, ' ')).toBe('项目 · TaskService.java')
     expect(header.text()).not.toMatch(/task-1|r1|saved-sha|16:54:37/)
     expect(wrapper.findAll('[role="tab"]').map(tab => tab.text())).toEqual(['审查结果', '输入与配置'])
     expect(wrapper.findComponent(SpecialistReviewResultTab).props('readOnly')).toBe(true)
@@ -252,15 +316,15 @@ describe('报告冻结来源', () => {
     ]
     vi.mocked(reportsApi.source).mockResolvedValue(data)
     const wrapper = await start()
-    const findings = wrapper.findAll('.finding')
-    expect(findings[0].find('.frozen-feedback').text()).toContain('第一条不准确')
-    expect(findings[1].find('.frozen-feedback').text()).toContain('第二条的独立评论')
-    expect(findings[1].find('.assessment').text()).toBe('未反馈')
+    expect(wrapper.get('.finding .frozen-feedback').text()).toContain('第一条不准确')
+    await findingButton(wrapper, '下一项 →').trigger('click')
+    expect(wrapper.get('.finding .frozen-feedback').text()).toContain('第二条的独立评论')
+    expect(wrapper.get('.finding .assessment').text()).toBe('未反馈')
     expect(wrapper.find('.feedback-summary').text()).toContain('不准确 1 · 无法判断 0 · 未反馈 1')
     wrapper.unmount()
   })
 
-  it.each(['PATTERN', 'COUPLING'])('%s 的旧整份评价不拆到各卡底，缺少索引不提示可编辑', async kind => {
+  it.each(['PATTERN', 'COUPLING'])('%s 的旧整份评价不拆到各卡底，且不提示可编辑', async kind => {
     const data: any = snapshot()
     data.snapshot.kind = kind; data.snapshot.issues = []
     data.snapshot.result.body = kind === 'PATTERN' ? { patterns: [{ name: '旧模式', evidence: [] }] }
@@ -283,9 +347,11 @@ describe('报告冻结来源', () => {
     data.snapshot.result.body.issues = [{ title: '第一个问题', locations: [] }, { title: '第二个问题', locations: [] }]
     vi.mocked(reportsApi.source).mockResolvedValue(data)
     const wrapper = await start()
-    expect(wrapper.findAll('.finding')[0].text()).toContain('<img src=x onerror=alert(1)>')
-    expect(wrapper.findAll('.finding')[1].text()).toContain('当时尚未保存评价或评论')
+    expect(wrapper.get('.finding').text()).toContain('<img src=x onerror=alert(1)>')
     expect(wrapper.find('img').exists()).toBe(false)
+    await findingButton(wrapper, '下一项 →').trigger('click')
+    expect(wrapper.get('.finding .assessment').text()).toBe('未反馈')
+    expect(wrapper.get('.finding').text()).not.toContain('<img src=x onerror=alert(1)>')
     wrapper.unmount()
   })
 
@@ -354,6 +420,142 @@ describe('报告冻结来源', () => {
     expect(scroller.scrollTop).toBe(0)
     await wrapper.findAll('[role="tab"]')[1].trigger('keydown', { key: 'Home' })
     expect(wrapper.find('[aria-selected="true"]').text()).toBe('审查结果')
+    wrapper.unmount()
+  })
+})
+
+describe('选材结果预览', () => {
+  const candidate: ReportCandidate = {
+    resultId: 'preview-result', taskId: 'preview-task', targetId: 'preview-target', kind: 'ISSUE',
+    projectId: 'p1', projectName: '项目', taskName: '审查任务', taskRoute: 'SPECIALIST',
+    taskState: 'SUCCEEDED', sourceKind: 'DIFF', path: 'src/A.java', oldPath: null, branch: 'release',
+    headSha: 'head-sha', baseSha: 'base-sha', resultCreatedAt: '2026-10-26T16:52:08',
+    issueCount: 2, feedback: null
+  }
+
+  function currentResult(): ResultView {
+    const evidence = { materialId: 'aux', startLine: 20, endLine: 20 }
+    const issues = ['第一条预览问题', '第二条预览问题'].map((title, index) => ({
+      title, category: 'CORRECTNESS', severity: 'HIGH', reason: '说明', suggestion: '建议',
+      locations: index === 0 ? [evidence] : []
+    }))
+    return {
+      id: candidate.resultId, targetId: candidate.targetId!, kind: 'ISSUE', completeness: 'COMPLETE',
+      schemaVersion: '1', createdAt: candidate.resultCreatedAt,
+      body: { summary: '预览摘要', issues },
+      issues: issues.map((issue, index) => ({ ...issue, id: `preview-issue-${index + 1}`, ordinal: index + 1, locations: [], sourceUnits: [] })),
+      provenance: { materials: [{ id: 'aux', path: 'Guard.java', sha: 'base-sha', side: 'BEFORE', role: 'EVIDENCE' }] }
+    }
+  }
+
+  afterEach(() => {
+    expect(feedbackApi.get).not.toHaveBeenCalled()
+    expect(feedbackApi.save).not.toHaveBeenCalled()
+    expect(reportsApi.source).not.toHaveBeenCalled()
+    expect(reportsApi.freezeInputs).not.toHaveBeenCalled()
+  })
+
+  it('专项使用只读逐项布局，保留固定版本证据', async () => {
+    vi.mocked(tasksApi.result).mockResolvedValue(currentResult())
+    const wrapper = mount(ReportSourceModal, { props: { open: true, candidate }, ...options })
+    await flushPromises()
+    expect(tasksApi.result).toHaveBeenCalledWith('preview-task', 'preview-target')
+    const header = wrapper.get('.source-header')
+    expect(header.get('.source-heading h1').text()).toBe('预览 · 问题审查')
+    expect(header.get('.source-heading .readonly-badge').text()).toBe('当前结果 · 只读')
+    expect(header.get('.source-subtitle').text().replace(/\s+/g, ' ')).toBe('项目 · A.java')
+    expect(wrapper.get('.finding h3').text()).toBe('第一条预览问题')
+    expect(wrapper.find('[aria-label="发现索引"]').exists()).toBe(false)
+    expect(wrapper.find('.frozen-feedback').exists()).toBe(false)
+    expect(wrapper.getComponent(SpecialistReviewResultTab).props('readOnly')).toBe(true)
+    expect(wrapper.findComponent(FeedbackEditor).exists()).toBe(false)
+
+    await wrapper.findAll('a-button-stub').find(button => button.text().includes('Guard.java : 20-20'))!.trigger('click')
+    await flushPromises()
+    const reader = wrapper.getComponent(CodeReferenceModal)
+    expect(reader.props('frozenMaterials')).toBeUndefined()
+    expect(repositoryApi.file).toHaveBeenCalledWith('p1', 'base-sha', 'Guard.java')
+    expect(tasksApi.material).toHaveBeenCalledWith('preview-task', 'aux')
+    reader.vm.$emit('update:open', false)
+    await flushPromises()
+    expect(wrapper.emitted('update:open')).toBeUndefined()
+
+    await findingButton(wrapper, '下一项 →').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.finding h3').text()).toBe('第二条预览问题')
+    expect(wrapper.findComponent(FeedbackEditor).exists()).toBe(false)
+    await findingButton(wrapper, '← 上一项').trigger('click')
+    expect(wrapper.get('.finding h3').text()).toBe('第一条预览问题')
+    await wrapper.get('.reader-tabs button:nth-child(2)').trigger('click')
+    expect(wrapper.text()).toContain('head-sha')
+    expect(wrapper.get('[aria-label="结果记录"]').text()).toContain('审查任务')
+    expect(wrapper.find('[aria-label="冻结记录"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('Agent 预览保留材料不足与未解决事项', async () => {
+    vi.mocked(agentTasksApi.result).mockResolvedValue({
+      id: 'agent-result', schemaVersion: '1', completeness: 'COMPLETE', createdAt: '', provenance: {},
+      body: { title: '预览调查', summary: '摘要', answerStatus: 'INSUFFICIENT_EVIDENCE',
+        markdown: '调查正文', unresolved: ['未读取目标'], citations: [] }
+    })
+    const wrapper = mount(ReportSourceModal, { props: { open: true,
+      candidate: { ...candidate, resultId: 'agent-result', targetId: null, kind: 'AGENT' }
+    }, ...options })
+    await flushPromises()
+    expect(agentTasksApi.result).toHaveBeenCalledWith('preview-task')
+    expect(tasksApi.result).not.toHaveBeenCalled()
+    expect(wrapper.getComponent(AgentResultPanel).text()).toContain('未读取目标')
+    expect(wrapper.text()).toContain('材料不足')
+    expect(wrapper.find('.finding-toolbar').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('PR 预览在输入页按需读取任务，等候时仍显示候选版本', async () => {
+    const headSha = 'b'.repeat(40)
+    const baseSha = 'a'.repeat(40)
+    const targetHead = 'c'.repeat(40)
+    vi.mocked(tasksApi.result).mockResolvedValue({ ...currentResult(), body: { summary: 'PR 结果' }, issues: [] })
+    let resolveTask!: (task: Awaited<ReturnType<typeof tasksApi.detail>>) => void
+    vi.mocked(tasksApi.detail).mockReturnValueOnce(new Promise(resolve => { resolveTask = resolve }))
+    const wrapper = mount(ReportSourceModal, { props: { open: true,
+      candidate: { ...candidate, sourceKind: 'PR', headSha, baseSha }
+    }, ...options })
+    await flushPromises()
+    expect(tasksApi.detail).not.toHaveBeenCalled()
+    await wrapper.get('.reader-tabs button:nth-child(2)').trigger('click')
+    expect(tasksApi.detail).toHaveBeenCalledWith(candidate.taskId)
+    const versions = wrapper.get('[aria-label="来源源码版本"]')
+    expect(versions.text()).toContain(baseSha)
+    expect(versions.text()).toContain(headSha)
+    resolveTask({ pullNumber: 42, mergeBase: baseSha, sourceHead: headSha, targetHead } as Awaited<ReturnType<typeof tasksApi.detail>>)
+    await flushPromises()
+    const pr = versions.get('code.input-version')
+    expect(pr.text()).toBe(`PR #42 · ${baseSha.slice(0, 12)}（共同祖先）→ ${headSha.slice(0, 12)}（源提交）`)
+    expect(pr.attributes('title')).toContain(targetHead)
+    wrapper.unmount()
+  })
+
+  it('切换候选或关闭后丢弃迟到结果', async () => {
+    let resolveOld!: (value: ResultView) => void
+    let resolveClosed!: (value: ResultView) => void
+    vi.mocked(tasksApi.result)
+      .mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
+      .mockResolvedValueOnce({ ...currentResult(), id: 'next-result', targetId: 'next-target', body: { summary: '新预览' }, issues: [] })
+      .mockReturnValueOnce(new Promise(resolve => { resolveClosed = resolve }))
+    const wrapper = mount(ReportSourceModal, { props: { open: true, candidate }, ...options })
+    await wrapper.setProps({ candidate: { ...candidate, resultId: 'next-result', targetId: 'next-target' } })
+    await flushPromises()
+    resolveOld(currentResult())
+    await flushPromises()
+    expect(wrapper.text()).toContain('新预览')
+    expect(wrapper.text()).not.toContain('预览摘要')
+
+    await wrapper.setProps({ candidate })
+    await wrapper.setProps({ open: false })
+    resolveClosed(currentResult())
+    await flushPromises()
+    expect(wrapper.findComponent(SpecialistReviewResultTab).exists()).toBe(false)
     wrapper.unmount()
   })
 })

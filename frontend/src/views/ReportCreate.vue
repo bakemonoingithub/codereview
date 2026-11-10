@@ -110,30 +110,7 @@
       <ReportResultPickerModal v-model:open="pickerOpen" :projects="projects" :selected="selectedList"
         @confirm="applySelection" @preview="openResult" />
 
-      <a-modal
-        v-model:open="resultOpen"
-        :title="resultTitle"
-        width="min(960px, calc(100vw - 48px))"
-        :footer="null"
-        destroy-on-close
-      >
-        <a-spin :spinning="resultLoading">
-          <a-alert v-if="resultError" type="error" show-icon :message="resultError">
-            <template #action><a-button size="small" @click="previewRecord && openResult(previewRecord)">重试</a-button></template>
-          </a-alert>
-          <AgentResultPanel v-else-if="agentResult" :body="agentResult.body" :show-download="false" @open-code="openCodeReference" />
-          <SpecialistResultView
-            v-else-if="resultView && resultTaskId"
-            :result="resultView"
-            :task-id="resultTaskId"
-            item-feedback
-          />
-        </a-spin>
-      </a-modal>
-      <CodeReferenceModal v-if="codePayload" v-model:open="codeOpen" :task-id="resultTaskId" :project-id="resultProjectId"
-        :scope="codePayload.scope" :path="codePayload.path" :sha="codePayload.sha || ''" :side="codePayload.side"
-        :references="codePayload.references" :active-start="codePayload.startLine" :active-end="codePayload.endLine"
-        :initial-mode="codePayload.sha ? 'full' : 'saved'" />
+      <ReportSourceModal v-model:open="resultOpen" :candidate="previewRecord" />
     </template>
   </LaunchModalShell>
 </template>
@@ -142,47 +119,30 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import SpecialistResultView from '@/components/SpecialistResultView.vue'
-import AgentResultPanel from '@/components/AgentResultPanel.vue'
-import CodeReferenceModal from '@/components/CodeReferenceModal.vue'
 import ReportResultPickerModal from '@/components/ReportResultPickerModal.vue'
+import ReportSourceModal from '@/components/ReportSourceModal.vue'
 import PromptVersionSelect from '@/components/PromptVersionSelect.vue'
 import PromptInfoPreview from '@/components/PromptInfoPreview.vue'
 import { kindText, pathTitle, shortSha } from '@/utils/reportCandidates'
-import type { CodeReferencePayload } from '@/utils/codeReferences'
 import { isPromptApplicable, readPromptSelection, unavailablePromptVersion } from '@/utils/promptSelection'
 import {
-  agentTasksApi,
   modelsApi,
   promptsApi,
   projectsApi,
   reportsApi,
-  tasksApi,
-  type AgentResultView,
   type ModelView,
   type PromptSummary,
   type PromptVersion,
   type PromptView,
   type ProjectView,
-  type ReportCandidate,
-  type ResultView
+  type ReportCandidate
 } from '@/api/v2'
 import { fileName, taskLabel } from '@/utils/taskLabel'
 
 const router = useRouter()
 const pickerOpen = ref(false)
-const agentResult = ref<AgentResultView | null>(null)
 const previewRecord = ref<ReportCandidate | null>(null)
-const resultProjectId = ref('')
-const codePayload = ref<CodeReferencePayload | null>(null)
-const codeOpen = ref(false)
-let resultEpoch = 0
 const resultOpen = ref(false)
-const resultLoading = ref(false)
-const resultError = ref('')
-const resultView = ref<ResultView | null>(null)
-const resultTaskId = ref('')
-const resultTitle = ref('审查结果')
 const form = reactive({
   title: '', modelConfigId: undefined as string | undefined, instruction: '',
   promptId: '', promptVersionId: ''
@@ -201,10 +161,7 @@ const promptVersions = ref<PromptVersion[]>([])
 const selected = reactive(new Map<string, ReportCandidate>())
 let disposed = false
 let promptEpoch = 0
-onBeforeUnmount(() => { disposed = true; resultEpoch++; promptEpoch++ })
-watch(resultOpen, open => {
-  if (!open) { resultEpoch++; resultLoading.value = false; codeOpen.value = false }
-}, { flush: 'sync' })
+onBeforeUnmount(() => { disposed = true; promptEpoch++ })
 
 const modelOptions = computed(() =>
   models.value.map((model) => ({
@@ -323,41 +280,13 @@ function closeCreate() {
   router.push('/reports')
 }
 
-function openCodeReference(value: CodeReferencePayload) {
-  codePayload.value = value
-  codeOpen.value = true
-}
-
-async function openResult(record: ReportCandidate) {
+function openResult(record: ReportCandidate) {
   if (record.kind !== 'AGENT' && !record.targetId) {
     message.warning('这条结果没有可查看的文件目标')
     return
   }
-  const epoch = ++resultEpoch
   previewRecord.value = record
-  resultTitle.value = `${taskLabel(record.taskName, record.taskId)} · ${record.kind === 'AGENT' ? 'Agent 调查结果' : fileName(record.path)}`
-  resultTaskId.value = record.taskId
-  resultProjectId.value = record.projectId
-  resultView.value = null
-  agentResult.value = null
-  codePayload.value = null
-  codeOpen.value = false
-  resultError.value = ''
   resultOpen.value = true
-  resultLoading.value = true
-  try {
-    if (record.kind === 'AGENT') {
-      const result = await agentTasksApi.result(record.taskId)
-      if (!disposed && epoch === resultEpoch) agentResult.value = result
-    } else {
-      const result = await tasksApi.result(record.taskId, record.targetId!)
-      if (!disposed && epoch === resultEpoch) resultView.value = result
-    }
-  } catch (failure) {
-    if (!disposed && epoch === resultEpoch) resultError.value = (failure as Error).message || '审查结果读取失败'
-  } finally {
-    if (epoch === resultEpoch) resultLoading.value = false
-  }
 }
 
 async function submit() {
