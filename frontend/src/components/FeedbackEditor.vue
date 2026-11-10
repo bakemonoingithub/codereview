@@ -2,7 +2,7 @@
   <section class="feedback" :class="{ conclusion }">
     <div class="feedback-head">
       <strong class="small">{{ conclusion ? (subjectKind === 'ISSUE' ? '这个问题是否准确？' : '这条结论是否准确？') : '准确度反馈' }}</strong>
-      <span class="muted small">作用于{{ subjectText }}</span>
+<!--      <span class="muted small">作用于{{ subjectText }}</span>-->
       <span class="spacer" />
       <span class="muted small">{{ statusText }}</span>
     </div>
@@ -16,7 +16,7 @@
     <a-textarea v-model:value="comment" :maxlength="16000" :rows="3" :disabled="loading || (!conclusion && saving) || !ready"
       placeholder="可选评论，可不选择评价而单独保存" />
     <div class="feedback-foot">
-      <span class="muted small">{{ conclusion ? '评价结论、说明及依据的准确性，与是否采纳建议无关。' : '评论与评价分别保留；切换问题或文件时保留页面内输入。' }}</span>
+<!--      <span class="muted small">{{ conclusion ? '评价结论、说明及依据的准确性，与是否采纳建议无关。' : '评论与评价分别保留；切换问题或文件时保留页面内输入。' }}</span>-->
       <span class="spacer" />
       <a-button size="small" type="primary" :loading="saving" :disabled="loading || saving || !ready || !dirty || !!latest" @click="save">保存反馈</a-button>
     </div>
