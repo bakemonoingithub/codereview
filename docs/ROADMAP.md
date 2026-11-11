@@ -1,5 +1,7 @@
 # ROADMAP - 专项审查与 Agent 分析
 
+设计待实施见[Gitea PR 自动审查方案](work/gitea-pr-auto-review/README.md)。方案单独记录实施顺序和验收条件。
+
 ## PRS 手工选择 PR 审查范围（2026-11-06）
 
 负责人要求基于[PR 范围评估](work/pr-review-scope/assessment.md)与[交互原型](work/pr-review-scope/prototype.html)准备开发。业务边界见[契约第 13 节](work/agent-redesign/business-contract.md#13-pr-手工审查范围2026-11-06)，具体接口、前端复用、分步内容和验收见[工作计划](work/pr-review-scope/README.md)。范围为 GitHub 验证仓库与 Gitea 1.16.1 内网仓库的手工 PR 审查；现有审查中心发起弹窗、专项／Agent 详情和代码阅读组件继续复用。自动触发、PR 回写、合并拦截及流水线门禁不在本工作包。

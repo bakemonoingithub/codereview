@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CodeReview · PR 自动审查原型</title>
+<style>
+:root {
+  --ink:#0f172a; --muted:#64748b; --line:#e8edf3; --bg:#f8fafc; --blue:#2563eb;
+  --soft:#eff4ff; --green:#047857; --amber:#92400e; --red:#b91c1c; --radius:20px;
+  --shadow:0 1px 2px #0f172a0a,0 4px 16px #0f172a08;
+}
+* { box-sizing:border-box }
+[hidden] { display:none!important }
+body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.65 Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif }
+h1,h2,h3,p,dl,dd { margin:0 }
+h1 { font-size:32px; line-height:1.25; letter-spacing:-.65px }
+h2 { font-size:17px; line-height:1.4 }
+h3 { font-size:14px }
+button,input,select { font:inherit }
+button,select { cursor:pointer }
+button,a.primary { border:1px solid #dfe6ef; border-radius:11px; background:#fff; color:var(--ink); padding:8px 14px; font-weight:600; font-size:13px; white-space:nowrap }
+button:hover:not(:disabled) { background:#f1f5f9 }
+button:disabled { cursor:default; opacity:.55 }
+button.primary,a.primary { background:var(--blue); color:#fff; border-color:var(--blue); box-shadow:0 4px 10px #2563eb24 }
+button.primary:hover:not(:disabled),a.primary:hover { background:#1d4ed8 }
+a.primary { text-decoration:none }
+button.link,a.link { background:none; border:0; padding:2px 0; color:var(--blue); text-align:left; white-space:normal }
+a.link { font-size:13px; font-weight:600; text-decoration:none; overflow-wrap:anywhere }
+button.link:hover,a.link:hover { text-decoration:underline }
+:focus-visible { outline:2px solid var(--blue); outline-offset:3px }
+input:not([type=checkbox]),select { width:100%; min-width:0; padding:8px 11px; border:1px solid #dfe6ef; border-radius:10px; background:#f8fafc; color:var(--ink) }
+input:focus,select:focus { background:#fff }
+input[type=checkbox] { accent-color:var(--blue) }
+code,pre,.mono { font-family:Consolas,"Cascadia Code",monospace }
+code { background:#f1f5f9; border:1px solid #e2e8f0; border-radius:5px; padding:2px 5px; font-size:12px; color:#334155; overflow-wrap:anywhere }
+pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px }
+.muted { color:var(--muted) }
+.small { font-size:12px }
+.row { display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.between { justify-content:space-between }
+.sidebar { position:fixed; inset:0 auto 0 0; width:240px; padding:28px 16px 20px; background:white; border-right:1px solid var(--line); display:flex; flex-direction:column; z-index:8 }
+.brand { font-size:19px; font-weight:700; padding:0 8px 30px; display:flex; gap:12px; align-items:center }
+.brand-mark { display:grid; place-items:center; width:34px; height:34px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; border-radius:10px; box-shadow:0 6px 14px #2563eb40; font-size:17px }
+.sidebar button { display:flex; width:100%; align-items:center; gap:11px; padding:11px 14px; border:0; background:transparent; color:#475569; text-align:left; margin-bottom:4px }
+.sidebar button:hover { background:#f1f5f9 }
+.sidebar button[aria-current=page] { background:var(--soft); color:var(--blue) }
+.workspace { margin-left:240px; min-width:0 }
+.topbar { position:sticky; top:0; z-index:5; min-height:66px; padding:0 36px; background:#ffffffed; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:center; justify-content:space-between; backdrop-filter:blur(8px) }
+.topbar-section { color:#334155; font-size:13px; font-weight:600 }
+main { padding:30px 36px 48px; max-width:1600px; margin:auto }
+.heading { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin:0 0 24px }
+.card { min-width:0; background:white; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow) }
+.card-header { padding:15px 21px; border-bottom:1px solid var(--line) }
+.pad { padding:17px 21px }
+.scope { display:grid; grid-template-columns:minmax(0,260px) minmax(0,1fr); gap:22px; align-items:end; margin-bottom:18px }
+.bound-repo { display:grid; gap:5px; align-self:center; font-size:13px }
+.bound-repo dt { color:var(--muted); font-size:12px }
+.bound-repo dd { overflow-wrap:anywhere }
+.config-grid { display:grid; grid-template-columns:minmax(0,1.24fr) minmax(0,1fr); gap:18px; align-items:start }
+.stack { display:grid; gap:18px; min-width:0 }
+.form-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:15px 16px }
+.full { grid-column:1/-1 }
+.field>label,.field>.label { display:block; margin-bottom:5px; font-weight:600; font-size:13px }
+.field small { display:block; margin-top:5px; color:var(--muted) }
+.control-row { display:flex; gap:8px; align-items:center }
+.control-row input { flex:1 }
+.help { color:var(--muted); font-size:12px; margin-top:3px }
+.switch { display:inline-flex; align-items:center; gap:8px; font-weight:600; font-size:13px; cursor:pointer }
+.switch input { appearance:none; width:36px; height:21px; border:0; border-radius:12px; margin:0; background:#94a3b8; position:relative; cursor:pointer }
+.switch input:before { content:""; position:absolute; inset:3px auto auto 3px; width:15px; height:15px; background:#fff; border-radius:50%; transition:transform .15s }
+.switch input:checked { background:var(--blue) }
+.switch input:checked:before { transform:translateX(15px) }
+.badge { display:inline-flex; gap:6px; align-items:center; padding:3px 9px; background:#eef2f7; color:#475569; font-size:11px; font-weight:650; border-radius:999px; white-space:nowrap }
+.badge:before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor }
+.badge.green { color:var(--green); background:#eaf7ef }
+.badge.amber { color:var(--amber); background:#fff3e0 }
+.badge.red { color:var(--red); background:#fff0ef }
+.badge.blue { color:var(--blue); background:var(--soft) }
+.trigger { display:grid; grid-template-columns:86px minmax(0,1fr); gap:14px; padding:12px 0; align-items:baseline }
+.trigger:first-child { padding-top:0 }
+.trigger+.trigger { border-top:1px solid var(--line) }
+.trigger:last-child { padding-bottom:0 }
+.trigger .help { margin:0 }
+.reviewer-list { display:flex; flex-wrap:wrap; gap:7px; list-style:none; padding:0; margin:8px 0 0 }
+.reviewer-list:empty { display:none }
+.reviewer-chip { display:inline-flex; align-items:center; gap:5px; max-width:100%; padding:1px 4px 1px 8px; background:var(--soft); color:#274878; border-radius:8px; font-size:12px; overflow-wrap:anywhere }
+.reviewer-chip button { border:0; background:none; color:#486487; padding:0 4px; font-size:15px; line-height:24px }
+.field .field-error { color:var(--red) }
+.field .field-error:empty { margin:0 }
+.detail-note { padding:10px 12px; border-radius:11px; border:1px solid #dbe7fc; background:#f3f7ff; color:#3f587f; font-size:12px }
+.detail-note.warn { background:#fff8ed; border-color:#f2dfbd; color:var(--amber) }
+.kv { display:grid; grid-template-columns:minmax(100px,auto) minmax(0,1fr); gap:7px 16px; font-size:13px }
+.kv dt { color:var(--muted) }
+.kv dd { min-width:0; overflow-wrap:anywhere }
+.fields { display:grid; gap:13px }
+.filters { display:grid; grid-template-columns:minmax(210px,2fr) repeat(3,minmax(118px,1fr)) auto; gap:9px; align-items:end; padding:15px 21px; border-bottom:1px solid var(--line) }
+.filters label { display:block; color:#475569; font-size:12px; margin-bottom:3px }
+.stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:18px }
+.stat { padding:14px 18px }
+.stat strong { display:block; margin-top:3px; font-size:25px; line-height:1.3 }
+.table-wrap { overflow-x:auto }
+table { width:100%; border-collapse:collapse; text-align:left }
+th,td { padding:12px 16px; border-bottom:1px solid var(--line); white-space:nowrap }
+th { background:#fafbfc; font-size:12px; color:var(--muted); font-weight:600 }
+tbody tr:hover { background:#f8fbff }
+tbody tr:last-child td { border-bottom:0 }
+.table-foot { border-top:1px solid var(--line); padding:12px 20px; color:var(--muted); font-size:12px }
+.table-meta { display:block; margin-top:3px; max-width:230px; white-space:normal }
+.empty { text-align:center; color:var(--muted); padding:35px 20px }
+.tabbar { display:flex; gap:23px; padding:0 22px; border-bottom:1px solid var(--line); overflow:auto }
+.tabbar button { border:0; border-radius:0; border-bottom:2px solid transparent; color:var(--muted); background:none; padding:12px 0 }
+.tabbar button[aria-selected=true] { color:var(--blue); border-color:var(--blue) }
+dialog { color:var(--ink); border:0; padding:0; width:min(570px,calc(100vw - 28px)); border-radius:20px; box-shadow:0 20px 70px #0f172a32; max-height:calc(100dvh - 28px) }
+dialog[open] { display:flex; flex-direction:column }
+dialog::backdrop { background:#0f172a55 }
+dialog.drawer { width:min(620px,100vw); height:100dvh; max-height:100dvh; margin:0 0 0 auto; border-radius:20px 0 0 20px }
+.modal-head { padding:19px 22px; border-bottom:1px solid var(--line) }
+.modal-body { min-height:0; overflow:auto; padding:19px 22px }
+.drawer .modal-body { flex:1 }
+.dialog-form { display:flex; flex-direction:column; min-height:0 }
+.modal-foot { padding:14px 22px; background:#f8fafc; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px }
+button.close { border:0; padding:0 7px; font-size:21px; color:var(--muted) }
+.preview { padding:13px; border:1px solid var(--line); border-radius:12px; background:#f8fafc }
+.drawer-section+ .drawer-section { margin-top:18px }
+.drawer-section h3 { margin-bottom:8px }
+.detail-summary { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding:0 22px 14px }
+.modal-head:has(+.detail-summary) { border-bottom:0; padding-bottom:11px }
+.detail-actions { margin-top:12px }
+.toast:popover-open { inset:auto auto 22px 50%; margin:0; border:0 }
+.toast { position:fixed; bottom:22px; left:50%; z-index:25; transform:translateX(-50%); border-radius:12px; background:var(--ink); color:white; padding:10px 16px; box-shadow:var(--shadow) }
+@media(max-width:1150px) {
+  .sidebar { width:200px } .workspace { margin-left:200px } main,.topbar { padding-left:24px; padding-right:24px }
+  .filters { grid-template-columns:repeat(2,minmax(0,1fr)) } .filters>div:first-child { grid-column:1/-1 }
+}
+@media(max-width:880px) {
+  .config-grid { grid-template-columns:1fr } .stats { grid-template-columns:repeat(2,minmax(0,1fr)) }
+}
+@media(max-width:650px) {
+  .sidebar { position:static; width:100%; border-right:0; border-bottom:1px solid var(--line); display:flex; flex-direction:row; flex-wrap:wrap; padding:9px 12px; gap:4px }
+  .brand { width:100%; padding:0 3px 5px; font-size:17px } .brand-mark { width:27px; height:27px }
+  .sidebar button { width:auto; margin:0; padding:6px 9px }
+  .workspace { margin-left:0 } .topbar { min-height:52px; padding:0 14px } main { padding:20px 12px 35px }
+  .heading { margin-bottom:16px } h1 { font-size:26px }
+  .scope { grid-template-columns:1fr; gap:12px }
+  .form-grid { grid-template-columns:1fr } .pad,.card-header,.filters { padding-left:15px; padding-right:15px }
+  dialog.drawer { border-radius:0 } .toast { max-width:90vw }
+}
+</style>
+</head>
+<body>
+<aside class="sidebar" aria-label="主导航">
+  <div class="brand"><b class="brand-mark" aria-hidden="true">⌘</b> CodeReview</div>
+  <button type="button" data-page="config" aria-current="page"><span aria-hidden="true">⚙</span> 自动审查配置</button>
+  <button type="button" data-page="records"><span aria-hidden="true">▤</span> 处理记录</button>
+</aside>
+
+<div class="workspace">
+  <header class="topbar">
+    <div class="topbar-section">项目管理</div>
+    <span class="badge blue">示例数据</span>
+  </header>
+  <main>
+    <div class="heading">
+      <h1 id="page-title">PR 自动审查</h1>
+      <div class="row">
+        <button type="button" id="open-simulation">模拟投递</button>
+        <button type="submit" form="config-form" class="primary" id="save-config" disabled>保存配置</button>
+      </div>
+    </div>
+
+    <section class="card pad scope" aria-label="当前项目">
+      <div class="field">
+        <label for="project">项目</label>
+        <select id="project"><option value="review">aiCodeReview</option><option value="orders">订单服务</option></select>
+      </div>
+      <dl class="bound-repo"><dt>绑定仓库</dt><dd class="mono" id="repository-name"></dd></dl>
+    </section>
+
+    <section id="config-page" aria-label="自动审查配置">
+      <form id="config-form" class="config-grid">
+        <div class="stack">
+          <section class="card">
+            <div class="card-header row between">
+              <h2>审查配置</h2>
+              <label class="switch"><input id="enabled" type="checkbox" role="switch">启用自动审查</label>
+            </div>
+            <div class="pad form-grid">
+              <div class="field">
+                <label for="branch">目标分支</label>
+                <input id="branch" value="main" required maxlength="200" pattern="\S+" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="model">审查模型</label>
+                <select id="model" required><option value="review-model">内网代码审查模型</option><option value="backup-model">备用代码审查模型</option></select>
+              </div>
+              <div class="field">
+                <label for="prompt">通用提示词</label>
+                <select id="prompt"><option value="">使用默认规则</option><option value="standard">通用代码审查规范</option><option value="security">安全审查规则</option></select>
+              </div>
+              <div class="field">
+                <label for="version">提示词版本</label>
+                <select id="version"></select>
+              </div>
+              <div class="field full">
+                <label for="reviewer-login">可触发复审的审核者</label>
+                <div class="control-row">
+                  <input id="reviewer-login" placeholder="Gitea 登录名" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="reviewer-error">
+                  <button type="button" id="add-reviewer">添加</button>
+                </div>
+                <small class="field-error" id="reviewer-error" aria-live="polite"></small>
+                <ul class="reviewer-list" id="reviewer-list" aria-label="已添加的审核者"></ul>
+                <small id="reviewer-empty" role="status" hidden>名单为空，评论复审停用。</small>
+              </div>
+            </div>
+          </section>
+          <section class="card">
+            <div class="card-header"><h2>触发规则</h2></div>
+            <div class="pad">
+              <div class="trigger"><h3>新建 PR</h3><p class="help" id="branch-rule"></p></div>
+              <div class="trigger"><h3><code>/recheck</code></h3><p class="help">名单内的审核者在原 PR 新发一条只含该命令的评论。追加提交和编辑旧评论均跳过。</p></div>
+            </div>
+          </section>
+        </div>
+        <div class="stack">
+          <section class="card">
+            <div class="card-header"><h2>Webhook 接收</h2></div>
+            <div class="pad fields">
+              <div class="field">
+                <label for="endpoint">接收地址</label>
+                <div class="control-row"><input id="endpoint" class="mono" readonly><button type="button" id="copy-endpoint">复制</button></div>
+                <small>填入 Gitea Webhook 的「目标 URL」。</small>
+              </div>
+              <dl class="kv">
+                <dt>验签密钥</dt><dd>由服务端配置</dd>
+              </dl>
+            </div>
+          </section>
+          <section class="card">
+            <div class="card-header"><h2>评论回写</h2></div>
+            <div class="pad fields">
+              <div class="field">
+                <label for="review-base">审查系统访问地址</label>
+                <input id="review-base" type="url" required placeholder="https://review.example.com" autocomplete="off" aria-describedby="review-base-help">
+                <small id="review-base-help">填写审核者可访问的地址，用于生成任务链接。</small>
+              </div>
+              <dl class="kv">
+                <dt>发送账号</dt><dd class="mono" id="robot-name"></dd>
+                <dt>发送时机</dt><dd>审查任务创建后</dd>
+                <dt>评论内容</dt><dd>本轮任务链接</dd>
+              </dl>
+            </div>
+          </section>
+        </div>
+      </form>
+    </section>
+
+    <section id="records-page" aria-label="处理记录" hidden>
+      <div class="stats" id="stats" aria-label="当前项目记录统计"></div>
+      <section class="card" aria-label="Webhook 投递列表">
+        <div class="filters">
+          <div><label for="search">搜索</label><input id="search" type="search" placeholder="PR 编号、投递 ID、审查 ID、原因"></div>
+          <div><label for="event-filter">事件</label><select id="event-filter"><option value="">全部事件</option></select></div>
+          <div><label for="decision-filter">审查决定</label><select id="decision-filter"><option value="">全部决定</option><option value="created">已创建任务</option><option value="skipped">已跳过</option><option value="failed">创建失败</option><option value="rejected">已拒绝</option></select></div>
+          <div><label for="write-filter">评论回写</label><select id="write-filter"><option value="">全部状态</option><option value="sent">已发送</option><option value="unknown">结果待确认</option><option value="failed">发送失败</option><option value="pending">待发送</option><option value="sending">发送中</option><option value="none">无需发送</option></select></div>
+          <button type="button" id="reset-filters">重置</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">接收时间 / 投递 ID</th><th scope="col">事件 / 动作</th><th scope="col">PR</th><th scope="col">审查决定</th><th scope="col">评论回写</th></tr></thead>
+            <tbody id="record-rows"></tbody>
+          </table>
+          <div id="empty-records" class="empty" hidden></div>
+        </div>
+        <div class="table-foot row between"><span id="record-count" aria-live="polite"></span><span>UTC+09:00</span></div>
+      </section>
+    </section>
+  </main>
+</div>
+
+<dialog class="drawer" id="detail-dialog" aria-labelledby="detail-title">
+  <div class="modal-head row between">
+    <div><h2 id="detail-title">投递详情</h2><p class="help mono" id="detail-subtitle"></p></div>
+    <button type="button" class="close" aria-label="关闭投递详情" data-close="detail-dialog">×</button>
+  </div>
+  <div id="detail-summary" class="detail-summary"></div>
+  <div class="tabbar" role="tablist" aria-label="记录环节">
+    <button id="tab-receive" role="tab" type="button" data-tab="receive" aria-controls="detail-body" aria-selected="true">接收请求</button>
+    <button id="tab-decision" role="tab" type="button" data-tab="decision" aria-controls="detail-body" aria-selected="false" tabindex="-1">审查决定</button>
+    <button id="tab-write" role="tab" type="button" data-tab="write" aria-controls="detail-body" aria-selected="false" tabindex="-1">评论回写</button>
+  </div>
+  <div id="detail-body" class="modal-body" role="tabpanel" aria-labelledby="tab-receive" tabindex="0"></div>
+</dialog>
+
+<dialog id="simulation-dialog" aria-labelledby="simulation-title">
+  <form id="simulation-form" class="dialog-form">
+    <div class="modal-head row between">
+      <h2 id="simulation-title">模拟 Webhook 投递</h2>
+      <button type="button" class="close" aria-label="关闭模拟投递" data-close="simulation-dialog">×</button>
+    </div>
+    <div class="modal-body form-grid">
+      <div class="field full">
+        <label for="scenario">投递场景</label>
+        <select id="scenario">
+          <option value="open">新建 PR</option>
+          <option value="comment">新建 PR 评论</option>
+          <option value="update">向原 PR 追加提交</option>
+          <option value="edit">编辑旧评论</option>
+          <option value="branch">非目标分支的 PR</option>
+          <option value="binary">只有二进制变更</option>
+          <option value="task-fail">审查任务创建失败</option>
+          <option value="timeout">评论发送超时</option>
+          <option value="push">其他事件（push）</option>
+          <option value="replay">重复接收同一投递</option>
+          <option value="invalid">Webhook 验签失败</option>
+        </select>
+      </div>
+      <div id="sim-comment-fields" class="full form-grid" hidden>
+        <div class="field"><label for="sim-actor">评论发布者</label><select id="sim-actor"></select></div>
+        <div class="field"><label for="sim-body">评论正文</label><input id="sim-body" value="/recheck" maxlength="180"></div>
+      </div>
+      <div class="field full" id="sim-timeout-field" hidden>
+        <label for="sim-remote">超时后的远端情况</label>
+        <select id="sim-remote"><option value="found">评论已发布，系统未收到回执</option><option value="missing">评论未发布</option></select>
+      </div>
+      <p class="muted small full" id="sim-note" hidden></p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" data-close="simulation-dialog">取消</button>
+      <button type="submit" class="primary" id="run-simulation">生成示例记录</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" popover="manual"></div>
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const robot = "code-review-bot";
+const demoUserIds = new Map([["li.ming", 101], ["chen.yu", 102], ["zhou.lin", 103], ["developer", 201], [robot, 901]]);
+const promptVersions = {
+  standard: [["v3", "v3 · 2026-11-06"], ["v2", "v2 · 2026-10-25"]],
+  security: [["v2", "v2 · 2026-11-04"], ["v1", "v1 · 2026-10-18"]]
+};
+const projects = {
+  review: { repository: "engineering/aiCodeReview", repositoryId: 31, pr: 13, prBranch: "main", nextPr: 15 },
+  orders: { repository: "engineering/order-service", repositoryId: 42, pr: 7, prBranch: "main", nextPr: 8 }
+};
+const defaults = {
+  review: { enabled: true, branch: "main", model: "review-model", prompt: "standard", version: "v3", reviewers: ["li.ming", "chen.yu"], base: "https://review.example.com" },
+  orders: { enabled: false, branch: "main", model: "backup-model", prompt: "", version: "", reviewers: ["zhou.lin"], base: "https://review.example.com" }
+};
+const storageKey = "codereview.pr-auto-review.prototype.v1";
+const configs = structuredClone(defaults);
+try {
+  const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+  for (const key of Object.keys(configs)) {
+    if (saved[key]) Object.assign(configs[key], saved[key]);
+  }
+} catch {
+  // File URLs can run without access to local storage.
+}
+
+const instance = "https://gitea.example.com";
+const targetHead = "f228b3da1c2ec0bf0cad8c6e3bb35b5bb7788b0b";
+const originalHead = "59abb71e9341934c8fc9183c23c4f3653f24d879";
+const repairedHead = "9da674bc34987d6acbec4f8521953315ecdb7d20";
+const sourceHeads = { review: repairedHead, orders: originalHead };
+const textFileCounts = { review: 2, orders: 1 };
+const sampleWebhookEvents = {
+  open: { event: "pull_request", type: "pull_request", action: "opened" },
+  comment: { event: "issue_comment", type: "pull_request_comment", action: "created" },
+  edit: { event: "issue_comment", type: "pull_request_comment", action: "edited" },
+  update: { event: "pull_request", type: "pull_request_sync", action: "synchronized" },
+  push: { event: "push", type: "push" }
+};
+const decisions = {
+  created: ["已创建任务", "green"], skipped: ["已跳过", ""],
+  failed: ["创建失败", "red"], rejected: ["已拒绝", "red"]
+};
+const writes = {
+  sent: ["已发送", "green"], unknown: ["结果待确认", "amber"], failed: ["发送失败", "red"],
+  pending: ["待发送", "blue"], sending: ["发送中", "blue"], none: ["无需发送", ""]
+};
+const timeFormat = new Intl.DateTimeFormat("sv-SE", {
+  timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit"
+});
+const records = [];
+let projectKey = "review";
+let draftReviewers = [];
+let page = "config";
+let activeRecord = null;
+let activeTab = "receive";
+let toastTimer;
+let sequence = 0;
+let demoTime = Date.parse("2026-11-11T14:20:00+09:00");
+
+function nextTime() {
+  demoTime += 45_000;
+  return demoTime;
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[character]);
+}
+
+function code(value) {
+  return `<code>${escapeHtml(value)}</code>`;
+}
+
+function time(value) {
+  return value ? timeFormat.format(value) : "—";
+}
+
+function badge([label, color]) {
+  return `<span class="badge ${color}">${label}</span>`;
+}
+
+function metadata(rows) {
+  return `<dl class="kv">${rows.map(([key, value]) => `<dt>${key}</dt><dd>${value}</dd>`).join("")}</dl>`;
+}
+
+function section(title, content) {
+  const heading = title ? `<h3>${title}</h3>` : "";
+  return `<section class="drawer-section">${heading}${content}</section>`;
+}
+
+function preview(value) {
+  return `<pre class="preview">${escapeHtml(value)}</pre>`;
+}
+
+function showToast(message) {
+  clearTimeout(toastTimer);
+  const toast = $("toast");
+  toast.textContent = message;
+  if (!toast.matches(":popover-open")) toast.showPopover();
+  toastTimer = setTimeout(() => toast.hidePopover(), 3000);
+}
+
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    showToast("已复制");
+  } catch {
+    const field = document.createElement("textarea");
+    const focused = document.activeElement;
+    field.value = value;
+    field.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+    document.body.append(field);
+    field.select();
+    const copied = document.execCommand("copy");
+    field.remove();
+    focused.focus();
+    showToast(copied ? "已复制" : "复制失败，请手动选中地址复制");
+  }
+}
+
+function setVersions(preferred) {
+  const versions = promptVersions[$("prompt").value] || [];
+  const select = $("version");
+  select.replaceChildren(...versions.map(([value, label]) => new Option(label, value)));
+  select.disabled = versions.length === 0;
+  if (select.disabled) select.add(new Option("随默认规则确定", ""));
+  if (versions.some(([value]) => value === preferred)) select.value = preferred;
+}
+
+function demoUserId(login) {
+  const key = login.toLowerCase();
+  if (!demoUserIds.has(key)) demoUserIds.set(key, 1000 + demoUserIds.size);
+  return demoUserIds.get(key);
+}
+
+function renderReviewers() {
+  $("reviewer-list").innerHTML = draftReviewers.map((login, index) => `
+    <li class="reviewer-chip"><span class="mono">${escapeHtml(login)}</span>
+      <button type="button" data-remove-reviewer="${index}" aria-label="移除 ${escapeHtml(login)}">×</button>
+    </li>`).join("");
+  $("reviewer-empty").hidden = draftReviewers.length > 0;
+}
+
+function reviewerMessage(message = "") {
+  const input = $("reviewer-login");
+  $("reviewer-error").textContent = message;
+  if (message) input.setAttribute("aria-invalid", "true");
+  else input.removeAttribute("aria-invalid");
+}
+
+function addReviewer() {
+  const input = $("reviewer-login");
+  const login = input.value.trim();
+  const key = login.toLowerCase();
+  let error = "";
+  if (!login || /[\s/@]/.test(login)) error = "请输入一个 Gitea 登录名，例如 li.ming。";
+  else if (key === robot) error = "审查机器人不能触发复审。";
+  else if (draftReviewers.some(reviewer => reviewer.toLowerCase() === key)) error = "该账号已在名单中。";
+  reviewerMessage(error);
+  if (error) {
+    input.focus();
+    return false;
+  }
+  draftReviewers.push(login);
+  input.value = "";
+  renderReviewers();
+  syncDraft();
+  return true;
+}
+
+function readConfig() {
+  return {
+    enabled: $("enabled").checked,
+    branch: $("branch").value.trim(),
+    model: $("model").value,
+    prompt: $("prompt").value,
+    version: $("version").value,
+    reviewers: [...draftReviewers],
+    base: $("review-base").value.trim().replace(/\/+$/, "")
+  };
+}
+
+function syncDraft() {
+  const draft = readConfig();
+  $("save-config").disabled = !$("reviewer-login").value.trim()
+    && JSON.stringify(draft) === JSON.stringify(configs[projectKey]);
+  $("branch-rule").textContent = draft.branch
+    ? `目标分支为 ${draft.branch} 时，审查全部可审查的文本净变更。`
+    : "填写目标分支后按分支匹配。";
+}
+
+function loadConfig() {
+  const project = projects[projectKey];
+  const saved = configs[projectKey];
+  $("repository-name").textContent = project.repository;
+  $("enabled").checked = saved.enabled;
+  $("branch").value = saved.branch;
+  $("model").value = saved.model;
+  $("prompt").value = saved.prompt;
+  setVersions(saved.version);
+  draftReviewers = [...saved.reviewers];
+  $("reviewer-login").value = "";
+  reviewerMessage();
+  renderReviewers();
+  $("review-base").value = saved.base;
+  $("review-base").setCustomValidity("");
+  $("endpoint").value = "https://review.example.com/webhooks/gitea";
+  $("robot-name").textContent = robot;
+  syncDraft();
+}
+
+function setPage(nextPage) {
+  page = nextPage;
+  const isConfig = page === "config";
+  $("config-page").hidden = !isConfig;
+  $("records-page").hidden = isConfig;
+  $("save-config").hidden = !isConfig;
+  $("page-title").textContent = isConfig ? "PR 自动审查" : "处理记录";
+  for (const button of document.querySelectorAll("[data-page]")) {
+    if (button.dataset.page === page) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+  if (!isConfig) renderRecords();
+}
+
+function createDelivery(key, scenario, options = {}) {
+  const id = ++sequence;
+  const received = nextTime();
+  const base = { id, project: key, received, lastReceived: received, receptions: 1 };
+  if (scenario === "invalid") {
+    return { ...base, delivery: `reject-${id}`, decision: "rejected", reason: "Webhook 验签失败", reasonCode: "SIGNATURE_INVALID", write: "none" };
+  }
+
+  const project = projects[key];
+  const config = options.config || configs[key];
+  const { event, type, action } = sampleWebhookEvents[scenario] || sampleWebhookEvents.open;
+  const isOpened = type === "pull_request" && action === "opened";
+  const isPrComment = type === "pull_request_comment";
+  const isNewComment = isPrComment && action === "created";
+  const delivery = `gta-${String(id).padStart(6, "0")}`;
+  const actor = options.actor || "developer";
+  const actorId = demoUserId(actor);
+  const pr = type === "push" ? null : (options.pr || (isOpened ? project.nextPr++ : project.pr));
+  let branch = isOpened ? config.branch : project.prBranch;
+  if (scenario === "branch") branch = config.branch === "develop" ? "release" : "develop";
+  const payload = {
+    repository: { id: project.repositoryId, full_name: project.repository },
+    sender: { id: actorId, login: actor }
+  };
+  if (type === "push") {
+    payload.ref = `refs/heads/${branch}`;
+  } else if (isPrComment) {
+    Object.assign(payload, {
+      action,
+      issue: { number: pr },
+      comment: { id: 3200 + id, body: options.body ?? "/recheck" },
+      is_pull: true
+    });
+  } else {
+    Object.assign(payload, { action, number: pr, pull_request: { number: pr, base: { ref: branch } } });
+  }
+  const record = {
+    ...base, delivery, pr, branch, actor, actorId, payload,
+    headers: { "X-Gitea-Event": event, "X-Gitea-Event-Type": type },
+    decision: "skipped", write: "none"
+  };
+  if (type === "pull_request_sync") {
+    sourceHeads[key] = (id.toString(16).padStart(7, "0") + repairedHead.slice(7));
+  }
+
+  const skipRules = [
+    [action === "synchronized", "ACTION_IGNORED", "追加提交不触发复审"],
+    [action === "edited", "ACTION_IGNORED", "编辑旧评论不触发复审"],
+    [!isOpened && !isNewComment, "EVENT_NOT_SUPPORTED", "此事件未配置审查触发规则"],
+    [!config.enabled, "AUTO_REVIEW_DISABLED", "项目未启用自动审查"],
+    [branch !== config.branch, "TARGET_BRANCH_MISMATCH", `目标分支不匹配，已配置 ${config.branch}`],
+    [actor === robot, "BOT_COMMENT", "机器人发布的评论"],
+    [isNewComment && !config.reviewers.some(login => demoUserId(login) === actorId), "REVIEWER_NOT_ALLOWED", "触发人不在审核者名单中"],
+    [isNewComment && payload.comment.body.trim() !== "/recheck", "COMMAND_MISMATCH", "评论不符合复审命令"],
+    [scenario === "binary", "NO_TEXT_CHANGES", "没有可审查的文本变更"]
+  ];
+  const skipped = skipRules.find(([matches]) => matches);
+  if (skipped) {
+    [, record.reasonCode, record.reason] = skipped;
+    return record;
+  }
+  record.trigger = isNewComment ? "评论复审" : "首次自动审查";
+  record.key = isNewComment
+    ? `pr-review:${project.repositoryId}:comment:${payload.comment.id}`
+    : `pr-review:${project.repositoryId}:opened:${pr}`;
+  record.sourceHead = options.head || (pr === project.pr ? sourceHeads[key] : originalHead);
+  record.targetHead = targetHead;
+  record.mergeBase = targetHead;
+  record.text = textFileCounts[key];
+  record.binary = isNewComment ? 0 : 1;
+  record.unreadable = 0;
+  if (scenario === "task-fail") {
+    return { ...record, decision: "failed", reasonCode: "SOURCE_MOVED", reason: "PR 版本持续变化，重新读取后仍无法锁定" };
+  }
+
+  record.decision = "created";
+  record.reviewId = options.reviewId || `01M6Z1HBQG8B0NGX473QX${String(id).padStart(5, "0")}`;
+  record.link = `${config.base}/#/reviews/${record.reviewId}?from=/reviews`;
+  record.body = `[查看提交 ${record.sourceHead.slice(0, 7)} 的审查进度与结果](${record.link})`;
+  record.write = scenario === "timeout" ? "unknown" : "sent";
+  record.attempts = 1;
+  record.sendTime = received + 7000;
+  if (record.write === "unknown") {
+    record.writeError = "请求超时，系统未收到 Gitea 回执";
+    record.remoteCommentId = options.remote === "missing" ? null : 4800 + id;
+  } else {
+    record.sentCommentId = 4800 + id;
+    record.httpStatus = 201;
+  }
+  return record;
+}
+
+function seedRecords() {
+  const key = "review";
+  const config = defaults[key];
+  records.push(
+    createDelivery(key, "open", { config, pr: 13, head: originalHead, reviewId: "01M6Z1HBQG8B0NGX473QX4RQ8E" }),
+    createDelivery(key, "comment", { config, actor: "chen.yu", body: "修复后请发 /recheck。" }),
+    createDelivery(key, "branch", { config, pr: 14 }),
+    createDelivery(key, "update", { config }),
+    createDelivery(key, "task-fail", { config, pr: 15 }),
+    createDelivery(key, "timeout", { config, pr: 16 }),
+    createDelivery(key, "comment", { config, actor: "li.ming" }),
+    createDelivery(key, "push", { config })
+  );
+  projects[key].nextPr = 17;
+}
+
+function receivedEvent(record) {
+  return record.headers?.["X-Gitea-Event-Type"] || record.headers?.["X-Gitea-Event"] || "";
+}
+
+function renderRecords() {
+  const all = records.filter(record => record.project === projectKey);
+  const totals = [
+    ["收到投递", all.length],
+    ["已创建任务", all.filter(record => record.decision === "created").length],
+    ["已跳过", all.filter(record => record.decision === "skipped").length],
+    ["回写待处理", all.filter(record => ["unknown", "failed", "pending", "sending"].includes(record.write)).length]
+  ];
+  $("stats").innerHTML = totals.map(([label, count]) => `<div class="card stat"><span class="muted small">${label}</span><strong>${count}</strong></div>`).join("");
+
+  const query = $("search").value.trim().toLowerCase();
+  const eventFilter = $("event-filter");
+  const selectedEvent = eventFilter.value;
+  const eventValues = [...new Set(all.map(receivedEvent).filter(Boolean))].sort();
+  eventFilter.replaceChildren(new Option("全部事件", ""), ...eventValues.map(value => new Option(value, value)));
+  if (eventValues.includes(selectedEvent)) eventFilter.value = selectedEvent;
+  const event = eventFilter.value;
+  const decision = $("decision-filter").value;
+  const write = $("write-filter").value;
+  const visible = all.filter(record => {
+    if ((event && event !== receivedEvent(record)) || (decision && decision !== record.decision) || (write && write !== record.write)) return false;
+    return [
+      record.delivery, record.pr, record.pr && `#${record.pr}`, record.branch, record.actor,
+      receivedEvent(record), record.headers?.["X-Gitea-Event"], record.payload?.action,
+      record.reviewId, record.reason, record.reasonCode, record.sourceHead, projects[record.project].repository
+    ].some(value => String(value ?? "").toLowerCase().includes(query));
+  }).reverse();
+
+  $("record-rows").innerHTML = visible.map(record => `
+    <tr>
+      <td><div>${time(record.received)}</div>
+        <button type="button" class="link mono" data-record="${record.id}" aria-label="查看投递详情 ${escapeHtml(record.delivery)}">${escapeHtml(record.delivery)}</button>
+        ${record.receptions > 1 ? `<span class="muted small"> · 收到 ${record.receptions} 次</span>` : ""}
+      </td>
+      <td><span class="table-meta mono">${escapeHtml(receivedEvent(record) || "—")}</span>
+        ${record.payload?.action ? `<span class="table-meta muted small mono">${escapeHtml(record.payload.action)}</span>` : ""}
+      </td>
+      <td>${record.pr ? `<strong>#${record.pr}</strong>` : "—"}</td>
+      <td>${badge(decisions[record.decision])}
+        ${record.reason ? `<span class="table-meta muted small">${escapeHtml(record.reason)}</span>` : ""}
+        ${record.reviewId ? `<a class="link mono table-meta" href="${escapeHtml(record.link)}" target="_blank" rel="noopener noreferrer" aria-label="在新标签页打开审查详情 ${escapeHtml(record.reviewId)}">${escapeHtml(record.reviewId)}</a>` : ""}
+      </td>
+      <td>${badge(writes[record.write])}${record.sentCommentId ? `<span class="table-meta muted small">评论 #${record.sentCommentId}</span>` : ""}</td>
+    </tr>`).join("");
+  $("empty-records").hidden = visible.length > 0;
+  $("empty-records").textContent = all.length ? "没有符合筛选条件的记录。" : "当前项目暂无投递记录。可使用「模拟投递」生成示例。";
+  $("record-count").textContent = `显示 ${visible.length} 条，共 ${all.length} 条记录`;
+}
+
+function resetFilters() {
+  for (const id of ["search", "event-filter", "decision-filter", "write-filter"]) $(id).value = "";
+  renderRecords();
+}
+
+function receivePanel(record) {
+  const common = [
+    ["首次接收", time(record.received)], ["最近接收", time(record.lastReceived)],
+    ["接收次数", String(record.receptions)]
+  ];
+  if (!record.headers) {
+    return section("", metadata([...common, ["验证结果", "签名无效"]]))
+      + section("拒绝信息", preview(record.reasonCode));
+  }
+
+  return section("", metadata([
+    ["Gitea 实例", code(instance)], ...common, ["验证结果", "签名有效"],
+    ["X-Gitea-Delivery", code(record.delivery)],
+    ["X-Gitea-Event", record.headers["X-Gitea-Event"] ? code(record.headers["X-Gitea-Event"]) : "—"],
+    ["X-Gitea-Event-Type", record.headers["X-Gitea-Event-Type"] ? code(record.headers["X-Gitea-Event-Type"]) : "—"]
+  ])) + section("脱敏请求体", preview(JSON.stringify(record.payload, null, 2)));
+}
+
+function decisionPanel(record) {
+  const status = [["判定时间", time(record.received + 3000)]];
+  if (record.reason) status.push(["原因", escapeHtml(record.reason)], ["原因代码", code(record.reasonCode)]);
+  if (record.trigger) status.push(["触发方式", record.trigger], ["业务幂等键", code(record.key)]);
+  let content = section("", metadata(status));
+  if (!record.sourceHead) return content;
+
+  content += section(record.reviewId ? "已冻结的 PR 版本" : "尝试使用的 PR 版本", metadata([
+    ["源分支提交", code(record.sourceHead)],
+    ["目标分支提交", code(record.targetHead)],
+    ["共同祖先", code(record.mergeBase)]
+  ]));
+  if (record.reviewId) {
+    content += section("审查任务", metadata([
+      ["审查 ID", code(record.reviewId)],
+      ["审查目标", `${record.text} 个文本文件`],
+      ["未覆盖", `${record.binary} 个二进制文件，${record.unreadable} 个不可读文件`]
+    ]) + `<div class="row detail-actions">
+      <a class="primary" href="${escapeHtml(record.link)}" target="_blank" rel="noopener noreferrer" aria-label="在新标签页打开审查详情">打开审查详情</a>
+    </div>`);
+  }
+  return content;
+}
+
+function writePanel(record) {
+  if (record.write === "none") {
+    return '<p class="muted">本次投递未创建审查任务。</p>';
+  }
+  const result = [
+    ["尝试次数", String(record.attempts)],
+    ["最近发送", time(record.sendTime)]
+  ];
+  if (record.httpStatus) result.push(["HTTP 状态", code(record.httpStatus)]);
+  if (record.sentCommentId) result.push(["回写评论 ID", code(record.sentCommentId)]);
+  if (record.writeError) result.push(["最近错误", escapeHtml(record.writeError)]);
+  if (record.checkNote) result.push(["核对结果", escapeHtml(record.checkNote)], ["核对时间", time(record.checkedAt)]);
+  let actions = "";
+  if (record.write === "unknown") {
+    actions = '<div class="detail-note warn detail-actions">先用机器人身份和任务链接核对原 PR 上的评论。确认未发布后才可补发。</div>'
+      + '<button type="button" class="detail-actions" data-recovery="check">模拟核对已有评论</button>';
+  }
+  if (record.write === "failed" && record.checkedAt) {
+    actions = '<button type="button" class="primary detail-actions" data-recovery="retry">模拟补发链接</button>';
+  }
+  return section("发送结果", metadata(result) + actions) + section("评论请求", metadata([
+    ["目标仓库", code(projects[record.project].repository)], ["目标 PR", `#${record.pr}`],
+    ["发送账号", code(robot)]
+  ]) + `<div class="detail-actions">${preview(record.body)}</div>`);
+}
+
+function renderDetail(tab = activeTab) {
+  activeTab = tab;
+  const record = activeRecord;
+  $("detail-summary").innerHTML = badge(decisions[record.decision]) + badge(writes[record.write]);
+  for (const button of document.querySelectorAll("[data-tab]")) {
+    const selected = button.dataset.tab === tab;
+    button.setAttribute("aria-selected", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  }
+  const panel = $("detail-body");
+  panel.setAttribute("aria-labelledby", `tab-${tab}`);
+  panel.innerHTML = { receive: receivePanel, decision: decisionPanel, write: writePanel }[tab](record);
+  panel.scrollTop = 0;
+}
+
+function showDetail(record) {
+  activeRecord = record;
+  $("detail-subtitle").textContent = record.pr ? `${record.delivery} · PR #${record.pr}` : record.delivery;
+  renderDetail("receive");
+  $("detail-dialog").showModal();
+}
+
+function updateSimulation() {
+  const scenario = $("scenario").value;
+  $("sim-comment-fields").hidden = !["comment", "edit"].includes(scenario);
+  $("sim-timeout-field").hidden = scenario !== "timeout";
+  const recent = [...records].reverse().find(record => record.project === projectKey && record.headers);
+  const config = configs[projectKey];
+  const project = projects[projectKey];
+  const originalPr = `PR #${project.pr}（${project.prBranch}）`;
+  const hints = {
+    open: `目标分支 ${config.branch}，包含文本和二进制变更。`,
+    comment: originalPr,
+    update: originalPr,
+    edit: originalPr,
+    replay: recent ? `投递 ${recent.delivery}` : "当前项目暂无可重复接收的投递。"
+  };
+  const notes = [hints[scenario]];
+  if (page === "config" && !$("save-config").disabled) notes.push("模拟使用已保存的配置。");
+  if (!config.enabled && !["replay", "invalid", "push"].includes(scenario)) notes.push("自动审查已停用。");
+  $("sim-note").textContent = notes.filter(Boolean).join(" ");
+  $("sim-note").hidden = !$("sim-note").textContent;
+  $("run-simulation").disabled = scenario === "replay" && !recent;
+  return recent;
+}
+
+$("config-form").addEventListener("input", event => {
+  if (event.target.id === "prompt") setVersions();
+  if (event.target.id === "review-base") $("review-base").setCustomValidity("");
+  if (event.target.id === "reviewer-login") reviewerMessage();
+  syncDraft();
+});
+$("add-reviewer").addEventListener("click", () => {
+  if (addReviewer()) $("reviewer-login").focus();
+});
+$("reviewer-login").addEventListener("keydown", event => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  addReviewer();
+});
+$("reviewer-list").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-reviewer]");
+  if (!button) return;
+  draftReviewers.splice(Number(button.dataset.removeReviewer), 1);
+  renderReviewers();
+  reviewerMessage();
+  syncDraft();
+  $("reviewer-login").focus();
+});
+$("config-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const address = URL.parse(readConfig().base);
+  if (!address || !["http:", "https:"].includes(address.protocol) || address.search || address.hash || address.username || address.password) {
+    $("review-base").setCustomValidity("请输入不带账号、密码、查询参数或片段的 HTTP 或 HTTPS 部署地址。");
+    $("review-base").reportValidity();
+    return;
+  }
+  if ($("reviewer-login").value.trim() && !addReviewer()) return;
+  configs[projectKey] = readConfig();
+  let savedInBrowser = true;
+  try { localStorage.setItem(storageKey, JSON.stringify(configs)); } catch { savedInBrowser = false; }
+  loadConfig();
+  showToast(savedInBrowser ? "示例配置已保存到此浏览器" : "示例配置已保存到本次页面");
+});
+$("project").addEventListener("change", event => {
+  projectKey = event.target.value;
+  loadConfig();
+  resetFilters();
+});
+for (const id of ["search", "event-filter", "decision-filter", "write-filter"]) {
+  $(id).addEventListener("input", renderRecords);
+}
+$("reset-filters").addEventListener("click", resetFilters);
+$("copy-endpoint").addEventListener("click", () => copyText($("endpoint").value));
+$("open-simulation").addEventListener("click", () => {
+  const actors = new Map();
+  for (const login of [...configs[projectKey].reviewers, "li.ming", "chen.yu", "zhou.lin", "developer", robot]) {
+    if (!actors.has(login.toLowerCase())) actors.set(login.toLowerCase(), login);
+  }
+  $("sim-actor").replaceChildren(...[...actors.values()].map(login => new Option(login, login)));
+  updateSimulation();
+  $("simulation-dialog").showModal();
+});
+$("scenario").addEventListener("change", updateSimulation);
+$("simulation-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const scenario = $("scenario").value;
+  let record;
+  if (scenario === "replay") {
+    record = updateSimulation();
+    if (!record) return;
+    record.receptions++;
+    record.lastReceived = nextTime();
+  } else {
+    const options = scenario === "comment" || scenario === "edit"
+      ? { actor: $("sim-actor").value, body: $("sim-body").value }
+      : { remote: $("sim-remote").value };
+    record = createDelivery(projectKey, scenario, options);
+    records.push(record);
+  }
+  $("simulation-dialog").close();
+  resetFilters();
+  setPage("records");
+  showDetail(record);
+});
+
+document.querySelector(".tabbar").addEventListener("keydown", event => {
+  const tabs = [...event.currentTarget.querySelectorAll("[data-tab]")];
+  const index = tabs.indexOf(event.target);
+  if (index === -1) return;
+  const next = {
+    ArrowLeft: (index + tabs.length - 1) % tabs.length,
+    ArrowRight: (index + 1) % tabs.length,
+    Home: 0,
+    End: tabs.length - 1
+  }[event.key];
+  if (next === undefined) return;
+  event.preventDefault();
+  renderDetail(tabs[next].dataset.tab);
+  tabs[next].focus();
+});
+
+document.addEventListener("click", event => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  const { page, close, record, tab, recovery } = button.dataset;
+  if (page) setPage(page);
+  if (close) $(close).close();
+  if (record) showDetail(records.find(item => item.id === Number(record)));
+  if (tab) renderDetail(tab);
+  if (recovery === "check") {
+    activeRecord.checkedAt = nextTime();
+    if (activeRecord.remoteCommentId) {
+      activeRecord.sentCommentId = activeRecord.remoteCommentId;
+      activeRecord.write = "sent";
+      activeRecord.checkNote = "找到原评论，已补记评论 ID。";
+    } else {
+      activeRecord.write = "failed";
+      activeRecord.checkNote = "已核对原 PR，未找到对应评论，可补发。";
+    }
+  }
+  if (recovery === "retry") {
+    activeRecord.attempts++;
+    activeRecord.sendTime = nextTime();
+    activeRecord.sentCommentId = 4900 + activeRecord.id;
+    activeRecord.httpStatus = 201;
+    activeRecord.write = "sent";
+    activeRecord.checkNote = "确认未发布后，使用原任务链接补发成功。";
+  }
+  if (recovery) {
+    renderRecords();
+    renderDetail("write");
+    $("tab-write").focus();
+  }
+});
+
+seedRecords();
+loadConfig();
+</script>
+</body>
+</html>
