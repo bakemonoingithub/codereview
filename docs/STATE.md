@@ -4,6 +4,10 @@
 
 ## 当前状态
 
+2026-11-12 PRA-05 工程实现完成，状态为 `done`。项目管理页接入统一入口 `/projects/auto-review`，GitHub 与 Gitea 1.16.1 项目共用同一套配置与处理记录视图。页面复用 `ListPageLayout`、`StatusBadge`、`PromptVersionSelect`、`PullSourceVersion`、`LoadErrorAlert`、`EmptyGuide` 与 `useListPagination`，精简次级说明文案，直接通过布局与表单结构表达项目配置、审核者白名单查询、投递列表筛选和三页签详情抽屉（接收请求、审查决定、评论回写），审查任务链接直接跳转现有详情页 `/reviews/:id`。后端补充项目已接收投递去重事件列表接口 `GET /api/v2/projects/{projectId}/auto-review-deliveries/events`，并在配置未显式保存 `repoFullName` 时回退解析项目仓库路径。
+
+前端 52 个测试套件共 465 项通过（含新增 `PrAutoReview.spec.ts` 4 项），`vue-tsc --noEmit` 0 诊断，隔离生产构建通过；后端 `PrAutoReviewControllerTest` 与 `PrAutoReviewServiceTest` 共 64 项通过。未连接现有库、未启停服务、未调用真实模型；负责人正式页面视觉验收与 GitHub／Gitea 真实宿主实测分别归 PRA-06 和 PRA-07。下一步为 PRA-06。
+
 2026-11-12 PRA-04 工程实现及审查修复完成，状态为 `done`。GitHub 和 Gitea 1.16.1 的 `/recheck` 在接收和执行阶段均按审核者用户 ID 校验。每轮复审锁定当前 PR 净变更，创建新问题审查任务并发布该任务的链接。普通 Issue 评论、追加提交、评论编辑或删除、机器人回写和非精确命令均记录跳过原因。机器人识别使用配置的用户 ID，缺失时使用登录名。
 
 审查修复覆盖恢复待创建任务时的撤权校验、原投递的业务键保留、PR 版本成组刷新、重复记录回执与筛选一致，以及事件筛选与显示一致。处理记录可按事件原值、审查决定、原因码、回写状态、PR 编号和关键字筛选。状态与查询规则见[自动审查方案](work/gitea-pr-auto-review/README.md#4-处理记录与失败恢复)。

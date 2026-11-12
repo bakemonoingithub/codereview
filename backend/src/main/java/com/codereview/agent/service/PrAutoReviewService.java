@@ -137,12 +137,12 @@ public class PrAutoReviewService {
                     null,
                     null,
                     null,
-                    null,
+                    defaultRepoFullName(project),
                     null,
                     null
             );
         }
-        return toConfigView(config);
+        return toConfigView(config, project);
     }
 
     /** 更新或保存项目自动审查配置。 */
@@ -227,7 +227,7 @@ public class PrAutoReviewService {
             db.mapper(PrAutoReviewConfigMapper.class).updateById(config);
         }
 
-        return toConfigView(config);
+        return toConfigView(config, project);
     }
 
     /** 审核者账号查询：调用对应宿主按用户名查询用户基础身份。 */
@@ -442,6 +442,13 @@ public class PrAutoReviewService {
             throw new ApiException(ErrorCode.NOT_FOUND, "未找到指定的投递处理记录");
         }
         return toDeliveryDetailView(deliveries.get(0));
+    }
+
+    /** 查询某项目已收到投递的事件原值列表（优先 event_type，缺失时取 event_name）。 */
+    public List<String> listDeliveryEvents(String projectId) {
+        requireProject(projectId);
+        List<String> events = db.mapper(PrAutoReviewDeliveryMapper.class).selectDistinctEvents(projectId);
+        return events == null ? List.of() : events.stream().filter(Objects::nonNull).toList();
     }
 
     /** 业务幂等键计算（符合 PRA-01 契约规范）。 */
@@ -1661,7 +1668,7 @@ public class PrAutoReviewService {
         return p;
     }
 
-    private PrAutoReviewDtos.ConfigView toConfigView(PrAutoReviewConfig config) {
+    private PrAutoReviewDtos.ConfigView toConfigView(PrAutoReviewConfig config, AgentProject project) {
         List<PrAutoReviewDtos.ReviewerItem> reviewers = List.of();
         if (config.getReviewers() != null && !config.getReviewers().isBlank()) {
             try {
@@ -1669,6 +1676,10 @@ public class PrAutoReviewService {
             } catch (Exception e) {
                 LOG.warn("解析审核者 JSON 失败: {}", e.getMessage());
             }
+        }
+        String repoFullName = config.getRepoFullName();
+        if (repoFullName == null || repoFullName.isBlank()) {
+            repoFullName = defaultRepoFullName(project);
         }
         return new PrAutoReviewDtos.ConfigView(
                 config.getId(),
@@ -1684,10 +1695,22 @@ public class PrAutoReviewService {
                 config.getBotActorId(),
                 config.getBotLogin(),
                 config.getRepoId(),
-                config.getRepoFullName(),
+                repoFullName,
                 config.getCreatedAt(),
                 config.getUpdatedAt()
         );
+    }
+
+    private static String defaultRepoFullName(AgentProject project) {
+        if (project == null || project.getRepoUrl() == null || project.getRepoUrl().isBlank()) {
+            return null;
+        }
+        try {
+            GitRepoRef ref = GitRepoRef.parse(project.getRepoUrl());
+            return ref.owner() + "/" + ref.repo();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private PrAutoReviewDtos.DeliveryView toDeliveryView(PrAutoReviewDelivery d) {

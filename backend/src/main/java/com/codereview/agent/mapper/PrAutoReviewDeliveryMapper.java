@@ -54,6 +54,15 @@ public interface PrAutoReviewDeliveryMapper extends BaseMapper<PrAutoReviewDeliv
     @Select("SELECT COUNT(*) " + DELIVERY_OUTCOME + " ${ew.customSqlSegment}")
     long countWithOutcome(@Param(Constants.WRAPPER) LambdaQueryWrapper<PrAutoReviewDelivery> wrapper);
 
+    @Select("""
+            SELECT DISTINCT COALESCE(event_type, event_name)
+            FROM pr_auto_review_delivery
+            WHERE project_id = #{projectId}
+              AND COALESCE(event_type, event_name) IS NOT NULL
+            ORDER BY COALESCE(event_type, event_name) ASC
+            """)
+    List<String> selectDistinctEvents(@Param("projectId") String projectId);
+
     /** 重投只更新接收信息。原载荷、审查决定和处理版本由首次投递及后续处理维护。 */
     @Insert("""
             INSERT INTO pr_auto_review_delivery (

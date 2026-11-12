@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * 项目 Webhook 投递处理记录查询接口。
  */
@@ -37,6 +39,11 @@ public class PrAutoReviewDeliveryController {
                                                            @RequestParam(required = false) Integer pageSize) {
         return service.listDeliveries(projectId, eventName, decisionState, decisionCode, commentState,
                 prNumber, q, cursor, limit, pageNum, pageSize);
+    }
+
+    @GetMapping("/events")
+    public List<String> events(@PathVariable String projectId) {
+        return service.listDeliveryEvents(projectId);
     }
 
     @GetMapping("/{id}")

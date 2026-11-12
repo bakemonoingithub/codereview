@@ -233,4 +233,17 @@ class PrAutoReviewControllerTest {
                 .andExpect(jsonPath("$.items[0].decisionCode").value("ACTION_IGNORED"))
                 .andExpect(jsonPath("$.items[0].decisionMessage").value("编辑旧评论不触发复审"));
     }
+
+    @Test
+    @DisplayName("查询项目投递事件集合：返回已收到的事件原值列表")
+    void listDeliveryEvents() throws Exception {
+        when(service.listDeliveryEvents(PROJECT_ID))
+                .thenReturn(List.of("pull_request", "pull_request_comment", "push"));
+
+        deliveryMvc.perform(get("/api/v2/projects/" + PROJECT_ID + "/auto-review-deliveries/events"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("pull_request"))
+                .andExpect(jsonPath("$[1]").value("pull_request_comment"))
+                .andExpect(jsonPath("$[2]").value("push"));
+    }
 }

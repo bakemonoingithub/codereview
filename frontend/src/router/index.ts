@@ -87,6 +87,12 @@ const appRoutes: RouteRecordRaw[] = [
     meta: { title: '项目管理', icon: FolderOutlined, group: 'manage' }
   },
   {
+    path: 'projects/auto-review',
+    name: 'project-auto-review',
+    component: () => import('@/views/PrAutoReview.vue'),
+    meta: { title: 'PR 自动审查', hideMenu: true }
+  },
+  {
     // 旧收藏地址不再加载已退出的项目详情，也不把数字 ID 解释成现行项目 ID。
     path: 'projects/:id',
     redirect: '/projects',

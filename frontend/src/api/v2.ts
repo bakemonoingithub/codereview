@@ -991,3 +991,133 @@ export const modelCallsApi = {
   detail: (id: string) =>
     v2.get<CallDetailFull>(`/model-calls/${id}/full`).then((r) => r.data)
 }
+
+
+export interface PrAutoReviewReviewer {
+  id: number
+  login: string
+}
+
+export interface GitUserRef {
+  id: number
+  login: string
+  name?: string | null
+  avatarUrl?: string | null
+}
+
+export interface PrAutoReviewConfigView {
+  id: string | null
+  projectId: string
+  enabled: boolean
+  targetBranch: string | null
+  modelConfigId: string | null
+  promptId: string | null
+  promptVersionId: string | null
+  reviewBaseUrl: string | null
+  webhookSecretConfigured: boolean
+  reviewers: PrAutoReviewReviewer[]
+  botActorId: number | null
+  botLogin: string | null
+  repoId: number | null
+  repoFullName: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export interface PrAutoReviewConfigUpdate {
+  enabled?: boolean
+  targetBranch?: string
+  modelConfigId?: string | null
+  promptId?: string | null
+  promptVersionId?: string | null
+  reviewBaseUrl?: string | null
+  webhookSecret?: string
+  reviewers?: PrAutoReviewReviewer[]
+  botActorId?: number | null
+  botLogin?: string | null
+  repoId?: number | null
+  repoFullName?: string | null
+}
+
+export interface PrAutoReviewDeliveryView {
+  id: string
+  hostType: string
+  hostInstanceKey: string | null
+  deliveryId: string | null
+  firstReceivedAt: string
+  lastReceivedAt: string
+  receiveCount: number
+  eventName: string | null
+  eventType: string | null
+  eventAction: string | null
+  repoId: number | null
+  repoFullName: string | null
+  prNumber: number | null
+  actorUserId: number | null
+  actorLogin: string | null
+  sourceCommentId: number | null
+  projectId: string | null
+  triggerKind: string | null
+  targetBranch: string | null
+  decisionState: string
+  decidedAt: string | null
+  decisionCode: string | null
+  decisionMessage: string | null
+  businessKey: string | null
+  canonicalRecordId: string | null
+  reviewTaskId: string | null
+  reviewUrl: string | null
+  commentState: string
+  commentId: number | null
+  updatedAt: string
+}
+
+export interface PrAutoReviewDeliveryDetailView extends PrAutoReviewDeliveryView {
+  payloadSnapshot: string | null
+  taskRequestSnapshot: string | null
+  sourceHead: string | null
+  targetHead: string | null
+  mergeBase: string | null
+  textCount: number | null
+  binaryCount: number | null
+  unreadableCount: number | null
+  commentActorId: number | null
+  commentBody: string | null
+  commentAttempts: number
+  commentLastAttemptAt: string | null
+  commentHttpStatus: number | null
+  commentError: string | null
+  commentCheckedAt: string | null
+  revision: number
+  leaseUntil: string | null
+  nextAttemptAt: string | null
+}
+
+export const prAutoReviewApi = {
+  getConfig: (projectId: string) =>
+    v2.get<PrAutoReviewConfigView>(`/projects/${projectId}/auto-review-config`).then((r) => r.data),
+  updateConfig: (projectId: string, body: PrAutoReviewConfigUpdate) =>
+    v2.put<PrAutoReviewConfigView>(`/projects/${projectId}/auto-review-config`, body).then((r) => r.data),
+  lookupReviewer: (projectId: string, username: string) =>
+    v2.get<GitUserRef>(`/projects/${projectId}/auto-review-config/reviewers/lookup`, {
+      params: { username }
+    }).then((r) => r.data),
+  listDeliveries: (
+    projectId: string,
+    params: ListPaginationParams & {
+      eventName?: string
+      decisionState?: string
+      decisionCode?: string
+      commentState?: string
+      prNumber?: number
+      q?: string
+      cursor?: string
+      limit?: number
+    } = {}
+  ) =>
+    v2.get<Page<PrAutoReviewDeliveryView>>(`/projects/${projectId}/auto-review-deliveries`, { params }).then((r) => r.data),
+  listEvents: (projectId: string) =>
+    v2.get<string[]>(`/projects/${projectId}/auto-review-deliveries/events`).then((r) => r.data),
+  deliveryDetail: (projectId: string, id: string) =>
+    v2.get<PrAutoReviewDeliveryDetailView>(`/projects/${projectId}/auto-review-deliveries/${id}`).then((r) => r.data)
+}

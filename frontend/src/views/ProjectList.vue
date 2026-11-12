@@ -4,6 +4,7 @@
     subtitle="维护待审查的代码仓库。"
   >
     <template #actions>
+      <a-button @click="openAutoReview()">PR 自动审查</a-button>
       <a-button type="primary" @click="openCreate">＋ 新建项目</a-button>
     </template>
 
@@ -48,8 +49,9 @@
           </StatusBadge>
         </template>
       </a-table-column>
-      <a-table-column title="操作" width="150">
+      <a-table-column title="操作" width="220">
         <template #default="{ record }">
+          <a-button type="link" size="small" @click="openAutoReview(record.id)">自动审查</a-button>
           <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
           <a-button type="link" size="small" danger @click="askDelete(record)">删除</a-button>
         </template>
@@ -108,6 +110,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { projectsApi, type ProjectView } from '@/api/v2'
 import { useListPagination } from '@/utils/useListPagination'
@@ -116,6 +119,7 @@ import EmptyGuide from '@/components/EmptyGuide.vue'
 import LoadErrorAlert from '@/components/LoadErrorAlert.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
+const router = useRouter()
 const keyword = ref('')
 const modalOpen = ref(false)
 const confirmOpen = ref(false)
@@ -131,6 +135,13 @@ const { items: projects, loading, error: loadError, pagination, load, refresh, r
   'projects', params => projectsApi.list({ ...params, q: keyword.value.trim() || undefined }), '项目列表加载失败', () => keyword.value.trim()
 )
 function reload() { return load() }
+
+function openAutoReview(projectId?: string) {
+  router?.push({
+    path: '/projects/auto-review',
+    query: projectId ? { projectId } : undefined
+  })
+}
 
 function openCreate() {
   editing.value = null
