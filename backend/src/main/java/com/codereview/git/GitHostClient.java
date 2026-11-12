@@ -112,6 +112,30 @@ public interface GitHostClient {
         return "git";
     }
 
+    /**
+     * 按用户名查询用户基础身份（用于自动审查审核者白名单配置时解析用户 ID）。
+     * 若用户不存在或凭据无权限，抛出 RESOURCE_NOT_FOUND (404)。
+     */
+    default GitUserRef findUserByUsername(String token, Integer credentialType, GitRepoRef repoRef, String username) {
+        throw unsupported("用户查询");
+    }
+
+    /**
+     * 分页读取指定 PR / Issue 下的普通时间线评论（用于回写核对与未知状态恢复）。
+     */
+    default IssueCommentPage listIssueComments(String token, Integer credentialType, GitRepoRef repoRef,
+                                               long issueNumber, int page, int perPage) {
+        throw unsupported("评论列表");
+    }
+
+    /**
+     * 在指定 PR / Issue 下发布一条普通时间线评论（用于回写审查任务链接）。
+     */
+    default IssueComment createIssueComment(String token, Integer credentialType, GitRepoRef repoRef,
+                                            long issueNumber, String body) {
+        throw unsupported("发布评论");
+    }
+
     private static BusinessException unsupported(String action) {
         return new BusinessException(ResultCode.GIT_COMPARE_FAILED.getCode(), "当前宿主未实现" + action);
     }

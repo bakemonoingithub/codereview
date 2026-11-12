@@ -13,6 +13,8 @@ import com.codereview.agent.mapper.AgentPromptMapper;
 import com.codereview.agent.mapper.AgentPromptVersionMapper;
 import com.codereview.agent.mapper.AgentReportMapper;
 import com.codereview.agent.mapper.AgentReportSourceMapper;
+import com.codereview.agent.mapper.PrAutoReviewConfigMapper;
+import com.codereview.agent.mapper.PrAutoReviewDeliveryMapper;
 import com.codereview.agent.mapper.AgentReviewResultMapper;
 import com.codereview.agent.mapper.AgentReviewResultItemMapper;
 import com.codereview.agent.service.ResultItemIndex;
@@ -53,7 +55,9 @@ public class AgentDataSourceConfig {
             AgentIssueMapper.class,
             AgentFeedbackMapper.class,
             AgentReportMapper.class,
-            AgentReportSourceMapper.class);
+            AgentReportSourceMapper.class,
+            PrAutoReviewConfigMapper.class,
+            PrAutoReviewDeliveryMapper.class);
 
     @Bean(destroyMethod = "destroy")
     public AgentDatabase agentDatabase(AgentDataSourceProperties properties) {

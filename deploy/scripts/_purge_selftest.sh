@@ -93,16 +93,28 @@ while IFS= read -r line; do
   elif [[ "$line" == *"SELECT VERSION()"* ]]; then
     echo 1
   elif [[ "$line" == *"SELECT COUNT(*) FROM information_schema.tables"* ]]; then
-    echo 23
+    if [ "${MOCK_V11:-0}" = 1 ]; then
+      if [[ "$line" == *"table_name IN"* && ( "$line" != *"'pr_auto_review_config'"* || "$line" != *"'pr_auto_review_delivery'"* ) ]]; then
+        echo 23
+      else
+        echo "${MOCK_TABLE_COUNT:-25}"
+      fi
+    else
+      echo 23
+    fi
   elif [[ "$line" == *"SELECT COUNT(*) FROM information_schema.columns"* ]]; then
     echo 4
   elif [[ "$line" == *"SELECT COUNT(*) FROM agent_schema_identity"* ]]; then
     echo 1
   elif [[ "$line" == *"version='10' AND success=1"* ]]; then
     echo "${MOCK_V10:-1}"
+  elif [[ "$line" == *"version='11' AND success=1"* ]]; then
+    echo "${MOCK_V11:-0}"
   elif [[ "$line" == *"SELECT COALESCE(GET_LOCK"* ]]; then
     echo "${MOCK_LOCK:-1}"
-  elif [[ "$line" == *"SELECT COUNT(*) FROM model_call WHERE task_id IS NOT NULL"* || "$line" == *"success=0 OR"* ]]; then
+  elif [[ "$line" == *"success=0 OR"* ]]; then
+    echo "${MOCK_FUTURE_SCHEMA:-0}"
+  elif [[ "$line" == *"SELECT COUNT(*) FROM model_call WHERE task_id IS NOT NULL"* ]]; then
     echo 0
   elif [[ "$line" == "SELECT (SELECT COUNT(*) FROM review_task WHERE state"* ]]; then
     echo "${MOCK_ACTIVE:-0}"
@@ -126,7 +138,8 @@ chmod +x "$TMP/bin/docker"
 
 prepare_mock() {
   export PATH="$TMP/bin:$PATH" MOCK_LOG="$TMP/docker.log" MOCK_SQL="$TMP/sql.log"
-  export MOCK_APP_RUNNING=0 MOCK_V10=1 MOCK_LOCK=1 MOCK_ACTIVE=0 MOCK_ROOT=0 MOCK_DELETE_ERROR=0
+  export MOCK_APP_RUNNING=0 MOCK_V10=1 MOCK_V11=0 MOCK_FUTURE_SCHEMA=0 MOCK_TABLE_COUNT=25
+  export MOCK_LOCK=1 MOCK_ACTIVE=0 MOCK_ROOT=0 MOCK_DELETE_ERROR=0
   : > "$MOCK_LOG"; : > "$MOCK_SQL"
 }
 single_session_protocol() {
@@ -174,6 +187,31 @@ missing_v10_is_rejected() {
   if bash "$TMP/bundle/scripts/purge-deleted-records.sh" > "$TMP/version" 2>&1; then return 1; fi
   ! grep -q '^DELETE' "$MOCK_SQL"
 }
+v11_schema_allows_preview() {
+  prepare_mock; export MOCK_V11=1
+  bash "$TMP/bundle/scripts/purge-deleted-records.sh" > "$TMP/v11" || return 1
+  grep -q '只读预览完成' "$TMP/v11" || return 1
+  ! grep -q '^DELETE' "$MOCK_SQL"
+}
+v11_missing_table_is_rejected() {
+  prepare_mock; export MOCK_V11=1 MOCK_TABLE_COUNT=24
+  if bash "$TMP/bundle/scripts/purge-deleted-records.sh" > "$TMP/v11-incomplete" 2>&1; then return 1; fi
+  grep -q '目标表数量与脚本不匹配' "$TMP/v11-incomplete"
+}
+future_schema_is_rejected() {
+  prepare_mock; export MOCK_V11=1 MOCK_FUTURE_SCHEMA=1
+  if bash "$TMP/bundle/scripts/purge-deleted-records.sh" > "$TMP/future" 2>&1; then return 1; fi
+  grep -q '迁移失败或版本超过脚本支持范围' "$TMP/future"
+}
+v11_project_configuration_is_owned_but_delivery_history_is_retained() {
+  . "$SCRIPT"
+  PRA_SCHEMA=1
+  make_plan project 01J9Z6Q3W4X5Y6Z7A8B9C0D1F1
+  [ "${PLAN_TABLES[*]}" = 'pr_auto_review_config project' ] || return 1
+  scalar() { case "$1" in *pr_auto_review_delivery*) VALUE=1 ;; *) VALUE=0 ;; esac; }
+  resource_blocker project 01J9Z6Q3W4X5Y6Z7A8B9C0D1F1
+  [ "$BLOCKER" = '仍被 PR 自动审查配置或投递记录引用' ]
+}
 concurrent_purge_is_rejected() {
   prepare_mock; export MOCK_LOCK=0
   if bash "$TMP/bundle/scripts/purge-deleted-records.sh" --apply --writers-stopped > "$TMP/lock" 2>&1; then return 1; fi
@@ -194,6 +232,10 @@ run mysql_error_prevents_commit
 run running_app_is_rejected
 run active_task_is_rejected
 run missing_v10_is_rejected
+run v11_schema_allows_preview
+run v11_missing_table_is_rejected
+run future_schema_is_rejected
+run v11_project_configuration_is_owned_but_delivery_history_is_retained
 run concurrent_purge_is_rejected
 printf '通过 %s 项，失败 %s 项；全部使用 Bash 替身，未连接 Docker 或数据库。\n' "$PASS" "$FAIL"
 [ "$FAIL" = 0 ]

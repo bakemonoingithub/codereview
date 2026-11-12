@@ -4,6 +4,10 @@
 
 ## 当前状态
 
+2026-11-12 PRA-02 已实现，状态为 `partial`。本轮修复 Gitea 实例识别、仓库 ID 匹配、投递原子去重、审核者 ID 校验、默认提示词切换、Gitea 评论事件判定、载荷递归脱敏和 V11 清理脚本兼容。接收地址与实例参数见 [双宿主接收契约](work/gitea-pr-auto-review/pra-01-contract.md#11-请求头与验签格式)。
+
+66 项后端离线回归通过，另有 14 项迁移和 SQL 静态检查通过。`PullRequestClientTest` 的 2 项测试受本机回环网络权限限制。清理脚本的 Bash 自检受本机 Bash 启动权限限制。V11 Flyway 迁移、并发去重写入和 V11 清理操作由负责人在最终验收时确认。临时 MySQL 仅验证连接。PRA-01 为 `done`，PRA-03–07 为 `todo`。
+
 2026-11-12 PRA-01 完成，PRA-01 `done`，PRA-02–07 保持 `todo`：双宿主（GitHub 与 Gitea 1.16.1）Webhook 协议与字段提取适配、HMAC-SHA256 验签算法（GitHub 带 `sha256=` 前缀，Gitea 为裸摘要，常量时间比对）、GitHostClient 用户查询及普通评论读写扩展契约、业务幂等键与任务回写链接规则、租约与重试参数（300s 租约、3 次重试递增退避、60s UNKNOWN 静默期、30 天快照保留）已定稿，见[PRA-01 契约](work/gitea-pr-auto-review/pra-01-contract.md)。已在 `backend/src/test/resources/fixtures/pra/` 备齐两端 PR 创建、评论 `/recheck`、追加提交、机器人自身发言、非 PR Issue 评论与篡改签名等 10 份验证样本，9 项契约基线测试 `PrAutoReviewContractTest` 及已有 `PullRequestClientTest`、`FixedComparisonTest` 全部通过。未改动数据库、未操作服务、未调用真实模型、未提交。无本工作包 active，下一步为 PRA-02。
 
 2026-11-12 PR 自动审查首版支持 GitHub 和 Gitea 1.16.1，沿用现有 Git 宿主客户端和 PR 审查流程。本轮在 GitHub 测试仓库验收，Gitea 内网实测记在 PRA-07。[ROADMAP 的 PRA 工作包](ROADMAP.md#pra-github-与-gitea-pr-自动审查2026-11-12)中实施从 PRA-01 固定双宿主接口和验证样本开始。字段与验收场景见 [PR 自动审查方案](work/gitea-pr-auto-review/README.md)。

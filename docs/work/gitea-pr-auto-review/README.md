@@ -20,7 +20,7 @@
 
 ## 2. Webhook 入口和复审命令
 
-两端 Webhook 使用同一套接收和持久化流程。按服务端配置识别宿主、实例和验签密钥，再由对应适配代码提取字段。PRA-01 优先从 GitHub 测试仓库采集脱敏样本，并按 Gitea 1.16.1 样本核对另一端字段。接收路径和错误响应在该工作项确定。
+两端 Webhook 使用同一套接收和持久化流程。接收端按服务端配置识别宿主、实例和验签密钥。接收路径、Gitea 实例参数和错误响应见 [双宿主接收契约](pra-01-contract.md#11-请求头与验签格式)。
 
 | 内容 | GitHub | Gitea 1.16.1 |
 | --- | --- | --- |
@@ -80,7 +80,7 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 
 | 环节 | 字段与类型 | 用途 |
 | --- | --- | --- |
-| 接收 | `id CHAR(26)`、`host_type VARCHAR(16)`、`host_instance_key VARCHAR(128)`、`delivery_id VARCHAR(64)` | 主键、宿主类型 `github` 或 `gitea`、服务端配置的稳定实例标识、宿主投递头原值。有效投递须具备宿主类型、实例标识和投递 ID。 |
+| 接收 | `id CHAR(26)`、`host_type VARCHAR(16)`、`host_instance_key VARCHAR(500)`、`delivery_id VARCHAR(64)` | 主键、宿主类型 `github` 或 `gitea`、服务端配置的稳定实例标识、宿主投递头原值。有效投递须具备宿主类型、实例标识和投递 ID。 |
 | 接收 | `first_received_at DATETIME(3)`、`last_received_at DATETIME(3)`、`receive_count INT` | 首次接收时间、最近接收时间和累计接收次数。次数初始为 1。 |
 | 接收 | `event_name`、`event_type`、`event_action`，均为 `VARCHAR(100)` | `event_name` 保存 `X-GitHub-Event` 或 `X-Gitea-Event` 原值。`event_type` 保存实际收到的 `X-Gitea-Event-Type`，GitHub 投递留空。`event_action` 保存请求体 `action` 原值。字段缺失时存 `NULL`。 |
 | 接收 | `repo_id BIGINT`、`repo_full_name VARCHAR(500)`、`pr_number BIGINT`、`actor_user_id BIGINT`、`source_comment_id BIGINT`、`payload_snapshot JSON` | 仓库和 PR 定位、触发人 ID、触发复审的评论 ID，以及保留原字段名的脱敏请求体。按实际收到的字段记录。 |

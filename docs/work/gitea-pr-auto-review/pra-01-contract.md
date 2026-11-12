@@ -24,6 +24,12 @@
 | 签名算法 | HMAC-SHA256 | HMAC-SHA256 | 密钥为项目配置的 Webhook Secret，按原始字节计算 |
 | 比对安全性 | `MessageDigest.isEqual` | `MessageDigest.isEqual` | 必须使用常量时间比对，防范时序侧信道攻击 |
 
+接收路径为 `POST /api/v2/webhooks/{hostType}`，也支持 `POST /webhooks/{hostType}`。请求体使用 JSON。GitHub 默认实例为 `github.com`。Gitea 实例取项目仓库地址的站点根，保留协议、非默认端口和站点子路径。SSH 仓库取 `git.gitea.api-base` 对应的站点根。
+
+单 Gitea 站点可使用 `/webhooks/gitea`。项目绑定多个 Gitea 站点时，投递 URL 须指定 `instance`，例如 `/webhooks/gitea?instance=https%3A%2F%2Fgit.example.com%2Fgitea`。接收端只接受服务端已绑定的实例。
+
+项目优先按实例内的 `repository.id` 匹配。项目未配置仓库 ID 时按仓库绑定的 `owner/repo` 匹配。验签失败返回 HTTP 401。投递 ID 缺失、超长或实例无法识别时返回 HTTP 400，拒绝记录仅保留最小审计信息。
+
 ### 1.2 事件识别与触发判定
 
 系统仅对以下两类场景触发业务审查流程，其余均判定为「跳过（`SKIPPED`）」或「拒绝（`REJECTED`）」：
@@ -32,7 +38,7 @@
 flowchart TD
     In["收到 Webhook 投递"] --> SigCheck{"HMAC-SHA256 验签"}
     SigCheck -- 失败 --> Reject["REJECTED / SIGNATURE_INVALID<br>（仅记最小审计，不占去重键）"]
-    SigCheck -- 成功 --> DupCheck{"同一宿主与投递 ID 查重"}
+    SigCheck -- 成功 --> DupCheck{"按宿主、实例与投递 ID 查重"}
     DupCheck -- 已存在 --> Replay["原子递增 receive_count<br>更新 last_received_at 并结束"]
     DupCheck -- 新投递 --> EventType{"识别事件类型"}
     

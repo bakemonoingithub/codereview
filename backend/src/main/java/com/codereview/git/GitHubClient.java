@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.time.Instant;
 import java.util.Set;
 
 /**
@@ -347,5 +348,96 @@ public class GitHubClient implements GitHostClient {
             sb.append(UriUtils.encodePathSegment(seg, StandardCharsets.UTF_8));
         }
         return sb.toString();
+    }
+
+    @Override
+    public GitUserRef findUserByUsername(String token, Integer credentialType, GitRepoRef repoRef, String username) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("用户名不能为空");
+        }
+        String url = apiBase + "/users/" + UriUtils.encodePathSegment(username.trim(), StandardCharsets.UTF_8);
+        JsonNode node = getJson(url, token, credentialType);
+        long id = node.path("id").asLong();
+        String login = node.path("login").asText();
+        String name = node.hasNonNull("name") ? node.path("name").asText() : login;
+        String avatarUrl = node.path("avatar_url").asText(null);
+        return new GitUserRef(id, login, name, avatarUrl);
+    }
+
+    @Override
+    public IssueCommentPage listIssueComments(String token, Integer credentialType, GitRepoRef repoRef,
+                                              long issueNumber, int page, int perPage) {
+        int safePage = Math.max(1, page);
+        int safePerPage = Math.min(Math.max(1, perPage), MAX_PER_PAGE);
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo()
+                + "/issues/" + issueNumber + "/comments?page=" + safePage + "&per_page=" + safePerPage;
+        ResponseEntity<String> entity = getEntity(url, token, credentialType);
+        JsonNode root = readTree(entity.getBody());
+        List<IssueComment> items = new ArrayList<>();
+        if (root.isArray()) {
+            for (JsonNode node : root) {
+                items.add(parseIssueComment(issueNumber, node));
+            }
+        }
+        boolean hasMore = GitResponseParser.hasNextPage(linkHeader(entity));
+        return new IssueCommentPage(items, hasMore, safePage, safePerPage);
+    }
+
+    @Override
+    public IssueComment createIssueComment(String token, Integer credentialType, GitRepoRef repoRef,
+                                           long issueNumber, String body) {
+        String url = apiBase + "/repos/" + repoRef.owner() + "/" + repoRef.repo()
+                + "/issues/" + issueNumber + "/comments";
+        String payload;
+        try {
+            payload = mapper.writeValueAsString(mapper.createObjectNode().put("body", body));
+        } catch (Exception e) {
+            throw new IllegalStateException("序列化评论失败: " + e.getMessage(), e);
+        }
+        String resp = post(url, token, credentialType, payload);
+        JsonNode node = readTree(resp);
+        return parseIssueComment(issueNumber, node);
+    }
+
+    private IssueComment parseIssueComment(long issueNumber, JsonNode node) {
+        long id = node.path("id").asLong();
+        JsonNode userNode = node.path("user");
+        GitUserRef author = new GitUserRef(
+                userNode.path("id").asLong(),
+                userNode.path("login").asText(),
+                userNode.hasNonNull("name") ? userNode.path("name").asText() : userNode.path("login").asText(),
+                userNode.path("avatar_url").asText(null)
+        );
+        String body = node.path("body").asText();
+        Instant createdAt = parseInstant(node.path("created_at").asText(null));
+        Instant updatedAt = parseInstant(node.path("updated_at").asText(null));
+        return new IssueComment(id, issueNumber, author, body, createdAt, updatedAt);
+    }
+
+    private static Instant parseInstant(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(text);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String post(String url, String token, Integer credentialType, String bodyJson) {
+        String auth = authHeader(token, credentialType);
+        try {
+            var spec = restClient.post().uri(encodedUri(url))
+                    .header(HttpHeaders.CONTENT_TYPE, "application/json");
+            if (auth != null) {
+                spec = spec.header(HttpHeaders.AUTHORIZATION, auth);
+            }
+            return spec.body(bodyJson).retrieve().body(String.class);
+        } catch (RestClientResponseException e) {
+            throw HostHttpException.from(e);
+        } catch (ResourceAccessException e) {
+            throw HostHttpException.transport(e);
+        }
     }
 }

@@ -9,6 +9,7 @@ PURGE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APPLY=0; WRITERS_STOPPED=0; BEFORE=""; KINDS=all; BATCH_SIZE=20
 DB_PID=""; DB_READ=""; DB_WRITE=""; VALUE=0; ROOT_COUNT=0; COMMITTED_BATCHES=0
 DB_ROWS=(); DB_ROW_COUNT=0; MATERIAL_COUNT=0; PLAN_TABLES=(); PLAN_WHERE=(); BATCH_LOG=()
+PRA_SCHEMA=0
 
 usage() {
   cat <<'HELP'
@@ -103,18 +104,25 @@ scalar() {
 
 check_schema() {
   local tables="'agent_schema_identity','agent_schema_history','project','model_config','model_validation','prompt','prompt_version','review_strategy','review_task','task_target','execution_unit','task_quota','model_call','material','call_material','review_result','issue','review_result_item','feedback','report','report_source','agent_run','agent_tool_call'"
+  local table_count=23
   scalar "SELECT VERSION() LIKE '8.%'"; [ "$VALUE" = 1 ] || die "脚本仅支持 MySQL 8"
-  scalar "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
-  [ "$VALUE" = 23 ] || die "目标表数量与脚本不匹配"
-  scalar "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ($tables) AND engine='InnoDB'"
-  [ "$VALUE" = 23 ] || die "目标表集合或引擎不受支持"
   scalar "SELECT COUNT(*) FROM agent_schema_identity WHERE schema_name='ai_code_review_agent' AND schema_version='1'"
   [ "$VALUE" = 1 ] || die "目标不是受支持的新路线数据库"
   scalar "SELECT COUNT(*) FROM agent_schema_identity"; [ "$VALUE" = 1 ] || die "库身份标记异常"
   scalar "SELECT COUNT(*) FROM agent_schema_history WHERE version='10' AND success=1"
   [ "$VALUE" = 1 ] || die "请先按正常升级流程应用 V10；脚本不执行迁移"
-  scalar "SELECT COUNT(*) FROM agent_schema_history WHERE success=0 OR CAST(version AS UNSIGNED)>10"
+  scalar "SELECT COUNT(*) FROM agent_schema_history WHERE success=0 OR CAST(version AS UNSIGNED)>11"
   [ "$VALUE" = 0 ] || die "迁移失败或版本超过脚本支持范围"
+  scalar "SELECT COUNT(*) FROM agent_schema_history WHERE version='11' AND success=1"
+  case "$VALUE" in
+    0) PRA_SCHEMA=0 ;;
+    1) PRA_SCHEMA=1; table_count=25; tables="$tables,'pr_auto_review_config','pr_auto_review_delivery'" ;;
+    *) die "V11 迁移历史异常" ;;
+  esac
+  scalar "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+  [ "$VALUE" = "$table_count" ] || die "目标表数量与脚本不匹配"
+  scalar "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ($tables) AND engine='InnoDB'"
+  [ "$VALUE" = "$table_count" ] || die "目标表集合或引擎不受支持"
   scalar "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name IN ('review_task','report') AND column_name IN ('is_deleted','deleted_at')"
   [ "$VALUE" = 4 ] || die "删除字段不完整"
   scalar "SELECT COUNT(*) FROM model_call WHERE task_id IS NOT NULL AND report_id IS NOT NULL"
@@ -168,6 +176,15 @@ resource_blocker() {
     model_config) scalar "SELECT COUNT(*) FROM review_strategy WHERE model_config_id='$id'"; direct="$VALUE" ;;
   esac
   if [ "$direct" != 0 ]; then BLOCKER="仍有保留记录引用"; return; fi
+  if [ "$PRA_SCHEMA" = 1 ]; then
+    VALUE=0
+    case "$table" in
+      project) scalar "SELECT COUNT(*) FROM pr_auto_review_delivery WHERE project_id='$id'" ;;
+      prompt) scalar "SELECT COUNT(*) FROM pr_auto_review_config WHERE prompt_id='$id'" ;;
+      model_config) scalar "SELECT COUNT(*) FROM pr_auto_review_config WHERE model_config_id='$id'" ;;
+    esac
+    if [ "$VALUE" != 0 ]; then BLOCKER="仍被 PR 自动审查配置或投递记录引用"; return; fi
+  fi
   scalar "SELECT (SELECT COUNT(*) FROM review_task WHERE LOCATE('$id',CAST(input_snapshot AS CHAR))>0 OR LOCATE('$id',CAST(config_snapshot AS CHAR))>0) + (SELECT COUNT(*) FROM report WHERE LOCATE('$id',CAST(model_snapshot AS CHAR))>0 OR LOCATE('$id',instruction_snapshot)>0 OR LOCATE('$id',frozen_input)>0) + (SELECT COUNT(*) FROM report_source WHERE LOCATE('$id',source_snapshot)>0)"
   if [ "$VALUE" != 0 ]; then BLOCKER="仍被历史快照引用，保守保留"; return; fi
   if [ "$table" = project ]; then
@@ -203,6 +220,8 @@ make_plan() {
     add_plan prompt_version "prompt_id='$id'"
   elif [ "$table" = model_config ]; then
     add_plan model_validation "model_config_id='$id'"
+  elif [ "$table" = project ] && [ "$PRA_SCHEMA" = 1 ]; then
+    add_plan pr_auto_review_config "project_id='$id'"
   fi
   add_plan "$table" "id='$id' AND is_deleted=1"
 }
