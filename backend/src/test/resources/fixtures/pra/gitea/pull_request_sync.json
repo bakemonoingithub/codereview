@@ -1,0 +1,26 @@
+{
+  "action": "synchronized",
+  "number": 13,
+  "pull_request": {
+    "id": 8013,
+    "number": 13,
+    "state": "open",
+    "head": {
+      "ref": "feature/auto-review",
+      "sha": "9da674bc34987d6acbec4f8521953315ecdb7d20"
+    },
+    "base": {
+      "ref": "main",
+      "sha": "f228b3da1c2ec0bf0cad8c6e3bb35b5bb7788b0b"
+    }
+  },
+  "repository": {
+    "id": 31,
+    "name": "aiCodeReview",
+    "full_name": "engineering/aiCodeReview"
+  },
+  "sender": {
+    "id": 201,
+    "login": "developer"
+  }
+}

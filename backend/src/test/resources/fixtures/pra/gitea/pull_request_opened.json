@@ -1,0 +1,41 @@
+{
+  "action": "opened",
+  "number": 13,
+  "pull_request": {
+    "id": 8013,
+    "number": 13,
+    "user": {
+      "id": 201,
+      "login": "developer",
+      "full_name": "Dev User"
+    },
+    "title": "feat: gitea auto review integration",
+    "body": "Initial PR for auto review",
+    "head": {
+      "ref": "feature/auto-review",
+      "sha": "59abb71e9341934c8fc9183c23c4f3653f24d879"
+    },
+    "base": {
+      "ref": "main",
+      "sha": "f228b3da1c2ec0bf0cad8c6e3bb35b5bb7788b0b"
+    },
+    "state": "open",
+    "is_locked": false,
+    "merged": false
+  },
+  "repository": {
+    "id": 31,
+    "owner": {
+      "id": 10,
+      "login": "engineering"
+    },
+    "name": "aiCodeReview",
+    "full_name": "engineering/aiCodeReview",
+    "private": false,
+    "html_url": "https://gitea.example.com/engineering/aiCodeReview"
+  },
+  "sender": {
+    "id": 201,
+    "login": "developer"
+  }
+}

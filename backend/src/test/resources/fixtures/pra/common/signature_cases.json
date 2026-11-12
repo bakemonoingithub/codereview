@@ -1,0 +1,9 @@
+{
+  "secret": "test-webhook-secret-2026",
+  "payload": "{\"repository\":{\"id\":31},\"sender\":{\"id\":201}}",
+  "tamperedPayload": "{\"repository\":{\"id\":31},\"sender\":{\"id\":999}}",
+  "expectedHmacSha256Hex": "2e7a175f70a7593c68dfcb397397b91d248b1d9fb72996e85572e9aeecebdfd0",
+  "githubHeaderName": "X-Hub-Signature-256",
+  "githubSignaturePrefix": "sha256=",
+  "giteaHeaderName": "X-Gitea-Signature"
+}

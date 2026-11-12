@@ -4,7 +4,9 @@
 
 ## 当前状态
 
-2026-11-11 Gitea PR 自动审查方案已整理，待后续会话实施。方案覆盖首次自动审查、评论触发复审、任务链接回写、处理记录及人工审批验收。接续入口见[Gitea PR 自动审查方案](work/gitea-pr-auto-review/README.md)。
+2026-11-12 PRA-01 完成，PRA-01 `done`，PRA-02–07 保持 `todo`：双宿主（GitHub 与 Gitea 1.16.1）Webhook 协议与字段提取适配、HMAC-SHA256 验签算法（GitHub 带 `sha256=` 前缀，Gitea 为裸摘要，常量时间比对）、GitHostClient 用户查询及普通评论读写扩展契约、业务幂等键与任务回写链接规则、租约与重试参数（300s 租约、3 次重试递增退避、60s UNKNOWN 静默期、30 天快照保留）已定稿，见[PRA-01 契约](work/gitea-pr-auto-review/pra-01-contract.md)。已在 `backend/src/test/resources/fixtures/pra/` 备齐两端 PR 创建、评论 `/recheck`、追加提交、机器人自身发言、非 PR Issue 评论与篡改签名等 10 份验证样本，9 项契约基线测试 `PrAutoReviewContractTest` 及已有 `PullRequestClientTest`、`FixedComparisonTest` 全部通过。未改动数据库、未操作服务、未调用真实模型、未提交。无本工作包 active，下一步为 PRA-02。
+
+2026-11-12 PR 自动审查首版支持 GitHub 和 Gitea 1.16.1，沿用现有 Git 宿主客户端和 PR 审查流程。本轮在 GitHub 测试仓库验收，Gitea 内网实测记在 PRA-07。[ROADMAP 的 PRA 工作包](ROADMAP.md#pra-github-与-gitea-pr-自动审查2026-11-12)中实施从 PRA-01 固定双宿主接口和验证样本开始。字段与验收场景见 [PR 自动审查方案](work/gitea-pr-auto-review/README.md)。
 
 2026-11-06 PRS-04、PRS-05 工程实现完成，PRS-06 保持 `partial`：Agent 将一个同仓库未合并 PR 冻结为一次调查，`read_diff` 的 RANGE 比较读取共同祖先到源提交，不新增 `read_pr`。现有发起弹窗、详情和报告来源可以显示 PR 与三个版本；单提交差异按钮在 PR 材料中隐藏。GitHub 验证仓库、Gitea 1.16.1 内网样本、真实模型任务和负责人正式页面视觉验收尚未执行。未连接现有库、未启停服务、未调用模型、未部署。
 

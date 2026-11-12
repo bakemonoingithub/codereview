@@ -1,0 +1,28 @@
+{
+  "action": "synchronize",
+  "number": 15,
+  "before": "9da674bc34987d6acbec4f8521953315ecdb7d20",
+  "after": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+  "pull_request": {
+    "id": 10015,
+    "number": 15,
+    "state": "open",
+    "head": {
+      "ref": "feature/auto-review",
+      "sha": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
+    },
+    "base": {
+      "ref": "main",
+      "sha": "f228b3da1c2ec0bf0cad8c6e3bb35b5bb7788b0b"
+    }
+  },
+  "repository": {
+    "id": 31,
+    "name": "aiCodeReview",
+    "full_name": "engineering/aiCodeReview"
+  },
+  "sender": {
+    "id": 201,
+    "login": "developer"
+  }
+}

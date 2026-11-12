@@ -1,0 +1,25 @@
+{
+  "action": "created",
+  "is_pull": true,
+  "issue": {
+    "id": 8013,
+    "number": 13,
+    "state": "open"
+  },
+  "comment": {
+    "id": 3214,
+    "body": "[查看提交 59abb71 的审查进度与结果](https://review.example.com/#/reviews/01M6Z1HBQG8B0NGX473QX00001?from=/reviews)",
+    "user": {
+      "id": 901,
+      "login": "code-review-bot"
+    }
+  },
+  "repository": {
+    "id": 31,
+    "full_name": "engineering/aiCodeReview"
+  },
+  "sender": {
+    "id": 901,
+    "login": "code-review-bot"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "action": "opened",
+  "number": 15,
+  "pull_request": {
+    "id": 10015,
+    "number": 15,
+    "state": "open",
+    "title": "feat: PR auto review initial integration",
+    "user": {
+      "id": 201,
+      "login": "developer"
+    },
+    "body": "This PR integrates webhook triggered automated reviews.",
+    "head": {
+      "ref": "feature/auto-review",
+      "sha": "9da674bc34987d6acbec4f8521953315ecdb7d20"
+    },
+    "base": {
+      "ref": "main",
+      "sha": "f228b3da1c2ec0bf0cad8c6e3bb35b5bb7788b0b"
+    },
+    "merged": false
+  },
+  "repository": {
+    "id": 31,
+    "name": "aiCodeReview",
+    "full_name": "engineering/aiCodeReview",
+    "owner": {
+      "id": 10,
+      "login": "engineering"
+    },
+    "html_url": "https://github.com/engineering/aiCodeReview"
+  },
+  "sender": {
+    "id": 201,
+    "login": "developer"
+  }
+}

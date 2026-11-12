@@ -1,0 +1,29 @@
+{
+  "action": "created",
+  "issue": {
+    "id": 20001,
+    "number": 88,
+    "title": "Bug: login session timeout too early",
+    "user": {
+      "id": 201,
+      "login": "developer"
+    },
+    "state": "open"
+  },
+  "comment": {
+    "id": 5003,
+    "user": {
+      "id": 101,
+      "login": "li.ming"
+    },
+    "body": "/recheck"
+  },
+  "repository": {
+    "id": 31,
+    "full_name": "engineering/aiCodeReview"
+  },
+  "sender": {
+    "id": 101,
+    "login": "li.ming"
+  }
+}

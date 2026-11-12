@@ -1,55 +1,65 @@
-# Gitea PR 自动审查方案
+# GitHub 与 Gitea PR 自动审查方案
 
 本方案供后续开发会话接续。
 
-目标是在内网 Gitea 1.16.1 上，对指向指定主分支的 PR 自动发起首次问题审查，并允许审核者按需触发复审。
+首版兼容 GitHub 和内网 Gitea 1.16.1。系统对指向配置分支的新建 PR 发起首次问题审查，并允许审核者按需触发复审。两端沿用现有 Git 宿主客户端和 PR 审查流程。
 
-方案待实施。真实 Webhook payload、账号权限和端到端结果以验收仓库实测为准。
+本轮使用 GitHub 测试仓库验收。Gitea 适配同步开发，以 1.16.1 固定样本验证，内网实测在环境可访问时进行。实施顺序见 [ROADMAP 的 PRA 工作包](../../ROADMAP.md#pra-github-与-gitea-pr-自动审查2026-11-12)。
 
-[交互原型](prototype.html)可直接在浏览器打开。选择项目后可保存示例配置，或用「模拟投递」查看首次审查、评论复审、跳过、失败、重复投递及评论回写恢复。模拟记录随页面刷新重置。
+[交互原型](prototype.html)使用 Gitea 示例，可直接在浏览器打开。正式页面沿用同一套交互，按项目展示对应宿主的配置、原始事件值和评论回执。模拟记录随页面刷新重置。
 
 ## 1. 业务流程与验收口径
 
-1. 开发者创建指向主分支的 PR。Gitea 通过 Webhook 通知系统。
+1. 开发者创建指向配置分支的 PR。GitHub 或 Gitea 通过 Webhook 通知系统。
 2. 系统识别仓库和 PR，核对目标分支，执行「专项审查 → 问题审查 → PR 审查」。审查范围为当前 PR 的全部可审查文本净变更。
 3. 任务创建成功后，系统立即向原 PR 发布一条普通评论。正文只放本轮任务链接，链接文字可以带 PR 源提交短 SHA。审核者打开任务详情页查看进度和逐文件结果。各文件的结果和证据由现有系统展示，首版无需另行调用模型生成摘要。
 4. 开发者需要修复时，向同一源分支追加提交，保留原 PR。审核者准备好后，在该 PR 下新发 `/recheck` 评论触发复审。系统使用最新读取并锁定的 PR 版本，重新审查整个 PR 的净变更，并在原 PR 发布新任务链接。
-5. 审核者查看当前版本的结果，在 Gitea 决定是否批准。验收需要演示合并受阻时，由 Gitea 主分支保护要求有效人工批准。使用有合并权限的非管理员账号验证审批门禁，并验证追加代码变更后旧批准是否退出计数。
+5. 审核者查看当前版本的结果，在对应宿主决定是否批准。验收需要演示合并受阻时，由目标分支保护要求有效人工批准。使用有合并权限的非管理员账号验证审批门禁，并验证追加代码变更后旧批准是否退出计数。
 
 自动审查负责创建任务和发布结果入口。分支保护检查人工审批。上述验收能证明缺少审批时无法合并。原验收要求中的「命中质量阈值即自动拦截」需要另行确认阻断规则。若将来要求当前版本必须先生成报告，再单独设计必需状态检查。
 
 ## 2. Webhook 入口和复审命令
 
-Gitea 的 PR 创建事件和 PR 普通评论事件投递到同一个系统接收入口。实施时先在内网抓取脱敏样本，确认事件请求头、投递 ID、动作、仓库身份、PR 编号、评论 ID、评论正文和触发人字段。创建事件按打开动作处理，评论事件按新建动作处理。接口路径、字段适配和错误响应在样本核对后确定。
+两端 Webhook 使用同一套接收和持久化流程。按服务端配置识别宿主、实例和验签密钥，再由对应适配代码提取字段。PRA-01 优先从 GitHub 测试仓库采集脱敏样本，并按 Gitea 1.16.1 样本核对另一端字段。接收路径和错误响应在该工作项确定。
 
-Gitea 的 Webhook 订阅决定系统收到哪些事件。系统收到其他已验签的投递时，也记录接收信息，并标记「已跳过」。增加新的审查触发条件时，在后端补充处理规则。
+| 内容 | GitHub | Gitea 1.16.1 |
+| --- | --- | --- |
+| 投递 ID | `X-GitHub-Delivery` | `X-Gitea-Delivery` |
+| 事件头 | `X-GitHub-Event` | `X-Gitea-Event`、`X-Gitea-Event-Type` |
+| 验签 | `X-Hub-Signature-256`，值含 `sha256=` 前缀 | `X-Gitea-Signature`，值为十六进制摘要 |
+| 新建 PR | `pull_request`，`action=opened`，取请求体 `number` | `pull_request`，`action=opened`，取请求体 `number` |
+| 新建 PR 普通评论 | `issue_comment`，`action=created`，且 `issue.pull_request` 存在。取 `issue.number` | `X-Gitea-Event-Type=pull_request_comment`，`action=created`，且 `is_pull=true`。取 `issue.number` |
+
+两端从已验签的请求体读取 `repository.id` 和 `sender.id`，评论事件另读 `comment.id` 与 `comment.body`。PR 状态、目标分支和净变更由现有读取服务查询。字段来源见 [GitHub Webhook 文档](https://docs.github.com/en/webhooks/webhook-events-and-payloads) 和 [Gitea 1.16.1 通知实现](https://github.com/go-gitea/gitea/blob/v1.16.1/modules/notification/webhook/webhook.go)。
+
+各宿主的 Webhook 订阅决定系统收到哪些事件。其他已验签的投递也记录接收信息，并标记「已跳过」。增加审查触发条件时，在后端补充处理规则。
 
 | 收到的事件 | 处理规则 |
 | --- | --- |
 | 新建 PR | 绑定到已启用自动审查的系统项目。PR 必须仍打开、未合并，且目标分支命中配置。 |
 | 新建 PR 普通评论 | 复用项目、PR 状态和目标分支校验。核对触发人权限，再匹配复审命令。 |
-| 追加提交、评论编辑或删除、其他事件 | 保留已接收投递的处理结果，标记跳过。 |
+| 普通 Issue 评论、追加提交、评论编辑或删除、其他事件 | 保留已接收投递的处理结果，标记跳过。 |
 | 机器人发布任务链接 | 按机器人账号身份过滤，避免回写触发本系统。 |
 
-复审命令固定为 `/recheck`。去掉正文首尾空白后，整条评论须与命令完全一致。行内提及、引用、附带说明和编辑旧评论均跳过。触发人须在项目配置认可的审核者范围内。首版建议采用审核者账号白名单，身份匹配使用 Gitea 用户 ID。PR Label 触发作为备选扩展。
+复审命令固定为 `/recheck`。去掉正文首尾空白后，整条评论须与命令完全一致。行内提及、引用、附带说明和编辑旧评论均跳过。触发人须在项目配置认可的审核者范围内。首版采用审核者账号白名单，身份匹配使用项目绑定宿主上的用户 ID。PR Label 触发作为备选扩展。
 
-接收端先按服务端绑定的 Webhook 密钥验证请求，再信任仓库和触发人字段。验签失败只记最小拒绝信息，跳过业务处理。已验证的投递先持久化，再受理和异步处理。HTTP 受理表示收到投递，任务是否创建以处理记录为准。处理程序须能恢复受理后尚未完成的记录。
+接收端使用服务端绑定的 Webhook 密钥，对原始请求体计算 HMAC-SHA256 并验证签名，再使用仓库和触发人字段。验签失败只记最小拒绝信息，跳过业务处理。已验证的投递先持久化，再受理和异步处理。HTTP 受理表示收到投递，任务是否创建以处理记录为准。处理程序须能恢复受理后尚未完成的记录。
 
 ## 3. 项目配置与任务参数
 
-配置依附已有 Gitea 项目。仓库绑定由现有项目提供。部署时使用受信任的 Gitea 实例和目标仓库身份定位项目，优先采用实例内的仓库 ID。若存在多个匹配项目，记录配置冲突并停止。读取和回写都使用这次匹配的项目及其仓库。
+配置依附已有 GitHub 或 Gitea 项目。以服务端配置的宿主、实例和已验签的仓库身份定位项目，优先采用实例内的仓库 ID。若存在多个匹配项目，记录配置冲突并停止。读取和回写使用匹配项目的仓库绑定，由 `GitHostClientRegistry` 选择已有宿主客户端。
 
 | 配置 | 首版设置 |
 | --- | --- |
-| 项目与启用状态 | 选择已有 Gitea 项目，为该项目启用 PR 自动审查。 |
+| 项目与启用状态 | 选择已有 GitHub 或 Gitea 项目，为该项目启用 PR 自动审查。 |
 | 目标分支 | 显式填写实际主分支名，例如 `main`。首次审查和复审共用此配置。 |
 | 模型 | 选择已有 `modelConfigId`。 |
 | 通用提示词 | 选用时同时指定 `promptId` 和 `promptVersionId`，固定具体版本。使用默认规则时两个字段一起省略。 |
-| 审核者与机器人身份 | 逐个输入 Gitea 登录名，添加或移除可触发复审的审核者。名单为空时，评论复审停用。用专用服务账号回写评论，记录并过滤该账号产生的事件。 |
-| Webhook 密钥与 Gitea 凭据 | 由服务端配置或凭据引用提供。配置实施前验证 Gitea 端发送权限、系统接收可达性、后端读取及回写权限。 |
+| 审核者与机器人身份 | 逐个输入项目所属宿主的登录名，添加或移除可触发复审的审核者。名单为空时，评论复审停用。用专用服务账号回写评论，记录并过滤该账号产生的事件。 |
+| Webhook 密钥与宿主凭据 | 由服务端配置或凭据引用提供。分别验证宿主端投递、系统接收可达性、后端读取及回写权限。 |
 | 审查详情地址 | 配置审核者浏览器可访问的前端部署地址。`localhost:5173` 用于本机调试。 |
 
-添加审核者时，后端使用项目绑定的 Gitea 实例和服务端凭据调用 `GET /api/v1/users/{username}`。查询成功后，按实例和用户 `id` 保存名单成员，界面显示返回的 `login`。重复添加同一个用户时提示已存在。若返回 404，提示「未找到此账号，或当前凭据无法查看」，不加入名单。评论事件通过验签后，用 `sender.id` 检查该项目的名单。Gitea 分支保护继续管理人工批准资格。
+添加审核者时，通过项目绑定的宿主客户端按登录名查询。GitHub 使用 `GET /users/{username}`，Gitea 使用 `GET /api/v1/users/{username}`。查询成功后，在项目的宿主实例内按用户 `id` 保存名单成员，界面显示返回的 `login`。重复添加同一个用户时提示已存在。若返回 404，提示「未找到此账号，或当前凭据无法查看」，名单保持原值。评论事件通过验签后，用 `sender.id` 检查该项目的名单。人工批准资格由宿主分支保护管理。 [GitHub 用户查询接口](https://docs.github.com/en/rest/users/users#get-a-user)
 
 Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以下 HTTP 路径用于说明现有契约，后端内部调用可以直接复用对应服务。
 
@@ -70,9 +80,9 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 
 | 环节 | 字段与类型 | 用途 |
 | --- | --- | --- |
-| 接收 | `id CHAR(26)`、`gitea_instance_key VARCHAR(128)`、`delivery_id VARCHAR(64)` | 主键、服务端配置的稳定实例标识、`X-Gitea-Delivery` 原值。有效投递须具备实例标识和投递 ID。 |
+| 接收 | `id CHAR(26)`、`host_type VARCHAR(16)`、`host_instance_key VARCHAR(128)`、`delivery_id VARCHAR(64)` | 主键、宿主类型 `github` 或 `gitea`、服务端配置的稳定实例标识、宿主投递头原值。有效投递须具备宿主类型、实例标识和投递 ID。 |
 | 接收 | `first_received_at DATETIME(3)`、`last_received_at DATETIME(3)`、`receive_count INT` | 首次接收时间、最近接收时间和累计接收次数。次数初始为 1。 |
-| 接收 | `event_name`、`event_type`、`event_action`，均为 `VARCHAR(100)` | 分别保存 `X-Gitea-Event`、`X-Gitea-Event-Type` 和请求体 `action` 的原值。字段缺失时存 `NULL`。 |
+| 接收 | `event_name`、`event_type`、`event_action`，均为 `VARCHAR(100)` | `event_name` 保存 `X-GitHub-Event` 或 `X-Gitea-Event` 原值。`event_type` 保存实际收到的 `X-Gitea-Event-Type`，GitHub 投递留空。`event_action` 保存请求体 `action` 原值。字段缺失时存 `NULL`。 |
 | 接收 | `repo_id BIGINT`、`repo_full_name VARCHAR(500)`、`pr_number BIGINT`、`actor_user_id BIGINT`、`source_comment_id BIGINT`、`payload_snapshot JSON` | 仓库和 PR 定位、触发人 ID、触发复审的评论 ID，以及保留原字段名的脱敏请求体。按实际收到的字段记录。 |
 | 审查决定 | `project_id CHAR(26)`、`trigger_kind VARCHAR(16)`、`target_branch VARCHAR(200)` | 匹配到的系统项目、首次审查 `FIRST` 或评论复审 `RECHECK`、本次判定使用的目标分支。 |
 | 审查决定 | `decision_state VARCHAR(16)`、`decided_at DATETIME(3)`、`decision_code VARCHAR(64)`、`decision_message VARCHAR(500)` | 处理状态、判定时间、可检索的跳过或失败原因码及脱敏说明。 |
@@ -80,7 +90,7 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 | 审查决定 | `source_head`、`target_head`、`merge_base`，均为 `VARCHAR(64)`，`text_count`、`binary_count`、`unreadable_count`，均为 `INT` | 创建请求使用的三个提交 SHA 和文件覆盖数量。只有任务创建后，这组版本才作为该任务的冻结版本。 |
 | 审查决定 | `review_task_id CHAR(26)`、`review_url VARCHAR(1024)` | 已创建任务的 ID 和本轮任务详情链接。 |
 | 评论请求 | `comment_actor_id BIGINT`、`comment_body TEXT`、`comment_attempts INT`、`comment_last_attempt_at DATETIME(3)` | 回写机器人的用户 ID、发送正文、发送次数和最近发送时间。发送目标使用本条记录的仓库和 PR。发送次数初始为 0。 |
-| 评论结果 | `comment_state VARCHAR(16)`、`comment_id BIGINT`、`comment_http_status SMALLINT`、`comment_error VARCHAR(500)`、`comment_checked_at DATETIME(3)` | 评论发送状态、Gitea 回执 ID、最近一次发送的 HTTP 状态或脱敏错误，以及最近核对已有评论的时间。 |
+| 评论结果 | `comment_state VARCHAR(16)`、`comment_id BIGINT`、`comment_http_status SMALLINT`、`comment_error VARCHAR(500)`、`comment_checked_at DATETIME(3)` | 评论发送状态、宿主返回的评论 ID、最近一次发送的 HTTP 状态或脱敏错误，以及最近核对已有评论的时间。 |
 | 并发与恢复 | `revision INT`、`lease_until DATETIME(3)`、`next_attempt_at DATETIME(3)`、`updated_at DATETIME(3)` | 处理版本、执行租约、下一次处理或回收时间、记录更新时间。 |
 
 `id`、首次和最近接收时间、接收次数、两类处理状态、发送次数、`revision` 和 `updated_at` 必填。`revision` 初始为 0。其他字段按处理进度填写。验签失败时仅保存本地记录 ID、接收时间和拒绝原因等最小信息。未验证的投递 ID、事件头和请求体留空，避免占用有效投递的去重键。签名、认证头、令牌和凭据不进入快照、错误说明或日志。
@@ -90,19 +100,19 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 | 约束或索引 | 字段 | 用途 |
 | --- | --- | --- |
 | 主键 | `id` | 定位一条处理记录。 |
-| 唯一索引 | `gitea_instance_key, delivery_id` | 同一实例内的同一投递只落一条记录。重复接收时原子累加 `receive_count` 并更新 `last_received_at`。 |
+| 唯一索引 | `host_type, host_instance_key, delivery_id` | 同一宿主实例内的同一投递只落一条记录。重复接收时原子累加 `receive_count` 并更新 `last_received_at`。 |
 | 唯一索引 | `project_id, business_key` | 同一项目内，同一次首次审查或同一条复审评论只有一条执行记录。 |
 | 普通索引 | `project_id, first_received_at, id` | 当前项目列表按首次接收时间倒序分页，使用 ID 区分同一时刻的记录。 |
-| 普通索引 | `gitea_instance_key, repo_id, pr_number, first_received_at, id` | 从仓库和 PR 定位处理历史。 |
+| 普通索引 | `host_type, host_instance_key, repo_id, pr_number, first_received_at, id` | 从宿主实例、仓库和 PR 定位处理历史。 |
 | 普通索引 | `review_task_id` | 按审查 ID 找到执行记录。 |
 | 普通索引 | `canonical_record_id` | 按执行记录 ID 查关联的重复触发记录。 |
 | 普通索引 | `next_attempt_at, id` | 扫描待处理记录和租约到期的记录。 |
 
-执行记录使用 `pr-auto-review:` 加 SHA-256 摘要的 64 个小写十六进制字符作为 `business_key`，并将同一个值传给现有任务服务的 `Idempotency-Key`。摘要输入为 UTF-8 JSON 数组，按顺序包含 Gitea 实例标识、仓库 ID、PR 编号和触发方式。评论复审在末尾追加触发评论 ID。提交 SHA 和请求参数随任务请求冻结。两个独立的复审评论对应两个业务键。
+执行记录使用 `pr-auto-review:` 加 SHA-256 摘要的 64 个小写十六进制字符作为 `business_key`，并将同一个值传给现有任务服务的 `Idempotency-Key`。摘要输入为 UTF-8 JSON 数组，按顺序包含宿主类型、宿主实例标识、仓库 ID、PR 编号和触发方式。评论复审在末尾追加触发评论 ID。提交 SHA 和请求参数随任务请求冻结。两个独立的复审评论对应两个业务键。
 
-收到相同投递 ID 时更新接收次数，沿用原记录。收到不同投递 ID 且命中同一业务键时，保留各自的接收记录。通过项目、PR 和触发条件校验后，在创建任务前取得唯一键。首个取得唯一键的记录负责创建任务和回写评论，其余记录写入 `SKIPPED / DUPLICATE_TRIGGER` 和 `canonical_record_id`，`business_key` 留空。可沿关联记录定位同一个审查任务。
+同一宿主实例收到相同投递 ID 时更新接收次数，沿用原记录。收到不同投递 ID 且命中同一业务键时，保留各自的接收记录。通过项目、PR 和触发条件校验后，在创建任务前取得唯一键。首个取得唯一键的记录负责创建任务和回写评论，其余记录写入 `SKIPPED / DUPLICATE_TRIGGER` 和 `canonical_record_id`，`business_key` 留空。可沿关联记录定位同一个审查任务。
 
-处理记录列表直接显示 `event_type` 的值，缺失时使用 `event_name`，有 `event_action` 时一并显示。事件筛选从当前项目的投递记录取值。接收详情展示两个事件头和脱敏请求体。调整 Gitea 订阅范围时，列表可以直接展示和筛选新收到的事件。未匹配项目的投递可在排查时按实例和投递 ID 定位。
+处理记录列表直接显示 `event_type` 的值，缺失时使用 `event_name`，有 `event_action` 时一并显示。事件筛选从当前项目的投递记录取值。接收详情按宿主展示实际收到的投递头、事件头和脱敏请求体。调整宿主订阅范围时，列表可以直接展示和筛选新收到的事件。未匹配项目的投递可在排查时按宿主、实例和投递 ID 定位。
 
 ### 4.3 状态与恢复
 
@@ -120,24 +130,25 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 
 实施时确认保留期限和重试间隔。待处理记录保留恢复所需快照。清理已完成的载荷时，保留业务幂等键、审查 ID 和评论回执，避免后续重投再次执行。删除或归档审查任务按现有任务规则处理，投递记录仍可追溯原审查 ID。
 
-## 5. 与插件框架的关系
+## 5. 现有框架复用
 
-`docs/plugin-framework-design` 的 `eec5db5` 将 `ToolPlugin` 和 `ToolGateway` 用于模型在执行循环内调用外部工具。本方案的评论由 Webhook 流程在创建任务后发出。两条路径可以共享 Gitea 底层操作。首版沿用普通 Java 服务实现，不依赖插件框架交付。
-
-| 边界 | 首版职责及后续复用 |
+| 边界 | 职责及复用 |
 | --- | --- |
-| Gitea 接入 | Webhook 验签与字段解析集中在 Gitea 接入代码。复用 [GiteaClient](../../../backend/src/main/java/com/codereview/git/GiteaClient.java) 所在的宿主访问层封装评论写入和回执。未来的 Gitea 插件可复用该客户端。 |
-| 自动审查流程 | 负责项目匹配、目标分支过滤、`/recheck`、任务创建和评论回写协调。将来框架支持事件入口时，可以接入现有流程。 |
-| 专项任务 | 复用现有版本锁定、文本净变化、任务执行和逐文件详情。手工与自动发起使用同一套规则。 |
+| Webhook 接入 | 各宿主适配验签、事件头和请求体字段，共用持久化和异步受理流程。 |
+| Git 宿主访问 | 通过 [GitHostClientRegistry](../../../backend/src/main/java/com/codereview/git/GitHostClientRegistry.java) 按项目仓库选择 [GitHubClient](../../../backend/src/main/java/com/codereview/git/GitHubClient.java) 或 [GiteaClient](../../../backend/src/main/java/com/codereview/git/GiteaClient.java)。在现有 [GitHostClient](../../../backend/src/main/java/com/codereview/git/GitHostClient.java) 补齐用户查询、普通评论列表和发布能力。 |
+| 自动审查流程 | 两端共用项目匹配、目标分支过滤、`/recheck`、幂等、任务创建和评论回写协调。 |
+| 专项任务 | 复用现有版本锁定、文本净变更、任务执行和逐文件详情。手工与自动发起使用同一套规则。 |
 
-向 Gitea 写评论时保存的权限验证、目标范围、幂等处理和回执，可作为未来框架的真实样本。后续若扩展自动合并或拒绝，沿用项目仓库与 PR 版本校验，再明确动作权限、放行依据和验收标准。
+PR 时间线的普通评论通过 GitHub 的 `/repos/{owner}/{repo}/issues/{issue_number}/comments` 或 Gitea 的 `/api/v1/repos/{owner}/{repo}/issues/{index}/comments` 读取和发布。评论列表须支持分页，用于回写结果核对。 [GitHub 普通评论接口](https://docs.github.com/en/rest/issues/comments) · [Gitea 1.16.1 普通评论接口](https://github.com/go-gitea/gitea/blob/v1.16.1/routers/api/v1/repo/issue_comment.go)
+
+现有 Java 服务负责首版接入。`docs/plugin-framework-design` 的 `eec5db5` 所描述的 `ToolPlugin` 和 `ToolGateway` 将来可复用宿主客户端及回写回执。后续若扩展自动合并或拒绝，沿用项目仓库与 PR 版本校验，再明确动作权限、放行依据和验收标准。
 
 ## 6. 实施顺序与验收
 
-1. 在 Gitea 1.16.1 测试仓库抓取脱敏样本。验证 PR 创建、新增普通评论以及机器人回写的事件。核对网络可达性、验签、仓库匹配、机器人权限和详情链接。
-2. 接入项目配置、事件接收和处理记录。实现 PR 创建触发、文本目标筛选和现有任务创建，获取 ID 后发布链接。
-3. 接入 `/recheck`，验证权限校验、重复投递、任务创建后的恢复和评论发送结果核对。
-4. 用真实仓库和模型任务完成以下验收。人工审批门禁在测试仓库独立验证。保存事件、审查 ID、对应 SHA 与 Gitea 评论 ID 作为证据。
+1. 按 ROADMAP 的 PRA-01 固定两端 Webhook 样本。优先从 GitHub 测试仓库验证接收可达性、验签、仓库匹配和机器人权限。Gitea 1.16.1 可先使用版本对应的固定样本。
+2. 按 PRA-02 至 PRA-05 实现双宿主接收、首次审查、`/recheck`、评论回写和页面。在固定样本中覆盖仓库 ID 或投递 ID 相同但宿主不同的场景。
+3. PRA-06 先跑双宿主工程回归，再在 GitHub 测试仓库进行端到端验收。准备 GitHub 可访问的 HTTPS 接收地址。记录真实投递、审查 ID、三个 SHA 和评论 ID。人工审批门禁用测试仓库的分支保护独立验证。
+4. PRA-07 在内网可访问时，用 Gitea 1.16.1 真实仓库复核同一套业务流程和权限。
 
 | 验收场景 | 预期结果 |
 | --- | --- |
@@ -146,6 +157,8 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 | 连续向同一源分支推送修复 | 原 PR 保持打开。推送本身不创建审查任务。 |
 | 审核者新发 `/recheck` | 当前 PR 的整份净变更按新版本审查，原 PR 出现新链接。旧链接仍指向原任务。 |
 | 普通讨论、编辑旧评论、无权限触发或机器人回写 | 记录跳过原因。 |
+| GitHub 普通 Issue 新发 `/recheck` | 保留投递记录，标记跳过。PR 上符合条件的新建普通评论可触发复审。 |
+| GitHub 和 Gitea 的投递 ID、仓库 ID 或用户 ID 重合 | 两端独立匹配项目、审核者和投递记录。 |
 | 额外订阅 `push` 并收到一次有效投递 | 列表按原值显示 `push`，事件筛选出现 `push`。审查决定为「已跳过」。 |
 | 同一投递重复接收 | 保留一条处理记录，接收次数累加。 |
 | 同一触发以不同投递 ID 到达 | 保留各自的接收记录，只创建一个审查任务并发布一条任务链接评论。重复记录可定位原任务。 |
@@ -153,4 +166,4 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 | 评论发送超时或收到成功回执前中断 | 评论状态为「结果待确认」。找到原评论时补记回执，确认未发布后才补发。 |
 | 主分支要求人工批准 | 有合并权限的非管理员在缺少有效批准时被拦截。追加代码变更后验证旧批准的计数，审核者查看新任务结果后重新批准。 |
 
-后续会话首先确认内网事件样本、部署地址、仓库和分支、审核者范围、模型和提示词版本。实施前确定 Webhook 路径、配置载体、处理记录保留期限和重试间隔，并按第 4 节在 `backend/src/main/resources/db/agent-migration/` 新增 Flyway 迁移。专家若坚持验收自动质量拦截，先确认可复现的规则和放行条件。
+实施前确认 GitHub 测试仓库、接收与详情地址、目标分支、审核者、模型和提示词版本。确定 Webhook 路径、配置载体、处理记录保留期限和重试间隔，并按第 4 节在 `backend/src/main/resources/db/agent-migration/` 新增 Flyway 迁移。专家若坚持验收自动质量拦截，先确认可复现的规则和放行条件。
