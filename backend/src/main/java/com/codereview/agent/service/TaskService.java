@@ -79,6 +79,8 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")
 public class TaskService {
 
+    static final String TARGET_BRANCH_MISMATCH = "TARGET_BRANCH_MISMATCH";
+
     private final AgentDatabase db;
     private final ObjectMapper mapper;
     private final RepositoryReadService repository;
@@ -98,6 +100,11 @@ public class TaskService {
     }
 
     public TaskDtos.View create(TaskDtos.Create req, String idempotencyKey) {
+        return create(req, idempotencyKey, null);
+    }
+
+    /** 自动审查在创建所用的同一次 PR 绑定上检查配置分支。 */
+    TaskDtos.View create(TaskDtos.Create req, String idempotencyKey, String expectedPullTargetBranch) {
         String key = normalizeKey(idempotencyKey);
         String requestHash = sha256(requestJson(req));
         AgentProject project = requireProject(req.projectId());
@@ -118,7 +125,7 @@ public class TaskService {
                     Map.of("specialistType", specialistType));
         }
         ResolvedConfig config = resolveConfig(req);
-        ResolvedSource source = resolveSource(req.source(), project);
+        ResolvedSource source = resolveSource(req.source(), project, expectedPullTargetBranch);
         List<NormalizedTarget> requestedTargets = normalizeTargets(req.targets());
         List<NormalizedTarget> targets = source.pull() == null
                 ? requestedTargets : selectPullTargets(source.pull(), requestedTargets);
@@ -591,7 +598,7 @@ public class TaskService {
         return new ResolvedConfig(model, prompt, promptVersion);
     }
 
-    private ResolvedSource resolveSource(TaskDtos.Source source, AgentProject project) {
+    private ResolvedSource resolveSource(TaskDtos.Source source, AgentProject project, String expectedPullTargetBranch) {
         String kind = source.kind() == null ? "" : source.kind().trim().toUpperCase();
         if ("FILES".equals(kind)) {
             String branch = source.branch() == null || source.branch().isBlank()
@@ -629,6 +636,11 @@ public class TaskService {
             }
             PullRequestViews.Binding pull = repository.bindPullRequest(project.getId(), source.pullNumber(),
                     source.sourceHead(), source.targetHead(), source.mergeBase());
+            if (expectedPullTargetBranch != null && !expectedPullTargetBranch.equals(pull.pullRequest().targetBranch())) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                        "目标分支不匹配配置的审查分支 " + expectedPullTargetBranch,
+                        Map.of("reason", TARGET_BRANCH_MISMATCH));
+            }
             return new ResolvedSource("PR", pull.pullRequest().targetBranch(), pull.pullRequest().sourceHead(),
                     pull.mergeBase(), pull);
         }

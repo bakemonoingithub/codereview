@@ -373,11 +373,12 @@ public class GitHubClient implements GitHostClient {
                 + "/issues/" + issueNumber + "/comments?page=" + safePage + "&per_page=" + safePerPage;
         ResponseEntity<String> entity = getEntity(url, token, credentialType);
         JsonNode root = readTree(entity.getBody());
+        if (root == null || !root.isArray()) {
+            throw new IllegalStateException("GitHub 评论列表响应无效");
+        }
         List<IssueComment> items = new ArrayList<>();
-        if (root.isArray()) {
-            for (JsonNode node : root) {
-                items.add(parseIssueComment(issueNumber, node));
-            }
+        for (JsonNode node : root) {
+            items.add(parseIssueComment(issueNumber, node));
         }
         boolean hasMore = GitResponseParser.hasNextPage(linkHeader(entity));
         return new IssueCommentPage(items, hasMore, safePage, safePerPage);

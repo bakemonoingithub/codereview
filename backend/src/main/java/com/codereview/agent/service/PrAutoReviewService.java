@@ -1,19 +1,25 @@
 package com.codereview.agent.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.codereview.agent.api.ApiException;
 import com.codereview.agent.api.ErrorCode;
 import com.codereview.agent.api.PageResponse;
 import com.codereview.agent.db.AgentDatabase;
 import com.codereview.agent.dto.PrAutoReviewDtos;
+import com.codereview.agent.dto.TaskDtos;
 import com.codereview.agent.entity.AgentModelConfig;
 import com.codereview.agent.entity.AgentProject;
+import com.codereview.agent.entity.AgentReviewTask;
 import com.codereview.agent.entity.PrAutoReviewConfig;
 import com.codereview.agent.entity.PrAutoReviewDelivery;
 import com.codereview.agent.mapper.AgentModelConfigMapper;
 import com.codereview.agent.mapper.AgentProjectMapper;
+import com.codereview.agent.mapper.AgentReviewTaskMapper;
 import com.codereview.agent.mapper.PrAutoReviewConfigMapper;
 import com.codereview.agent.mapper.PrAutoReviewDeliveryMapper;
+import com.codereview.agent.repository.PullRequestViews;
+import com.codereview.agent.repository.RepositoryReadService;
 import com.codereview.agent.support.AgentIds;
 import com.codereview.agent.support.AgentPaging;
 import com.codereview.agent.support.AgentTime;
@@ -24,14 +30,19 @@ import com.codereview.git.GitRepoRef;
 import com.codereview.git.GitUserRef;
 import com.codereview.git.GiteaProperties;
 import com.codereview.git.HostHttpException;
+import com.codereview.git.IssueComment;
+import com.codereview.git.IssueCommentPage;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
@@ -42,15 +53,22 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * PR 自动审查服务：项目配置管理、Webhook 接收、验签、查重与持久化（PRA-02）。
+ * PR 自动审查的配置、Webhook 受理、任务创建和评论回写。
  */
 @Service
 @ConditionalOnProperty(prefix = "agent.datasource", name = "url")
@@ -61,20 +79,40 @@ public class PrAutoReviewService {
             "authorization", "proxyauthorization", "cookie", "setcookie", "key", "apikey", "privatekey",
             "xhubsignature256", "credentials");
 
+    public static final int LEASE_DURATION_SECONDS = 300;
+    public static final int COMMENT_MAX_ATTEMPTS = 3;
+    public static final int UNKNOWN_CHECK_DELAY_SECONDS = 60;
+    public static final int MAX_TEXT_TARGETS = 500;
+    public static final int MAX_CHANGED_FILES = 3000;
+    private static final int SOURCE_MOVED_MAX_RETRIES = 3;
+    private static final int[] COMMENT_BACKOFF_SECONDS = {30, 60, 120};
+
     private final AgentDatabase db;
     private final GitHostClientRegistry gitHostClients;
     private final ObjectMapper objectMapper;
     private final GiteaProperties giteaProperties;
+    private final TaskService taskService;
+    private final RepositoryReadService repositoryReadService;
+    private final ExecutorService asyncExecutor;
 
     @Value("${git.webhook-secret:}")
     private String globalWebhookSecret;
 
     public PrAutoReviewService(AgentDatabase db, GitHostClientRegistry gitHostClients, ObjectMapper objectMapper,
-                               GiteaProperties giteaProperties) {
+                               GiteaProperties giteaProperties, TaskService taskService,
+                               RepositoryReadService repositoryReadService) {
         this.db = db;
         this.gitHostClients = gitHostClients;
         this.objectMapper = objectMapper;
         this.giteaProperties = giteaProperties;
+        this.taskService = taskService;
+        this.repositoryReadService = repositoryReadService;
+        this.asyncExecutor = Executors.newFixedThreadPool(4, new NamedThreadFactory("pr-auto-review-"));
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        asyncExecutor.shutdown();
     }
 
     /** 读取项目自动审查配置；未配置时返回默认关闭的视图。 */
@@ -294,7 +332,7 @@ public class PrAutoReviewService {
 
         evaluateDecision(delivery, bindings, root);
 
-        return db.inTransaction(() -> {
+        PrAutoReviewDtos.WebhookReceiveResult result = db.inTransaction(() -> {
             PrAutoReviewDeliveryMapper mapper = db.mapper(PrAutoReviewDeliveryMapper.class);
             mapper.upsertReceived(delivery);
             PrAutoReviewDelivery stored = mapper.selectOne(new LambdaQueryWrapper<PrAutoReviewDelivery>()
@@ -306,6 +344,11 @@ public class PrAutoReviewService {
                     .eq(PrAutoReviewDelivery::getDeliveryId, deliveryId));
             return toReceiveResult(stored);
         });
+
+        if ("RECEIVED".equals(result.decisionState())) {
+            dispatchDeliveryAsync(result.deliveryId());
+        }
+        return result;
     }
 
     /** 查询某项目的投递处理记录列表。 */
@@ -353,6 +396,820 @@ public class PrAutoReviewService {
             throw new ApiException(ErrorCode.NOT_FOUND, "未找到指定的投递处理记录");
         }
         return toDeliveryDetailView(delivery);
+    }
+
+    /** 业务幂等键计算（符合 PRA-01 契约规范）。 */
+    public String calculateBusinessKey(PrAutoReviewDelivery delivery) {
+        try {
+            Object[] vector;
+            if ("RECHECK".equalsIgnoreCase(delivery.getTriggerKind())) {
+                vector = new Object[]{
+                        delivery.getHostType(),
+                        delivery.getHostInstanceKey(),
+                        delivery.getRepoId(),
+                        delivery.getPrNumber(),
+                        "RECHECK",
+                        delivery.getSourceCommentId()
+                };
+            } else {
+                vector = new Object[]{
+                        delivery.getHostType(),
+                        delivery.getHostInstanceKey(),
+                        delivery.getRepoId(),
+                        delivery.getPrNumber(),
+                        "FIRST"
+                };
+            }
+            String json = objectMapper.writeValueAsString(vector);
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(json.getBytes(StandardCharsets.UTF_8));
+            return "pr-auto-review:" + HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new IllegalStateException("计算业务幂等键失败: " + e.getMessage(), e);
+        }
+    }
+
+    /** 审查详情链接格式化。 */
+    public String formatReviewUrl(String baseUrl, String taskId) {
+        return normalizeBaseUrl(baseUrl) + "/#/reviews/" + taskId + "?from=/reviews";
+    }
+
+    /** 回写评论正文格式化。 */
+    public String formatCommentBody(String sourceHead, String reviewUrl) {
+        String shortSha = sourceHead != null && sourceHead.length() >= 7 ? sourceHead.substring(0, 7) : (sourceHead != null ? sourceHead : "");
+        return String.format("[查看提交 %s 的审查进度与结果](%s)", shortSha, reviewUrl);
+    }
+
+    /** 领取并处理一条投递。任务恢复先找回原任务，再考虑重新创建。 */
+    public void processDelivery(String deliveryId) {
+        if (deliveryId == null || deliveryId.isBlank()) {
+            return;
+        }
+        PrAutoReviewDelivery delivery = db.mapper(PrAutoReviewDeliveryMapper.class).selectById(deliveryId);
+        if (delivery == null) {
+            return;
+        }
+        if ("CREATED".equals(delivery.getDecisionState())) {
+            if ("PENDING".equals(delivery.getCommentState())) {
+                processComment(delivery);
+            } else if ("UNKNOWN".equals(delivery.getCommentState())) {
+                reconcileComment(delivery);
+            }
+            return;
+        }
+        LocalDateTime now = AgentTime.now();
+        if (!"RECEIVED".equals(delivery.getDecisionState()) || !isDue(delivery, now)
+                || !claimDelivery(delivery, now)) {
+            return;
+        }
+
+        String projectId = delivery.getProjectId();
+        if (projectId == null) {
+            skipDelivery(delivery, "PROJECT_NOT_BOUND", "未匹配到已绑定的系统项目");
+            return;
+        }
+        AgentReviewTask original = findOriginalTask(delivery);
+        PrAutoReviewConfig cfg = findConfig(projectId);
+        if (original != null) {
+            completeExistingTask(delivery, cfg, original);
+            return;
+        }
+
+        AgentProject project = db.mapper(AgentProjectMapper.class).selectById(projectId);
+        if (project == null || Integer.valueOf(1).equals(project.getIsDeleted())) {
+            skipDelivery(delivery, "PROJECT_NOT_BOUND", "未匹配到已绑定的系统项目");
+            return;
+        }
+        if (cfg == null || !Integer.valueOf(1).equals(cfg.getEnabled())) {
+            skipDelivery(delivery, "AUTO_REVIEW_DISABLED", "项目未启用 PR 自动审查");
+            return;
+        }
+
+        String expectedBranch = cfg.getTargetBranch() != null ? cfg.getTargetBranch() : "main";
+        TaskDtos.Create request;
+        if (delivery.getTaskRequestSnapshot() != null) {
+            if (delivery.getTargetBranch() != null) {
+                expectedBranch = delivery.getTargetBranch();
+            }
+            request = readFrozenTaskRequest(delivery);
+        } else {
+            String modelId = cfg.getModelConfigId();
+            AgentModelConfig model = modelId == null || modelId.isBlank() ? null
+                    : db.mapper(AgentModelConfigMapper.class).selectById(modelId);
+            if (model == null || Integer.valueOf(1).equals(model.getIsDeleted())) {
+                failDelivery(delivery, "CONFIG_INVALID", "自动审查配置缺少有效的模型配置");
+                return;
+            }
+            request = freezeTaskRequest(delivery, cfg, expectedBranch, null);
+        }
+        if (request != null) {
+            createTask(delivery, cfg, expectedBranch, request);
+        }
+    }
+
+    private boolean claimDelivery(PrAutoReviewDelivery delivery, LocalDateTime now) {
+        LocalDateTime leaseUntil = now.plusSeconds(LEASE_DURATION_SECONDS);
+        var claim = atRevision(delivery)
+                .eq(PrAutoReviewDelivery::getDecisionState, "RECEIVED")
+                .and(w -> w.isNull(PrAutoReviewDelivery::getNextAttemptAt)
+                        .or().le(PrAutoReviewDelivery::getNextAttemptAt, now))
+                .set(PrAutoReviewDelivery::getDecisionState, "PROCESSING")
+                .set(PrAutoReviewDelivery::getLeaseUntil, leaseUntil)
+                .set(PrAutoReviewDelivery::getNextAttemptAt, leaseUntil);
+        if (!advanceDelivery(delivery, claim)) {
+            return false;
+        }
+        delivery.setDecisionState("PROCESSING");
+        delivery.setLeaseUntil(leaseUntil);
+        delivery.setNextAttemptAt(leaseUntil);
+        return true;
+    }
+
+    private AgentReviewTask findOriginalTask(PrAutoReviewDelivery delivery) {
+        if (delivery.getBusinessKey() == null) {
+            return null;
+        }
+        return db.mapper(AgentReviewTaskMapper.class).selectOne(new LambdaQueryWrapper<AgentReviewTask>()
+                .eq(AgentReviewTask::getProjectId, delivery.getProjectId())
+                .eq(AgentReviewTask::getIdempotencyKey, delivery.getBusinessKey()));
+    }
+
+    private PrAutoReviewConfig findConfig(String projectId) {
+        return db.mapper(PrAutoReviewConfigMapper.class).selectOne(new LambdaQueryWrapper<PrAutoReviewConfig>()
+                .eq(PrAutoReviewConfig::getProjectId, projectId));
+    }
+
+    private TaskDtos.Create readFrozenTaskRequest(PrAutoReviewDelivery delivery) {
+        try {
+            TaskDtos.Create request = objectMapper.readValue(delivery.getTaskRequestSnapshot(), TaskDtos.Create.class);
+            if (request != null && delivery.getBusinessKey() != null
+                    && delivery.getProjectId().equals(request.projectId())
+                    && request.source() != null && "PR".equals(request.source().kind())
+                    && Objects.equals(delivery.getPrNumber(), request.source().pullNumber())
+                    && request.targets() != null && !request.targets().isEmpty()
+                    && request.targets().size() <= MAX_TEXT_TARGETS) {
+                return request;
+            }
+        } catch (JsonProcessingException e) {
+            LOG.warn("无法读取投递 {} 的任务请求快照", delivery.getId());
+        }
+        failDelivery(delivery, "VALIDATION_FAILED", "已保存的自动审查请求无效");
+        return null;
+    }
+
+    private TaskDtos.Create freezeTaskRequest(PrAutoReviewDelivery delivery, PrAutoReviewConfig cfg,
+                                              String expectedBranch, TaskDtos.Create previous) {
+        PullRequestViews.Changes changes;
+        try {
+            var detail = repositoryReadService.pullRequest(delivery.getProjectId(), delivery.getPrNumber());
+            if (PullRequestViews.CROSS_REPOSITORY.equals(detail.blocker())) {
+                skipDelivery(delivery, PullRequestViews.CROSS_REPOSITORY, "不支持跨仓库 PR 审查");
+                return null;
+            }
+            if (PullRequestViews.PR_NOT_OPEN.equals(detail.blocker()) || !openPull(detail.pullRequest())) {
+                skipDelivery(delivery, PullRequestViews.PR_NOT_OPEN, "PR 已关闭或已合并");
+                return null;
+            }
+            if (!expectedBranch.equals(detail.pullRequest().targetBranch())) {
+                skipDelivery(delivery, TaskService.TARGET_BRANCH_MISMATCH,
+                        "目标分支不匹配配置的审查分支 " + expectedBranch);
+                return null;
+            }
+            changes = repositoryReadService.pullRequestChanges(delivery.getProjectId(), delivery.getPrNumber());
+        } catch (ApiException e) {
+            recordTaskFailure(delivery, e);
+            return null;
+        } catch (RuntimeException e) {
+            failDelivery(delivery, "REPO_READ_FAILED", "读取 PR 或净变化失败");
+            return null;
+        }
+
+        if (PullRequestViews.CROSS_REPOSITORY.equals(changes.blocker())) {
+            skipDelivery(delivery, PullRequestViews.CROSS_REPOSITORY, "不支持跨仓库 PR 审查");
+            return null;
+        }
+        if (PullRequestViews.PR_NOT_OPEN.equals(changes.blocker())) {
+            skipDelivery(delivery, PullRequestViews.PR_NOT_OPEN, "PR 已关闭或已合并");
+            return null;
+        }
+        if (PullRequestViews.TRUNCATED.equals(changes.blocker())
+                || PullRequestViews.TRUNCATED.equals(changes.completeness())
+                || changes.fileCount() > MAX_CHANGED_FILES) {
+            failDelivery(delivery, "SNAPSHOT_INCOMPLETE", "PR 净变化清单超过 3000 个文件上限，无法完整审查");
+            return null;
+        }
+        if (PullRequestViews.NO_MERGE_BASE.equals(changes.blocker()) || changes.mergeBase() == null) {
+            failDelivery(delivery, PullRequestViews.NO_MERGE_BASE, "源提交与目标分支没有共同祖先，无法计算净变化");
+            return null;
+        }
+
+        List<TaskDtos.Target> targets = changes.files().stream()
+                .filter(PullRequestViews.FileChange::text)
+                .map(file -> new TaskDtos.Target(file.path(), file.oldPath(), null))
+                .toList();
+        delivery.setTargetBranch(expectedBranch);
+        delivery.setSourceHead(changes.sourceHead());
+        delivery.setTargetHead(changes.targetHead());
+        delivery.setMergeBase(changes.mergeBase());
+        delivery.setTextCount(targets.size());
+        delivery.setBinaryCount(changes.binaryFiles());
+        delivery.setUnreadableCount(changes.unreadableFiles());
+        if (targets.isEmpty()) {
+            skipDelivery(delivery, "NO_TEXT_CHANGES", "PR 没有可审查的文本净变更");
+            return null;
+        }
+        if (targets.size() > MAX_TEXT_TARGETS) {
+            failDelivery(delivery, "VALIDATION_FAILED", "文本目标超过 500 个上限");
+            return null;
+        }
+
+        String businessKey = delivery.getBusinessKey();
+        if (businessKey == null) {
+            businessKey = calculateBusinessKey(delivery);
+            PrAutoReviewDelivery duplicate = findDuplicateDelivery(delivery, businessKey);
+            if (duplicate != null) {
+                skipDuplicateTrigger(delivery, duplicate.getId());
+                return null;
+            }
+        }
+
+        String head = changes.sourceHead();
+        String shortSha = head == null ? "" : head.substring(0, Math.min(7, head.length()));
+        var source = new TaskDtos.Source("PR", null, null, null, null, delivery.getPrNumber(),
+                head, changes.targetHead(), changes.mergeBase());
+        var request = new TaskDtos.Create(delivery.getProjectId(), "SPECIALIST", "ISSUE", source, targets,
+                previous == null ? cfg.getModelConfigId() : previous.modelConfigId(),
+                previous == null ? cfg.getPromptId() : previous.promptId(),
+                previous == null ? cfg.getPromptVersionId() : previous.promptVersionId(),
+                false, "PR #" + delivery.getPrNumber() + " 问题审查 · " + shortSha);
+
+        String snapshot;
+        try {
+            snapshot = objectMapper.writeValueAsString(request);
+        } catch (JsonProcessingException e) {
+            failDelivery(delivery, "TASK_CREATE_FAILED", "无法保存自动审查请求");
+            return null;
+        }
+        LocalDateTime leaseUntil = AgentTime.now().plusSeconds(LEASE_DURATION_SECONDS);
+        try {
+            var update = withFrozenSource(atRevision(delivery), delivery)
+                    .eq(PrAutoReviewDelivery::getDecisionState, "PROCESSING")
+                    .set(PrAutoReviewDelivery::getBusinessKey, businessKey)
+                    .set(PrAutoReviewDelivery::getTaskRequestSnapshot, snapshot)
+                    .set(PrAutoReviewDelivery::getLeaseUntil, leaseUntil)
+                    .set(PrAutoReviewDelivery::getNextAttemptAt, leaseUntil);
+            if (!advanceDelivery(delivery, update)) {
+                return null;
+            }
+        } catch (DuplicateKeyException e) {
+            PrAutoReviewDelivery winner = findDuplicateDelivery(delivery, businessKey);
+            if (winner == null) {
+                throw e;
+            }
+            skipDuplicateTrigger(delivery, winner.getId());
+            return null;
+        }
+        delivery.setBusinessKey(businessKey);
+        delivery.setTaskRequestSnapshot(snapshot);
+        delivery.setLeaseUntil(leaseUntil);
+        delivery.setNextAttemptAt(leaseUntil);
+        return request;
+    }
+
+    private PrAutoReviewDelivery findDuplicateDelivery(PrAutoReviewDelivery delivery, String businessKey) {
+        return db.mapper(PrAutoReviewDeliveryMapper.class).selectOne(new LambdaQueryWrapper<PrAutoReviewDelivery>()
+                .eq(PrAutoReviewDelivery::getProjectId, delivery.getProjectId())
+                .eq(PrAutoReviewDelivery::getBusinessKey, businessKey)
+                .ne(PrAutoReviewDelivery::getId, delivery.getId()));
+    }
+
+    private void createTask(PrAutoReviewDelivery delivery, PrAutoReviewConfig cfg, String expectedBranch,
+                            TaskDtos.Create initialRequest) {
+        TaskDtos.Create request = initialRequest;
+        for (int retries = 0; ; retries++) {
+            TaskDtos.View task;
+            try {
+                task = taskService.create(request, delivery.getBusinessKey(), expectedBranch);
+            } catch (RuntimeException e) {
+                // 创建接口可能在事务提交后、返回任务视图前抛错。
+                AgentReviewTask original = findOriginalTask(delivery);
+                if (original != null) {
+                    completeExistingTask(delivery, cfg, original);
+                    return;
+                }
+                if (e instanceof ApiException api) {
+                    if (api.errorCode() == ErrorCode.SOURCE_MOVED && retries < SOURCE_MOVED_MAX_RETRIES) {
+                        request = freezeTaskRequest(delivery, cfg, expectedBranch, request);
+                        if (request != null) {
+                            continue;
+                        }
+                        return;
+                    }
+                    recordTaskFailure(delivery, api);
+                } else {
+                    failDelivery(delivery, "TASK_CREATE_FAILED", "创建自动审查任务失败");
+                }
+                return;
+            }
+            completeTask(delivery, cfg, task.id());
+            return;
+        }
+    }
+
+    private void recordTaskFailure(PrAutoReviewDelivery delivery, ApiException error) {
+        Object reason = error.details() instanceof Map<?, ?> details ? details.get("reason") : null;
+        if (TaskService.TARGET_BRANCH_MISMATCH.equals(reason) || PullRequestViews.PR_NOT_OPEN.equals(reason)
+                || PullRequestViews.CROSS_REPOSITORY.equals(reason)) {
+            skipDelivery(delivery, reason.toString(), error.getMessage());
+        } else {
+            String code = PullRequestViews.NO_MERGE_BASE.equals(reason) ? PullRequestViews.NO_MERGE_BASE
+                    : error.errorCode().name();
+            failDelivery(delivery, code, error.getMessage());
+        }
+    }
+
+    private void completeExistingTask(PrAutoReviewDelivery delivery, PrAutoReviewConfig cfg, AgentReviewTask task) {
+        recoverFromTaskSnapshot(delivery, task);
+        completeTask(delivery, cfg, task.getId());
+    }
+
+    private void completeTask(PrAutoReviewDelivery delivery, PrAutoReviewConfig cfg, String taskId) {
+        String reviewUrl = formatReviewUrl(cfg != null ? cfg.getReviewBaseUrl() : null, taskId);
+        String body = formatCommentBody(delivery.getSourceHead(), reviewUrl);
+        Long botId = cfg != null ? cfg.getBotActorId() : null;
+        LocalDateTime now = AgentTime.now();
+        var update = withFrozenSource(atRevision(delivery), delivery)
+                .eq(PrAutoReviewDelivery::getDecisionState, "PROCESSING")
+                .set(PrAutoReviewDelivery::getDecisionState, "CREATED")
+                .set(PrAutoReviewDelivery::getDecidedAt, now)
+                .set(PrAutoReviewDelivery::getDecisionCode, null)
+                .set(PrAutoReviewDelivery::getDecisionMessage, null)
+                .set(PrAutoReviewDelivery::getReviewTaskId, taskId)
+                .set(PrAutoReviewDelivery::getReviewUrl, reviewUrl)
+                .set(PrAutoReviewDelivery::getCommentActorId, botId)
+                .set(PrAutoReviewDelivery::getCommentBody, body)
+                .set(PrAutoReviewDelivery::getCommentState, "PENDING")
+                .set(PrAutoReviewDelivery::getCommentAttempts, 0)
+                .set(PrAutoReviewDelivery::getLeaseUntil, null)
+                .set(PrAutoReviewDelivery::getNextAttemptAt, null);
+        if (!advanceDelivery(delivery, update)) {
+            return;
+        }
+        delivery.setDecisionState("CREATED");
+        delivery.setDecidedAt(now);
+        delivery.setDecisionCode(null);
+        delivery.setDecisionMessage(null);
+        delivery.setReviewTaskId(taskId);
+        delivery.setReviewUrl(reviewUrl);
+        delivery.setCommentActorId(botId);
+        delivery.setCommentBody(body);
+        delivery.setCommentState("PENDING");
+        delivery.setCommentAttempts(0);
+        delivery.setLeaseUntil(null);
+        delivery.setNextAttemptAt(null);
+        processComment(delivery);
+    }
+
+    private void recoverFromTaskSnapshot(PrAutoReviewDelivery delivery, AgentReviewTask task) {
+        if (task.getInputSnapshot() == null) {
+            return;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(task.getInputSnapshot());
+            JsonNode source = root.path("source");
+            if (source.hasNonNull("targetBranch")) {
+                delivery.setTargetBranch(source.path("targetBranch").asText());
+            }
+            if (source.hasNonNull("sourceHead")) {
+                delivery.setSourceHead(source.path("sourceHead").asText());
+            }
+            if (source.hasNonNull("targetHead")) {
+                delivery.setTargetHead(source.path("targetHead").asText());
+            }
+            if (source.hasNonNull("mergeBase")) {
+                delivery.setMergeBase(source.path("mergeBase").asText());
+            }
+            JsonNode coverage = root.path("coverage");
+            if (coverage.hasNonNull("textFiles")) {
+                delivery.setTextCount(coverage.path("textFiles").asInt());
+            }
+            if (coverage.hasNonNull("binaryFiles")) {
+                delivery.setBinaryCount(coverage.path("binaryFiles").asInt());
+            }
+            if (coverage.hasNonNull("unreadableFiles")) {
+                delivery.setUnreadableCount(coverage.path("unreadableFiles").asInt());
+            }
+        } catch (JsonProcessingException e) {
+            LOG.warn("无法读取已创建任务 {} 的输入快照", task.getId());
+        }
+    }
+
+    /** 只允许成功领取 PENDING 记录的处理者发送一次评论。 */
+    void processComment(PrAutoReviewDelivery delivery) {
+        LocalDateTime now = AgentTime.now();
+        if (!"CREATED".equals(delivery.getDecisionState()) || !"PENDING".equals(delivery.getCommentState())
+                || !isDue(delivery, now)) {
+            return;
+        }
+        if (delivery.getReviewTaskId() == null || delivery.getCommentBody() == null) {
+            finishComment(delivery, "FAILED", null, "缺少已保存的审查任务或评论正文");
+            return;
+        }
+        int attempts = commentAttempts(delivery);
+        if (attempts >= COMMENT_MAX_ATTEMPTS) {
+            finishComment(delivery, "FAILED", null, "超过最大评论尝试次数 (3次)");
+            return;
+        }
+
+        AgentProject project = db.mapper(AgentProjectMapper.class).selectById(delivery.getProjectId());
+        if (project == null || Integer.valueOf(1).equals(project.getIsDeleted())) {
+            finishComment(delivery, "FAILED", null, "关联项目不存在");
+            return;
+        }
+        GitRepoRef ref;
+        GitHostClient client;
+        try {
+            ref = GitRepoRef.parse(project.getRepoUrl());
+            client = gitHostClients.forRepo(ref);
+        } catch (RuntimeException e) {
+            finishComment(delivery, "FAILED", null, "关联仓库地址或宿主无效");
+            return;
+        }
+
+        Long actorId = delivery.getCommentActorId();
+        if (actorId == null || actorId <= 0) {
+            actorId = resolveCommentActor(project, client, ref);
+        }
+        LocalDateTime claimTime = AgentTime.now();
+        LocalDateTime leaseUntil = claimTime.plusSeconds(LEASE_DURATION_SECONDS);
+        var claim = atRevision(delivery)
+                .eq(PrAutoReviewDelivery::getDecisionState, "CREATED")
+                .eq(PrAutoReviewDelivery::getCommentState, "PENDING")
+                .and(w -> w.isNull(PrAutoReviewDelivery::getNextAttemptAt)
+                        .or().le(PrAutoReviewDelivery::getNextAttemptAt, claimTime))
+                .set(PrAutoReviewDelivery::getCommentState, "SENDING")
+                .set(PrAutoReviewDelivery::getCommentAttempts, attempts + 1)
+                .set(PrAutoReviewDelivery::getCommentActorId, actorId)
+                .set(PrAutoReviewDelivery::getCommentLastAttemptAt, claimTime)
+                .set(PrAutoReviewDelivery::getLeaseUntil, leaseUntil)
+                .set(PrAutoReviewDelivery::getNextAttemptAt, leaseUntil);
+        if (!advanceDelivery(delivery, claim)) {
+            return;
+        }
+        delivery.setCommentState("SENDING");
+        delivery.setCommentAttempts(attempts + 1);
+        delivery.setCommentActorId(actorId);
+        delivery.setCommentLastAttemptAt(claimTime);
+        delivery.setLeaseUntil(leaseUntil);
+        delivery.setNextAttemptAt(leaseUntil);
+
+        IssueComment comment;
+        try {
+            comment = client.createIssueComment(project.getCredential(), project.getCredentialType(), ref,
+                    delivery.getPrNumber(), delivery.getCommentBody());
+        } catch (RuntimeException e) {
+            handleCommentException(delivery, e);
+            return;
+        }
+        if (comment == null || comment.id() <= 0) {
+            handleCommentException(delivery, new IllegalStateException("宿主返回无效评论回执"));
+            return;
+        }
+        delivery.setCommentId(comment.id());
+        if (comment.author() != null && comment.author().id() > 0) {
+            delivery.setCommentActorId(comment.author().id());
+        }
+        delivery.setCommentHttpStatus(201);
+        delivery.setCommentCheckedAt(AgentTime.now());
+        finishComment(delivery, "SENT", null, null);
+    }
+
+    private Long resolveCommentActor(AgentProject project, GitHostClient client, GitRepoRef ref) {
+        PrAutoReviewConfig cfg = findConfig(project.getId());
+        if (cfg == null) {
+            return null;
+        }
+        if (cfg.getBotActorId() != null && cfg.getBotActorId() > 0) {
+            return cfg.getBotActorId();
+        }
+        String login = blankToNull(cfg.getBotLogin());
+        if (login == null) {
+            return null;
+        }
+        try {
+            GitUserRef actor = client.findUserByUsername(project.getCredential(), project.getCredentialType(), ref, login);
+            return actor != null && actor.id() > 0 ? actor.id() : null;
+        } catch (RuntimeException e) {
+            LOG.warn("无法解析项目 {} 的评论机器人 ID", project.getId());
+            return null;
+        }
+    }
+
+    private void handleCommentException(PrAutoReviewDelivery delivery, RuntimeException error) {
+        LocalDateTime now = AgentTime.now();
+        Integer status = error instanceof HostHttpException http && !http.timeout() ? http.statusCode() : null;
+        delivery.setCommentHttpStatus(status);
+        String message = status == null ? "宿主评论回执无法确认" : "宿主返回 HTTP " + status;
+        if (status == null || status == 408 || status == 502 || status == 503 || status == 504) {
+            finishComment(delivery, "UNKNOWN", now.plusSeconds(UNKNOWN_CHECK_DELAY_SECONDS), message);
+        } else if ((status >= 400 && status < 500 && status != 429)
+                || commentAttempts(delivery) >= COMMENT_MAX_ATTEMPTS) {
+            finishComment(delivery, "FAILED", null, message);
+        } else {
+            finishComment(delivery, "PENDING", nextCommentAttempt(delivery, now), message);
+        }
+    }
+
+    /** 静默期过后按已保存的机器人 ID 和链接核对评论。 */
+    void reconcileComment(PrAutoReviewDelivery delivery) {
+        LocalDateTime now = AgentTime.now();
+        if (!"CREATED".equals(delivery.getDecisionState()) || !"UNKNOWN".equals(delivery.getCommentState())
+                || !isDue(delivery, now)
+                || (delivery.getCommentLastAttemptAt() != null
+                && now.isBefore(delivery.getCommentLastAttemptAt().plusSeconds(UNKNOWN_CHECK_DELAY_SECONDS)))) {
+            return;
+        }
+        if (delivery.getCommentActorId() == null || delivery.getCommentActorId() <= 0
+                || delivery.getReviewUrl() == null) {
+            finishComment(delivery, "UNKNOWN", now.plusSeconds(UNKNOWN_CHECK_DELAY_SECONDS), "缺少已保存的机器人 ID 或审查链接");
+            return;
+        }
+        AgentProject project = db.mapper(AgentProjectMapper.class).selectById(delivery.getProjectId());
+        if (project == null || Integer.valueOf(1).equals(project.getIsDeleted())) {
+            finishComment(delivery, "UNKNOWN", now.plusSeconds(UNKNOWN_CHECK_DELAY_SECONDS), "关联项目不存在，无法核对评论");
+            return;
+        }
+        IssueComment posted;
+        try {
+            posted = findPostedComment(project, delivery);
+        } catch (RuntimeException e) {
+            finishComment(delivery, "UNKNOWN", AgentTime.now().plusSeconds(UNKNOWN_CHECK_DELAY_SECONDS),
+                    "宿主评论列表读取未完成，等待再次核对");
+            return;
+        }
+
+        LocalDateTime checkedAt = AgentTime.now();
+        delivery.setCommentCheckedAt(checkedAt);
+        if (posted != null) {
+            delivery.setCommentId(posted.id());
+            finishComment(delivery, "SENT", null, null);
+        } else if (commentAttempts(delivery) >= COMMENT_MAX_ATTEMPTS) {
+            finishComment(delivery, "FAILED", null, "回执核对未找到评论，且已达最大尝试次数 (3次)");
+        } else {
+            finishComment(delivery, "PENDING", nextCommentAttempt(delivery, checkedAt), delivery.getCommentError());
+        }
+    }
+
+    /** 只有完整读取到最后一页且未匹配时，才返回评论不存在。 */
+    private IssueComment findPostedComment(AgentProject project, PrAutoReviewDelivery delivery) {
+        GitRepoRef ref = GitRepoRef.parse(project.getRepoUrl());
+        GitHostClient client = gitHostClients.forRepo(ref);
+        String link = "(" + delivery.getReviewUrl() + ")";
+        Set<Long> pageEnds = new HashSet<>();
+        for (int page = 1; ; page++) {
+            IssueCommentPage result = client.listIssueComments(project.getCredential(), project.getCredentialType(),
+                    ref, delivery.getPrNumber(), page, 50);
+            if (result == null || result.items() == null || (result.hasMore() && result.items().isEmpty())) {
+                throw new IllegalStateException("宿主评论分页响应不完整");
+            }
+            List<IssueComment> items = result.items();
+            for (IssueComment comment : items) {
+                if (comment == null || comment.id() <= 0 || comment.body() == null) {
+                    throw new IllegalStateException("宿主返回无效评论");
+                }
+                if (comment.body().contains(link)) {
+                    if (comment.author() == null || comment.author().id() <= 0) {
+                        throw new IllegalStateException("无法确认评论作者");
+                    }
+                    if (delivery.getCommentActorId() == comment.author().id()) {
+                        return comment;
+                    }
+                }
+            }
+            if (!items.isEmpty() && !pageEnds.add(items.get(items.size() - 1).id())) {
+                throw new IllegalStateException("宿主评论分页重复");
+            }
+            if (!result.hasMore()) {
+                return null;
+            }
+        }
+    }
+
+    private void finishComment(PrAutoReviewDelivery delivery, String state, LocalDateTime nextAttempt, String error) {
+        var update = atRevision(delivery)
+                .eq(PrAutoReviewDelivery::getDecisionState, "CREATED")
+                .eq(PrAutoReviewDelivery::getCommentState, delivery.getCommentState())
+                .set(PrAutoReviewDelivery::getCommentState, state)
+                .set(PrAutoReviewDelivery::getCommentId, delivery.getCommentId())
+                .set(PrAutoReviewDelivery::getCommentActorId, delivery.getCommentActorId())
+                .set(PrAutoReviewDelivery::getCommentHttpStatus, delivery.getCommentHttpStatus())
+                .set(PrAutoReviewDelivery::getCommentError, error)
+                .set(PrAutoReviewDelivery::getCommentCheckedAt, delivery.getCommentCheckedAt())
+                .set(PrAutoReviewDelivery::getLeaseUntil, null)
+                .set(PrAutoReviewDelivery::getNextAttemptAt, nextAttempt);
+        if (advanceDelivery(delivery, update)) {
+            delivery.setCommentState(state);
+            delivery.setCommentError(error);
+            delivery.setLeaseUntil(null);
+            delivery.setNextAttemptAt(nextAttempt);
+        }
+    }
+
+    private static int commentAttempts(PrAutoReviewDelivery delivery) {
+        return delivery.getCommentAttempts() == null ? 0 : delivery.getCommentAttempts();
+    }
+
+    private static LocalDateTime nextCommentAttempt(PrAutoReviewDelivery delivery, LocalDateTime now) {
+        int attempt = Math.max(1, commentAttempts(delivery));
+        return now.plusSeconds(COMMENT_BACKOFF_SECONDS[attempt - 1]);
+    }
+
+    /** 回收已过期的任务创建或评论发送租约。 */
+    void recoverExpiredLeases() {
+        LocalDateTime now = AgentTime.now();
+        List<PrAutoReviewDelivery> expired = db.mapper(PrAutoReviewDeliveryMapper.class).selectList(
+                new LambdaQueryWrapper<PrAutoReviewDelivery>()
+                        .le(PrAutoReviewDelivery::getLeaseUntil, now)
+                        .and(w -> w.eq(PrAutoReviewDelivery::getDecisionState, "PROCESSING")
+                                .or(s -> s.eq(PrAutoReviewDelivery::getDecisionState, "CREATED")
+                                        .eq(PrAutoReviewDelivery::getCommentState, "SENDING")))
+                        .orderByAsc(PrAutoReviewDelivery::getNextAttemptAt, PrAutoReviewDelivery::getId)
+                        .last("limit 50"));
+        for (PrAutoReviewDelivery delivery : expired) {
+            boolean sending = "CREATED".equals(delivery.getDecisionState()) && "SENDING".equals(delivery.getCommentState());
+            LocalDateTime nextAttempt = sending ? now.plusSeconds(UNKNOWN_CHECK_DELAY_SECONDS) : null;
+            var update = atRevision(delivery)
+                    .eq(PrAutoReviewDelivery::getDecisionState, delivery.getDecisionState())
+                    .eq(PrAutoReviewDelivery::getCommentState, delivery.getCommentState())
+                    .le(PrAutoReviewDelivery::getLeaseUntil, now)
+                    .set(PrAutoReviewDelivery::getLeaseUntil, null)
+                    .set(PrAutoReviewDelivery::getNextAttemptAt, nextAttempt);
+            if (sending) {
+                update.set(PrAutoReviewDelivery::getCommentState, "UNKNOWN");
+            } else {
+                update.set(PrAutoReviewDelivery::getDecisionState, "RECEIVED");
+            }
+            if (advanceDelivery(delivery, update)) {
+                if (sending) {
+                    delivery.setCommentState("UNKNOWN");
+                } else {
+                    delivery.setDecisionState("RECEIVED");
+                }
+                delivery.setLeaseUntil(null);
+                delivery.setNextAttemptAt(nextAttempt);
+            }
+        }
+    }
+
+    private void processPendingDeliveries() {
+        LocalDateTime now = AgentTime.now();
+        List<PrAutoReviewDelivery> pending = db.mapper(PrAutoReviewDeliveryMapper.class).selectList(
+                new LambdaQueryWrapper<PrAutoReviewDelivery>()
+                        .eq(PrAutoReviewDelivery::getDecisionState, "RECEIVED")
+                        .and(w -> w.isNull(PrAutoReviewDelivery::getNextAttemptAt)
+                                .or().le(PrAutoReviewDelivery::getNextAttemptAt, now))
+                        .orderByAsc(PrAutoReviewDelivery::getNextAttemptAt, PrAutoReviewDelivery::getId)
+                        .last("limit 20"));
+        for (PrAutoReviewDelivery delivery : pending) {
+            processDelivery(delivery.getId());
+        }
+    }
+
+    private List<PrAutoReviewDelivery> dueComments(String state) {
+        LocalDateTime now = AgentTime.now();
+        return db.mapper(PrAutoReviewDeliveryMapper.class).selectList(new LambdaQueryWrapper<PrAutoReviewDelivery>()
+                .eq(PrAutoReviewDelivery::getDecisionState, "CREATED")
+                .eq(PrAutoReviewDelivery::getCommentState, state)
+                .and(w -> w.isNull(PrAutoReviewDelivery::getNextAttemptAt)
+                        .or().le(PrAutoReviewDelivery::getNextAttemptAt, now))
+                .orderByAsc(PrAutoReviewDelivery::getNextAttemptAt, PrAutoReviewDelivery::getId)
+                .last("limit 20"));
+    }
+
+    @Scheduled(fixedDelayString = "${agent.pr-auto-review.sweep-millis:30000}")
+    public void sweep() {
+        try {
+            recoverExpiredLeases();
+            processPendingDeliveries();
+            dueComments("PENDING").forEach(this::processComment);
+            dueComments("UNKNOWN").forEach(this::reconcileComment);
+        } catch (Exception e) {
+            LOG.warn("PR 自动审查后台轮询异常", e);
+        }
+    }
+
+    private static boolean isDue(PrAutoReviewDelivery delivery, LocalDateTime now) {
+        return delivery.getNextAttemptAt() == null || !delivery.getNextAttemptAt().isAfter(now);
+    }
+
+    private static LambdaUpdateWrapper<PrAutoReviewDelivery> atRevision(PrAutoReviewDelivery delivery) {
+        return new LambdaUpdateWrapper<PrAutoReviewDelivery>()
+                .eq(PrAutoReviewDelivery::getId, delivery.getId())
+                .eq(PrAutoReviewDelivery::getRevision, delivery.getRevision());
+    }
+
+    /** 推进状态时仅写本步骤拥有的字段，接收计数与时间由 Webhook 入库维护。 */
+    private boolean advanceDelivery(PrAutoReviewDelivery delivery, LambdaUpdateWrapper<PrAutoReviewDelivery> update) {
+        LocalDateTime now = AgentTime.now();
+        int revision = delivery.getRevision() + 1;
+        int affected = db.mapper(PrAutoReviewDeliveryMapper.class).update(null,
+                update.set(PrAutoReviewDelivery::getRevision, revision).set(PrAutoReviewDelivery::getUpdatedAt, now));
+        if (affected == 0) {
+            return false;
+        }
+        delivery.setRevision(revision);
+        delivery.setUpdatedAt(now);
+        return true;
+    }
+
+    private static LambdaUpdateWrapper<PrAutoReviewDelivery> withFrozenSource(
+            LambdaUpdateWrapper<PrAutoReviewDelivery> update, PrAutoReviewDelivery delivery) {
+        return update.set(PrAutoReviewDelivery::getTargetBranch, delivery.getTargetBranch())
+                .set(PrAutoReviewDelivery::getSourceHead, delivery.getSourceHead())
+                .set(PrAutoReviewDelivery::getTargetHead, delivery.getTargetHead())
+                .set(PrAutoReviewDelivery::getMergeBase, delivery.getMergeBase())
+                .set(PrAutoReviewDelivery::getTextCount, delivery.getTextCount())
+                .set(PrAutoReviewDelivery::getBinaryCount, delivery.getBinaryCount())
+                .set(PrAutoReviewDelivery::getUnreadableCount, delivery.getUnreadableCount());
+    }
+
+    private void skipDuplicateTrigger(PrAutoReviewDelivery delivery, String canonicalRecordId) {
+        finishDecision(delivery, "SKIPPED", "DUPLICATE_TRIGGER", "重复触发，关联至原处理记录", canonicalRecordId);
+    }
+
+    private void skipDelivery(PrAutoReviewDelivery delivery, String code, String message) {
+        finishDecision(delivery, "SKIPPED", code, message, null);
+    }
+
+    private void failDelivery(PrAutoReviewDelivery delivery, String code, String message) {
+        finishDecision(delivery, "FAILED", code, message, null);
+    }
+
+    private void finishDecision(PrAutoReviewDelivery delivery, String state, String code, String message,
+                                String canonicalRecordId) {
+        LocalDateTime now = AgentTime.now();
+        String safeMessage = truncateMessage(message, 500);
+        var update = withFrozenSource(atRevision(delivery), delivery)
+                .eq(PrAutoReviewDelivery::getDecisionState, "PROCESSING")
+                .set(PrAutoReviewDelivery::getDecisionState, state)
+                .set(PrAutoReviewDelivery::getDecidedAt, now)
+                .set(PrAutoReviewDelivery::getDecisionCode, code)
+                .set(PrAutoReviewDelivery::getDecisionMessage, safeMessage)
+                .set(PrAutoReviewDelivery::getCanonicalRecordId, canonicalRecordId)
+                .set(PrAutoReviewDelivery::getLeaseUntil, null)
+                .set(PrAutoReviewDelivery::getNextAttemptAt, null);
+        if (advanceDelivery(delivery, update)) {
+            delivery.setDecisionState(state);
+            delivery.setDecidedAt(now);
+            delivery.setDecisionCode(code);
+            delivery.setDecisionMessage(safeMessage);
+            delivery.setCanonicalRecordId(canonicalRecordId);
+            delivery.setLeaseUntil(null);
+            delivery.setNextAttemptAt(null);
+        }
+    }
+
+    private static String normalizeBaseUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return "http://localhost:5173";
+        }
+        return url.strip().replaceAll("/+$", "");
+    }
+
+    private static String truncateMessage(String message, int maxLen) {
+        if (message == null) {
+            return null;
+        }
+        return message.length() <= maxLen ? message : message.substring(0, maxLen);
+    }
+
+    private volatile boolean enableAsyncDispatch = true;
+
+    public void setEnableAsyncDispatch(boolean enableAsyncDispatch) {
+        this.enableAsyncDispatch = enableAsyncDispatch;
+    }
+
+    private void dispatchDeliveryAsync(String deliveryId) {
+        if (!enableAsyncDispatch) {
+            return;
+        }
+        if (!asyncExecutor.isShutdown()) {
+            try {
+                asyncExecutor.execute(() -> {
+                    try {
+                        processDelivery(deliveryId);
+                    } catch (Exception e) {
+                        LOG.warn("异步处理 Webhook 投递异常: {}", e.getMessage(), e);
+                    }
+                });
+            } catch (RejectedExecutionException e) {
+                LOG.warn("异步线程池已满，投递 {} 等待定时任务处理", deliveryId);
+            }
+        }
+    }
+
+    private static boolean openPull(PullRequestViews.Item item) {
+        return "open".equalsIgnoreCase(item.state()) && !item.merged();
     }
 
     // ---------------------------------------------------------------- 内部方法
@@ -799,5 +1656,21 @@ public class PrAutoReviewService {
 
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    private static class NamedThreadFactory implements ThreadFactory {
+        private final String prefix;
+        private final AtomicInteger seq = new AtomicInteger(1);
+
+        NamedThreadFactory(String prefix) {
+            this.prefix = prefix;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, prefix + seq.getAndIncrement());
+            t.setDaemon(true);
+            return t;
+        }
     }
 }

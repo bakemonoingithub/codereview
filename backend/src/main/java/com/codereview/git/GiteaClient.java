@@ -564,11 +564,12 @@ public class GiteaClient implements GitHostClient {
                 + "/issues/" + issueNumber + "/comments?page=" + safePage + "&limit=" + safeLimit;
         ResponseEntity<String> entity = getEntity(url, token, credentialType);
         JsonNode root = readTree(entity.getBody());
+        if (root == null || !root.isArray()) {
+            throw new IllegalStateException("Gitea 评论列表响应无效");
+        }
         List<IssueComment> items = new ArrayList<>();
-        if (root.isArray()) {
-            for (JsonNode node : root) {
-                items.add(parseGiteaIssueComment(issueNumber, node));
-            }
+        for (JsonNode node : root) {
+            items.add(parseGiteaIssueComment(issueNumber, node));
         }
         boolean hasMore = hasMorePages(entity, safePage, safeLimit);
         return new IssueCommentPage(items, hasMore, safePage, safeLimit);

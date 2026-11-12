@@ -232,6 +232,19 @@ class TaskServiceTest {
     }
 
     @Test
+    void automaticPullReviewRejectsRetargetingEvenWhenAllShasMatch() {
+        when(repository.bindPullRequest(PROJECT_ID, 12, SOURCE, TARGET, BASE)).thenReturn(binding());
+        TaskDtos.Create request = pullRequest(List.of(new TaskDtos.Target("src/A.java", null, null)));
+
+        ApiException error = assertThrows(ApiException.class, () -> service.create(request, "auto-review", "main"));
+
+        assertEquals(ErrorCode.VALIDATION_FAILED, error.errorCode());
+        assertEquals(java.util.Map.of("reason", TaskService.TARGET_BRANCH_MISMATCH), error.details());
+        verify(taskMapper, never()).insert(any(AgentReviewTask.class));
+        verify(dispatcher, never()).dispatch(any());
+    }
+
+    @Test
     void pullRequestRejectsBinaryTargetsAndNonIssueSpecialists() {
         when(repository.bindPullRequest(any(), eq(12L), any(), any(), any())).thenReturn(binding());
 
