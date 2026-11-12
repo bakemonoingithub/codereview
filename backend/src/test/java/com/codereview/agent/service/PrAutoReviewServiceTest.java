@@ -38,6 +38,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -60,6 +62,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -661,6 +664,7 @@ class PrAutoReviewServiceTest {
         assertSafeSnapshot(storedDelivery.getPayloadSnapshot());
 
         storedDelivery.setPayloadSnapshot(root.toString());
+        when(deliveryMapper.selectWithOutcome(any())).thenReturn(List.of(storedDelivery));
         assertSafeSnapshot(service.getDelivery(PROJECT_ID, storedDelivery.getId()).payloadSnapshot());
     }
 
@@ -1025,6 +1029,10 @@ class PrAutoReviewServiceTest {
         primary.setId("01PRIMARY00000000000000001");
         primary.setProjectId(PROJECT_ID);
         primary.setBusinessKey(businessKey);
+        primary.setReviewTaskId("01TASKPRIMARY000000000001");
+        primary.setReviewUrl("http://localhost:5173/#/reviews/01TASKPRIMARY000000000001?from=/reviews");
+        primary.setCommentState("SENT");
+        primary.setCommentId(8001L);
 
         when(deliveryMapper.selectOne(any())).thenAnswer(call -> {
             LambdaQueryWrapper<?> wrapper = call.getArgument(0);
@@ -1040,6 +1048,10 @@ class PrAutoReviewServiceTest {
         assertEquals("DUPLICATE_TRIGGER", storedDelivery.getDecisionCode());
         assertEquals(primary.getId(), storedDelivery.getCanonicalRecordId());
         assertNull(storedDelivery.getBusinessKey(), "重复触发记录 business_key 必须留空");
+        assertNull(storedDelivery.getReviewTaskId());
+        assertNull(storedDelivery.getReviewUrl());
+        assertEquals("NONE", storedDelivery.getCommentState());
+        assertNull(storedDelivery.getCommentId());
         verifyNoInteractions(taskService);
     }
 
@@ -1399,6 +1411,498 @@ class PrAutoReviewServiceTest {
         assertTrue(delivery.getCommentBody().contains("abcdef0"));
     }
 
+    @Test
+    void expiredRecheckCannotCreateATaskAfterReviewerRevocation() throws Exception {
+        PrAutoReviewDelivery delivery = expiredRecheckRequest(frozenRequest());
+        config.setReviewers("[]");
+
+        service.recoverExpiredLeases();
+        service.processDelivery(delivery.getId());
+
+        assertEquals("SKIPPED", delivery.getDecisionState());
+        assertEquals("REVIEWER_NOT_ALLOWED", delivery.getDecisionCode());
+        verifyNoInteractions(taskService, repositoryReadService, gitHostClient);
+    }
+
+    @Test
+    void expiredRecheckRecoversACommittedTaskAfterReviewerRevocation() throws Exception {
+        PrAutoReviewDelivery delivery = expiredRecheckRequest(frozenRequest());
+        config.setReviewers("[]");
+        AgentReviewTask original = new AgentReviewTask();
+        original.setId(TASK_ID);
+        when(reviewTaskMapper.selectOne(any())).thenReturn(original);
+        when(gitHostClient.createIssueComment(any(), any(), any(), eq(15L), any()))
+                .thenReturn(issueComment(8001L, 901L, "回写"));
+
+        service.recoverExpiredLeases();
+        service.processDelivery(delivery.getId());
+
+        assertEquals("CREATED", delivery.getDecisionState());
+        assertEquals(TASK_ID, delivery.getReviewTaskId());
+        assertEquals("SENT", delivery.getCommentState());
+        verifyNoInteractions(taskService, repositoryReadService);
+    }
+
+    @Test
+    void canonicalDeliveryKeepsItsBusinessKeyWhenPrClosesAfterFreeze() throws Exception {
+        PrAutoReviewDelivery delivery = expiredRecheckRequest(frozenRequest());
+        String businessKey = delivery.getBusinessKey();
+        when(taskService.create(any(), eq(businessKey), eq("main"))).thenThrow(new ApiException(
+                ErrorCode.VALIDATION_FAILED, "PR 已关闭", Map.of("reason", PullRequestViews.PR_NOT_OPEN)));
+
+        service.recoverExpiredLeases();
+        service.processDelivery(delivery.getId());
+
+        assertEquals("SKIPPED", delivery.getDecisionState());
+        assertEquals(PullRequestViews.PR_NOT_OPEN, delivery.getDecisionCode());
+        assertEquals(businessKey, delivery.getBusinessKey());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaUpdateWrapper<PrAutoReviewDelivery>> updates =
+                ArgumentCaptor.forClass(LambdaUpdateWrapper.class);
+        verify(deliveryMapper, times(3)).update(eq(null), updates.capture());
+        assertFalse(deliveryUpdateSql(updates.getValue()).getSql().contains("business_key="));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void sourceRefreshThatCannotCreateARequestKeepsTheFrozenVersions(boolean noTextChanges) throws Exception {
+        TaskDtos.Create frozen = frozenRequest();
+        PrAutoReviewDelivery delivery = expiredRecheckRequest(frozen);
+        delivery.setTextCount(1);
+        delivery.setBinaryCount(2);
+        delivery.setUnreadableCount(3);
+        when(taskService.create(eq(frozen), eq(delivery.getBusinessKey()), eq("main")))
+                .thenThrow(new ApiException(ErrorCode.SOURCE_MOVED, "源分支提交已变动"));
+        String newHead = "8888888bc34987d6acbec4f8521953315ecdb7d20";
+        String newTarget = "aaaaaaa1c2ec0bf0cad8c6e3bb35b5bb7788b0b";
+        var pull = new PullRequestViews.Item(
+                15, "PR", "open", false, false, "developer", "feature", "main", newHead, newTarget,
+                "engineering/aiCodeReview", "engineering/aiCodeReview", true, "url", "time", "github");
+        when(repositoryReadService.pullRequest(PROJECT_ID, 15L))
+                .thenReturn(new PullRequestViews.Detail(pull, newTarget, null));
+        if (noTextChanges) {
+            when(repositoryReadService.pullRequestChanges(PROJECT_ID, 15L)).thenReturn(
+                    new PullRequestViews.Changes(15, newHead, newTarget, newTarget, "COMPLETE", null, 0, 0, 0, 0, List.of()));
+        } else {
+            when(repositoryReadService.pullRequestChanges(PROJECT_ID, 15L))
+                    .thenThrow(new ApiException(ErrorCode.REPO_UNAVAILABLE, "读取净变更失败"));
+        }
+
+        service.recoverExpiredLeases();
+        service.processDelivery(delivery.getId());
+
+        assertEquals(noTextChanges ? "SKIPPED" : "FAILED", delivery.getDecisionState());
+        assertEquals(noTextChanges ? "NO_TEXT_CHANGES" : "REPO_UNAVAILABLE", delivery.getDecisionCode());
+        assertEquals(frozen, objectMapper.readValue(delivery.getTaskRequestSnapshot(), TaskDtos.Create.class));
+        assertEquals(SOURCE_HEAD, delivery.getSourceHead());
+        assertEquals(BASE_HEAD, delivery.getTargetHead());
+        assertEquals(BASE_HEAD, delivery.getMergeBase());
+        assertEquals(1, delivery.getTextCount());
+        assertEquals(2, delivery.getBinaryCount());
+        assertEquals(3, delivery.getUnreadableCount());
+        verify(taskService).create(any(), any(), eq("main"));
+    }
+
+    // ================================================================= PRA-04 /recheck 复审与重复触发验证
+
+    @Test
+    @DisplayName("PRA-04 GitHub 复审全链路：首次审查 -> 追加提交跳过 -> 审核者按 ID 触发 /recheck 审查新版本并保留旧链接")
+    void githubRecheckFullLifecycleReviewsCurrentPrVersionAndPreservesFirstTask() throws Exception {
+        // 1. 首次审查（提交 9da674b）
+        byte[] openPayload = loadFixtureBytes("fixtures/pra/github/pull_request_opened.json");
+        PrAutoReviewDtos.WebhookReceiveResult firstRec = service.receiveWebhook(
+                "github", "github.com", "gh-del-p04-open", "pull_request", null,
+                "sha256=" + sign(SECRET, openPayload), openPayload
+        );
+        PrAutoReviewDelivery firstDelivery = storedDelivery;
+
+        PullRequestViews.Item pullV1 = new PullRequestViews.Item(
+                15, "feat: PR auto review initial integration", "open", false, false,
+                "developer", "feature/auto-review", "main", SOURCE_HEAD, BASE_HEAD,
+                "engineering/aiCodeReview", "engineering/aiCodeReview", true,
+                "https://github.com/engineering/aiCodeReview/pull/15", "2026-11-12T03:00:00Z", "github"
+        );
+        PullRequestViews.Changes changesV1 = new PullRequestViews.Changes(
+                15, SOURCE_HEAD, BASE_HEAD, BASE_HEAD, "COMPLETE", null, 1, 1, 0, 0,
+                List.of(new PullRequestViews.FileChange("src/App.vue", null, "MODIFIED", "TEXT", null))
+        );
+        TaskDtos.View firstTaskView = mockTaskView("01TASKFIRST000000000000001");
+        when(repositoryReadService.pullRequest(eq(PROJECT_ID), eq(15L)))
+                .thenReturn(new PullRequestViews.Detail(pullV1, BASE_HEAD, null));
+        when(repositoryReadService.pullRequestChanges(eq(PROJECT_ID), eq(15L))).thenReturn(changesV1);
+        when(taskService.create(any(), any(), eq("main"))).thenReturn(firstTaskView);
+        when(gitHostClient.createIssueComment(any(), any(), any(), eq(15L), any()))
+                .thenReturn(issueComment(8101L, 901L, "first-link"));
+
+        service.processDelivery(firstRec.deliveryId());
+        assertEquals("CREATED", firstDelivery.getDecisionState());
+        assertEquals("01TASKFIRST000000000000001", firstDelivery.getReviewTaskId());
+        assertEquals(8101L, firstDelivery.getCommentId());
+
+        // 2. 开发者追加提交（synchronize -> SKIPPED / ACTION_IGNORED）
+        byte[] syncPayload = loadFixtureBytes("fixtures/pra/github/pull_request_synchronize.json");
+        PrAutoReviewDtos.WebhookReceiveResult syncRec = service.receiveWebhook(
+                "github", "github.com", "gh-del-p04-sync", "pull_request", null,
+                "sha256=" + sign(SECRET, syncPayload), syncPayload
+        );
+        assertEquals("SKIPPED", syncRec.decisionState());
+        assertEquals("ACTION_IGNORED", syncRec.decisionCode());
+        assertEquals("追加提交后由审核者发起 /recheck 复审", syncRec.decisionMessage());
+
+        // 3. 审核者（用户 ID=101，即便登录名在宿主已变更为 li.ming.renamed）发表 /recheck
+        ObjectNode recheckNode = (ObjectNode) objectMapper.readTree(
+                loadFixtureBytes("fixtures/pra/github/issue_comment_recheck.json"));
+        ((ObjectNode) recheckNode.path("sender")).put("login", "li.ming.renamed");
+        ((ObjectNode) recheckNode.path("comment")).put("body", "  /recheck \r\n");
+        byte[] recheckPayload = objectMapper.writeValueAsBytes(recheckNode);
+
+        PrAutoReviewDtos.WebhookReceiveResult recheckRec = service.receiveWebhook(
+                "github", "github.com", "gh-del-p04-recheck", "issue_comment", null,
+                "sha256=" + sign(SECRET, recheckPayload), recheckPayload
+        );
+        assertEquals("RECEIVED", recheckRec.decisionState());
+        PrAutoReviewDelivery recheckDelivery = storedDelivery;
+        assertEquals("RECHECK", recheckDelivery.getTriggerKind());
+        assertEquals(5001L, recheckDelivery.getSourceCommentId());
+
+        String newHead = "e4c19a0b72d50f8e1a9f00112233445566778899";
+        PullRequestViews.Item pullV2 = new PullRequestViews.Item(
+                15, "feat: PR auto review initial integration", "open", false, false,
+                "developer", "feature/auto-review", "main", newHead, BASE_HEAD,
+                "engineering/aiCodeReview", "engineering/aiCodeReview", true,
+                "https://github.com/engineering/aiCodeReview/pull/15", "2026-11-12T03:10:00Z", "github"
+        );
+        PullRequestViews.Changes changesV2 = new PullRequestViews.Changes(
+                15, newHead, BASE_HEAD, BASE_HEAD, "COMPLETE", null, 3, 2, 1, 0,
+                List.of(
+                        new PullRequestViews.FileChange("src/App.vue", null, "MODIFIED", "TEXT", null),
+                        new PullRequestViews.FileChange("src/fix.ts", null, "ADDED", "TEXT", null),
+                        new PullRequestViews.FileChange("assets/logo.png", null, "ADDED", "BINARY", null)
+                )
+        );
+        when(repositoryReadService.pullRequest(eq(PROJECT_ID), eq(15L)))
+                .thenReturn(new PullRequestViews.Detail(pullV2, BASE_HEAD, null));
+        when(repositoryReadService.pullRequestChanges(eq(PROJECT_ID), eq(15L))).thenReturn(changesV2);
+
+        TaskDtos.View recheckTaskView = mockTaskView("01TASKRECHECK0000000000002");
+        ArgumentCaptor<TaskDtos.Create> recheckTaskCaptor = ArgumentCaptor.forClass(TaskDtos.Create.class);
+        ArgumentCaptor<String> recheckKeyCaptor = ArgumentCaptor.forClass(String.class);
+        when(taskService.create(recheckTaskCaptor.capture(), recheckKeyCaptor.capture(), eq("main")))
+                .thenReturn(recheckTaskView);
+
+        ArgumentCaptor<String> recheckCommentCaptor = ArgumentCaptor.forClass(String.class);
+        when(gitHostClient.createIssueComment(any(), any(), any(), eq(15L), recheckCommentCaptor.capture()))
+                .thenReturn(issueComment(8102L, 901L, "recheck-link"));
+
+        service.processDelivery(recheckRec.deliveryId());
+
+        TaskDtos.Create recheckTaskReq = recheckTaskCaptor.getValue();
+        assertEquals(newHead, recheckTaskReq.source().sourceHead());
+        assertEquals(2, recheckTaskReq.targets().size());
+        assertEquals("PR #15 问题审查 · e4c19a0", recheckTaskReq.name());
+        assertFalse(firstDelivery.getBusinessKey().equals(recheckKeyCaptor.getValue()), "首次审查与 /recheck 幂等键必须独立");
+
+        assertEquals(
+                "[查看提交 e4c19a0 的审查进度与结果](http://localhost:5173/#/reviews/01TASKRECHECK0000000000002?from=/reviews)",
+                recheckCommentCaptor.getValue()
+        );
+        assertEquals("CREATED", recheckDelivery.getDecisionState());
+        assertEquals("01TASKRECHECK0000000000002", recheckDelivery.getReviewTaskId());
+        assertEquals("SENT", recheckDelivery.getCommentState());
+        assertEquals(8102L, recheckDelivery.getCommentId());
+        assertEquals(2, recheckDelivery.getTextCount());
+        assertEquals(1, recheckDelivery.getBinaryCount());
+
+        // 原首次审查记录及链接保持不变
+        assertEquals("01TASKFIRST000000000000001", firstDelivery.getReviewTaskId());
+        assertEquals(8101L, firstDelivery.getCommentId());
+    }
+
+    @Test
+    @DisplayName("PRA-04 Gitea 复审全链路：审核者发表 /recheck 锁定最新 PR 净变更并回写 Gitea 评论")
+    void giteaRecheckCreatesNewTaskForUpdatedPrVersionAndPostsComment() throws Exception {
+        project.setRepoUrl("http://192.168.1.50:3000/engineering/aiCodeReview.git");
+        project.setCredential("gitea-token");
+        project.setCredentialType(1);
+
+        byte[] payload = loadFixtureBytes("fixtures/pra/gitea/pull_request_comment_recheck.json");
+        String sig = sign(SECRET, payload);
+        PrAutoReviewDtos.WebhookReceiveResult rec = service.receiveWebhook(
+                "gitea", "http://192.168.1.50:3000", "gta-del-recheck-1",
+                "issue_comment", "pull_request_comment", sig, payload
+        );
+        assertEquals("RECEIVED", rec.decisionState());
+
+        String giteaNewHead = "77cfa01b9341934c8fc9183c23c4f3653f24d888";
+        PullRequestViews.Item pullItem = new PullRequestViews.Item(
+                13, "feat: gitea auto review integration", "open", false, false,
+                "developer", "feature/auto-review", "main", giteaNewHead, BASE_HEAD,
+                "engineering/aiCodeReview", "engineering/aiCodeReview", true,
+                "http://192.168.1.50:3000/engineering/aiCodeReview/pulls/13",
+                "2026-11-12T03:20:00Z", "gitea"
+        );
+        when(repositoryReadService.pullRequest(eq(PROJECT_ID), eq(13L)))
+                .thenReturn(new PullRequestViews.Detail(pullItem, BASE_HEAD, null));
+
+        PullRequestViews.Changes changes = new PullRequestViews.Changes(
+                13, giteaNewHead, BASE_HEAD, BASE_HEAD, "COMPLETE", null, 2, 2, 0, 0,
+                List.of(
+                        new PullRequestViews.FileChange("backend/src/main/App.java", null, "MODIFIED", "TEXT", null),
+                        new PullRequestViews.FileChange("backend/src/main/Recheck.java", "backend/src/main/Old.java", "RENAMED", "TEXT", null)
+                )
+        );
+        when(repositoryReadService.pullRequestChanges(eq(PROJECT_ID), eq(13L))).thenReturn(changes);
+
+        TaskDtos.View giteaTaskView = mockTaskView("01TASKGITEARECHECK00000001");
+        ArgumentCaptor<TaskDtos.Create> createCaptor = ArgumentCaptor.forClass(TaskDtos.Create.class);
+        when(taskService.create(createCaptor.capture(), any(), eq("main")))
+                .thenReturn(giteaTaskView);
+
+        ArgumentCaptor<String> commentCaptor = ArgumentCaptor.forClass(String.class);
+        when(giteaClient.createIssueComment(any(), any(), any(), eq(13L), commentCaptor.capture()))
+                .thenReturn(new IssueComment(9201L, 13L, new GitUserRef(901L, "code-review-bot", "Bot", null),
+                        "ok", Instant.now(), Instant.now()));
+
+        service.processDelivery(rec.deliveryId());
+
+        TaskDtos.Create req = createCaptor.getValue();
+        assertEquals(13L, req.source().pullNumber());
+        assertEquals(giteaNewHead, req.source().sourceHead());
+        assertEquals("PR #13 问题审查 · 77cfa01", req.name());
+        assertEquals(2, req.targets().size());
+        assertEquals("backend/src/main/Old.java", req.targets().get(1).oldPath());
+
+        assertEquals(
+                "[查看提交 77cfa01 的审查进度与结果](http://localhost:5173/#/reviews/01TASKGITEARECHECK00000001?from=/reviews)",
+                commentCaptor.getValue()
+        );
+        assertEquals("CREATED", storedDelivery.getDecisionState());
+        assertEquals("RECHECK", storedDelivery.getTriggerKind());
+        assertEquals("main", storedDelivery.getTargetBranch());
+        assertEquals("SENT", storedDelivery.getCommentState());
+        assertEquals(9201L, storedDelivery.getCommentId());
+    }
+
+    @Test
+    @DisplayName("PRA-04 跳过原因核对：普通 Issue 评论、编辑/删除评论、命令不匹配、Gitea 机器人回写均有明确可查原因")
+    void skipReasonsForRegularIssueEditDeleteBotAndCommandMismatchAreSpecificAndQueryable() throws Exception {
+        // 1. GitHub 普通 Issue 评论
+        byte[] ghIssue = loadFixtureBytes("fixtures/pra/github/issue_comment_regular_issue.json");
+        var resIssue = service.receiveWebhook("github", "github.com", "gh-skip-issue", "issue_comment", null,
+                "sha256=" + sign(SECRET, ghIssue), ghIssue);
+        assertEquals("SKIPPED", resIssue.decisionState());
+        assertEquals("ACTION_IGNORED", resIssue.decisionCode());
+        assertEquals("普通 Issue 评论不触发自动审查", resIssue.decisionMessage());
+
+        // 2. GitHub 编辑旧评论 (action = edited)
+        ObjectNode ghEditedNode = (ObjectNode) objectMapper.readTree(
+                loadFixtureBytes("fixtures/pra/github/issue_comment_recheck.json"));
+        ghEditedNode.put("action", "edited");
+        byte[] ghEdited = objectMapper.writeValueAsBytes(ghEditedNode);
+        var resEdited = service.receiveWebhook("github", "github.com", "gh-skip-edited", "issue_comment", null,
+                "sha256=" + sign(SECRET, ghEdited), ghEdited);
+        assertEquals("SKIPPED", resEdited.decisionState());
+        assertEquals("ACTION_IGNORED", resEdited.decisionCode());
+        assertEquals("编辑旧评论不触发复审", resEdited.decisionMessage());
+
+        // 3. Gitea 删除评论 (action = deleted)
+        project.setRepoUrl("http://localhost:3000/engineering/aiCodeReview.git");
+        ObjectNode gtaDeletedNode = (ObjectNode) objectMapper.readTree(
+                loadFixtureBytes("fixtures/pra/gitea/pull_request_comment_recheck.json"));
+        gtaDeletedNode.put("action", "deleted");
+        byte[] gtaDeleted = objectMapper.writeValueAsBytes(gtaDeletedNode);
+        var resDeleted = service.receiveWebhook("gitea", null, "gta-skip-deleted", "issue_comment",
+                "pull_request_comment", sign(SECRET, gtaDeleted), gtaDeleted);
+        assertEquals("SKIPPED", resDeleted.decisionState());
+        assertEquals("ACTION_IGNORED", resDeleted.decisionCode());
+        assertEquals("删除评论不触发复审", resDeleted.decisionMessage());
+
+        // 4. Gitea 机器人回写样本（含仅配置 botLogin 时自动识别机器人）
+        config.setBotActorId(null);
+        config.setBotLogin("code-review-bot");
+        byte[] gtaBot = loadFixtureBytes("fixtures/pra/gitea/pull_request_comment_bot.json");
+        var resBot = service.receiveWebhook("gitea", null, "gta-skip-bot", "issue_comment",
+                "pull_request_comment", sign(SECRET, gtaBot), gtaBot);
+        assertEquals("SKIPPED", resBot.decisionState());
+        assertEquals("BOT_COMMENT", resBot.decisionCode());
+        assertEquals("机器人自身发言，跳过回写触发", resBot.decisionMessage());
+
+        // 5. 行内提及或引用 /recheck 跳过为 COMMAND_MISMATCH
+        ObjectNode cmdMismatchNode = (ObjectNode) objectMapper.readTree(
+                loadFixtureBytes("fixtures/pra/gitea/pull_request_comment_recheck.json"));
+        ((ObjectNode) cmdMismatchNode.path("comment")).put("body", "已修复问题，请执行 /recheck");
+        byte[] cmdMismatch = objectMapper.writeValueAsBytes(cmdMismatchNode);
+        var resCmd = service.receiveWebhook("gitea", null, "gta-skip-cmd", "issue_comment",
+                "pull_request_comment", sign(SECRET, cmdMismatch), cmdMismatch);
+        assertEquals("SKIPPED", resCmd.decisionState());
+        assertEquals("COMMAND_MISMATCH", resCmd.decisionCode());
+        assertEquals("评论正文未精确匹配 /recheck 命令", resCmd.decisionMessage());
+    }
+
+    @Test
+    @DisplayName("PRA-04 复审运行时校验：PR 已关闭或目标分支不匹配时跳过并记录读取到的分支与版本")
+    void recheckSkipsWhenPrClosedOrTargetBranchMismatchedAtExecutionTime() throws Exception {
+        byte[] payload = loadFixtureBytes("fixtures/pra/github/issue_comment_recheck.json");
+        var rec = service.receiveWebhook("github", "github.com", "gh-recheck-branch-mismatch",
+                "issue_comment", null, "sha256=" + sign(SECRET, payload), payload);
+        assertEquals("RECEIVED", rec.decisionState());
+
+        PullRequestViews.Item wrongBranchPr = new PullRequestViews.Item(
+                15, "feat: targeting develop", "open", false, false,
+                "developer", "feature/auto-review", "develop", SOURCE_HEAD, BASE_HEAD,
+                "engineering/aiCodeReview", "engineering/aiCodeReview", true,
+                "https://github.com/engineering/aiCodeReview/pull/15", "2026-11-12T03:00:00Z", "github"
+        );
+        when(repositoryReadService.pullRequest(eq(PROJECT_ID), eq(15L)))
+                .thenReturn(new PullRequestViews.Detail(wrongBranchPr, BASE_HEAD, null));
+
+        service.processDelivery(rec.deliveryId());
+
+        assertEquals("SKIPPED", storedDelivery.getDecisionState());
+        assertEquals("TARGET_BRANCH_MISMATCH", storedDelivery.getDecisionCode());
+        assertEquals("develop", storedDelivery.getTargetBranch());
+        assertEquals(SOURCE_HEAD, storedDelivery.getSourceHead());
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    @DisplayName("PRA-04 重复复审遇到唯一键冲突时关联原投递")
+    void duplicateRecheckTriggerLinksCanonicalDeliveryOnUniqueKeyRace() throws Exception {
+        byte[] payload = loadFixtureBytes("fixtures/pra/github/issue_comment_recheck.json");
+        String sig = "sha256=" + sign(SECRET, payload);
+
+        PrAutoReviewDtos.WebhookReceiveResult dupRec = service.receiveWebhook(
+                "github", "github.com", "gh-del-recheck-dup-2", "issue_comment", null, sig, payload
+        );
+        PrAutoReviewDelivery dupDelivery = storedDelivery;
+        String expectedKey = service.calculateBusinessKey(dupDelivery);
+
+        PullRequestViews.Item pullItem = new PullRequestViews.Item(
+                15, "feat: PR auto review", "open", false, false,
+                "developer", "feature/auto-review", "main", SOURCE_HEAD, BASE_HEAD,
+                "engineering/aiCodeReview", "engineering/aiCodeReview", true,
+                "https://github.com/engineering/aiCodeReview/pull/15", "2026-11-12T03:00:00Z", "github"
+        );
+        PullRequestViews.Changes changes = new PullRequestViews.Changes(
+                15, SOURCE_HEAD, BASE_HEAD, BASE_HEAD, "COMPLETE", null, 1, 1, 0, 0,
+                List.of(new PullRequestViews.FileChange("src/App.vue", null, "MODIFIED", "TEXT", null))
+        );
+        when(repositoryReadService.pullRequest(eq(PROJECT_ID), eq(15L)))
+                .thenReturn(new PullRequestViews.Detail(pullItem, BASE_HEAD, null));
+        when(repositoryReadService.pullRequestChanges(eq(PROJECT_ID), eq(15L))).thenReturn(changes);
+
+        // 首次查询后另一条投递先取得业务键。
+        PrAutoReviewDelivery canonical = new PrAutoReviewDelivery();
+        canonical.setId("01CANONICALRECHECK00000001");
+        canonical.setProjectId(PROJECT_ID);
+        canonical.setTriggerKind("RECHECK");
+        canonical.setBusinessKey(expectedKey);
+        canonical.setDecisionState("PROCESSING");
+
+        AtomicInteger findDupCalls = new AtomicInteger(0);
+        when(deliveryMapper.selectOne(any())).thenAnswer(call -> {
+            LambdaQueryWrapper<?> wrapper = call.getArgument(0);
+            if (wrapper.getSqlSegment() != null && wrapper.getSqlSegment().contains("business_key")) {
+                return findDupCalls.getAndIncrement() == 0 ? null : canonical;
+            }
+            return dupDelivery;
+        });
+        AtomicInteger updateCalls = new AtomicInteger(0);
+        when(deliveryMapper.update(any(), any())).thenAnswer(call -> {
+            int update = updateCalls.incrementAndGet();
+            if (update == 2) {
+                throw new org.springframework.dao.DuplicateKeyException("uk_project_business_key");
+            }
+            if (update == 3) {
+                BoundSql sql = deliveryUpdateSql(call.getArgument(1));
+                assertEquals(canonical.getId(), assignmentValue(sql, "canonical_record_id"));
+                assertNull(assignmentValue(sql, "business_key"));
+                assertFalse(sql.getSql().contains("comment_state="));
+                assertFalse(sql.getSql().contains("review_task_id="));
+            }
+            return 1;
+        });
+
+        service.processDelivery(dupRec.deliveryId());
+
+        assertEquals("SKIPPED", dupDelivery.getDecisionState());
+        assertEquals("DUPLICATE_TRIGGER", dupDelivery.getDecisionCode());
+        assertEquals(canonical.getId(), dupDelivery.getCanonicalRecordId());
+        assertNull(dupDelivery.getBusinessKey());
+        assertEquals(3, updateCalls.get());
+        verifyNoInteractions(taskService);
+    }
+
+    @Test
+    void deliveryQueriesFilterAndDisplayTheSameCanonicalOutcome() {
+        PrAutoReviewDelivery duplicateWithOutcome = pendingComment();
+        duplicateWithOutcome.setHostType("gitea");
+        duplicateWithOutcome.setHostInstanceKey("http://localhost:3000");
+        duplicateWithOutcome.setEventName("issue_comment");
+        duplicateWithOutcome.setEventType("pull_request_comment");
+        duplicateWithOutcome.setCanonicalRecordId("01CANONICALRECHECK00000001");
+        duplicateWithOutcome.setDecisionState("SKIPPED");
+        duplicateWithOutcome.setDecisionCode("DUPLICATE_TRIGGER");
+        duplicateWithOutcome.setCommentState("SENT");
+        duplicateWithOutcome.setCommentId(9501L);
+        duplicateWithOutcome.setCommentHttpStatus(201);
+        when(deliveryMapper.selectWithOutcome(any())).thenReturn(List.of(duplicateWithOutcome));
+        AtomicReference<BoundSql> countQuery = new AtomicReference<>();
+        when(deliveryMapper.countWithOutcome(any())).thenAnswer(call -> {
+            countQuery.set(deliveryReadSql("countWithOutcome", call.getArgument(0)));
+            return 1L;
+        });
+
+        var detail = service.getDelivery(PROJECT_ID, duplicateWithOutcome.getId());
+        assertEquals("SKIPPED", detail.decisionState());
+        assertEquals(duplicateWithOutcome.getCanonicalRecordId(), detail.canonicalRecordId());
+        assertEquals(TASK_ID, detail.reviewTaskId());
+        assertEquals(service.formatReviewUrl(null, TASK_ID), detail.reviewUrl());
+        assertEquals("SENT", detail.commentState());
+        assertEquals(9501L, detail.commentId());
+        assertEquals(201, detail.commentHttpStatus());
+        assertNull(detail.commentError());
+
+        var page = service.listDeliveries(PROJECT_ID, "pull_request_comment", "SKIPPED", "DUPLICATE_TRIGGER",
+                " sent ", 15L, TASK_ID, null, null, 1, 20);
+        assertEquals(1L, page.total());
+        assertEquals(1, page.items().size());
+        PrAutoReviewDtos.DeliveryView item = page.items().get(0);
+        assertEquals("pull_request_comment", item.eventType());
+        assertEquals(detail.canonicalRecordId(), item.canonicalRecordId());
+        assertEquals(TASK_ID, item.reviewTaskId());
+        assertEquals("SENT", item.commentState());
+        assertEquals(9501L, item.commentId());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<LambdaQueryWrapper<PrAutoReviewDelivery>> queries =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(deliveryMapper, times(2)).selectWithOutcome(queries.capture());
+        BoundSql detailQuery = deliveryReadSql("selectWithOutcome", queries.getAllValues().get(0));
+        BoundSql pageQuery = deliveryReadSql("selectWithOutcome", queries.getValue());
+        assertEquals(List.of(PROJECT_ID, duplicateWithOutcome.getId()), boundParameters(detailQuery));
+
+        String detailSql = detailQuery.getSql().replaceAll("\\s+", " ").strip();
+        String countSql = countQuery.get().getSql().replaceAll("\\s+", " ").strip();
+        String pageSql = pageQuery.getSql().replaceAll("\\s+", " ").strip();
+        assertTrue(detailSql.contains("WHERE (project_id = ? AND id = ?)"));
+        assertTrue(detailSql.contains("CASE WHEN c.id IS NULL THEN d.comment_error ELSE c.comment_error END AS comment_error"));
+        assertTrue(countSql.contains("LEFT JOIN pr_auto_review_delivery c ON c.id = d.canonical_record_id AND c.project_id = d.project_id"));
+        assertTrue(countSql.contains("CASE WHEN c.id IS NULL THEN d.comment_state ELSE c.comment_state END AS comment_state"));
+        assertTrue(countSql.contains("CASE WHEN c.id IS NULL THEN d.review_task_id ELSE c.review_task_id END AS review_task_id"));
+        assertTrue(countSql.contains("(event_type = ? OR (event_type IS NULL AND event_name = ?))"));
+        assertFalse(countSql.contains("OR event_name = ?"));
+        assertTrue(countSql.contains("AND comment_state = ?"));
+        assertTrue(countSql.contains("OR review_task_id LIKE ?"));
+        assertEquals("SELECT *" + countSql.substring("SELECT COUNT(*)".length())
+                + " ORDER BY first_received_at DESC,id DESC limit 0, 20", pageSql);
+        assertEquals(boundParameters(countQuery.get()), boundParameters(pageQuery));
+        assertEquals(List.of(PROJECT_ID, "pull_request_comment", "pull_request_comment", "SKIPPED",
+                        "DUPLICATE_TRIGGER", "SENT", 15L),
+                boundParameters(pageQuery).subList(0, 7));
+        assertTrue(boundParameters(pageQuery).contains("%" + TASK_ID + "%"));
+    }
+
     private PrAutoReviewDelivery pendingComment() {
         PrAutoReviewDelivery delivery = new PrAutoReviewDelivery();
         delivery.setId("01DELIVERYTIMEOUT00000001");
@@ -1456,6 +1960,15 @@ class PrAutoReviewServiceTest {
         return delivery;
     }
 
+    private PrAutoReviewDelivery expiredRecheckRequest(TaskDtos.Create frozen) throws Exception {
+        PrAutoReviewDelivery delivery = expiredTaskRequest(frozen);
+        delivery.setTriggerKind("RECHECK");
+        delivery.setActorUserId(101L);
+        delivery.setSourceCommentId(5001L);
+        delivery.setBusinessKey(service.calculateBusinessKey(delivery));
+        return delivery;
+    }
+
     private static IssueComment issueComment(long id, long actorId, String body) {
         return new IssueComment(id, 15L, new GitUserRef(actorId, "bot", "Bot", null),
                 body, Instant.now(), Instant.now());
@@ -1464,6 +1977,18 @@ class PrAutoReviewServiceTest {
     private static BoundSql deliveryUpdateSql(LambdaUpdateWrapper<PrAutoReviewDelivery> wrapper) {
         return mybatis.getMappedStatement(PrAutoReviewDeliveryMapper.class.getName() + ".update")
                 .getBoundSql(Map.of("ew", wrapper));
+    }
+
+    private static BoundSql deliveryReadSql(String statement, LambdaQueryWrapper<PrAutoReviewDelivery> wrapper) {
+        return mybatis.getMappedStatement(PrAutoReviewDeliveryMapper.class.getName() + "." + statement)
+                .getBoundSql(Map.of("ew", wrapper));
+    }
+
+    private static List<Object> boundParameters(BoundSql statement) {
+        var parameters = mybatis.newMetaObject(statement.getParameterObject());
+        return statement.getParameterMappings().stream()
+                .map(mapping -> parameters.getValue(mapping.getProperty()))
+                .toList();
     }
 
     private static Object assignmentValue(BoundSql statement, String column) {

@@ -181,4 +181,56 @@ class PrAutoReviewControllerTest {
                 .andExpect(jsonPath("$.id").value("01DEL000000000000000000001"))
                 .andExpect(jsonPath("$.decisionState").value("RECEIVED"));
     }
+
+    @Test
+    @DisplayName("查询投递记录列表：支持按事件、决定、原因码、回写状态、PR 编号及关键字筛选")
+    void listDeliveriesWithFilters() throws Exception {
+        PrAutoReviewDtos.DeliveryView view = new PrAutoReviewDtos.DeliveryView(
+                "01DEL000000000000000000002",
+                "gitea",
+                "http://localhost:3000",
+                "gta-del-2",
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                1,
+                "issue_comment",
+                "pull_request_comment",
+                "edited",
+                31L,
+                "engineering/aiCodeReview",
+                13L,
+                101L,
+                "li.ming",
+                3213L,
+                PROJECT_ID,
+                null,
+                null,
+                "SKIPPED",
+                LocalDateTime.now(),
+                "ACTION_IGNORED",
+                "编辑旧评论不触发复审",
+                null,
+                null,
+                null,
+                null,
+                "NONE",
+                null,
+                LocalDateTime.now()
+        );
+        when(service.listDeliveries(eq(PROJECT_ID), eq("pull_request_comment"), eq("SKIPPED"),
+                eq("ACTION_IGNORED"), eq("NONE"), eq(13L), eq("编辑旧评论"), any(), any(), any(), any()))
+                .thenReturn(new PageResponse<>(List.of(view), null, false));
+
+        deliveryMvc.perform(get("/api/v2/projects/" + PROJECT_ID + "/auto-review-deliveries")
+                        .param("eventName", "pull_request_comment")
+                        .param("decisionState", "SKIPPED")
+                        .param("decisionCode", "ACTION_IGNORED")
+                        .param("commentState", "NONE")
+                        .param("prNumber", "13")
+                        .param("q", "编辑旧评论"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value("01DEL000000000000000000002"))
+                .andExpect(jsonPath("$.items[0].decisionCode").value("ACTION_IGNORED"))
+                .andExpect(jsonPath("$.items[0].decisionMessage").value("编辑旧评论不触发复审"));
+    }
 }

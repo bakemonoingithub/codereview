@@ -27,11 +27,16 @@ public class PrAutoReviewDeliveryController {
     public PageResponse<PrAutoReviewDtos.DeliveryView> list(@PathVariable String projectId,
                                                            @RequestParam(required = false) String eventName,
                                                            @RequestParam(required = false) String decisionState,
+                                                           @RequestParam(required = false) String decisionCode,
+                                                           @RequestParam(required = false) String commentState,
+                                                           @RequestParam(required = false) Long prNumber,
+                                                           @RequestParam(required = false) String q,
                                                            @RequestParam(required = false) String cursor,
                                                            @RequestParam(required = false) Integer limit,
                                                            @RequestParam(required = false) Integer pageNum,
                                                            @RequestParam(required = false) Integer pageSize) {
-        return service.listDeliveries(projectId, eventName, decisionState, cursor, limit, pageNum, pageSize);
+        return service.listDeliveries(projectId, eventName, decisionState, decisionCode, commentState,
+                prNumber, q, cursor, limit, pageNum, pageSize);
     }
 
     @GetMapping("/{id}")

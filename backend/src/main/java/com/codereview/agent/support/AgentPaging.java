@@ -10,6 +10,7 @@ import com.codereview.agent.api.PageResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.ToLongFunction;
 
 /**
  * 页码与游标分页的公共部分。
@@ -36,12 +37,20 @@ public final class AgentPaging {
     public static <T> PageResponse<T> query(BaseMapper<T> mapper, LambdaQueryWrapper<T> wrapper,
                                            String cursor, Integer limit, Integer pageNum, Integer pageSize,
                                            SFunction<T, LocalDateTime> createdAt, SFunction<T, String> id) {
+        return query(mapper::selectList, mapper::selectCount, wrapper, cursor, limit, pageNum, pageSize, createdAt, id);
+    }
+
+    public static <T> PageResponse<T> query(Function<LambdaQueryWrapper<T>, List<T>> select,
+                                           ToLongFunction<LambdaQueryWrapper<T>> count,
+                                           LambdaQueryWrapper<T> wrapper,
+                                           String cursor, Integer limit, Integer pageNum, Integer pageSize,
+                                           SFunction<T, LocalDateTime> createdAt, SFunction<T, String> id) {
         if (pageNum == null && pageSize == null) {
             int size = limit(limit);
             applyCursor(wrapper, cursor, createdAt, id);
             applyOrder(wrapper, createdAt, id);
             wrapper.last("limit " + (size + 1));
-            return assemble(mapper.selectList(wrapper), size, createdAt, id);
+            return assemble(select.apply(wrapper), size, createdAt, id);
         }
         int requestedPage = pageNum == null ? 1 : pageNum;
         int size = pageSize == null ? DEFAULT_LIMIT : pageSize;
@@ -50,13 +59,13 @@ public final class AgentPaging {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
                     "页码须为正整数，每页条数只能为 10/20/50，不能与 cursor/limit 混用");
         }
-        long total = mapper.selectCount(wrapper);
+        long total = count.applyAsLong(wrapper);
         long lastPage = Math.max(1, (total + size - 1) / size);
         int current = (int) Math.min(requestedPage, lastPage);
         long offset = (long) (current - 1) * size;
         applyOrder(wrapper, createdAt, id);
         wrapper.last("limit " + offset + ", " + size);
-        List<T> items = total == 0 ? List.of() : mapper.selectList(wrapper);
+        List<T> items = total == 0 ? List.of() : select.apply(wrapper);
         return new PageResponse<>(items, null, offset + size < total, total, current, size);
     }
 

@@ -359,19 +359,65 @@ public class PrAutoReviewService {
                                                                       Integer limit,
                                                                       Integer pageNum,
                                                                       Integer pageSize) {
+        return listDeliveries(projectId, eventName, decisionState, null, null, null, null,
+                cursor, limit, pageNum, pageSize);
+    }
+
+    /** 查询某项目的投递处理记录列表，支持按事件原值、审查决定、原因码、回写状态、PR 编号及关键字筛选。 */
+    public PageResponse<PrAutoReviewDtos.DeliveryView> listDeliveries(String projectId,
+                                                                      String eventName,
+                                                                      String decisionState,
+                                                                      String decisionCode,
+                                                                      String commentState,
+                                                                      Long prNumber,
+                                                                      String q,
+                                                                      String cursor,
+                                                                      Integer limit,
+                                                                      Integer pageNum,
+                                                                      Integer pageSize) {
         requireProject(projectId);
         LambdaQueryWrapper<PrAutoReviewDelivery> wrapper = new LambdaQueryWrapper<PrAutoReviewDelivery>()
                 .eq(PrAutoReviewDelivery::getProjectId, projectId);
 
         if (eventName != null && !eventName.isBlank()) {
-            wrapper.eq(PrAutoReviewDelivery::getEventName, eventName.trim());
+            String ev = eventName.trim();
+            wrapper.and(w -> w.eq(PrAutoReviewDelivery::getEventType, ev)
+                    .or(fallback -> fallback.isNull(PrAutoReviewDelivery::getEventType)
+                            .eq(PrAutoReviewDelivery::getEventName, ev)));
         }
         if (decisionState != null && !decisionState.isBlank()) {
-            wrapper.eq(PrAutoReviewDelivery::getDecisionState, decisionState.trim());
+            wrapper.eq(PrAutoReviewDelivery::getDecisionState, decisionState.trim().toUpperCase(Locale.ROOT));
+        }
+        if (decisionCode != null && !decisionCode.isBlank()) {
+            wrapper.eq(PrAutoReviewDelivery::getDecisionCode, decisionCode.trim().toUpperCase(Locale.ROOT));
+        }
+        if (commentState != null && !commentState.isBlank()) {
+            wrapper.eq(PrAutoReviewDelivery::getCommentState, commentState.trim().toUpperCase(Locale.ROOT));
+        }
+        if (prNumber != null && prNumber > 0) {
+            wrapper.eq(PrAutoReviewDelivery::getPrNumber, prNumber);
+        }
+        if (q != null && !q.isBlank()) {
+            String keyword = q.trim();
+            String digits = keyword.startsWith("#") ? keyword.substring(1).trim() : keyword;
+            Long parsedPr = parsePositiveLong(digits);
+            wrapper.and(w -> {
+                w.like(PrAutoReviewDelivery::getDeliveryId, keyword)
+                        .or().like(PrAutoReviewDelivery::getReviewTaskId, keyword)
+                        .or().like(PrAutoReviewDelivery::getDecisionCode, keyword)
+                        .or().like(PrAutoReviewDelivery::getDecisionMessage, keyword)
+                        .or().like(PrAutoReviewDelivery::getActorLogin, keyword)
+                        .or().like(PrAutoReviewDelivery::getSourceHead, keyword);
+                if (parsedPr != null) {
+                    w.or().eq(PrAutoReviewDelivery::getPrNumber, parsedPr);
+                }
+            });
         }
 
+        PrAutoReviewDeliveryMapper mapper = db.mapper(PrAutoReviewDeliveryMapper.class);
         PageResponse<PrAutoReviewDelivery> page = AgentPaging.query(
-                db.mapper(PrAutoReviewDeliveryMapper.class),
+                mapper::selectWithOutcome,
+                mapper::countWithOutcome,
                 wrapper,
                 cursor,
                 limit,
@@ -387,15 +433,15 @@ public class PrAutoReviewService {
     /** 查询单条投递处理记录详情。 */
     public PrAutoReviewDtos.DeliveryDetailView getDelivery(String projectId, String deliveryId) {
         requireProject(projectId);
-        PrAutoReviewDelivery delivery = db.mapper(PrAutoReviewDeliveryMapper.class)
-                .selectOne(new LambdaQueryWrapper<PrAutoReviewDelivery>()
+        List<PrAutoReviewDelivery> deliveries = db.mapper(PrAutoReviewDeliveryMapper.class)
+                .selectWithOutcome(new LambdaQueryWrapper<PrAutoReviewDelivery>()
                         .eq(PrAutoReviewDelivery::getProjectId, projectId)
                         .eq(PrAutoReviewDelivery::getId, deliveryId));
 
-        if (delivery == null) {
+        if (deliveries.isEmpty()) {
             throw new ApiException(ErrorCode.NOT_FOUND, "未找到指定的投递处理记录");
         }
-        return toDeliveryDetailView(delivery);
+        return toDeliveryDetailView(deliveries.get(0));
     }
 
     /** 业务幂等键计算（符合 PRA-01 契约规范）。 */
@@ -484,6 +530,16 @@ public class PrAutoReviewService {
             skipDelivery(delivery, "AUTO_REVIEW_DISABLED", "项目未启用 PR 自动审查");
             return;
         }
+        if ("RECHECK".equals(delivery.getTriggerKind())) {
+            if (isBotComment(cfg, delivery)) {
+                skipDelivery(delivery, "BOT_COMMENT", "机器人自身发言，跳过回写触发");
+                return;
+            }
+            if (!isReviewerAllowed(cfg, delivery.getActorUserId())) {
+                skipDelivery(delivery, "REVIEWER_NOT_ALLOWED", "触发人 ID 不在审核者名单中");
+                return;
+            }
+        }
 
         String expectedBranch = cfg.getTargetBranch() != null ? cfg.getTargetBranch() : "main";
         TaskDtos.Create request;
@@ -562,15 +618,27 @@ public class PrAutoReviewService {
         PullRequestViews.Changes changes;
         try {
             var detail = repositoryReadService.pullRequest(delivery.getProjectId(), delivery.getPrNumber());
+            var pull = detail.pullRequest();
+            if (previous == null && pull != null) {
+                if (pull.targetBranch() != null && !pull.targetBranch().isBlank()) {
+                    delivery.setTargetBranch(pull.targetBranch());
+                }
+                if (pull.sourceHead() != null && !pull.sourceHead().isBlank()) {
+                    delivery.setSourceHead(pull.sourceHead());
+                }
+                if (pull.targetHead() != null && !pull.targetHead().isBlank()) {
+                    delivery.setTargetHead(pull.targetHead());
+                }
+            }
             if (PullRequestViews.CROSS_REPOSITORY.equals(detail.blocker())) {
                 skipDelivery(delivery, PullRequestViews.CROSS_REPOSITORY, "不支持跨仓库 PR 审查");
                 return null;
             }
-            if (PullRequestViews.PR_NOT_OPEN.equals(detail.blocker()) || !openPull(detail.pullRequest())) {
+            if (PullRequestViews.PR_NOT_OPEN.equals(detail.blocker()) || !openPull(pull)) {
                 skipDelivery(delivery, PullRequestViews.PR_NOT_OPEN, "PR 已关闭或已合并");
                 return null;
             }
-            if (!expectedBranch.equals(detail.pullRequest().targetBranch())) {
+            if (!expectedBranch.equals(pull.targetBranch())) {
                 skipDelivery(delivery, TaskService.TARGET_BRANCH_MISMATCH,
                         "目标分支不匹配配置的审查分支 " + expectedBranch);
                 return null;
@@ -607,13 +675,9 @@ public class PrAutoReviewService {
                 .filter(PullRequestViews.FileChange::text)
                 .map(file -> new TaskDtos.Target(file.path(), file.oldPath(), null))
                 .toList();
-        delivery.setTargetBranch(expectedBranch);
-        delivery.setSourceHead(changes.sourceHead());
-        delivery.setTargetHead(changes.targetHead());
-        delivery.setMergeBase(changes.mergeBase());
-        delivery.setTextCount(targets.size());
-        delivery.setBinaryCount(changes.binaryFiles());
-        delivery.setUnreadableCount(changes.unreadableFiles());
+        if (previous == null) {
+            recordPrChanges(delivery, expectedBranch, changes, targets.size());
+        }
         if (targets.isEmpty()) {
             skipDelivery(delivery, "NO_TEXT_CHANGES", "PR 没有可审查的文本净变更");
             return null;
@@ -650,6 +714,9 @@ public class PrAutoReviewService {
             failDelivery(delivery, "TASK_CREATE_FAILED", "无法保存自动审查请求");
             return null;
         }
+        if (previous != null) {
+            recordPrChanges(delivery, expectedBranch, changes, targets.size());
+        }
         LocalDateTime leaseUntil = AgentTime.now().plusSeconds(LEASE_DURATION_SECONDS);
         try {
             var update = withFrozenSource(atRevision(delivery), delivery)
@@ -674,6 +741,17 @@ public class PrAutoReviewService {
         delivery.setLeaseUntil(leaseUntil);
         delivery.setNextAttemptAt(leaseUntil);
         return request;
+    }
+
+    private static void recordPrChanges(PrAutoReviewDelivery delivery, String targetBranch,
+                                        PullRequestViews.Changes changes, int textCount) {
+        delivery.setTargetBranch(targetBranch);
+        delivery.setSourceHead(changes.sourceHead());
+        delivery.setTargetHead(changes.targetHead());
+        delivery.setMergeBase(changes.mergeBase());
+        delivery.setTextCount(textCount);
+        delivery.setBinaryCount(changes.binaryFiles());
+        delivery.setUnreadableCount(changes.unreadableFiles());
     }
 
     private PrAutoReviewDelivery findDuplicateDelivery(PrAutoReviewDelivery delivery, String businessKey) {
@@ -1156,6 +1234,7 @@ public class PrAutoReviewService {
                 .set(PrAutoReviewDelivery::getDecisionCode, code)
                 .set(PrAutoReviewDelivery::getDecisionMessage, safeMessage)
                 .set(PrAutoReviewDelivery::getCanonicalRecordId, canonicalRecordId)
+                .set(canonicalRecordId != null, PrAutoReviewDelivery::getBusinessKey, null)
                 .set(PrAutoReviewDelivery::getLeaseUntil, null)
                 .set(PrAutoReviewDelivery::getNextAttemptAt, null);
         if (advanceDelivery(delivery, update)) {
@@ -1164,8 +1243,23 @@ public class PrAutoReviewService {
             delivery.setDecisionCode(code);
             delivery.setDecisionMessage(safeMessage);
             delivery.setCanonicalRecordId(canonicalRecordId);
+            if (canonicalRecordId != null) {
+                delivery.setBusinessKey(null);
+            }
             delivery.setLeaseUntil(null);
             delivery.setNextAttemptAt(null);
+        }
+    }
+
+    private static Long parsePositiveLong(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+        try {
+            long val = Long.parseLong(s);
+            return val > 0 ? val : null;
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 
@@ -1260,12 +1354,23 @@ public class PrAutoReviewService {
             boolean prComment = gitea
                     ? "pull_request_comment".equals(eventType) && root.path("is_pull").booleanValue()
                     : root.path("issue").path("pull_request").isObject();
-            if (!"created".equals(action) || !prComment) {
+            if (!prComment) {
+                skip(delivery, "ACTION_IGNORED", "普通 Issue 评论不触发自动审查");
+                return;
+            }
+            if ("edited".equals(action)) {
+                skip(delivery, "ACTION_IGNORED", "编辑旧评论不触发复审");
+                return;
+            }
+            if ("deleted".equals(action)) {
+                skip(delivery, "ACTION_IGNORED", "删除评论不触发复审");
+                return;
+            }
+            if (!"created".equals(action)) {
                 skip(delivery, "ACTION_IGNORED", "仅处理新建的 PR 普通评论");
                 return;
             }
-            Long actorId = delivery.getActorUserId();
-            if (actorId != null && actorId.equals(cfg.getBotActorId())) {
+            if (isBotComment(cfg, delivery)) {
                 skip(delivery, "BOT_COMMENT", "机器人自身发言，跳过回写触发");
                 return;
             }
@@ -1274,6 +1379,7 @@ public class PrAutoReviewService {
                 skip(delivery, "COMMAND_MISMATCH", "评论正文未精确匹配 /recheck 命令");
                 return;
             }
+            Long actorId = delivery.getActorUserId();
             if (!isReviewerAllowed(cfg, actorId)) {
                 skip(delivery, "REVIEWER_NOT_ALLOWED", "触发人 ID 不在审核者名单中");
                 return;
@@ -1287,11 +1393,29 @@ public class PrAutoReviewService {
             return;
         }
 
-        if (pullRequest && (gitea ? "pull_request_sync".equals(eventType) : "synchronize".equals(action))) {
+        if (pullRequest && (gitea
+                ? ("pull_request_sync".equals(eventType) || "synchronized".equals(action))
+                : "synchronize".equals(action))) {
             skip(delivery, "ACTION_IGNORED", "追加提交后由审核者发起 /recheck 复审");
             return;
         }
         skip(delivery, "EVENT_NOT_SUPPORTED", "该 Webhook 事件未配置审查触发规则");
+    }
+
+    private boolean isBotComment(PrAutoReviewConfig cfg, PrAutoReviewDelivery delivery) {
+        if (cfg == null || delivery == null) {
+            return false;
+        }
+        Long actorId = delivery.getActorUserId();
+        if (actorId != null && actorId.equals(cfg.getBotActorId())) {
+            return true;
+        }
+        if (cfg.getBotActorId() == null) {
+            String botLogin = blankToNull(cfg.getBotLogin());
+            String actorLogin = blankToNull(delivery.getActorLogin());
+            return botLogin != null && actorLogin != null && botLogin.equalsIgnoreCase(actorLogin);
+        }
+        return false;
     }
 
     private static void skip(PrAutoReviewDelivery delivery, String code, String message) {
