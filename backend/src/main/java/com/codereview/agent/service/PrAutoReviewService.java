@@ -490,7 +490,8 @@ public class PrAutoReviewService {
     /** 回写评论正文格式化。 */
     public String formatCommentBody(String sourceHead, String reviewUrl) {
         String shortSha = sourceHead != null && sourceHead.length() >= 7 ? sourceHead.substring(0, 7) : (sourceHead != null ? sourceHead : "");
-        return String.format("[查看提交 %s 的审查进度与结果](%s)", shortSha, reviewUrl);
+        return String.format("此评论由代码审查系统自动生成。\n\n[查看提交 %s 的审查进度与结果](%s)",
+                shortSha, reviewUrl);
     }
 
     /** 领取并处理一条投递。任务恢复先找回原任务，再考虑重新创建。 */
@@ -712,7 +713,7 @@ public class PrAutoReviewService {
                 previous == null ? cfg.getModelConfigId() : previous.modelConfigId(),
                 previous == null ? cfg.getPromptId() : previous.promptId(),
                 previous == null ? cfg.getPromptVersionId() : previous.promptVersionId(),
-                false, "PR #" + delivery.getPrNumber() + " 问题审查 · " + shortSha);
+                false, "PR #" + delivery.getPrNumber() + " 问题审查（自动触发） · " + shortSha);
 
         String snapshot;
         try {

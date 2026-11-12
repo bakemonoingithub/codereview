@@ -4,7 +4,7 @@
 
 首版兼容 GitHub 和内网 Gitea 1.16.1。系统对指向配置分支的新建 PR 发起首次问题审查，并允许审核者按需触发复审。两端沿用现有 Git 宿主客户端和 PR 审查流程。
 
-本轮使用 GitHub 测试仓库验收。Gitea 适配同步开发，以 1.16.1 固定样本验证，内网实测在环境可访问时进行。实施顺序见 [ROADMAP 的 PRA 工作包](../../ROADMAP.md#pra-github-与-gitea-pr-自动审查2026-11-12)。
+本轮以 PRA-07 的 Gitea 1.16.1 内网实测为验收依据。PRA-06 暂缓，GitHub 真实仓库实测留待有需要时恢复。实施状态见 [ROADMAP 的 PRA 工作包](../../ROADMAP.md#pra-github-与-gitea-pr-自动审查2026-11-12)。
 
 [交互原型](prototype.html)使用 Gitea 示例，可直接在浏览器打开。正式页面沿用同一套交互，按项目展示对应宿主的配置、原始事件值和评论回执。模拟记录随页面刷新重置。
 
@@ -66,9 +66,9 @@ Webhook 处理逻辑在后端复用现有仓库读取和任务创建服务。以
 1. 根据项目与 PR 编号读取当前 PR，核对仓库、状态和目标分支。通过 `GET /api/v2/projects/{projectId}/pulls/{number}/changes` 对应逻辑获取同一次 PR 读取的 `sourceHead`、`targetHead`、`mergeBase` 和完整文件清单。
 2. 净变化由现有服务使用本地 Git 镜像计算，比较范围为共同祖先到源提交。`sourceHead` 是源分支提交，`targetHead` 是目标分支提交，`mergeBase` 是两者的共同祖先。每轮复审独立锁定版本。
 3. 将 `category == "TEXT"` 的条目转成 `targets`。使用清单中的 `path`，存在 `oldPath` 时一并带上。文本删除和重命名按现有材料契约处理。二进制、LFS 指针、子模块、符号链接、超限和不可解码文件由现有分类排除，任务保留未覆盖数量。没有可审查文本时记录 `NO_TEXT_CHANGES`。现有净变化清单超过 3000 个文件时视为不完整。清单不完整、没有共同祖先、跨仓库 PR、PR 已关闭或文本目标超过 500 个时，记录具体原因并停止创建。超过 500 个文本目标时可以转由人工选择范围。
-4. 按 `POST /api/v2/review-tasks` 的契约创建任务。`specialistType` 固定为 `ISSUE`，`source.kind` 固定为 `PR`，`smartSplit` 首版固定为 `false`。`projectId`、`modelConfigId` 和可选通用提示词版本取自项目配置。`source` 带 `pullNumber` 和三个 SHA，`targets` 带筛选后的路径。系统生成任务名称，例如「PR #13 问题审查 · 59abb71」。
+4. 按 `POST /api/v2/review-tasks` 的契约创建任务。`specialistType` 固定为 `ISSUE`，`source.kind` 固定为 `PR`，`smartSplit` 首版固定为 `false`。`projectId`、`modelConfigId` 和可选通用提示词版本取自项目配置。`source` 带 `pullNumber` 和三个 SHA，`targets` 带筛选后的路径。系统生成带自动触发标识的任务名称，例如「PR #13 问题审查（自动触发） · 59abb71」。
 5. 创建时沿用现有版本复核，并在创建使用的 PR 绑定上再次校验目标分支名称，避免 PR 改换到指向相同提交的其他分支时通过过滤。遇到 `SOURCE_MOVED` 且任务尚未创建时，可以在有限次数内重新读取 PR，重新校验目标分支，并成组刷新三个 SHA 与 `targets`。持续变化时记录失败原因，由审核者再次发起。直接调用服务层时，仍须沿用 HTTP 入口的请求约束，包括 500 个目标上限。
-6. 获取审查 ID 后，用配置的前端地址拼接 `/#/reviews/{reviewId}?from=/reviews`，立即向原 PR 发布普通评论。评论只包含链接，例如「[查看提交 59abb71 的审查进度与结果](https://review.example.com/#/reviews/REVIEW_ID?from=/reviews)」。审核者从链接进入任务详情页，审查进度、结果及失败信息以该页面为准。
+6. 获取审查 ID 后，用配置的前端地址拼接 `/#/reviews/{reviewId}?from=/reviews`，立即向原 PR 发布普通评论。评论注明「此评论由代码审查系统自动生成。」，并附上审查链接。审核者从链接进入任务详情页，审查进度、结果及失败信息以该页面为准。
 
 既有边界和具体字段见 [PRS-01 接口契约](../pr-review-scope/prs-01-contract.md)、[仓库读取服务](../../../backend/src/main/java/com/codereview/agent/repository/RepositoryReadService.java)和[任务创建参数](../../../backend/src/main/java/com/codereview/agent/dto/TaskDtos.java)。
 
@@ -151,8 +151,8 @@ PR 时间线的普通评论通过 GitHub 的 `/repos/{owner}/{repo}/issues/{issu
 
 1. 按 ROADMAP 的 PRA-01 固定两端 Webhook 样本。优先从 GitHub 测试仓库验证接收可达性、验签、仓库匹配和机器人权限。Gitea 1.16.1 可先使用版本对应的固定样本。
 2. 按 PRA-02 至 PRA-05 实现双宿主接收、首次审查、`/recheck`、评论回写和页面。在固定样本中覆盖仓库 ID 或投递 ID 相同但宿主不同的场景。
-3. PRA-06 先跑双宿主工程回归，再在 GitHub 测试仓库进行端到端验收。准备 GitHub 可访问的 HTTPS 接收地址。记录真实投递、审查 ID、三个 SHA 和评论 ID。人工审批门禁用测试仓库的分支保护独立验证。
-4. PRA-07 在内网可访问时，用 Gitea 1.16.1 真实仓库复核同一套业务流程和权限。
+3. PRA-06 暂缓。恢复后先跑双宿主工程回归，再用 GitHub 可访问的 HTTPS 接收地址在测试仓库进行端到端验收。记录真实投递、审查 ID、三个 SHA 和评论 ID，并用测试仓库的分支保护验证人工审批门禁。
+4. PRA-07 已在 Gitea 1.16.1 内网真实仓库完成，结果见 [STATE](../../STATE.md#当前状态)。
 
 | 验收场景 | 预期结果 |
 | --- | --- |

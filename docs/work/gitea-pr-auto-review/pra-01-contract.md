@@ -165,11 +165,14 @@ public record IssueCommentPage(List<IssueComment> items, boolean hasMore, int pa
    - `smartSplit = false`
    - `projectId`、`modelConfigId`、`promptId`、`promptVersionId` 读取自项目自动审查配置
    - 目标文件列表筛选自本地镜像共同祖先到源提交的 `TEXT` 净变更
+   - 任务名称格式为「PR #{pullNumber} 问题审查（自动触发） · {sourceHeadShortSha}」
 2. **审查前端详情 URL 格式**：
    $$\text{reviewUrl} = \text{reviewBaseUrl} + \text{"/#/reviews/"} + \text{reviewTaskId} + \text{"?from=/reviews"}$$
    - `reviewBaseUrl` 来自项目配置（末尾自动去除 `/`，如 `https://review.example.com`）。
 3. **回写评论 Markdown 正文模板**：
    ```markdown
+   此评论由代码审查系统自动生成。
+
    [查看提交 {sourceHeadShortSha} 的审查进度与结果]({reviewUrl})
    ```
    - `{sourceHeadShortSha}` 为 `source_head` 前 7 位字符。

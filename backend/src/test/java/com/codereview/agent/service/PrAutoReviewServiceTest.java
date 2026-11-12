@@ -777,11 +777,13 @@ class PrAutoReviewServiceTest {
         assertEquals("9da674bc34987d6acbec4f8521953315ecdb7d20", created.source().sourceHead());
         assertEquals("f228b3da1c2ec0bf0cad8c6e3bb35b5bb7788b0b", created.source().mergeBase());
         assertEquals(2, created.targets().size());
-        assertEquals("PR #15 问题审查 · 9da674b", created.name());
+        assertEquals("PR #15 问题审查（自动触发） · 9da674b", created.name());
         assertTrue(keyCaptor.getValue().startsWith("pr-auto-review:"));
 
         String commentBody = commentBodyCaptor.getValue();
-        assertEquals("[查看提交 9da674b 的审查进度与结果](http://localhost:5173/#/reviews/01TASK00000000000000000001?from=/reviews)", commentBody);
+        assertEquals("此评论由代码审查系统自动生成。\n\n"
+                + "[查看提交 9da674b 的审查进度与结果](http://localhost:5173/#/reviews/01TASK00000000000000000001?from=/reviews)",
+                commentBody);
 
         assertEquals("CREATED", storedDelivery.getDecisionState());
         assertEquals("01TASK00000000000000000001", storedDelivery.getReviewTaskId());
@@ -842,7 +844,8 @@ class PrAutoReviewServiceTest {
 
         verify(giteaClient).createIssueComment(any(), any(), any(), eq(13L), any());
         verify(gitHostClient, never()).createIssueComment(any(), any(), any(), any(Long.class), any());
-        assertEquals("[查看提交 59abb71 的审查进度与结果](http://localhost:5173/#/reviews/01TASK00000000000000000002?from=/reviews)",
+        assertEquals("此评论由代码审查系统自动生成。\n\n"
+                        + "[查看提交 59abb71 的审查进度与结果](http://localhost:5173/#/reviews/01TASK00000000000000000002?from=/reviews)",
                 commentCaptor.getValue());
         assertEquals("CREATED", storedDelivery.getDecisionState());
         assertEquals("SENT", storedDelivery.getCommentState());
@@ -1599,11 +1602,12 @@ class PrAutoReviewServiceTest {
         TaskDtos.Create recheckTaskReq = recheckTaskCaptor.getValue();
         assertEquals(newHead, recheckTaskReq.source().sourceHead());
         assertEquals(2, recheckTaskReq.targets().size());
-        assertEquals("PR #15 问题审查 · e4c19a0", recheckTaskReq.name());
+        assertEquals("PR #15 问题审查（自动触发） · e4c19a0", recheckTaskReq.name());
         assertFalse(firstDelivery.getBusinessKey().equals(recheckKeyCaptor.getValue()), "首次审查与 /recheck 幂等键必须独立");
 
         assertEquals(
-                "[查看提交 e4c19a0 的审查进度与结果](http://localhost:5173/#/reviews/01TASKRECHECK0000000000002?from=/reviews)",
+                "此评论由代码审查系统自动生成。\n\n"
+                        + "[查看提交 e4c19a0 的审查进度与结果](http://localhost:5173/#/reviews/01TASKRECHECK0000000000002?from=/reviews)",
                 recheckCommentCaptor.getValue()
         );
         assertEquals("CREATED", recheckDelivery.getDecisionState());
@@ -1668,12 +1672,13 @@ class PrAutoReviewServiceTest {
         TaskDtos.Create req = createCaptor.getValue();
         assertEquals(13L, req.source().pullNumber());
         assertEquals(giteaNewHead, req.source().sourceHead());
-        assertEquals("PR #13 问题审查 · 77cfa01", req.name());
+        assertEquals("PR #13 问题审查（自动触发） · 77cfa01", req.name());
         assertEquals(2, req.targets().size());
         assertEquals("backend/src/main/Old.java", req.targets().get(1).oldPath());
 
         assertEquals(
-                "[查看提交 77cfa01 的审查进度与结果](http://localhost:5173/#/reviews/01TASKGITEARECHECK00000001?from=/reviews)",
+                "此评论由代码审查系统自动生成。\n\n"
+                        + "[查看提交 77cfa01 的审查进度与结果](http://localhost:5173/#/reviews/01TASKGITEARECHECK00000001?from=/reviews)",
                 commentCaptor.getValue()
         );
         assertEquals("CREATED", storedDelivery.getDecisionState());
