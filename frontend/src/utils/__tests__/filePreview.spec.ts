@@ -16,6 +16,19 @@ describe('extensionOf / languageOf', () => {
     expect(extensionOf('.gitignore')).toBe('')
     expect(extensionOf('Makefile')).toBe('')
     expect(extensionOf('a/b/c.d/e')).toBe('')
+    expect(extensionOf('backup.java\\src\\A.JAVA')).toBe('java')
+    expect(extensionOf('backup.java\\notes')).toBe('')
+    expect(languageOf('src\\main\\A.java')).toBe('java')
+  })
+
+  it('盘符、连续分隔符和两侧空白不影响扩展名；点文件没有扩展名', () => {
+    expect(extensionOf('C:\\src\\A.java')).toBe('java')
+    expect(extensionOf('C:A.JAVA')).toBe('java')
+    expect(extensionOf('c:/src//A.java')).toBe('java')
+    expect(extensionOf('  src\\A.java  ')).toBe('java')
+    expect(extensionOf('dir/.java')).toBe('')
+    expect(extensionOf('.java')).toBe('')
+    expect(languageOf('C:\\src\\A.java')).toBe('java')
   })
 
   it('白名单里的常见类型都有语言归属', () => {

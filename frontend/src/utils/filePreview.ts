@@ -1,3 +1,5 @@
+import { baseName } from '@/utils/taskLabel'
+
 /**
  * 文件预览的纯函数：**扩展名 → 语言**、**内容 → 可渲染的 Markdown 围栏**。
  *
@@ -65,9 +67,9 @@ const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   styl: 'stylus'
 }
 
-/** 取小写扩展名（不含点）；无扩展名或点号开头返回空串。 */
+/** 取小写扩展名（不含点）；无扩展名或点号开头返回空串。只看最后一段。 */
 export function extensionOf(path: string): string {
-  const name = path.slice(path.lastIndexOf('/') + 1)
+  const name = baseName(path)
   const dot = name.lastIndexOf('.')
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
 }

@@ -72,6 +72,44 @@ class ReviewableFilesTest {
         assertTrue(ReviewableFiles.isReviewable("com.example/A.java"));
     }
 
+    /** 反斜杠与末尾分隔符也只认最后一段，避免把 {@code java\} 当成扩展名。 */
+    @Test
+    void leafNameAcceptsBackslashAndTrailingSeparator() {
+        assertEquals("A.java", ReviewableFiles.baseName("src\\main\\A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("src/main/A.java/"));
+        assertEquals("logo.png", ReviewableFiles.baseName("com.example\\logo.png"));
+        assertEquals("", ReviewableFiles.baseName(null));
+        assertEquals("", ReviewableFiles.baseName("///"));
+
+        assertEquals("java", ReviewableFiles.extensionOf("backup.java\\src\\A.java"));
+        assertEquals("java", ReviewableFiles.extensionOf("src\\A.java\\"));
+        assertEquals("", ReviewableFiles.extensionOf("backup.java\\notes"));
+        assertTrue(ReviewableFiles.isReviewable("src\\main\\A.java"));
+        assertTrue(ReviewableFiles.isReviewable("src\\A.java\\"));
+        assertFalse(ReviewableFiles.isReviewable("com.example\\logo.png"));
+        assertFalse(ReviewableFiles.isReviewable("backup.java\\notes"));
+    }
+
+    /** 盘符、两侧空白和连续分隔符都不进入文件名；仅扩展名的点文件仍没有扩展名。 */
+    @Test
+    void leafNameDropsDrivePrefixAndSurroundingSpace() {
+        assertEquals("A.java", ReviewableFiles.baseName("C:\\src\\A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("C:A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("c:/src//A.java"));
+        assertEquals("A.java", ReviewableFiles.baseName("  src\\\\A.java  "));
+        assertEquals("", ReviewableFiles.baseName("C:\\"));
+        assertEquals("", ReviewableFiles.baseName("C:"));
+
+        assertEquals("java", ReviewableFiles.extensionOf("C:A.java"));
+        assertEquals("java", ReviewableFiles.extensionOf("  src/A.java  "));
+        assertEquals("", ReviewableFiles.extensionOf("dir/.java"));
+        assertEquals("", ReviewableFiles.extensionOf(".java"));
+        assertTrue(ReviewableFiles.isReviewable("C:\\src\\A.java"));
+        assertTrue(ReviewableFiles.isReviewable("  src/A.java  "));
+        assertFalse(ReviewableFiles.isReviewable("dir/.java"));
+        assertFalse(ReviewableFiles.isReviewable("C:\\logo.png"));
+    }
+
     @Test
     void nullAndEmptyAreNotReviewable() {
         assertFalse(ReviewableFiles.isReviewable(null));

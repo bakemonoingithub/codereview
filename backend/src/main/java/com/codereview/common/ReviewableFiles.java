@@ -50,12 +50,44 @@ public final class ReviewableFiles {
         return ALLOWED_EXTENSIONS.contains(extensionOf(path));
     }
 
-    /** 取小写扩展名（不含点）；无扩展名时返回空串。 */
-    public static String extensionOf(String path) {
-        if (path == null) {
+    /**
+     * 路径最后一段。正斜杠与反斜杠都是分隔符，连续分隔符与末尾分隔符忽略。
+     * 去掉两侧空白和开头的 Windows 盘符（如 {@code C:}）。没有文件名时返回空串。
+     */
+    public static String baseName(String path) {
+        if (path == null || path.isBlank()) {
             return "";
         }
-        String name = path.substring(path.lastIndexOf('/') + 1);
+        String normalized = stripDrivePrefix(path.trim());
+        int end = normalized.length();
+        while (end > 0 && isSeparator(normalized.charAt(end - 1))) {
+            end--;
+        }
+        int start = end;
+        while (start > 0 && !isSeparator(normalized.charAt(start - 1))) {
+            start--;
+        }
+        return normalized.substring(start, end);
+    }
+
+    private static String stripDrivePrefix(String path) {
+        if (path.length() >= 2 && isDriveLetter(path.charAt(0)) && path.charAt(1) == ':') {
+            return path.substring(2);
+        }
+        return path;
+    }
+
+    private static boolean isDriveLetter(char c) {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    }
+
+    private static boolean isSeparator(char c) {
+        return c == '/' || c == '\\';
+    }
+
+    /** 取小写扩展名（不含点）；无扩展名时返回空串。只看最后一段。 */
+    public static String extensionOf(String path) {
+        String name = baseName(path);
         int dot = name.lastIndexOf('.');
         // dot > 0 而非 >= 0：点号开头的文件（.gitignore）不算有扩展名
         return dot > 0 ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "";

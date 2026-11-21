@@ -102,6 +102,7 @@ import { message } from 'ant-design-vue'
 import CodeViewer from '@/components/CodeViewer.vue'
 import { repositoryApi, tasksApi, type MaterialDetail } from '@/api/v2'
 import { dedupeReferences, type CodeReference } from '@/utils/codeReferences'
+import { baseName } from '@/utils/taskLabel'
 
 interface CodeViewerHandle {
   scrollToLine: (line: number, container: HTMLElement | null, instant?: boolean) => void
@@ -206,7 +207,7 @@ const navDisabled = computed(() => busy.value || !!loadError.value || references
 const canPrev = computed(() => !navDisabled.value && activeIndex.value > 0)
 const canNext = computed(() => !navDisabled.value && activeIndex.value < references.value.length - 1)
 
-const fileName = computed(() => props.path.split('/').pop() || props.path)
+const fileName = computed(() => baseName(props.path) || '未命名文件')
 const shortSha = computed(() => props.sha ? props.sha.slice(0, 12) : '未记录')
 
 function fmtRange(ref: { startLine: number; endLine: number }): string {
